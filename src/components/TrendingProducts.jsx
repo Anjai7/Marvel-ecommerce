@@ -15,40 +15,41 @@ export default function TrendingProducts({ onQuickView }) {
   const visibleProducts = trendingProducts.slice(start, start + PAGE_SIZE);
 
   return (
-    <div className="container section-wrap" id="trending-products">
-      {/* Section Header */}
-      <div className="section-head" style={{ paddingBottom: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              background: "var(--orange-light)",
-              padding: "8px",
-              borderRadius: "var(--radius-sm)",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <TrendingUp size={22} color="var(--orange)" />
+    <section className="section-block section-block-trending" id="trending-products">
+      <div className="container">
+        {/* Section Header */}
+        <div className="section-head" style={{ paddingBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                background: "var(--orange-light)",
+                padding: "10px",
+                borderRadius: "var(--radius-md)",
+                display: "flex",
+                alignItems: "center",
+                border: "1px solid rgba(255, 97, 0, 0.2)"
+              }}
+            >
+              <TrendingUp size={22} color="var(--orange)" />
+            </div>
+            <div>
+              <h2 className="section-title" style={{ margin: 0 }}>
+                🔥 Trending Now
+              </h2>
+              <p className="section-subtitle" style={{ fontSize: 13.5, color: "var(--gray-600)", margin: "2px 0 0", fontWeight: 500 }}>
+                What shoppers are buying right now
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="section-title" style={{ margin: 0 }}>
-              Trending Products
-            </h2>
-            <p style={{ fontSize: 12, color: "var(--gray-500)", margin: 0 }}>
-              Handpicked hot deals selling fast right now
-            </p>
-          </div>
-        </div>
 
-        <a
-          href="#"
-          className="view-all-btn"
-          id="trending-view-all"
-          style={{ textDecoration: "none" }}
-        >
-          View all →
-        </a>
-      </div>
+          <a
+            href="#"
+            className="view-all-link"
+            id="trending-view-all"
+          >
+            View all →
+          </a>
+        </div>
 
       {/* Product Grid — 5 cols × 3 rows with nav arrows */}
       <div className="trending-grid-wrap">
@@ -85,5 +86,6 @@ export default function TrendingProducts({ onQuickView }) {
         )}
       </div>
     </div>
-  );
+  </section>
+);
 }

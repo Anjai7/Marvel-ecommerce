@@ -5,6 +5,7 @@ import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 export function ProductCard({ product, onQuickView }) {
   const [wishlisted, setWishlisted] = useState(false);
   const [cartState, setCartState] = useState("idle"); // idle | loading | added
+  const [imageLoaded, setImageLoaded] = useState(false);
   const { addToast } = useToast();
 
   const handleWishlist = (e) => {
@@ -46,13 +47,15 @@ export function ProductCard({ product, onQuickView }) {
         </Badge>
       )}
 
-      {/* Image Container with aspect ratio 1/1 & object-fit contain */}
+      {/* Image Container with aspect ratio 1/1 & skeleton shimmer */}
       <div className="product-img-container">
+        {!imageLoaded && <div className="product-img-skeleton" />}
         <img
           src={product.image}
           alt={product.name}
           loading="lazy"
-          className="product-img-element"
+          onLoad={() => setImageLoaded(true)}
+          className={`product-img-element ${imageLoaded ? "is-loaded" : "is-loading"}`}
         />
 
         {/* Quick View Button on Hover */}

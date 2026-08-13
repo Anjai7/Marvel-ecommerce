@@ -26,10 +26,16 @@ export default function PromoBannerCarousel() {
       >
         {promoCarouselSlides.map((slide, i) => (
           <div key={i} className={`promo-slide ${i === current ? "active" : ""}`}>
+            <div className="promo-watermark">70% OFF</div>
             <div className="promo-slide-content">
-              <Badge variant="accent" size="sm" className="promo-slide-tag">
-                {slide.tag}
-              </Badge>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <Badge variant="accent" size="sm" className="promo-slide-tag">
+                  {slide.tag}
+                </Badge>
+                <span className="promo-timer-badge">
+                  ⚡ ENDS IN 04H 22M
+                </span>
+              </div>
               <div className="promo-slide-title">{slide.title}</div>
               <div className="promo-slide-highlight">{slide.highlight}</div>
               <div className="promo-slide-desc">{slide.desc}</div>

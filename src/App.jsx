@@ -9,6 +9,7 @@ import TrendingProducts from "./components/TrendingProducts";
 import PromoBannerCarousel from "./components/PromoBannerCarousel";
 import FeaturedProducts from "./components/FeaturedProducts";
 import Footer from "./components/Footer";
+import ScrollToTop from "./components/ScrollToTop";
 import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
 
@@ -64,6 +65,9 @@ export default function App() {
 
         {/* Footer & Benefits Bar */}
         <Footer />
+
+        {/* Floating Return to Top Button */}
+        <ScrollToTop />
 
         {/* Quick View Dialog Modal / Drawer */}
         <QuickViewDialog

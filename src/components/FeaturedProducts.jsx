@@ -24,64 +24,67 @@ export default function FeaturedProducts({ onQuickView }) {
   };
 
   return (
-    <div className="container section-wrap" id="featured-products">
-      <div className="section-head" style={{ alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              background: "var(--navy-bg)",
-              padding: "8px",
-              borderRadius: "var(--radius-sm)",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <Award size={22} color="var(--navy)" />
-          </div>
-          <div>
-            <h2 className="section-title" style={{ margin: 0 }}>
-              Featured Products
-            </h2>
-            <p style={{ fontSize: 12, color: "var(--gray-500)", margin: 0 }}>
-              Curated selection of our top customer favorites
-            </p>
-          </div>
-        </div>
-
-        <Button variant="outline" size="sm" className="view-all-btn" id="featured-view-all">
-          View All ›
-        </Button>
-      </div>
-
-      <div className="featured-wrap">
-        <button
-          className="featured-scroll-btn featured-scroll-left"
-          id="featured-prev"
-          onClick={() => scroll(-1)}
-          disabled={!canLeft}
-          aria-label="Scroll left"
-        >
-          <ChevronLeft size={20} />
-        </button>
-
-        <div className="featured-scroll" ref={scrollRef} onScroll={updateArrows}>
-          {featuredProducts.map((product) => (
-            <div className="featured-card" key={product.id}>
-              <ProductCard product={product} onQuickView={onQuickView} />
+    <section className="section-block section-block-featured" id="featured-products">
+      <div className="container">
+        <div className="section-head" style={{ alignItems: "center", justifyContent: "space-between", paddingBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                background: "var(--navy-bg)",
+                padding: "10px",
+                borderRadius: "var(--radius-md)",
+                display: "flex",
+                alignItems: "center",
+                border: "1px solid rgba(40, 116, 240, 0.2)"
+              }}
+            >
+              <Award size={22} color="var(--navy)" />
             </div>
-          ))}
+            <div>
+              <h2 className="section-title" style={{ margin: 0 }}>
+                ⭐ Editor's Picks
+              </h2>
+              <p className="section-subtitle" style={{ fontSize: 13.5, color: "var(--gray-600)", margin: "2px 0 0", fontWeight: 500 }}>
+                Our hand-picked top favorites
+              </p>
+            </div>
+          </div>
+
+          <a href="#" className="view-all-link" id="featured-view-all">
+            View all →
+          </a>
         </div>
 
-        <button
-          className="featured-scroll-btn featured-scroll-right"
-          id="featured-next"
-          onClick={() => scroll(1)}
-          disabled={!canRight}
-          aria-label="Scroll right"
-        >
-          <ChevronRight size={20} />
-        </button>
+        <div className="featured-wrap">
+          <button
+            className="featured-scroll-btn featured-scroll-left"
+            id="featured-prev"
+            onClick={() => scroll(-1)}
+            disabled={!canLeft}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={20} />
+          </button>
+
+          <div className="featured-scroll" ref={scrollRef} onScroll={updateArrows}>
+            {featuredProducts.map((product) => (
+              <div className="featured-card" key={product.id}>
+                <ProductCard product={product} onQuickView={onQuickView} />
+              </div>
+            ))}
+          </div>
+
+          <button
+            className="featured-scroll-btn featured-scroll-right"
+            id="featured-next"
+            onClick={() => scroll(1)}
+            disabled={!canRight}
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
