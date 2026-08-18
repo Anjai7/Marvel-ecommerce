@@ -1,11 +1,16 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { navCategories, megaMenuData } from "../data";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { Menu, ChevronDown } from "lucide-react";
 
-function MegaMenu({ columns }) {
+function MegaMenu({ columns, alignRight }) {
   return (
-    <div className="mega-menu">
+    <div
+      className={`mega-menu ${alignRight ? "align-right" : "align-left"}`}
+      style={{
+        "--cols": Math.min(columns.length, 6),
+      }}
+    >
       {columns.map((col) => (
         <div className="mega-menu-col" key={col.title}>
           <h4>
@@ -13,7 +18,7 @@ function MegaMenu({ columns }) {
           </h4>
           <ul>
             {col.items.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} tabIndex={0}>{item}</li>
             ))}
           </ul>
         </div>
@@ -28,38 +33,54 @@ export default function HoverNav() {
 
   const navTimer = useRef(null);
   const browseTimer = useRef(null);
+  const browseGroupRef = useRef(null);
 
-  /* ── Regular nav hover ──
-     All events handled on the outermost .hover-nav-group so the mouse
-     can move freely between the trigger and the open panel without
-     triggering spurious leave events. */
+  /* ── Regular nav hover ── */
   const navEnter = (name) => {
     if (navTimer.current) clearTimeout(navTimer.current);
     setActiveMenu(name);
   };
   const navLeave = () => {
-    // 200 ms gives the cursor enough time to travel from nav item → panel
-    navTimer.current = setTimeout(() => setActiveMenu(null), 200);
+    navTimer.current = setTimeout(() => setActiveMenu(null), 220);
   };
 
-  /* ── Browse Categories hover ── */
+  /* ── Browse Categories hover & click ── */
   const browseEnter = () => {
     if (browseTimer.current) clearTimeout(browseTimer.current);
     setBrowseOpen(true);
   };
   const browseLeave = () => {
-    browseTimer.current = setTimeout(() => setBrowseOpen(false), 200);
+    browseTimer.current = setTimeout(() => setBrowseOpen(false), 260);
   };
-  const browseMenuEnter = () => {
+  const toggleBrowse = () => {
     if (browseTimer.current) clearTimeout(browseTimer.current);
+    setBrowseOpen((prev) => !prev);
   };
+
+  // Close when clicking outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (browseGroupRef.current && !browseGroupRef.current.contains(e.target)) {
+        setBrowseOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      if (navTimer.current) clearTimeout(navTimer.current);
+      if (browseTimer.current) clearTimeout(browseTimer.current);
+    };
+  }, []);
+
+  const filteredNavCategories = navCategories.filter((c) => c.name !== "All Categories");
 
   return (
     <nav className="hover-nav">
       <div className="container hover-nav-inner">
         {/* ☰ Browse Categories */}
         <div
-          className="browse-cat-group"
+          ref={browseGroupRef}
+          className={`browse-cat-group ${browseOpen ? "active" : ""}`}
           onMouseEnter={browseEnter}
           onMouseLeave={browseLeave}
         >
@@ -67,6 +88,15 @@ export default function HoverNav() {
             className={`browse-cat-btn ${browseOpen ? "open" : ""}`}
             id="browse-categories-btn"
             aria-expanded={browseOpen}
+            aria-haspopup="true"
+            onClick={toggleBrowse}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleBrowse();
+              }
+              if (e.key === "Escape") setBrowseOpen(false);
+            }}
           >
             <Menu size={18} strokeWidth={2.5} />
             Browse Categories
@@ -75,10 +105,10 @@ export default function HoverNav() {
           {browseOpen && (
             <div
               className="browse-dropdown"
-              onMouseEnter={browseMenuEnter}
+              onMouseEnter={browseEnter}
               onMouseLeave={browseLeave}
             >
-              <BrowseCategoriesMenu />
+              <BrowseCategoriesMenu onClose={() => setBrowseOpen(false)} />
             </div>
           )}
         </div>
@@ -86,18 +116,34 @@ export default function HoverNav() {
         <span className="hnav-sep" />
 
         {/* Regular category nav links */}
-        {navCategories
-          .filter((c) => c.name !== "All Categories")
-          .map((cat) => (
+        {filteredNavCategories.map((cat, idx) => {
+          // Items in the second half of the navigation bar align their dropdowns to the right
+          const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
+
+          return (
             <div
               key={cat.name}
-              className="hover-nav-group"
+              className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
               onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
               onMouseLeave={cat.hasDropdown ? navLeave : undefined}
+              onFocus={() => cat.hasDropdown && navEnter(cat.name)}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                  navLeave();
+                }
+              }}
             >
               <span
+                tabIndex={cat.hasDropdown ? 0 : undefined}
                 className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
                 id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
+                onKeyDown={(e) => {
+                  if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
+                  }
+                  if (e.key === "Escape") setActiveMenu(null);
+                }}
               >
                 {cat.name}
                 {cat.hasDropdown && (
@@ -113,10 +159,11 @@ export default function HoverNav() {
               </span>
 
               {activeMenu === cat.name && megaMenuData[cat.name] && (
-                <MegaMenu columns={megaMenuData[cat.name]} />
+                <MegaMenu columns={megaMenuData[cat.name]} alignRight={alignRight} />
               )}
             </div>
-          ))}
+          );
+        })}
       </div>
     </nav>
   );

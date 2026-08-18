@@ -12,7 +12,7 @@ import {
 } from "../ui";
 import { ShoppingCart, Check, Heart, ShieldCheck, Truck, RefreshCw } from "lucide-react";
 
-export function QuickViewDialog({ product, isOpen, onClose }) {
+export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
   const [cartState, setCartState] = useState("idle");
   const [wishlisted, setWishlisted] = useState(false);
   const { addToast } = useToast();
@@ -130,7 +130,7 @@ export function QuickViewDialog({ product, isOpen, onClose }) {
                   cursor: "pointer",
                   textDecoration: "underline",
                 }}
-                onClick={onClose}
+                onClick={() => { onClose(); onViewFull && onViewFull(); }}
               >
                 View Full Product Details →
               </span>

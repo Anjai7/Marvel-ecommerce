@@ -4,11 +4,11 @@ import { trendingProducts } from "../data";
 import { TrendingUp } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const COLS = 5;
+const COLS = 4;
 const ROWS = 3;
-const PAGE_SIZE = COLS * ROWS; // 15
+const PAGE_SIZE = COLS * ROWS; // 12
 
-export default function TrendingProducts({ onQuickView }) {
+export default function TrendingProducts({ onQuickView, onNavigate }) {
   const [page, setPage] = useState(0);
   const totalPages = Math.ceil(trendingProducts.length / PAGE_SIZE);
   const start = page * PAGE_SIZE;
@@ -70,6 +70,7 @@ export default function TrendingProducts({ onQuickView }) {
               key={product.id}
               product={product}
               onQuickView={onQuickView}
+              onNavigate={onNavigate}
             />
           ))}
         </div>

@@ -12,15 +12,28 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
+import ProductViewPage from "./components/product/ProductViewPage";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartCount] = useState(8);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [currentPage, setCurrentPage] = useState("home"); // "home" | "product"
 
   const handleQuickView = (product) => {
     setQuickViewProduct(product);
+  };
+
+  const navigateToProduct = () => {
+    setQuickViewProduct(null);
+    setCurrentPage("product");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateHome = () => {
+    setCurrentPage("home");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -42,29 +55,40 @@ export default function App() {
           onSelectProduct={handleQuickView}
         />
 
-        {/* Hover nav — includes Browse Categories vertical mega-menu */}
-        <HoverNav />
+        {currentPage === "home" && (
+          <>
+            {/* Hover nav — includes Browse Categories vertical mega-menu */}
+            <HoverNav />
 
-        {/* Hero Carousel */}
-        <HeroBanner />
+            {/* Hero Carousel */}
+            <HeroBanner />
 
-        {/* Category Thumbnails Slider */}
-        <CategorySlider />
+            {/* Category Thumbnails Slider */}
+            <CategorySlider />
 
-        {/* Image Grid Banner (1 large left, 2 stacked right) */}
-        <BannerLayout />
+            {/* Image Grid Banner (1 large left, 2 stacked right) */}
+            <BannerLayout />
 
-        {/* Trending Products (15 items grid with 5 per row) */}
-        <TrendingProducts onQuickView={handleQuickView} />
+            {/* Trending Products (15 items grid with 5 per row) */}
+            <TrendingProducts onQuickView={handleQuickView} onNavigate={navigateToProduct} />
 
-        {/* Single Promo Carousel Banner in the Down */}
-        <PromoBannerCarousel />
+            {/* Single Promo Carousel Banner in the Down */}
+            <PromoBannerCarousel />
 
-        {/* Featured Products */}
-        <FeaturedProducts onQuickView={handleQuickView} />
+            {/* Featured Products */}
+            <FeaturedProducts onQuickView={handleQuickView} onNavigate={navigateToProduct} />
 
-        {/* Footer & Benefits Bar */}
-        <Footer />
+            {/* Footer & Benefits Bar */}
+            <Footer />
+          </>
+        )}
+
+        {currentPage === "product" && (
+          <ProductViewPage
+            onBack={navigateHome}
+            onSelectProduct={navigateToProduct}
+          />
+        )}
 
         {/* Floating Return to Top Button */}
         <ScrollToTop />
@@ -74,6 +98,7 @@ export default function App() {
           product={quickViewProduct}
           isOpen={!!quickViewProduct}
           onClose={() => setQuickViewProduct(null)}
+          onViewFull={navigateToProduct}
         />
       </div>
     </ToastProvider>

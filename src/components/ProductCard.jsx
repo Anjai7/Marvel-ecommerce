@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, Badge, Button, Rating, ProductPrice, SimpleTooltip, useToast } from "./ui";
 import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 
-export function ProductCard({ product, onQuickView }) {
+export function ProductCard({ product, onQuickView, onNavigate }) {
   const [wishlisted, setWishlisted] = useState(false);
   const [cartState, setCartState] = useState("idle"); // idle | loading | added
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -34,8 +34,17 @@ export function ProductCard({ product, onQuickView }) {
     }, 400);
   };
 
+  const handleCardClick = () => {
+    if (onNavigate) onNavigate(product);
+  };
+
   return (
-    <Card className="product-card" id={`product-${product.id}`}>
+    <Card
+      className="product-card"
+      id={`product-${product.id}`}
+      onClick={handleCardClick}
+      style={{ cursor: onNavigate ? "pointer" : "default" }}
+    >
       {product.badge && (
         <Badge variant="accent" className="product-badge">
           {product.badge}
