@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useToast } from "./ui";
+import { useToast, SimpleTooltip, Input, Button } from "./ui";
 import {
   Send,
   ShieldCheck,
@@ -204,21 +204,31 @@ export default function Footer() {
             {/* Social Links */}
             <div className="footer-socials">
               <span className="social-label">Follow Us:</span>
-              <a href="#" className="social-icon-btn facebook" aria-label="Facebook">
-                <SocialFacebook />
-              </a>
-              <a href="#" className="social-icon-btn twitter" aria-label="Twitter">
-                <SocialTwitter />
-              </a>
-              <a href="#" className="social-icon-btn instagram" aria-label="Instagram">
-                <SocialInstagram />
-              </a>
-              <a href="#" className="social-icon-btn youtube" aria-label="YouTube">
-                <SocialYoutube />
-              </a>
-              <a href="#" className="social-icon-btn linkedin" aria-label="LinkedIn">
-                <SocialLinkedin />
-              </a>
+              <SimpleTooltip content="Facebook">
+                <a href="#" className="social-icon-btn facebook" aria-label="Facebook">
+                  <SocialFacebook />
+                </a>
+              </SimpleTooltip>
+              <SimpleTooltip content="Twitter">
+                <a href="#" className="social-icon-btn twitter" aria-label="Twitter">
+                  <SocialTwitter />
+                </a>
+              </SimpleTooltip>
+              <SimpleTooltip content="Instagram">
+                <a href="#" className="social-icon-btn instagram" aria-label="Instagram">
+                  <SocialInstagram />
+                </a>
+              </SimpleTooltip>
+              <SimpleTooltip content="YouTube">
+                <a href="#" className="social-icon-btn youtube" aria-label="YouTube">
+                  <SocialYoutube />
+                </a>
+              </SimpleTooltip>
+              <SimpleTooltip content="LinkedIn">
+                <a href="#" className="social-icon-btn linkedin" aria-label="LinkedIn">
+                  <SocialLinkedin />
+                </a>
+              </SimpleTooltip>
             </div>
           </div>
 

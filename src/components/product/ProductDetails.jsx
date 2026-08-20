@@ -303,11 +303,11 @@ export default function ProductDetails({ product }) {
         <div className="pd-offers-preview">
           <div className="pd-offer-chip-item">
             <span className="pd-chip-tag">BANK</span>
-            <span className="pd-chip-desc">{offerDetails.bankOffers[0].bank}: {offerDetails.bankOffers[0].offer}</span>
+            <span className="pd-chip-desc" title={`${offerDetails.bankOffers[0].bank}: ${offerDetails.bankOffers[0].offer}`}>{offerDetails.bankOffers[0].bank}: {offerDetails.bankOffers[0].offer}</span>
           </div>
           <div className="pd-offer-chip-item">
             <span className="pd-chip-tag coupon">COUPON</span>
-            <span className="pd-chip-desc">{offerDetails.couponOffers[0].desc}</span>
+            <span className="pd-chip-desc" title={offerDetails.couponOffers[0].desc}>{offerDetails.couponOffers[0].desc}</span>
             <span className="pd-chip-code">{offerDetails.couponOffers[0].code}</span>
           </div>
         </div>

@@ -33,6 +33,16 @@ export default function CategorySlider() {
                   key={cat.name}
                   id={`cat-${cat.name.toLowerCase()}`}
                   onClick={() => setActiveCat(isActive ? null : cat.name)}
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setActiveCat(isActive ? null : cat.name);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={isActive}
                   whileHover={{ y: -2 }}
                   transition={{ duration: 0.18 }}
                 >

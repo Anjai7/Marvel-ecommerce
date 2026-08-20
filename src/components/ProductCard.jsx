@@ -38,11 +38,23 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     if (onNavigate) onNavigate(product);
   };
 
+  const handleCardKeyDown = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if ((e.key === "Enter" || e.key === " ") && onNavigate) {
+      e.preventDefault();
+      onNavigate(product);
+    }
+  };
+
   return (
     <Card
       className="product-card"
       id={`product-${product.id}`}
       onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      tabIndex={onNavigate ? 0 : undefined}
+      role={onNavigate ? "link" : undefined}
+      aria-label={onNavigate ? `View ${product.name}` : undefined}
       style={{ cursor: onNavigate ? "pointer" : "default" }}
     >
       {product.badge && (

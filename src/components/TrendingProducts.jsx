@@ -20,23 +20,14 @@ export default function TrendingProducts({ onQuickView, onNavigate }) {
         {/* Section Header */}
         <div className="section-head" style={{ paddingBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                background: "var(--orange-light)",
-                padding: "10px",
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                alignItems: "center",
-                border: "1px solid rgba(255, 97, 0, 0.2)"
-              }}
-            >
+            <div className="section-head-icon is-orange">
               <TrendingUp size={22} color="var(--orange)" />
             </div>
             <div>
               <h2 className="section-title" style={{ margin: 0 }}>
                 🔥 Trending Now
               </h2>
-              <p className="section-subtitle" style={{ fontSize: 13.5, color: "var(--gray-600)", margin: "2px 0 0", fontWeight: 500 }}>
+              <p className="section-subtitle">
                 What shoppers are buying right now
               </p>
             </div>

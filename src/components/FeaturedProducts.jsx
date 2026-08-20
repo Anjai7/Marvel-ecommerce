@@ -28,16 +28,7 @@ export default function FeaturedProducts({ onQuickView, onNavigate }) {
       <div className="container">
         <div className="section-head" style={{ alignItems: "center", justifyContent: "space-between", paddingBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                background: "var(--navy-bg)",
-                padding: "10px",
-                borderRadius: "var(--radius-md)",
-                display: "flex",
-                alignItems: "center",
-                border: "1px solid rgba(40, 116, 240, 0.25)"
-              }}
-            >
+            <div className="section-head-icon is-navy">
               <Award size={22} color="var(--navy)" />
             </div>
             <div>

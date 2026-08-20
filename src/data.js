@@ -14,14 +14,75 @@ export const navCategories = [
 
 // ─── Mega Menu ────────────────────────────────────────────────
 export const megaMenuData = {
-  Electronics: [
-    { title: "Mobiles", icon: "📱", items: ["Smartphones", "Feature Phones", "Mobile Accessories", "Refurbished Phones"] },
-    { title: "Computers", icon: "💻", items: ["Laptops", "Desktops", "Monitors", "Printers", "Storage Devices"] },
-    { title: "Audio", icon: "🎧", items: ["Headphones", "Earbuds", "Speakers", "Soundbars", "Microphones"] },
-    { title: "Cameras", icon: "📷", items: ["DSLR Cameras", "Mirrorless", "Action Cameras", "Webcams", "Lenses"] },
-    { title: "Accessories", icon: "🔌", items: ["Chargers", "Power Banks", "Cables", "Cases & Covers", "Screen Guards"] },
-    { title: "Gaming", icon: "🎮", items: ["Consoles", "Controllers", "Gaming Headsets", "Gaming Chairs", "VR Headsets"] },
-  ],
+  Electronics: {
+    columns: [
+      {
+        title: "Mobiles",
+        icon: "📱",
+        items: [
+          { label: "Smartphones", badge: "Hot", badgeVariant: "accent" },
+          "Feature Phones",
+          "Mobile Accessories",
+          { label: "Refurbished Phones", badge: "Deals", badgeVariant: "secondary" },
+        ],
+      },
+      {
+        title: "Computers",
+        icon: "💻",
+        items: [
+          { label: "Laptops", badge: "Popular", badgeVariant: "accent" },
+          "Desktops",
+          "Monitors",
+          "Printers",
+          "Storage Devices",
+        ],
+      },
+      {
+        title: "Audio",
+        icon: "🎧",
+        items: [
+          "Headphones",
+          { label: "Earbuds", badge: "New", badgeVariant: "success" },
+          "Speakers",
+          "Soundbars",
+          "Microphones",
+        ],
+      },
+      {
+        title: "Cameras",
+        icon: "📷",
+        items: [
+          "DSLR Cameras",
+          "Mirrorless",
+          "Action Cameras",
+          "Webcams",
+          "Lenses",
+        ],
+      },
+      {
+        title: "Accessories",
+        icon: "🔌",
+        items: [
+          "Chargers",
+          "Power Banks",
+          "Cables",
+          "Cases & Covers",
+          "Screen Guards",
+        ],
+      },
+      {
+        title: "Gaming",
+        icon: "🎮",
+        items: [
+          { label: "Consoles", badge: "New", badgeVariant: "success" },
+          "Controllers",
+          "Gaming Headsets",
+          "Gaming Chairs",
+          "VR Headsets",
+        ],
+      },
+    ],
+  },
   Fashion: [
     { title: "Men's Fashion", icon: "👔", items: ["T-Shirts", "Shirts", "Jeans & Trousers", "Formal Wear", "Ethnic Wear"] },
     { title: "Women's Fashion", icon: "👗", items: ["Dresses", "Tops & Tees", "Sarees", "Ethnic Wear", "Western Wear"] },

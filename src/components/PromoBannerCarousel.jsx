@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { promoCarouselSlides } from "../data";
 import { Button, Badge } from "./ui";
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
 
 export default function PromoBannerCarousel() {
   const [current, setCurrent] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
   const next = useCallback(() => setCurrent((c) => (c + 1) % promoCarouselSlides.length), []);
   const prev = useCallback(() => setCurrent((c) => (c - 1 + promoCarouselSlides.length) % promoCarouselSlides.length), []);
@@ -15,6 +17,14 @@ export default function PromoBannerCarousel() {
     const t = setInterval(next, 5000);
     return () => clearInterval(t);
   }, [paused, next]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = (e) => setPaused(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   return (
     <div className="container" style={{ margin: "20px auto" }}>
@@ -78,16 +88,28 @@ export default function PromoBannerCarousel() {
           <ChevronRight size={20} />
         </button>
 
-        <div className="promo-carousel-dots">
+        <div className="promo-carousel-dots" role="tablist" aria-label="Promo slides">
           {promoCarouselSlides.map((_, i) => (
-            <span
+            <button
               key={i}
               className={`promo-dot ${i === current ? "active" : ""}`}
               onClick={() => setCurrent(i)}
               id={`promo-dot-${i}`}
+              aria-label={`Go to slide ${i + 1}`}
+              aria-current={i === current}
             />
           ))}
         </div>
+
+        <button
+          className={`carousel-pause-btn ${paused ? "paused" : ""}`}
+          id="promo-pause"
+          onClick={() => setPaused((p) => !p)}
+          aria-label={paused ? "Play carousel" : "Pause carousel"}
+          aria-pressed={paused}
+        >
+          {paused ? <Play size={15} /> : <Pause size={15} />}
+        </button>
       </div>
     </div>
   );

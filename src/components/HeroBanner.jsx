@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { heroSlides } from "../data";
 import { Button, Badge } from "./ui";
-import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
 
 export default function HeroBanner() {
   const [current, setCurrent] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
   const [touchStart, setTouchStart] = useState(null);
 
   const next = useCallback(() => setCurrent((c) => (c + 1) % heroSlides.length), []);
@@ -16,6 +18,14 @@ export default function HeroBanner() {
     const t = setInterval(next, 4500);
     return () => clearInterval(t);
   }, [paused, next]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = (e) => setPaused(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
   const handleTouchEnd = (e) => {
@@ -79,16 +89,29 @@ export default function HeroBanner() {
         <ChevronRight size={24} color="#fff" />
       </button>
 
-      <div className="hero-dots">
+      <div className="hero-dots" role="tablist" aria-label="Hero slides">
         {heroSlides.map((_, i) => (
-          <span
+          <button
             key={i}
             className={`hero-dot ${i === current ? "active" : ""}`}
             onClick={() => setCurrent(i)}
             id={`hero-dot-${i}`}
+            aria-label={`Go to slide ${i + 1}`}
+            aria-current={i === current}
           />
         ))}
       </div>
+
+      <button
+        className={`carousel-pause-btn ${paused ? "paused" : ""}`}
+        id="hero-pause"
+        onClick={() => setPaused((p) => !p)}
+        aria-label={paused ? "Play carousel" : "Pause carousel"}
+        aria-pressed={paused}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
+        {paused ? <Play size={15} /> : <Pause size={15} />}
+      </button>
     </div>
   );
 }

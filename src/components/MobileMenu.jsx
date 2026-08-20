@@ -1,14 +1,10 @@
 import { useState } from "react";
 import { verticalCategories } from "../data";
-import { Button } from "./ui";
-import { X, User, Package, ShoppingCart, Heart, MapPin, ChevronRight, ChevronDown } from "lucide-react";
+import { Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui";
+import { X, User, Package, ShoppingCart, Heart, MapPin, ChevronRight } from "lucide-react";
 
 export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
-  const [expanded, setExpanded] = useState(null);
-
   if (!isOpen) return null;
-
-  const toggle = (name) => setExpanded(expanded === name ? null : name);
 
   return (
     <>
@@ -34,20 +30,9 @@ export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
         <div className="mobile-auth">
           {isLoggedIn ? (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: "50%",
-                  background: "var(--navy-bg)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "var(--navy)",
-                }}
-              >
-                <User size={22} />
-              </div>
+              <Avatar size="lg">
+                <AvatarFallback>U</AvatarFallback>
+              </Avatar>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>Hello, User</div>
                 <div style={{ fontSize: 12, color: "var(--gray-500)" }}>Manage Account</div>
@@ -105,32 +90,27 @@ export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
           >
             Shop by Category
           </div>
-          {verticalCategories.map((cat) => (
-            <div key={cat.name}>
-              <div
-                className="mobile-nav-link"
-                id={`mobile-cat-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
-                onClick={() => toggle(cat.name)}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>{cat.icon}</span>
-                  <span>{cat.name}</span>
-                </span>
-                <span className="arrow" style={{ display: "flex", alignItems: "center" }}>
-                  {expanded === cat.name ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </span>
-              </div>
-              {expanded === cat.name && (
-                <div className="mobile-subitems">
-                  {cat.subs.map((sub) => (
-                    <div key={sub} className="mobile-subitem">
-                      {sub}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          <Accordion type="single" collapsible style={{ padding: "0 12px" }}>
+            {verticalCategories.map((cat) => (
+              <AccordionItem key={cat.name} value={cat.name}>
+                <AccordionTrigger style={{ padding: "12px 8px", fontSize: 13.5 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 16 }}>{cat.icon}</span>
+                    <span>{cat.name}</span>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="mobile-subitems">
+                    {cat.subs.map((sub) => (
+                      <div key={sub} className="mobile-subitem" style={{ padding: "6px 12px", fontSize: 13, color: "var(--gray-600)" }}>
+                        {sub}
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
       </div>
     </>

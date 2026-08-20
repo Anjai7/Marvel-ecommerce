@@ -1,31 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { navCategories, megaMenuData } from "../data";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
-import { Menu, ChevronDown } from "lucide-react";
-
-function MegaMenu({ columns, alignRight }) {
-  return (
-    <div
-      className={`mega-menu ${alignRight ? "align-right" : "align-left"}`}
-      style={{
-        "--cols": Math.min(columns.length, 6),
-      }}
-    >
-      {columns.map((col) => (
-        <div className="mega-menu-col" key={col.title}>
-          <h4>
-            <span>{col.icon}</span> {col.title}
-          </h4>
-          <ul>
-            {col.items.map((item) => (
-              <li key={item} tabIndex={0}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { MegaMenu } from "./ui";
+import { Menu, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function HoverNav() {
   const [activeMenu, setActiveMenu] = useState(null);
@@ -34,6 +11,35 @@ export default function HoverNav() {
   const navTimer = useRef(null);
   const browseTimer = useRef(null);
   const browseGroupRef = useRef(null);
+  const scrollRef = useRef(null);
+
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [checkScroll]);
+
+  const handleScroll = (dir) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "left" ? -220 : 220, behavior: "smooth" });
+  };
 
   /* ── Regular nav hover ── */
   const navEnter = (name) => {
@@ -115,55 +121,78 @@ export default function HoverNav() {
 
         <span className="hnav-sep" />
 
-        {/* Regular category nav links */}
-        {filteredNavCategories.map((cat, idx) => {
-          // Items in the second half of the navigation bar align their dropdowns to the right
-          const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
+        {/* Scroll Left Button */}
+        {canScrollLeft && (
+          <button
+            className="hover-nav-scroll-btn left"
+            onClick={() => handleScroll("left")}
+            aria-label="Scroll navigation left"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
 
-          return (
-            <div
-              key={cat.name}
-              className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-              onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
-              onMouseLeave={cat.hasDropdown ? navLeave : undefined}
-              onFocus={() => cat.hasDropdown && navEnter(cat.name)}
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) {
-                  navLeave();
-                }
-              }}
-            >
-              <span
-                tabIndex={cat.hasDropdown ? 0 : undefined}
-                className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
-                id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
-                onKeyDown={(e) => {
-                  if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
+        {/* Scrollable Track for Nav Categories */}
+        <div className="hover-nav-scroll-track" ref={scrollRef}>
+          {filteredNavCategories.map((cat, idx) => {
+            const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
+
+            return (
+              <div
+                key={cat.name}
+                className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
+                onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
+                onMouseLeave={cat.hasDropdown ? navLeave : undefined}
+                onFocus={() => cat.hasDropdown && navEnter(cat.name)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                    navLeave();
                   }
-                  if (e.key === "Escape") setActiveMenu(null);
                 }}
               >
-                {cat.name}
-                {cat.hasDropdown && (
-                  <ChevronDown
-                    size={14}
-                    className="nav-arrow"
-                    style={{
-                      transition: "transform 0.2s ease",
-                      transform: activeMenu === cat.name ? "rotate(180deg)" : "none",
-                    }}
-                  />
-                )}
-              </span>
+                <span
+                  tabIndex={cat.hasDropdown ? 0 : undefined}
+                  className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
+                  id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
+                  onKeyDown={(e) => {
+                    if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
+                    }
+                    if (e.key === "Escape") setActiveMenu(null);
+                  }}
+                >
+                  {cat.name}
+                  {cat.hasDropdown && (
+                    <ChevronDown
+                      size={14}
+                      className="nav-arrow"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: activeMenu === cat.name ? "rotate(180deg)" : "none",
+                      }}
+                    />
+                  )}
+                </span>
 
-              {activeMenu === cat.name && megaMenuData[cat.name] && (
-                <MegaMenu columns={megaMenuData[cat.name]} alignRight={alignRight} />
-              )}
-            </div>
-          );
-        })}
+                {activeMenu === cat.name && megaMenuData[cat.name] && (
+                  <MegaMenu data={megaMenuData[cat.name]} alignRight={alignRight} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Scroll Right Button */}
+        {canScrollRight && (
+          <button
+            className="hover-nav-scroll-btn right"
+            onClick={() => handleScroll("right")}
+            aria-label="Scroll navigation right"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     </nav>
   );

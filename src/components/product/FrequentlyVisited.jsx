@@ -33,11 +33,25 @@ function FVCard({ product, onView }) {
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
 
+  const handleView = () => onView && onView(product);
+
+  const handleKeyDown = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleView();
+    }
+  };
+
   return (
     <div
       className="fv-card"
       id={`fv-card-${product.id}`}
-      onClick={() => onView && onView(product)}
+      onClick={handleView}
+      onKeyDown={handleKeyDown}
+      tabIndex={onView ? 0 : undefined}
+      role={onView ? "link" : undefined}
+      aria-label={onView ? `View ${product.name}` : undefined}
       style={{ cursor: onView ? "pointer" : "default" }}
     >
       {discount > 0 && (

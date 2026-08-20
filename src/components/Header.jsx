@@ -17,6 +17,11 @@ import {
   CommandSearch,
   SimpleTooltip,
   useToast,
+  Avatar,
+  AvatarFallback,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
 } from "./ui";
 import {
   User,
@@ -95,9 +100,9 @@ export default function Header({
                     id="account-btn"
                     style={{ cursor: "pointer" }}
                   >
-                    <div className="ha-icon">
-                      <User size={20} />
-                    </div>
+                    <Avatar size="sm">
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
                     <div>
                       <div className="ha-sub">Hello, User</div>
                       <div className="ha-label">Account ▾</div>
@@ -220,17 +225,31 @@ export default function Header({
 
             <div className="header-divider" />
 
-            <SimpleTooltip content="View your cart">
-              <div className="header-action" id="cart-btn" style={{ cursor: "pointer" }}>
-                <div className="ha-icon" style={{ position: "relative" }}>
-                  <ShoppingBag size={22} />
-                  <Badge variant="accent" size="sm" className="cart-badge">
-                    {cartCount}
-                  </Badge>
+            <Popover>
+              <PopoverTrigger asChild>
+                <div className="header-action" id="cart-btn" style={{ cursor: "pointer" }}>
+                  <div className="ha-icon" style={{ position: "relative" }}>
+                    <ShoppingBag size={22} />
+                    <Badge variant="accent" size="sm" className="cart-badge">
+                      {cartCount}
+                    </Badge>
+                  </div>
+                  <div className="ha-label">Cart ▾</div>
                 </div>
-                <div className="ha-label">Cart</div>
-              </div>
-            </SimpleTooltip>
+              </PopoverTrigger>
+              <PopoverContent align="end" style={{ width: 280, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>My Shopping Cart</span>
+                  <Badge variant="secondary" size="sm">{cartCount} items</Badge>
+                </div>
+                <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
+                  Items in your cart qualify for <strong>FREE Express Shipping</strong>!
+                </div>
+                <Button variant="accent" size="sm" style={{ width: "100%" }}>
+                  Proceed to Checkout
+                </Button>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </header>

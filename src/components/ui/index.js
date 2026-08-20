@@ -10,3 +10,8 @@ export * from "./Rating";
 export * from "./Toast";
 export * from "./ProductPrice";
 export * from "./CommandSearch";
+export * from "./MegaMenu";
+export * from "./Accordion";
+export * from "./Avatar";
+export * from "./Select";
+export * from "./Popover";
