@@ -13,7 +13,7 @@ export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
         {/* Header */}
         <div className="mobile-drawer-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/logo.png" alt="Logo" className="logo-img" style={{ height: "32px", objectFit: "contain" }} />
+            <img src="/header.png" alt="Marvel Logo" className="logo-img" style={{ height: "44px", objectFit: "contain" }} />
           </div>
           <button
             className="mobile-close"

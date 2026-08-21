@@ -173,7 +173,7 @@ export default function Footer() {
           {/* Brand & Newsletter Column */}
           <div className="footer-brand-col">
             <a href="/" className="footer-logo-wrap">
-              <img src="/logo.png" alt="Logo" className="footer-logo-img" />
+              <img src="/header.png" alt="MARVEL MARKET Logo" className="footer-logo-img" />
             </a>
             <p className="footer-brand-desc">
               Your ultimate online shopping destination for top electronics, fashion, home essentials, and lifestyle products with unbeatable deals and fast doorstep delivery.

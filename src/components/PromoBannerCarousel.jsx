@@ -100,16 +100,6 @@ export default function PromoBannerCarousel() {
             />
           ))}
         </div>
-
-        <button
-          className={`carousel-pause-btn ${paused ? "paused" : ""}`}
-          id="promo-pause"
-          onClick={() => setPaused((p) => !p)}
-          aria-label={paused ? "Play carousel" : "Pause carousel"}
-          aria-pressed={paused}
-        >
-          {paused ? <Play size={15} /> : <Pause size={15} />}
-        </button>
       </div>
     </div>
   );

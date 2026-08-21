@@ -46,20 +46,21 @@ export default function App() {
           onLogin={() => setIsLoggedIn(true)}
         />
 
-        <Header
-          isLoggedIn={isLoggedIn}
-          onLogin={() => setIsLoggedIn(true)}
-          onLogout={() => setIsLoggedIn(false)}
-          cartCount={cartCount}
-          onMenuOpen={() => setMobileOpen(true)}
-          onSelectProduct={handleQuickView}
-        />
+        <div className="sticky-header-wrapper">
+          <Header
+            isLoggedIn={isLoggedIn}
+            onLogin={() => setIsLoggedIn(true)}
+            onLogout={() => setIsLoggedIn(false)}
+            cartCount={cartCount}
+            onMenuOpen={() => setMobileOpen(true)}
+            onSelectProduct={handleQuickView}
+          />
+
+          {currentPage === "home" && <HoverNav />}
+        </div>
 
         {currentPage === "home" && (
           <>
-            {/* Hover nav — includes Browse Categories vertical mega-menu */}
-            <HoverNav />
-
             {/* Hero Carousel */}
             <HeroBanner />
 

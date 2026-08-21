@@ -79,7 +79,7 @@ export default function Header({
 
           {/* Logo */}
           <a className="logo" href="/" id="logo">
-            <img src="/logo.png" alt="Logo" className="logo-img" />
+            <img src="/header.png" alt="Marvel Logo" className="logo-img" />
           </a>
 
           {/* Search with Command/Popover dropdown */}

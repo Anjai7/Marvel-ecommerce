@@ -101,17 +101,6 @@ export default function HeroBanner() {
           />
         ))}
       </div>
-
-      <button
-        className={`carousel-pause-btn ${paused ? "paused" : ""}`}
-        id="hero-pause"
-        onClick={() => setPaused((p) => !p)}
-        aria-label={paused ? "Play carousel" : "Pause carousel"}
-        aria-pressed={paused}
-        style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-      >
-        {paused ? <Play size={15} /> : <Pause size={15} />}
-      </button>
     </div>
   );
 }
