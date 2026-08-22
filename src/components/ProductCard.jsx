@@ -8,13 +8,21 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const { addToast } = useToast();
 
+  const title = product?.title || product?.name || "Product";
+  const image = product?.image_url || product?.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
+  const rating = product?.rating || 4.8;
+  const reviews = product?.reviews_count || product?.reviews || 24;
+  const price = product?.price || 0;
+  const originalPrice = product?.original_price || product?.originalPrice;
+  const desc = product?.description || product?.desc;
+
   const handleWishlist = (e) => {
     e.stopPropagation();
     const nextState = !wishlisted;
     setWishlisted(nextState);
     addToast({
       title: nextState ? "Saved to Wishlist" : "Removed from Wishlist",
-      message: `${product.name} ${nextState ? "added to" : "removed from"} your favorites.`,
+      message: `${title} ${nextState ? "added to" : "removed from"} your favorites.`,
       type: nextState ? "success" : "info",
     });
   };
@@ -27,7 +35,7 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       setCartState("added");
       addToast({
         title: "Added to Cart",
-        message: `${product.name} was added to your shopping cart.`,
+        message: `${title} was added to your shopping cart.`,
         type: "success",
       });
       setTimeout(() => setCartState("idle"), 2000);
@@ -54,17 +62,17 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       onKeyDown={handleCardKeyDown}
       tabIndex={onNavigate ? 0 : undefined}
       role={onNavigate ? "link" : undefined}
-      aria-label={onNavigate ? `View ${product.name}` : undefined}
+      aria-label={onNavigate ? `View ${title}` : undefined}
       style={{ cursor: onNavigate ? "pointer" : "default" }}
     >
-      {product.badge && (
+      {(product.badge || product.is_featured) && (
         <Badge variant="accent" className="product-badge">
-          {product.badge}
+          {product.badge || "Featured"}
         </Badge>
       )}
-      {product.tag && (
+      {(product.tag || product.category) && (
         <Badge variant="secondary" className="product-tag">
-          {product.tag}
+          {product.tag || product.category}
         </Badge>
       )}
 
@@ -72,8 +80,8 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       <div className="product-img-container">
         {!imageLoaded && <div className="product-img-skeleton" />}
         <img
-          src={product.image}
-          alt={product.name}
+          src={image}
+          alt={title}
           loading="lazy"
           onLoad={() => setImageLoaded(true)}
           className={`product-img-element ${imageLoaded ? "is-loaded" : "is-loading"}`}
@@ -111,19 +119,19 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
 
       {/* Info Container */}
       <div className="product-info">
-        <div className="product-name" title={product.name}>
-          {product.name}
+        <div className="product-name" title={title}>
+          {title}
         </div>
-        {product.desc && <div className="product-desc">{product.desc}</div>}
+        {desc && <div className="product-desc">{desc}</div>}
 
         <div className="product-rating-row">
-          <Rating rating={product.rating} count={product.reviews} />
+          <Rating rating={rating} count={reviews} />
         </div>
 
         <div className="product-price-row">
           <ProductPrice
-            price={product.price}
-            originalPrice={product.originalPrice}
+            price={price}
+            originalPrice={originalPrice}
             discount={product.discount}
           />
         </div>

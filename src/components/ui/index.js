@@ -15,3 +15,5 @@ export * from "./Accordion";
 export * from "./Avatar";
 export * from "./Select";
 export * from "./Popover";
+export { default as ImageUploadDropzone } from "./ImageUploadDropzone";
+

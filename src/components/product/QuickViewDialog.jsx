@@ -19,12 +19,20 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
 
   if (!product) return null;
 
+  const title = product?.title || product?.name || "Product";
+  const image = product?.image_url || product?.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
+  const rating = product?.rating || 4.8;
+  const reviews = product?.reviews_count || product?.reviews || 24;
+  const price = product?.price || 0;
+  const originalPrice = product?.original_price || product?.originalPrice;
+  const desc = product?.description || product?.desc;
+
   const handleCart = () => {
     if (cartState === "added") return;
     setCartState("added");
     addToast({
       title: "Added to Cart",
-      message: `${product.name} has been added to your shopping cart.`,
+      message: `${title} has been added to your shopping cart.`,
       type: "success",
     });
     setTimeout(() => setCartState("idle"), 2000);
@@ -35,7 +43,7 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
     setWishlisted(next);
     addToast({
       title: next ? "Saved to Wishlist" : "Removed from Wishlist",
-      message: `${product.name} ${next ? "added to" : "removed from"} your favorites.`,
+      message: `${title} ${next ? "added to" : "removed from"} your favorites.`,
       type: next ? "success" : "info",
     });
   };
@@ -46,10 +54,10 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
         <div className="quickview-grid">
           {/* Left: Product Image */}
           <div className="quickview-image-wrap">
-            <img src={product.image} alt={product.name} className="quickview-image" />
-            {product.badge && (
+            <img src={image} alt={title} className="quickview-image" />
+            {(product.badge || product.is_featured) && (
               <Badge variant="accent" className="quickview-badge">
-                {product.badge}
+                {product.badge || "Featured"}
               </Badge>
             )}
           </div>
@@ -59,24 +67,24 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
             <DialogHeader style={{ marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                 <Badge variant="success" size="sm">
-                  In Stock - Ships Tomorrow
+                  {product.stock ? `${product.stock} In Stock - Ships Tomorrow` : "In Stock - Ships Tomorrow"}
                 </Badge>
               </div>
-              <DialogTitle style={{ fontSize: 20, marginTop: 8 }}>{product.name}</DialogTitle>
+              <DialogTitle style={{ fontSize: 20, marginTop: 8 }}>{title}</DialogTitle>
             </DialogHeader>
 
-            {product.desc && (
+            {desc && (
               <p style={{ fontSize: 13, color: "var(--gray-600)", lineHeight: 1.5, marginBottom: 12 }}>
-                {product.desc}
+                {desc}
               </p>
             )}
 
             <div style={{ marginBottom: 14 }}>
-              <Rating rating={product.rating} count={product.reviews} size={16} />
+              <Rating rating={rating} count={reviews} size={16} />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <ProductPrice price={product.price} originalPrice={product.originalPrice} discount={product.discount} size="lg" />
+              <ProductPrice price={price} originalPrice={originalPrice} discount={product.discount} size="lg" />
             </div>
 
             {/* Key Features / Badges */}

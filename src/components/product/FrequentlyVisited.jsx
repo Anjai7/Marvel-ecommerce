@@ -1,21 +1,24 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucide-react";
-import { frequentlyVisitedProducts } from "../../data";
 import { useToast } from "../ui";
-
-function fmt(n) {
-  return "₹" + n.toLocaleString("en-IN");
-}
+import { apiFetchProducts } from "../../api/backendApi";
 
 function FVCard({ product, onView }) {
   const [wishlisted, setWishlisted] = useState(false);
-  const [cartAdded,  setCartAdded]  = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
   const { addToast } = useToast();
+
+  const title = product.title || product.name || "Product";
+  const image = product.image_url || product.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
+  const price = parseFloat(product.price) || 0;
+  const originalPrice = parseFloat(product.original_price || product.originalPrice) || Math.round(price * 1.25);
+  const rating = parseFloat(product.rating) || 4.8;
+  const reviews = parseInt(product.reviews_count || product.reviews) || 48;
 
   const handleCart = (e) => {
     e.stopPropagation();
     setCartAdded(true);
-    addToast({ title: "Added to Cart", message: `${product.name} added to cart.`, type: "success" });
+    addToast({ title: "Added to Cart", message: `${title} added to cart.`, type: "success" });
     setTimeout(() => setCartAdded(false), 2000);
   };
 
@@ -24,13 +27,13 @@ function FVCard({ product, onView }) {
     setWishlisted(w => !w);
     addToast({
       title: !wishlisted ? "Saved to Wishlist" : "Removed from Wishlist",
-      message: `${product.name} ${!wishlisted ? "added to" : "removed from"} your favorites.`,
+      message: `${title} ${!wishlisted ? "added to" : "removed from"} your favorites.`,
       type: !wishlisted ? "success" : "info",
     });
   };
 
-  const discount = product.originalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
+  const discount = originalPrice > price
+    ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0;
 
   const handleView = () => onView && onView(product);
@@ -51,7 +54,7 @@ function FVCard({ product, onView }) {
       onKeyDown={handleKeyDown}
       tabIndex={onView ? 0 : undefined}
       role={onView ? "link" : undefined}
-      aria-label={onView ? `View ${product.name}` : undefined}
+      aria-label={onView ? `View ${title}` : undefined}
       style={{ cursor: onView ? "pointer" : "default" }}
     >
       {discount > 0 && (
@@ -64,27 +67,27 @@ function FVCard({ product, onView }) {
       </button>
 
       <div className="fv-img-wrap">
-        <img src={product.image} alt={product.name} className="fv-img" loading="lazy" />
+        <img src={image} alt={title} className="fv-img" loading="lazy" />
         <div className="fv-overlay">
           <Eye size={15} /> Quick View
         </div>
       </div>
 
       <div className="fv-info">
-        <div className="fv-name" title={product.name}>{product.name}</div>
+        <div className="fv-name" title={title}>{title}</div>
 
         <div className="fv-rating-row">
           <span className="fv-rating-chip">
             <Star size={11} fill="#f59e0b" color="#f59e0b" />
-            <strong>{product.rating}</strong>
+            <strong>{rating}</strong>
           </span>
-          <span className="fv-review-count">({product.reviews.toLocaleString()})</span>
+          <span className="fv-review-count">({reviews.toLocaleString()})</span>
         </div>
 
         <div className="fv-price-row">
-          <span className="fv-price">{fmt(product.price)}</span>
-          {product.originalPrice && (
-            <span className="fv-original">{fmt(product.originalPrice)}</span>
+          <span className="fv-price">${price.toFixed(2)}</span>
+          {originalPrice > price && (
+            <span className="fv-original">${originalPrice.toFixed(2)}</span>
           )}
         </div>
 
@@ -102,13 +105,28 @@ function FVCard({ product, onView }) {
 
 export default function FrequentlyVisited({ onView }) {
   const scrollRef = useRef(null);
-  const [canLeft,  setCanLeft]  = useState(false);
+  const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
+  const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    const loadItems = async () => {
+      try {
+        const liveProds = await apiFetchProducts();
+        if (liveProds && liveProds.length > 0) {
+          setItems(liveProds.slice(0, 8));
+        }
+      } catch (err) {
+        console.error("Error loading frequently visited:", err);
+      }
+    };
+    loadItems();
+  }, []);
 
   // Group products into pairs of 2 for 2-card slider design
   const pairs = [];
-  for (let i = 0; i < frequentlyVisitedProducts.length; i += 2) {
-    pairs.push(frequentlyVisitedProducts.slice(i, i + 2));
+  for (let i = 0; i < items.length; i += 2) {
+    pairs.push(items.slice(i, i + 2));
   }
 
   const updateArrows = () => {
@@ -125,6 +143,8 @@ export default function FrequentlyVisited({ onView }) {
     }
   };
 
+  if (items.length === 0) return null;
+
   return (
     <section className="fv-section" id="frequently-visited">
       <div className="container">
@@ -133,7 +153,6 @@ export default function FrequentlyVisited({ onView }) {
             <h2 className="fv-title">Frequently Visited Together</h2>
             <p className="fv-subtitle">Customers who viewed this item also explored these products</p>
           </div>
-          <a href="#" className="fv-view-all">View All →</a>
         </div>
 
         <div className="fv-slider-wrap">

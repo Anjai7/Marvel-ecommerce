@@ -7,10 +7,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies & Build
 node_modules
 dist
 dist-ssr
 *.local
+
+# Environment variables, credentials & secrets
+.env
+.env.*
+!.env.example
+creds.txt
+*.pem
+*.key
+*.cert
 
 # Editor directories and files
 .vscode/*

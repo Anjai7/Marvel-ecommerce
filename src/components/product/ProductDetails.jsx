@@ -139,7 +139,7 @@ export default function ProductDetails({ product }) {
         <div className="pd-payment-row">
           <button className="pd-emi-toggle" onClick={() => setEmiOpen(!emiOpen)}>
             <div className="pd-emi-info">
-              <span>No Cost EMI from <strong>{fmt(offerDetails.emiOptions[3].emi)}/mo</strong></span>
+              <span>No Cost EMI from <strong>{fmt(offerDetails?.emiOptions?.[0]?.emi || Math.round(product.price / 3))}/mo</strong></span>
               <span className="pd-emi-sub">Standard & Bajaj Finserv Card EMIs available</span>
             </div>
             <span className="pd-emi-action">
@@ -148,7 +148,7 @@ export default function ProductDetails({ product }) {
             </span>
           </button>
 
-          {emiOpen && (
+          {emiOpen && offerDetails?.emiOptions && (
             <div className="pd-emi-panel">
               <div className="pd-emi-title">Available EMI Plans</div>
               <div className="pd-emi-table">
@@ -291,7 +291,7 @@ export default function ProductDetails({ product }) {
           <div className="pd-offers-title-group">
             <Tag size={16} className="pd-icon-green" />
             <span className="pd-block-title">Available Offers & Coupons</span>
-            <span className="pd-offers-badge">{offerDetails.bankOffers.length + offerDetails.couponOffers.length} Active</span>
+            <span className="pd-offers-badge">{((offerDetails?.bankOffers?.length || 0) + (offerDetails?.couponOffers?.length || 0))} Active</span>
           </div>
           <button className="pd-offers-viewall-btn" onClick={() => setOffersOpen(o => !o)}>
             {offersOpen ? "Show Less" : "View All"}
@@ -301,41 +301,53 @@ export default function ProductDetails({ product }) {
 
         {/* Featured Offer Snippets (Visible by default) */}
         <div className="pd-offers-preview">
-          <div className="pd-offer-chip-item">
-            <span className="pd-chip-tag">BANK</span>
-            <span className="pd-chip-desc" title={`${offerDetails.bankOffers[0].bank}: ${offerDetails.bankOffers[0].offer}`}>{offerDetails.bankOffers[0].bank}: {offerDetails.bankOffers[0].offer}</span>
-          </div>
-          <div className="pd-offer-chip-item">
-            <span className="pd-chip-tag coupon">COUPON</span>
-            <span className="pd-chip-desc" title={offerDetails.couponOffers[0].desc}>{offerDetails.couponOffers[0].desc}</span>
-            <span className="pd-chip-code">{offerDetails.couponOffers[0].code}</span>
-          </div>
+          {offerDetails?.bankOffers?.[0] && (
+            <div className="pd-offer-chip-item">
+              <span className="pd-chip-tag">BANK</span>
+              <span className="pd-chip-desc" title={`${offerDetails.bankOffers[0].bank}: ${offerDetails.bankOffers[0].offer}`}>{offerDetails.bankOffers[0].bank}: {offerDetails.bankOffers[0].offer}</span>
+            </div>
+          )}
+          {offerDetails?.couponOffers?.[0] && (
+            <div className="pd-offer-chip-item">
+              <span className="pd-chip-tag coupon">COUPON</span>
+              <span className="pd-chip-desc" title={offerDetails.couponOffers[0].desc}>{offerDetails.couponOffers[0].desc}</span>
+              <span className="pd-chip-code">{offerDetails.couponOffers[0].code}</span>
+            </div>
+          )}
         </div>
 
         {/* Expanded Full Offers Panel */}
         {offersOpen && (
           <div className="pd-offers-panel">
-            <div className="pd-offers-group-label">💳 Bank Discounts</div>
-            {offerDetails.bankOffers.map((o, i) => (
-              <div className="pd-offer-item" key={i}>
-                <CreditCard size={15} className="pd-offer-icon" />
-                <div className="pd-offer-content">
-                  <strong>{o.bank}:</strong> {o.offer}
-                  {o.code && <span className="pd-offer-code-badge">Code: <strong>{o.code}</strong></span>}
-                </div>
-              </div>
-            ))}
+            {offerDetails?.bankOffers?.length > 0 && (
+              <>
+                <div className="pd-offers-group-label">💳 Bank Discounts</div>
+                {offerDetails.bankOffers.map((o, i) => (
+                  <div className="pd-offer-item" key={i}>
+                    <CreditCard size={15} className="pd-offer-icon" />
+                    <div className="pd-offer-content">
+                      <strong>{o.bank}:</strong> {o.offer}
+                      {o.code && <span className="pd-offer-code-badge">Code: <strong>{o.code}</strong></span>}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
 
-            <div className="pd-offers-group-label" style={{ marginTop: 14 }}>🏷️ Promo Coupons</div>
-            {offerDetails.couponOffers.map((o, i) => (
-              <div className="pd-offer-item" key={i}>
-                <Tag size={15} className="pd-offer-icon" />
-                <div className="pd-offer-content">
-                  <span>{o.desc}</span>
-                  <span className="pd-offer-code-badge">Code: <strong>{o.code}</strong></span>
-                </div>
-              </div>
-            ))}
+            {offerDetails?.couponOffers?.length > 0 && (
+              <>
+                <div className="pd-offers-group-label" style={{ marginTop: 14 }}>🏷️ Promo Coupons</div>
+                {offerDetails.couponOffers.map((o, i) => (
+                  <div className="pd-offer-item" key={i}>
+                    <Tag size={15} className="pd-offer-icon" />
+                    <div className="pd-offer-content">
+                      <span>{o.desc}</span>
+                      <span className="pd-offer-code-badge">Code: <strong>{o.code}</strong></span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -367,14 +379,14 @@ export default function ProductDetails({ product }) {
           </p>
         )}
         <div className="pd-delivery-chips">
-          {deliveryInfo.freeShipping && (
+          {deliveryInfo?.freeShipping && (
             <span className="pd-delivery-chip good"><Truck size={13} /> Free Shipping</span>
           )}
-          {deliveryInfo.expressAvailable && (
+          {deliveryInfo?.expressAvailable && (
             <span className="pd-delivery-chip good"><Zap size={13} /> Express Delivery</span>
           )}
-          <span className="pd-delivery-chip"><RefreshCw size={13} /> {deliveryInfo.returnDays}-Day Easy Returns</span>
-          <span className="pd-delivery-chip"><Shield size={13} /> {deliveryInfo.warranty}</span>
+          <span className="pd-delivery-chip"><RefreshCw size={13} /> {deliveryInfo?.returnDays || 14}-Day Easy Returns</span>
+          <span className="pd-delivery-chip"><Shield size={13} /> {deliveryInfo?.warranty || "2 Years Marvel Warranty"}</span>
         </div>
       </div>
 
@@ -385,12 +397,12 @@ export default function ProductDetails({ product }) {
           <div className="pd-seller-line">
             <span className="pd-seller-label">Seller: </span>
             <a href="#info" className="pd-seller-name">
-              {seller.name}
-              {seller.verified && <CheckCircle size={13} className="pd-seller-verified" />}
+              {seller?.name || "Verified Marvel Seller"}
+              {seller?.verified && <CheckCircle size={13} className="pd-seller-verified" />}
             </a>
-            <span className="pd-seller-rating-pill">{seller.rating} ★</span>
+            <span className="pd-seller-rating-pill">{seller?.rating || 4.9} ★</span>
           </div>
-          <div className="pd-seller-sub">{seller.soldBy} · 100% Genuine Product</div>
+          <div className="pd-seller-sub">{seller?.soldBy || "Verified Marvel Seller"} · 100% Genuine Product</div>
         </div>
       </div>
     </div>

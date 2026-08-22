@@ -1,19 +1,30 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles } from "lucide-react";
 import { ProductPrice } from "./ProductPrice";
-import { trendingProducts, featuredProducts } from "../../data";
+import { apiFetchProducts } from "../../api/backendApi";
 
-const RECENT_SEARCHES = ["Wireless Headphones", "OLED Smart TV", "Running Shoes", "Air Fryer"];
-const POPULAR_CATEGORIES = ["Mobiles", "Laptops", "Fashion", "Gaming", "Smartwatches"];
-
-const ALL_PRODUCTS = [...trendingProducts, ...featuredProducts].filter(
-  (p, index, self) => index === self.findIndex((t) => t.id === p.id)
-);
+const RECENT_SEARCHES = ["Headphones", "Smartwatch", "Keyboard", "Power Bank"];
+const POPULAR_CATEGORIES = ["Electronics", "Audio", "Wearables", "Accessories", "Smart Home"];
 
 export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) {
   const [isOpen, setIsOpen] = useState(false);
   const [recent, setRecent] = useState(RECENT_SEARCHES);
+  const [allProducts, setAllProducts] = useState([]);
   const containerRef = useRef(null);
+
+  useEffect(() => {
+    const fetchLiveProducts = async () => {
+      try {
+        const liveProds = await apiFetchProducts();
+        if (liveProds && Array.isArray(liveProds)) {
+          setAllProducts(liveProds);
+        }
+      } catch (err) {
+        console.error("Error loading products for search:", err);
+      }
+    };
+    fetchLiveProducts();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -26,11 +37,11 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
   }, []);
 
   const filteredProducts = searchQuery.trim()
-    ? ALL_PRODUCTS.filter(
+    ? allProducts.filter(
         (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.desc?.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 4)
+          (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.description || p.category || "").toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 5)
     : [];
 
   const handleSelectRecent = (term) => {
@@ -119,7 +130,7 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
                     className="search-category-item"
                     onClick={() => {
                       setSearchQuery(cat);
-                      setIsOpen(false);
+                      setIsOpen(true);
                     }}
                   >
                     <span>{cat}</span>
@@ -138,33 +149,41 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
               </div>
               {filteredProducts.length > 0 ? (
                 <div className="search-products-list">
-                  {filteredProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="search-product-row"
-                      onClick={() => {
-                        if (onSelectProduct) onSelectProduct(product);
-                        setIsOpen(false);
-                      }}
-                    >
-                      <img src={product.image} alt={product.name} className="search-product-img" />
-                      <div className="search-product-info">
-                        <div className="search-product-name">{product.name}</div>
-                        <ProductPrice price={product.price} originalPrice={product.originalPrice} discount={product.discount} size="sm" />
+                  {filteredProducts.map((product) => {
+                    const img = product.image_url || product.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=120";
+                    const title = product.title || product.name;
+                    return (
+                      <div
+                        key={product.id}
+                        className="search-product-row"
+                        onClick={() => {
+                          if (onSelectProduct) onSelectProduct(product);
+                          setIsOpen(false);
+                        }}
+                      >
+                        <img src={img} alt={title} className="search-product-img" />
+                        <div className="search-product-info">
+                          <div className="search-product-name">{title}</div>
+                          <ProductPrice
+                            price={product.price}
+                            originalPrice={product.original_price || product.originalPrice}
+                            size="sm"
+                          />
+                        </div>
+                        <ChevronRight size={16} color="var(--gray-400)" />
                       </div>
-                      <ChevronRight size={16} color="var(--gray-400)" />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="search-no-results">No products found for "{searchQuery}"</div>
+                <div className="search-no-results">No live products found for "{searchQuery}"</div>
               )}
             </div>
           )}
 
           <div className="search-popover-footer">
-            <span>Press Enter to search</span>
-            <span className="search-view-all-link">View all results →</span>
+            <span>Press Enter to search live catalog</span>
+            <span className="search-view-all-link">Showing dynamic Supabase results</span>
           </div>
         </div>
       )}

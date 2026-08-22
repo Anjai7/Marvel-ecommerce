@@ -54,6 +54,42 @@
   --font:       'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.product-grid-4x3 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .product-grid-4x3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .product-grid-4x3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .product-grid-4x3 {
+    grid-template-columns: 1fr;
+  }
+}
+
 body {
   font-family: var(--font);
   background: #edf1f6;
@@ -2842,23 +2878,27 @@ input:focus:not(:focus-visible) {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   gap: 36px;
-  align-items: start;
+  align-items: stretch;
   padding: 28px 32px;
   min-height: 560px;
+  position: relative;
 }
 .pvp-gallery-col {
   padding: 0;
   background: transparent;
   position: relative;
+  height: 100%;
+  align-self: stretch;
 }
 .pvp-gallery-sticky {
   position: sticky;
-  top: 80px;
+  top: 120px;
   z-index: 20;
 }
 .pvp-details-col {
   padding: 0;
   background: transparent;
+  min-width: 0;
 }
 .pvp-info-section {
   margin-top: 24px;

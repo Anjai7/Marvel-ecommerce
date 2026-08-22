@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { navCategories, megaMenuData } from "../data";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { MegaMenu } from "./ui";
-import { Menu, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu, ChevronDown, ChevronLeft, ChevronRight, Store, ShieldCheck, Zap } from "lucide-react";
 
-export default function HoverNav() {
+export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
   const [activeMenu, setActiveMenu] = useState(null);
   const [browseOpen, setBrowseOpen] = useState(false);
 
@@ -41,7 +41,6 @@ export default function HoverNav() {
     el.scrollBy({ left: dir === "left" ? -220 : 220, behavior: "smooth" });
   };
 
-  /* ── Regular nav hover ── */
   const navEnter = (name) => {
     if (navTimer.current) clearTimeout(navTimer.current);
     setActiveMenu(name);
@@ -50,7 +49,6 @@ export default function HoverNav() {
     navTimer.current = setTimeout(() => setActiveMenu(null), 220);
   };
 
-  /* ── Browse Categories hover & click ── */
   const browseEnter = () => {
     if (browseTimer.current) clearTimeout(browseTimer.current);
     setBrowseOpen(true);
@@ -63,7 +61,6 @@ export default function HoverNav() {
     setBrowseOpen((prev) => !prev);
   };
 
-  // Close when clicking outside
   useEffect(() => {
     const handleOutsideClick = (e) => {
       if (browseGroupRef.current && !browseGroupRef.current.contains(e.target)) {
@@ -132,7 +129,7 @@ export default function HoverNav() {
           </button>
         )}
 
-        {/* Scrollable Track for Nav Categories */}
+        {/* Scrollable Track for Nav Categories & Role Portals */}
         <div className="hover-nav-scroll-track" ref={scrollRef}>
           {filteredNavCategories.map((cat, idx) => {
             const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
@@ -181,6 +178,73 @@ export default function HoverNav() {
               </div>
             );
           })}
+
+          {/* Dynamic Role Navigation Portals */}
+          {(userRole === "vendor" || userRole === "admin" || userRole === "super_admin") && (
+            <button
+              onClick={() => onDynamicNavigate && onDynamicNavigate("/vendor-dashboard")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: "none",
+                background: "rgba(124, 58, 237, 0.1)",
+                color: "#7c3aed",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              <Store size={14} /> Vendor Store
+            </button>
+          )}
+
+          {(userRole === "admin" || userRole === "super_admin") && (
+            <button
+              onClick={() => onDynamicNavigate && onDynamicNavigate("/admin-dashboard")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: "none",
+                background: "rgba(37, 99, 235, 0.1)",
+                color: "#2563eb",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              <ShieldCheck size={14} /> Admin Console
+            </button>
+          )}
+
+          {userRole === "super_admin" && (
+            <button
+              onClick={() => onDynamicNavigate && onDynamicNavigate("/superadmin-dashboard")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 6,
+                border: "none",
+                background: "rgba(217, 119, 6, 0.1)",
+                color: "#d97706",
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+                whiteSpace: "nowrap"
+              }}
+            >
+              <Zap size={14} /> Super Admin
+            </button>
+          )}
         </div>
 
         {/* Scroll Right Button */}
