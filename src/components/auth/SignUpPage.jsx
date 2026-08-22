@@ -1,26 +1,24 @@
 import { useState } from "react";
 import {
   User,
-  Store,
-  ShieldCheck,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  UserCheck,
   CheckCircle2,
   AlertCircle,
-  Building,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  Truck,
+  Award
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 
 export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
-  const [role, setRole] = useState("user");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [storeName, setStoreName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,23 +54,19 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
         email: email.trim().toLowerCase(),
         password,
         fullName,
-        role,
-        storeName: role === "vendor" ? storeName : undefined
+        role: "user"
       });
 
       addToast({
         title: "Account Created Successfully!",
-        message: `Welcome to Marvel, ${fullName}! Your ${role.toUpperCase()} account is ready.`,
+        message: `Welcome to Marvel, ${fullName}!`,
         type: "success"
       });
 
       if (onSignUpSuccess) {
         onSignUpSuccess(newUser);
       } else {
-        if (newUser.role === "vendor") window.location.hash = "#/vendor";
-        else if (newUser.role === "admin") window.location.hash = "#/admin";
-        else if (newUser.role === "super_admin") window.location.hash = "#/super-admin";
-        else window.location.hash = "#/";
+        window.location.hash = "#/";
       }
     } catch (err) {
       setErrorMsg(err.message || "Failed to create account. Please try again.");
@@ -105,59 +99,77 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))"
       }}>
-        {/* Left Side: Branding Banner */}
+        {/* Left Side: Clean Brand Showcase */}
         <div style={{
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #3b82f6 100%)",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)",
           color: "#ffffff",
-          padding: "40px 32px",
+          padding: "44px 36px",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between"
         }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-              <img src="/header.png" alt="Marvel Logo" style={{ height: 36, filter: "brightness(0) invert(1)" }} />
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(255, 255, 255, 0.15)",
+              backdropFilter: "blur(8px)",
+              padding: "6px 14px",
+              borderRadius: 30,
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: "0.5px",
+              marginBottom: 24
+            }}>
+              <Sparkles size={14} color="#ffd700" /> Create Your Account
             </div>
 
             <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, lineHeight: 1.3 }}>
-              Join the Marvel Platform
+              Join Marvel Today
             </h2>
             <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.8)", lineHeight: 1.6, marginBottom: 32 }}>
-              Create an account to shop, launch your seller store, or manage e-commerce catalog operations seamlessly.
+              Experience seamless shopping, verified product quality, and rapid delivery right to your doorstep.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <CheckCircle2 size={20} color="#60a5fa" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Award size={18} />
+                </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Role-Based Access</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Tailored dashboards for Users, Vendors, and Admins</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Exclusive Member Pricing</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Instant access to flash sales &amp; special coupons</div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <CheckCircle2 size={20} color="#60a5fa" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Truck size={18} />
+                </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Supabase Database Sync</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Real-time profiles and permissions tracking</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Live Order Tracking</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Real-time updates on dispatch and delivery status</div>
                 </div>
               </div>
 
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <CheckCircle2 size={20} color="#60a5fa" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <ShieldCheck size={18} />
+                </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Instant Setup</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Zero-friction onboarding & account configuration</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Guaranteed Buyer Protection</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>14-day hassle-free returns &amp; 2-year warranty</div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.6)", marginTop: 40 }}>
-            Already registered?{" "}
+          <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.7)", marginTop: 36 }}>
+            Already have an account?{" "}
             <button
               onClick={onNavigateLogin}
-              style={{ background: "none", border: "none", color: "#93c5fd", fontWeight: 700, cursor: "pointer" }}
+              style={{ background: "none", border: "none", color: "#93c5fd", fontWeight: 700, cursor: "pointer", padding: 0 }}
             >
               Sign In here
             </button>
@@ -165,13 +177,13 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
         </div>
 
         {/* Right Side: Form */}
-        <div style={{ padding: "36px 32px" }}>
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontSize: 22, fontWeight: 700, color: "var(--gray-900)" }}>
-              Create New Account
+        <div style={{ padding: "44px 38px" }}>
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--gray-900)" }}>
+              Create Account
             </h3>
             <p style={{ fontSize: 13, color: "var(--gray-500)" }}>
-              Fill in your details below to register
+              Enter your details below to register
             </p>
           </div>
 
@@ -193,49 +205,7 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {/* Account Role Selector */}
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--gray-600)", marginBottom: 8 }}>
-                Select Account Type
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[
-                  { id: "user", label: "Customer", icon: User },
-                  { id: "vendor", label: "Vendor", icon: Store },
-                  { id: "admin", label: "Admin", icon: ShieldCheck }
-                ].map((r) => {
-                  const IconComp = r.icon;
-                  const selected = role === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setRole(r.id)}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "10px 8px",
-                        borderRadius: 10,
-                        border: selected ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                        background: selected ? "#eff6ff" : "#ffffff",
-                        color: selected ? "#1e40af" : "#64748b",
-                        fontSize: 12,
-                        fontWeight: selected ? 700 : 500,
-                        cursor: "pointer",
-                        transition: "all 0.15s ease"
-                      }}
-                    >
-                      <IconComp size={18} />
-                      <span>{r.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Full Name */}
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
@@ -250,23 +220,6 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                 required
               />
             </div>
-
-            {/* Vendor Store Name (if Vendor) */}
-            {role === "vendor" && (
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
-                  Store / Business Name
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Apex Electronics & Gear"
-                  value={storeName}
-                  onChange={(e) => setStoreName(e.target.value)}
-                  leftIcon={<Building size={16} />}
-                  required
-                />
-              </div>
-            )}
 
             {/* Email */}
             <div>
@@ -284,47 +237,66 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
             </div>
 
             {/* Password */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
-                  Password
-                </label>
-                <div style={{ position: "relative" }}>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    leftIcon={<Lock size={16} />}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
-                  Confirm Password
-                </label>
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
+                Password (min. 6 characters)
+              </label>
+              <div style={{ position: "relative" }}>
                 <Input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   leftIcon={<Lock size={16} />}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    color: "var(--gray-400)",
+                    cursor: "pointer"
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
-            {/* Terms & Conditions */}
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--gray-600)", cursor: "pointer", marginTop: 4 }}>
+            {/* Confirm Password */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
+                Confirm Password
+              </label>
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                leftIcon={<Lock size={16} />}
+                required
+              />
+            </div>
+
+            {/* Terms and Conditions */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
               <input
                 type="checkbox"
+                id="terms"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
+                style={{ marginTop: 3, borderRadius: 4 }}
               />
-              I agree to the <a href="#terms" onClick={(e) => e.preventDefault()} style={{ color: "#2563eb" }}>Terms of Service</a> & <a href="#privacy" onClick={(e) => e.preventDefault()} style={{ color: "#2563eb" }}>Privacy Policy</a>
-            </label>
+              <label htmlFor="terms" style={{ fontSize: 12, color: "var(--gray-600)", lineHeight: 1.5 }}>
+                I agree to the <a href="#terms" style={{ color: "#2563eb", fontWeight: 600 }}>Terms of Service</a> and <a href="#privacy" style={{ color: "#2563eb", fontWeight: 600 }}>Privacy Policy</a>
+              </label>
+            </div>
 
             {/* Submit Button */}
             <Button
@@ -333,12 +305,14 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
               size="lg"
               disabled={loading}
               style={{
+                background: "linear-gradient(135deg, #1e40af 0%, #2563eb 100%)",
+                border: "none",
                 borderRadius: 10,
                 fontWeight: 700,
-                marginTop: 8
+                marginTop: 6
               }}
             >
-              {loading ? "Registering..." : "Create Account"}
+              {loading ? "Creating Account..." : "Create Account"}
               <ArrowRight size={16} style={{ marginLeft: 8 }} />
             </Button>
           </form>

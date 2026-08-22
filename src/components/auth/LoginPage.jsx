@@ -1,16 +1,15 @@
 import { useState } from "react";
 import {
-  User,
-  ShieldCheck,
-  Store,
-  Zap,
   Lock,
   Mail,
   Eye,
   EyeOff,
   ArrowRight,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  Truck,
+  Award
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
@@ -32,7 +31,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
     setErrorMsg("");
 
     try {
-      // Authenticate securely with backend (no role disclosure)
+      // Authenticate securely with backend
       const user = await login({
         email: email.trim().toLowerCase(),
         password
@@ -47,14 +46,14 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
       if (onLoginSuccess) {
         onLoginSuccess(user);
       } else {
-        // Automatically route to the user's authorized workspace based on database role
+        // Automatically route to user's authorized workspace based on database role
         if (user.role === "vendor") window.location.hash = "#/vendor";
         else if (user.role === "admin") window.location.hash = "#/admin";
         else if (user.role === "super_admin") window.location.hash = "#/super-admin";
         else window.location.hash = "#/";
       }
     } catch (err) {
-      // Secure generic error message - never leak internal role or existence
+      // Generic error message - zero metadata disclosure
       setErrorMsg("Invalid email or password. Please check your credentials.");
       addToast({
         title: "Authentication Failed",
@@ -85,15 +84,14 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
         boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0,0,0,0.1)",
         overflow: "hidden"
       }}>
-        {/* Left Side: Account Portal Overview */}
+        {/* Left Side: Clean Brand Panel */}
         <div style={{
           background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
           color: "#ffffff",
-          padding: "40px 32px",
+          padding: "44px 36px",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
-          transition: "all 0.3s ease"
+          justifyContent: "space-between"
         }}>
           <div>
             <div style={{
@@ -109,53 +107,53 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
               letterSpacing: "0.5px",
               marginBottom: 24
             }}>
-              <Sparkles size={14} color="#ffd700" /> Marvel Universal Sign In
+              <Sparkles size={14} color="#ffd700" /> Marvel Premium Tech
             </div>
 
-            <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, color: "#ffffff" }}>
-              Welcome to Marvel
+            <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, color: "#ffffff", lineHeight: 1.3 }}>
+              Smart Tech for Smarter Living
             </h2>
-            <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.85)", marginBottom: 28, lineHeight: 1.6 }}>
-              One unified account for customers, vendors, operators, and platform administrators.
+            <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.85)", marginBottom: 32, lineHeight: 1.6 }}>
+              Access your personalized recommendations, track your active shipments, and manage your wishlist.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <User size={16} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Award size={18} />
                 </div>
-                <span><strong>Customers</strong>: Track orders, wishlist &amp; express checkout</span>
+                <span><strong>Curated Catalog</strong> — 100% Genuine, tested devices</span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Store size={16} />
+              <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Truck size={18} />
                 </div>
-                <span><strong>Vendors</strong>: Manage store products &amp; order fulfillment</span>
+                <span><strong>Express Delivery</strong> — Real-time live shipment tracking</span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <ShieldCheck size={16} />
+              <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ShieldCheck size={18} />
                 </div>
-                <span><strong>Operations &amp; Admin</strong>: Catalog moderation &amp; governance</span>
+                <span><strong>Buyer Protection</strong> — 2-Year comprehensive warranty</span>
               </div>
             </div>
           </div>
 
-          <div style={{ marginTop: 32, fontSize: 12, color: "rgba(255, 255, 255, 0.75)" }}>
-            Secured by JWT Authentication &amp; Supabase PostgreSQL.
+          <div style={{ marginTop: 36, fontSize: 12, color: "rgba(255, 255, 255, 0.75)" }}>
+            © 2026 Marvel Retail Operations. All rights reserved.
           </div>
         </div>
 
-        {/* Right Side: Unified Sign In Form */}
-        <div style={{ padding: "40px 36px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        {/* Right Side: Sign In Form */}
+        <div style={{ padding: "44px 38px", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ marginBottom: 28 }}>
             <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--gray-900, #0f172a)", marginBottom: 6 }}>
               Sign In
             </h3>
             <p style={{ fontSize: 14, color: "var(--gray-500, #64748b)" }}>
-              Enter your registered email and password to continue
+              Enter your email and password to access your account
             </p>
           </div>
 
