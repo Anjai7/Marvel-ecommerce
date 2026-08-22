@@ -6,7 +6,7 @@ const router = express.Router();
 
 // POST /api/auth/login (Real DB Authentication with signed JWT token)
 router.post("/login", async (req, res) => {
-  const { email, password, expectedRole } = req.body;
+  const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
@@ -72,13 +72,23 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// POST /api/auth/signup (Real Supabase User Registration + JWT Token)
+// POST /api/auth/signup (Public signup strictly limited to User & Vendor)
 router.post("/signup", async (req, res) => {
   const { email, password, fullName, role = "user", storeName = "" } = req.body;
 
   if (!email || !password || !fullName) {
     return res.status(400).json({ error: "Name, email, and password are required." });
   }
+
+  // 🔒 Security Restriction: Public signup cannot create admin or super_admin accounts
+  const sanitizedRole = (role || "user").toLowerCase().trim();
+  if (sanitizedRole === "admin" || sanitizedRole === "super_admin" || sanitizedRole === "moderator") {
+    return res.status(403).json({
+      error: "Public registration is limited to Customer and Vendor accounts only. Admin accounts must be created by an existing administrator from the Admin Console."
+    });
+  }
+
+  const validRole = sanitizedRole === "vendor" ? "vendor" : "user";
 
   try {
     // Register via Supabase Admin API
@@ -88,8 +98,8 @@ router.post("/signup", async (req, res) => {
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
-        role,
-        store_name: role === "vendor" ? (storeName || `${fullName}'s Store`) : null
+        role: validRole,
+        store_name: validRole === "vendor" ? (storeName || `${fullName}'s Store`) : null
       }
     });
 
@@ -98,14 +108,14 @@ router.post("/signup", async (req, res) => {
     }
 
     const newUser = createData.user;
-    const resolvedStore = role === "vendor" ? (storeName || `${fullName}'s Store`) : null;
+    const resolvedStore = validRole === "vendor" ? (storeName || `${fullName}'s Store`) : null;
 
     // Upsert into profiles table
     await supabase.from("profiles").upsert({
       id: newUser.id,
       email: newUser.email,
       full_name: fullName,
-      role,
+      role: validRole,
       store_name: resolvedStore,
       status: "active",
       updated_at: new Date().toISOString()
@@ -115,7 +125,7 @@ router.post("/signup", async (req, res) => {
     const token = signUserToken({
       id: newUser.id,
       email: newUser.email,
-      role,
+      role: validRole,
       full_name: fullName,
       store_name: resolvedStore
     });
@@ -127,13 +137,88 @@ router.post("/signup", async (req, res) => {
         id: newUser.id,
         email: newUser.email,
         full_name: fullName,
-        role,
+        role: validRole,
         store_name: resolvedStore
       }
     });
   } catch (err) {
     console.error("Signup error:", err);
     res.status(500).json({ error: err.message || "Failed to create account in database." });
+  }
+});
+
+// POST /api/auth/forgot-password (Password reset request)
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .eq("email", cleanEmail)
+      .single();
+
+    if (!profile) {
+      // Don't reveal if account exists for security, return success response
+      return res.json({
+        message: "If this email is registered, you will receive password reset instructions."
+      });
+    }
+
+    res.json({
+      message: "Password reset request verified. You may proceed to set a new password.",
+      email: cleanEmail,
+      userId: profile.id
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to process password reset request." });
+  }
+});
+
+// POST /api/auth/reset-password (Set new password)
+router.post("/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  if (!email || !newPassword) {
+    return res.status(400).json({ error: "Email and new password are required." });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters." });
+  }
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Find profile
+    const { data: profile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .eq("email", cleanEmail)
+      .single();
+
+    if (profileErr || !profile) {
+      return res.status(404).json({ error: "No account found with this email address." });
+    }
+
+    // Update password in Supabase Auth
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(profile.id, {
+      password: newPassword
+    });
+
+    if (updateErr) {
+      return res.status(500).json({ error: updateErr.message });
+    }
+
+    res.json({
+      message: "Password has been successfully updated. You can now sign in with your new password."
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Failed to reset password." });
   }
 });
 

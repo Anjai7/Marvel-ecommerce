@@ -1,24 +1,27 @@
 import { useState } from "react";
 import {
   User,
+  Store,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  CheckCircle2,
   AlertCircle,
   ArrowRight,
   Sparkles,
   ShieldCheck,
   Truck,
-  Award
+  Award,
+  Building
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 
 export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
+  const [role, setRole] = useState("user"); // Strictly "user" or "vendor"
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [storeName, setStoreName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -54,19 +57,21 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
         email: email.trim().toLowerCase(),
         password,
         fullName,
-        role: "user"
+        role: role === "vendor" ? "vendor" : "user",
+        storeName: role === "vendor" ? storeName : undefined
       });
 
       addToast({
         title: "Account Created Successfully!",
-        message: `Welcome to Marvel, ${fullName}!`,
+        message: `Welcome to Marvel, ${fullName}! Your ${role === "vendor" ? "Vendor Store" : "Customer"} account is ready.`,
         type: "success"
       });
 
       if (onSignUpSuccess) {
         onSignUpSuccess(newUser);
       } else {
-        window.location.hash = "#/";
+        if (newUser.role === "vendor") window.location.hash = "#/vendor";
+        else window.location.hash = "#/";
       }
     } catch (err) {
       setErrorMsg(err.message || "Failed to create account. Please try again.");
@@ -90,7 +95,7 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
       padding: "40px 16px"
     }}>
       <div style={{
-        maxWidth: 900,
+        maxWidth: 920,
         width: "100%",
         background: "#ffffff",
         borderRadius: 20,
@@ -99,7 +104,7 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))"
       }}>
-        {/* Left Side: Clean Brand Showcase */}
+        {/* Left Side: Brand Showcase */}
         <div style={{
           background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%)",
           color: "#ffffff",
@@ -126,10 +131,10 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
             </div>
 
             <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12, lineHeight: 1.3 }}>
-              Join Marvel Today
+              Join Marvel Marketplace
             </h2>
             <p style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.8)", lineHeight: 1.6, marginBottom: 32 }}>
-              Experience seamless shopping, verified product quality, and rapid delivery right to your doorstep.
+              Shop top-tier consumer tech or open your certified vendor store to reach thousands of verified buyers.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -138,8 +143,8 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                   <Award size={18} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Exclusive Member Pricing</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Instant access to flash sales &amp; special coupons</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Member &amp; Seller Benefits</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Special member pricing, sales analytics &amp; order management</div>
                 </div>
               </div>
 
@@ -148,8 +153,8 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                   <Truck size={18} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Live Order Tracking</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Real-time updates on dispatch and delivery status</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Live Order &amp; Shipment Tracking</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Real-time updates on dispatch and fulfillment</div>
                 </div>
               </div>
 
@@ -158,8 +163,8 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                   <ShieldCheck size={18} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>Guaranteed Buyer Protection</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>14-day hassle-free returns &amp; 2-year warranty</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>Buyer &amp; Vendor Protection</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)" }}>Verified authenticity and secure payments</div>
                 </div>
               </div>
             </div>
@@ -176,14 +181,14 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
           </div>
         </div>
 
-        {/* Right Side: Form */}
+        {/* Right Side: Registration Form */}
         <div style={{ padding: "44px 38px" }}>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 20 }}>
             <h3 style={{ fontSize: 24, fontWeight: 700, color: "var(--gray-900)" }}>
               Create Account
             </h3>
             <p style={{ fontSize: 13, color: "var(--gray-500)" }}>
-              Enter your details below to register
+              Register as a Customer or Seller on Marvel
             </p>
           </div>
 
@@ -205,7 +210,65 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+            {/* Account Type (Strictly Customer or Vendor) */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--gray-700)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Select Account Type
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setRole("user")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: role === "user" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                    background: role === "user" ? "#eff6ff" : "#ffffff",
+                    color: role === "user" ? "#1e40af" : "#64748b",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  <User size={18} color={role === "user" ? "#2563eb" : "#64748b"} />
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 700 }}>Customer</div>
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>Shop &amp; track orders</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole("vendor")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: role === "vendor" ? "2px solid #7c3aed" : "1px solid #e2e8f0",
+                    background: role === "vendor" ? "#f5f3ff" : "#ffffff",
+                    color: role === "vendor" ? "#6d28d9" : "#64748b",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  <Store size={18} color={role === "vendor" ? "#7c3aed" : "#64748b"} />
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 700 }}>Seller (Vendor)</div>
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>Sell your products</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Full Name */}
             <div>
               <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
@@ -220,6 +283,23 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                 required
               />
             </div>
+
+            {/* Store Name (if Vendor) */}
+            {role === "vendor" && (
+              <div>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--gray-700)", marginBottom: 4 }}>
+                  Store / Brand Name
+                </label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Nexus Electronics Store"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  leftIcon={<Building size={16} />}
+                  required
+                />
+              </div>
+            )}
 
             {/* Email */}
             <div>
@@ -285,7 +365,7 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
             </div>
 
             {/* Terms and Conditions */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 2 }}>
               <input
                 type="checkbox"
                 id="terms"
@@ -294,7 +374,7 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                 style={{ marginTop: 3, borderRadius: 4 }}
               />
               <label htmlFor="terms" style={{ fontSize: 12, color: "var(--gray-600)", lineHeight: 1.5 }}>
-                I agree to the <a href="#terms" style={{ color: "#2563eb", fontWeight: 600 }}>Terms of Service</a> and <a href="#privacy" style={{ color: "#2563eb", fontWeight: 600 }}>Privacy Policy</a>
+                I agree to the <a href="#terms" onClick={(e) => e.preventDefault()} style={{ color: "#2563eb", fontWeight: 600 }}>Terms of Service</a> and <a href="#privacy" onClick={(e) => e.preventDefault()} style={{ color: "#2563eb", fontWeight: 600 }}>Privacy Policy</a>
               </label>
             </div>
 
@@ -309,10 +389,10 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                 border: "none",
                 borderRadius: 10,
                 fontWeight: 700,
-                marginTop: 6
+                marginTop: 4
               }}
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? "Creating Account..." : `Sign Up as ${role === "vendor" ? "Vendor" : "Customer"}`}
               <ArrowRight size={16} style={{ marginLeft: 8 }} />
             </Button>
           </form>

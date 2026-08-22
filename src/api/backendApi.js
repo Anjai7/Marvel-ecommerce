@@ -177,6 +177,18 @@ export async function apiFetchAllUsers() {
   }
 }
 
+export async function apiAdminCreateUser(userData) {
+  const res = await fetch(`${API_BASE_URL}/users/admin-create`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(userData)
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to create user account.");
+  return data.user;
+}
+
 export async function apiUpdateUserRole(userId, newRole) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
     method: "PUT",
@@ -187,6 +199,65 @@ export async function apiUpdateUserRole(userId, newRole) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to update role.");
   return data.users;
+}
+
+export async function apiUpdateUserStatus(userId, status) {
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+    method: "PUT",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ status })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to update user status.");
+  return data;
+}
+
+export async function apiResetUserPassword(userId, newPassword) {
+  const res = await fetch(`${API_BASE_URL}/users/${userId}/reset-password`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ newPassword })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to reset password.");
+  return data;
+}
+
+export async function apiDeleteUser(userId) {
+  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders()
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to delete user.");
+  return data;
+}
+
+export async function apiForgotPassword(email) {
+  const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to request password reset.");
+  return data;
+}
+
+export async function apiResetPassword(email, newPassword) {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, newPassword })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to reset password.");
+  return data;
 }
 
 /**
