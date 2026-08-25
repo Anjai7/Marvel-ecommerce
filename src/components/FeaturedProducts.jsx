@@ -70,9 +70,6 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
               <h2 className="section-title" style={{ margin: 0 }}>
                 ⭐ Editor's Choice &amp; Featured Products
               </h2>
-              <p className="section-subtitle">
-                Curated items dynamically highlighted from the Admin Console &amp; Cloudinary CDN
-              </p>
             </div>
           </div>
 
