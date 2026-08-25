@@ -21,6 +21,8 @@ function formatProduct(p) {
     }
   }
 
+  const generatedSku = p.sku || `MRV-${String(p.title || "PROD").replace(/[^a-zA-Z0-9]/g, "").substring(0, 6).toUpperCase()}-${p.id ? String(p.id).substring(0, 4).toUpperCase() : "101"}`;
+
   return {
     ...p,
     price: parseFloat(p.price) || 0,
@@ -29,7 +31,21 @@ function formatProduct(p) {
     rating: parseFloat(p.rating) || 4.8,
     reviews_count: parseInt(p.reviews_count, 10) || 0,
     image_url: displayImage || p.image_url,
-    image: displayImage || p.image_url // compatible with components expecting .image or .image_url
+    image: displayImage || p.image_url,
+    sku: generatedSku,
+    model_name: p.model_name || generatedSku,
+    country_of_origin: p.country_of_origin || "India / Global Componentry",
+    manufacturer_name: p.manufacturer_name || p.vendor_name || "TechGear Flagship Store",
+    importer_packer: p.importer_packer || "Marvel Retail Operations Pvt. Ltd.",
+    manufacturing_date: p.manufacturing_date || "October 2025",
+    hsn_code: p.hsn_code || "85183000",
+    gst_rate: p.gst_rate || "18%",
+    certifications: Array.isArray(p.certifications) ? p.certifications : ["CE Certified", "FCC Compliance", "RoHS Eco-Standard", "BIS Registered"],
+    in_box: Array.isArray(p.in_box) ? p.in_box : ["1x Main Device Unit", "1x Fast Charge Cable", "1x Quick Setup Guide", "1x Marvel Warranty Card"],
+    specifications: Array.isArray(p.specifications) ? p.specifications : [],
+    dimensions: typeof p.dimensions === "object" && p.dimensions ? p.dimensions : {},
+    materials: Array.isArray(p.materials) ? p.materials : [],
+    care_instructions: Array.isArray(p.care_instructions) ? p.care_instructions : []
   };
 }
 
