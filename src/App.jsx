@@ -123,32 +123,34 @@ function AppMain() {
         onLogin={() => navigateTo("login")}
       />
 
-      <div className="sticky-header-wrapper">
-        <Header
-          currentUser={user}
-          isLoggedIn={isLoggedIn}
-          onNavigateLogin={() => navigateTo("login")}
-          onNavigateSignUp={() => navigateTo("signup")}
-          onNavigateAdmin={handleNavigateAdmin}
-          onNavigateCustomerPortal={() => navigateTo("account")}
-          onNavigateHome={() => navigateTo("")}
-          onLogout={logout}
-          cartCount={cartCount}
-          onMenuOpen={() => setMobileOpen(true)}
-          onSelectProduct={handleSelectProduct}
-        />
-
-        {/* Dynamic & Hover Navigation Bars */}
-        {isStorefront ? (
-          <HoverNav userRole={userRole} onDynamicNavigate={handleDynamicMenuClick} />
-        ) : (
-          <DynamicMenu
-            userRole={userRole}
-            onNavigate={handleDynamicMenuClick}
-            activePath={`/${currentRoute.page}`}
+      {!isAdminPage && !isSuperAdminPage && (
+        <div className="sticky-header-wrapper">
+          <Header
+            currentUser={user}
+            isLoggedIn={isLoggedIn}
+            onNavigateLogin={() => navigateTo("login")}
+            onNavigateSignUp={() => navigateTo("signup")}
+            onNavigateAdmin={handleNavigateAdmin}
+            onNavigateCustomerPortal={() => navigateTo("account")}
+            onNavigateHome={() => navigateTo("")}
+            onLogout={logout}
+            cartCount={cartCount}
+            onMenuOpen={() => setMobileOpen(true)}
+            onSelectProduct={handleSelectProduct}
           />
-        )}
-      </div>
+
+          {/* Dynamic & Hover Navigation Bars */}
+          {isStorefront ? (
+            <HoverNav userRole={userRole} onDynamicNavigate={handleDynamicMenuClick} />
+          ) : (
+            <DynamicMenu
+              userRole={userRole}
+              onNavigate={handleDynamicMenuClick}
+              activePath={`/${currentRoute.page}`}
+            />
+          )}
+        </div>
+      )}
 
       {/* 1. CUSTOMER STOREFRONT */}
       {isStorefront && (

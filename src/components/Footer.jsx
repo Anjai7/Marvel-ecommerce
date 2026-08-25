@@ -106,20 +106,6 @@ const SEARCH_TAGS = [
 const PAYMENTS = ["VISA", "Mastercard", "RuPay", "UPI", "PayTM", "NetBanking"];
 
 export default function Footer() {
-  const [email, setEmail] = useState("");
-  const { addToast } = useToast();
-
-  const handleNewsletter = (e) => {
-    e.preventDefault();
-    if (!email) return;
-    addToast({
-      title: "Subscribed Successfully!",
-      message: "Thank you for subscribing to Marvel deals & discounts.",
-      type: "success",
-    });
-    setEmail("");
-  };
-
   return (
     <footer className="footer" id="main-footer">
       {/* ── Value Proposition Bar ── */}
@@ -178,28 +164,6 @@ export default function Footer() {
             <p className="footer-brand-desc">
               Your ultimate online shopping destination for top electronics, fashion, home essentials, and lifestyle products with unbeatable deals and fast doorstep delivery.
             </p>
-
-            {/* Newsletter Box */}
-            <div className="footer-newsletter-card">
-              <div className="footer-nl-title">
-                <Mail size={16} color="var(--orange)" />
-                <span>Subscribe to Exclusive Deals</span>
-              </div>
-              <p className="footer-nl-sub">Get extra discounts and weekly price drops in your inbox.</p>
-              <form onSubmit={handleNewsletter} className="footer-nl-form">
-                <input
-                  type="email"
-                  placeholder="Enter your email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="footer-nl-input"
-                  required
-                />
-                <button type="submit" className="footer-nl-btn" aria-label="Subscribe">
-                  <Send size={15} />
-                </button>
-              </form>
-            </div>
 
             {/* Social Links */}
             <div className="footer-socials">

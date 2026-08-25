@@ -145,24 +145,39 @@ export const heroSlides = [
     title: "Upgrade Your\nEveryday",
     subtitle: "Next-gen gadgets at prices that don't break the bank. Up to 50% OFF.",
     btn: "Shop Electronics",
-    image: "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=900&h=420&fit=crop&q=85",
-    bg: "#0f2444",
+    ribbonText: "SPECIAL 50% OFF",
+    bgImage: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=1600&h=700&fit=crop&q=85",
+    pngImage: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=600&h=600&fit=crop&q=90",
+    fallbackPng: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop&q=90",
+    bg: "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+    tag: "Wireless Audio Pro",
+    price: "From ₹2,499"
   },
   {
     badge: "✨ FASHION WEEK SALE",
     title: "Style That\nSpeaks Volumes",
     subtitle: "Premium designer apparel & footwear. Up to 60% OFF.",
     btn: "Shop Fashion",
-    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&h=420&fit=crop&q=85",
-    bg: "#1a0a2e",
+    ribbonText: "GIFT DEAL 60% OFF",
+    bgImage: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&h=700&fit=crop&q=85",
+    pngImage: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop&q=90",
+    fallbackPng: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop&q=90",
+    bg: "linear-gradient(135deg, #1b0c2e 0%, #301452 100%)",
+    tag: "Exclusive Sneakers",
+    price: "From ₹899"
   },
   {
     badge: "🏠 HOME & KITCHEN DEALS",
     title: "Elevate Your\nLiving Space",
     subtitle: "Transform your home with premium essentials. Up to 40% OFF.",
     btn: "Shop Home",
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=900&h=420&fit=crop&q=85",
-    bg: "#0d2b1a",
+    ribbonText: "MEGA GIFT 40% OFF",
+    bgImage: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1600&h=700&fit=crop&q=85",
+    pngImage: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=600&h=600&fit=crop&q=90",
+    fallbackPng: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=500&h=500&fit=crop&q=90",
+    bg: "linear-gradient(135deg, #092015 0%, #153c29 100%)",
+    tag: "Smart Audio & Living",
+    price: "From ₹1,299"
   },
 ];
 
@@ -379,12 +394,12 @@ export const productDetailData = {
 
 // ─── Frequently Visited Products ─────────────────────────────
 export const frequentlyVisitedProducts = [
-  { id: 201, name: "Bose QuietComfort 45 Headphones", price: 21990, originalPrice: 32990, discount: 33, rating: 4.6, reviews: 28400, image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=300&h=300&fit=crop", badge: "33% OFF" },
-  { id: 202, name: "Apple AirPods Pro (2nd Gen)", price: 19900, originalPrice: 26900, discount: 26, rating: 4.8, reviews: 91200, image: "https://images.unsplash.com/photo-1606400082777-ef05f3c5cde2?w=300&h=300&fit=crop", badge: "26% OFF" },
-  { id: 203, name: "JBL Tune 770NC Wireless", price: 6499, originalPrice: 9999, discount: 35, rating: 4.3, reviews: 14500, image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop", badge: "35% OFF" },
-  { id: 204, name: "Sennheiser HD 450BT", price: 8990, originalPrice: 13990, discount: 36, rating: 4.4, reviews: 8300, image: "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=300&h=300&fit=crop", badge: "36% OFF" },
-  { id: 205, name: "Jabra Evolve2 55 UC", price: 34990, originalPrice: 49990, discount: 30, rating: 4.5, reviews: 5200, image: "https://images.unsplash.com/photo-1545127398-14699f92334b?w=300&h=300&fit=crop", badge: "30% OFF" },
-  { id: 206, name: "Anker Soundcore Life Q45", price: 4999, originalPrice: 7999, discount: 37, rating: 4.2, reviews: 18700, image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=300&h=300&fit=crop", badge: "37% OFF" },
+  { id: 201, name: "Bose QuietComfort 45 Headphones", price: 29990, rating: 4.6, reviews: 28400, image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=300&h=300&fit=crop" },
+  { id: 202, name: "Apple AirPods Pro (2nd Gen)", price: 19900, originalPrice: 26900, discount: 26, rating: 4.8, reviews: 91200, image: "https://images.unsplash.com/photo-1606400082777-ef05f3c5cde2?w=300&h=300&fit=crop", badge: "26% OFF", is_on_sale: true },
+  { id: 203, name: "JBL Tune 770NC Wireless", price: 7999, rating: 4.3, reviews: 14500, image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop" },
+  { id: 204, name: "Sennheiser HD 450BT", price: 8990, originalPrice: 14990, discount: 40, rating: 4.4, reviews: 8300, image: "https://images.unsplash.com/photo-1484704849700-f032a568e944?w=300&h=300&fit=crop", badge: "40% OFF", is_on_sale: true },
+  { id: 205, name: "Jabra Evolve2 55 UC", price: 34990, rating: 4.5, reviews: 5200, image: "https://images.unsplash.com/photo-1545127398-14699f92334b?w=300&h=300&fit=crop" },
+  { id: 206, name: "Anker Soundcore Life Q45", price: 6999, rating: 4.2, reviews: 18700, image: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=300&h=300&fit=crop" },
 ];
 
 // ─── Promo Banner Carousel ─────────────────────────────────────

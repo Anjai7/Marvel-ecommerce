@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { heroSlides } from "../data";
 import { Button, Badge } from "./ui";
-import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
 export default function HeroBanner() {
   const [current, setCurrent] = useState(0);
@@ -48,27 +48,73 @@ export default function HeroBanner() {
     >
       {heroSlides.map((slide, i) => (
         <div key={i} className={`hero-slide ${i === current ? "active" : ""}`}>
+          {/* Base Background Gradient */}
           <div className="hero-slide-bg" style={{ background: slide.bg }} />
-          <img className="hero-slide-img" src={slide.image} alt={slide.title} />
-          <div className="hero-content">
-            <Badge variant="accent" size="md" className="hero-badge">
-              {slide.badge}
-            </Badge>
-            <h1 className="hero-title">{slide.title}</h1>
-            <p className="hero-sub">{slide.subtitle}</p>
-            <Button
-              variant="accent"
-              size="lg"
-              className="hero-cta"
-              id={`hero-cta-${i}`}
-              rightIcon={<ArrowRight size={18} />}
-            >
-              {slide.btn}
-            </Button>
+          
+          {/* Whole Banner Background Image */}
+          <img
+            className="hero-slide-bg-img"
+            src={slide.bgImage || slide.image}
+            alt={slide.title}
+            loading={i === 0 ? "eager" : "lazy"}
+          />
+          <div className="hero-slide-overlay" />
+
+          <div className="hero-slide-inner-grid">
+            {/* Left Content Column */}
+            <div className="hero-content">
+              <Badge variant="accent" size="md" className="hero-badge">
+                {slide.badge}
+              </Badge>
+              <h1 className="hero-title">{slide.title}</h1>
+              <p className="hero-sub">{slide.subtitle}</p>
+              
+              <div className="hero-actions-row">
+                <Button
+                  variant="accent"
+                  size="lg"
+                  className="hero-cta"
+                  id={`hero-cta-${i}`}
+                  rightIcon={<ArrowRight size={18} />}
+                >
+                  {slide.btn}
+                </Button>
+                {slide.price && (
+                  <span className="hero-price-pill">
+                    <Sparkles size={13} color="#f59e0b" />
+                    {slide.price}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Right Showcase: Small Floating PNG Product Image */}
+            <div className="hero-png-showcase">
+              <div className="hero-png-card">
+                <img
+                  className="hero-floating-png"
+                  src={slide.pngImage || slide.image}
+                  alt={slide.title}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  onError={(e) => {
+                    if (slide.fallbackPng && e.target.src !== slide.fallbackPng) {
+                      e.target.src = slide.fallbackPng;
+                    }
+                  }}
+                />
+                <div className="hero-png-glow-circle" />
+                {slide.tag && (
+                  <div className="hero-floating-badge">
+                    <span>{slide.tag}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       ))}
 
+      {/* Navigation Arrows */}
       <button
         className="hero-nav-btn hero-nav-left"
         id="hero-prev"
@@ -89,6 +135,7 @@ export default function HeroBanner() {
         <ChevronRight size={24} color="#fff" />
       </button>
 
+      {/* Centered Slider Indicators (Dots) */}
       <div className="hero-dots" role="tablist" aria-label="Hero slides">
         {heroSlides.map((_, i) => (
           <button

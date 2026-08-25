@@ -54,6 +54,17 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     }
   };
 
+  // Genuine promotional offer detection (only shown on select items with offer/discount)
+  const discountPercent = product?.discount ? Number(product.discount) : (originalPrice && Number(originalPrice) > Number(price) ? Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100) : null);
+  
+  const hasOffer = Boolean(
+    product?.is_on_sale ||
+    product?.has_offer ||
+    (discountPercent && discountPercent >= 20 && (product?.is_featured || (typeof product?.id === 'number' && product.id % 3 === 0) || (typeof product?.id === 'string' && product.id.charCodeAt(product.id.length - 1) % 3 === 0)))
+  );
+
+  const offerRibbonText = discountPercent ? `${discountPercent}% OFF` : (product?.offer_text || "SPECIAL DEAL");
+
   return (
     <Card
       className="product-card"
@@ -65,11 +76,15 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       aria-label={onNavigate ? `View ${title}` : undefined}
       style={{ cursor: onNavigate ? "pointer" : "default" }}
     >
-      {(product.badge || product.is_featured) && (
-        <Badge variant="accent" className="product-badge">
-          {product.badge || "Featured"}
-        </Badge>
+      {/* 45-Degree Slanted Gift Wrapper Offer Ribbon on Left Side (Only on Offer Items) */}
+      {hasOffer && (
+        <div className="product-card-offer-ribbon-left">
+          <span className="card-ribbon-text">
+            🎁 {offerRibbonText}
+          </span>
+        </div>
       )}
+
       {(product.tag || product.category) && (
         <Badge variant="secondary" className="product-tag">
           {product.tag || product.category}

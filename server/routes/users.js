@@ -229,6 +229,63 @@ router.put("/:id/role", verifyToken, requireRole(["admin", "super_admin"]), asyn
   }
 });
 
+// PUT /api/users/:id (Admin/SuperAdmin edits existing user details)
+router.put("/:id", verifyToken, requireRole(["admin", "super_admin"]), async (req, res) => {
+  const { id } = req.params;
+  const { full_name, email, role, status, store_name, plan, billing } = req.body;
+
+  try {
+    const profileUpdates = {
+      updated_at: new Date().toISOString()
+    };
+    if (full_name !== undefined) profileUpdates.full_name = full_name;
+    if (email !== undefined) profileUpdates.email = email.trim().toLowerCase();
+    if (role !== undefined) profileUpdates.role = role;
+    if (status !== undefined) profileUpdates.status = status;
+    if (store_name !== undefined) profileUpdates.store_name = store_name;
+
+    // 1. Update Supabase profiles table
+    const { data: updatedProfile, error: profileErr } = await supabase
+      .from("profiles")
+      .update(profileUpdates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (profileErr) {
+      console.warn("Profile update warning:", profileErr.message);
+    }
+
+    // 2. Update Supabase Auth user metadata & email if provided
+    try {
+      const authUpdates = {
+        user_metadata: {
+          full_name: full_name || updatedProfile?.full_name,
+          role: role || updatedProfile?.role,
+          store_name: store_name || updatedProfile?.store_name,
+          plan: plan || "Enterprise",
+          billing: billing || "Auto Debit"
+        }
+      };
+      if (email) authUpdates.email = email.trim().toLowerCase();
+      await supabase.auth.admin.updateUserById(id, authUpdates);
+    } catch (authErr) {
+      console.warn("Auth update warning:", authErr.message);
+    }
+
+    // Return updated formatted user
+    const formatted = formatUserProfile({
+      ...(updatedProfile || { id, ...profileUpdates }),
+      plan: plan || "Enterprise",
+      billing: billing || "Auto Debit"
+    });
+    res.json({ message: "User updated successfully.", user: formatted });
+  } catch (err) {
+    console.error("Admin edit user error:", err);
+    res.status(500).json({ error: err.message || "Failed to update user." });
+  }
+});
+
 // DELETE /api/users/:id (Delete user account from system)
 router.delete("/:id", verifyToken, requireRole(["admin", "super_admin"]), async (req, res) => {
   const { id } = req.params;

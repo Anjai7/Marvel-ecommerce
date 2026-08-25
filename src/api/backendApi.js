@@ -201,6 +201,18 @@ export async function apiUpdateUserRole(userId, newRole) {
   return data.users;
 }
 
+export async function apiUpdateUserDetails(userId, userData) {
+  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: "PUT",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(userData)
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to update user.");
+  return data.user;
+}
+
 export async function apiUpdateUserStatus(userId, status) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
     method: "PUT",
