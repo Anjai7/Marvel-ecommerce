@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button, Badge, useToast } from "../ui";
 import { apiFetchOrders } from "../../api/backendApi";
+import { useCart } from "../../context/CartContext";
 
 export default function CustomerPortal({ currentUser, onNavigateHome, onSelectProduct }) {
   const [activeTab, setActiveTab] = useState("orders"); // orders, wishlist, profile
@@ -24,6 +25,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const { addToast } = useToast();
+  const { addItem } = useCart();
 
   const [wishlist, setWishlist] = useState([
     {
@@ -368,7 +370,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                   <span style={{ fontSize: 13, color: "#94a3b8", textDecoration: "line-through" }}>${item.original_price.toFixed(2)}</span>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <Button variant="primary" size="sm" style={{ flex: 1 }} onClick={() => addToast({ title: "Moved to Cart", message: item.title, type: "success" })}>
+                  <Button variant="primary" size="sm" style={{ flex: 1 }} onClick={() => { addItem(item, 1); addToast({ title: "Moved to Cart", message: item.title, type: "success" }); }}>
                     <ShoppingBag size={14} style={{ marginRight: 6 }} /> Move to Cart
                   </Button>
                   <Button variant="secondary" size="sm" onClick={() => handleRemoveWishlist(item.id, item.title)}>

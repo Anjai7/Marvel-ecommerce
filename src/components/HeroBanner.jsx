@@ -136,7 +136,7 @@ export default function HeroBanner() {
       </button>
 
       {/* Centered Slider Indicators (Dots) */}
-      <div className="hero-dots" role="tablist" aria-label="Hero slides">
+      <div className="hero-dots" role="toolbar" aria-label="Hero slides">
         {heroSlides.map((_, i) => (
           <button
             key={i}

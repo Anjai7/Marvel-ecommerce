@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucide-react";
 import { useToast } from "../ui";
+import { useCart } from "../../context/CartContext";
 import { apiFetchProducts } from "../../api/backendApi";
 
 function FVCard({ product, onView }) {
   const [wishlisted, setWishlisted] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
   const { addToast } = useToast();
+  const { addItem } = useCart();
 
   const title = product.title || product.name || "Product";
   const image = product.image_url || product.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
@@ -18,6 +20,7 @@ function FVCard({ product, onView }) {
   const handleCart = (e) => {
     e.stopPropagation();
     setCartAdded(true);
+    addItem(product, 1);
     addToast({ title: "Added to Cart", message: `${title} added to cart.`, type: "success" });
     setTimeout(() => setCartAdded(false), 2000);
   };

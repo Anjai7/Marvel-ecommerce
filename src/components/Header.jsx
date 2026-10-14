@@ -24,13 +24,12 @@ import {
   LogOut,
   Heart,
   Settings,
-  HelpCircle,
   Menu,
   ShieldCheck,
   Zap,
   Store,
-  UserPlus
 } from "lucide-react";
+import { useCart } from "../context/CartContext";
 
 export default function Header({
   currentUser,
@@ -44,9 +43,18 @@ export default function Header({
   cartCount,
   onMenuOpen,
   onSelectProduct,
+  onNavigateCart = () => {},
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { addToast } = useToast();
+  let cartItems = [];
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- unconditional call; try/catch only guards missing CartProvider in isolated tests
+    const cart = useCart();
+    if (cart && Array.isArray(cart.items)) cartItems = cart.items;
+  } catch {
+    cartItems = [];
+  }
 
   const userRole = currentUser?.role || "user";
   const userInitial = currentUser?.full_name ? currentUser.full_name[0].toUpperCase() : "U";
@@ -87,11 +95,7 @@ export default function Header({
           {isLoggedIn ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div
-                  className="header-action"
-                  id="account-btn"
-                  style={{ cursor: "pointer" }}
-                >
+                <button type="button" className="header-action" id="account-btn">
                   <Avatar size="sm">
                     <AvatarFallback style={{
                       background: userRole === "super_admin" ? "#d97706" : userRole === "vendor" ? "#7c3aed" : userRole === "admin" ? "#0284c7" : "#2563eb",
@@ -119,7 +123,7 @@ export default function Header({
                       ▾
                     </div>
                   </div>
-                </div>
+                </button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" style={{ width: 230 }}>
@@ -200,7 +204,7 @@ export default function Header({
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="header-auth-actions">
               <Button
                 variant="accent"
                 size="sm"
@@ -215,8 +219,8 @@ export default function Header({
               <Button
                 variant="secondary"
                 size="sm"
+                className="signup-btn"
                 onClick={onNavigateSignUp}
-                leftIcon={<UserPlus size={16} />}
                 style={{ fontSize: 13 }}
               >
                 Sign Up
@@ -227,10 +231,10 @@ export default function Header({
           <div className="header-divider" />
 
           <SimpleTooltip content="Track orders and returns">
-            <div
+            <button
+              type="button"
               className="header-action"
               id="orders-btn"
-              style={{ cursor: "pointer" }}
               onClick={isLoggedIn ? onNavigateCustomerPortal : onNavigateLogin}
             >
               <div className="ha-icon">
@@ -240,14 +244,14 @@ export default function Header({
                 <div className="ha-sub">Returns &amp;</div>
                 <div className="ha-label">Orders</div>
               </div>
-            </div>
+            </button>
           </SimpleTooltip>
 
           <div className="header-divider" />
 
           <Popover>
             <PopoverTrigger asChild>
-              <div className="header-action" id="cart-btn" style={{ cursor: "pointer" }}>
+              <button type="button" className="header-action" id="cart-btn">
                 <div className="ha-icon" style={{ position: "relative" }}>
                   <ShoppingBag size={22} />
                   <Badge variant="accent" size="sm" className="cart-badge">
@@ -255,7 +259,7 @@ export default function Header({
                   </Badge>
                 </div>
                 <div className="ha-label">Cart ▾</div>
-              </div>
+              </button>
             </PopoverTrigger>
             <PopoverContent align="end" style={{ width: 280, padding: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -265,7 +269,32 @@ export default function Header({
               <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
                 Items in your cart qualify for <strong>FREE Express Shipping</strong>!
               </div>
-              <Button variant="accent" size="sm" style={{ width: "100%" }}>
+              {cartItems.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
+                  Your cart is empty.
+                </div>
+              ) : (
+                <div style={{ marginBottom: 14 }}>
+                  {cartItems.slice(0, 3).map((item) => (
+                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <img src={item.image} alt={item.title} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }} />
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 170 }}>
+                          {item.title}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--gray-600)" }}>
+                          Qty {item.quantity} · ₹{item.price}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {cartItems.length > 3 && <div style={{ fontSize: 12, color: "var(--gray-600)" }}>+{cartItems.length - 3} more…</div>}
+                </div>
+              )}
+              <Button variant="secondary" size="sm" style={{ width: "100%", marginBottom: 8 }} onClick={onNavigateCart}>
+                View Cart
+              </Button>
+              <Button variant="accent" size="sm" style={{ width: "100%" }} onClick={onNavigateCart}>
                 Proceed to Checkout
               </Button>
             </PopoverContent>

@@ -5,6 +5,7 @@ import {
   Store, CheckCircle, AlertCircle, Share2, Check, Clock
 } from "lucide-react";
 import { Badge, useToast } from "../ui";
+import { useCart } from "../../context/CartContext";
 
 function fmt(n) {
   return "₹" + n.toLocaleString("en-IN");
@@ -54,6 +55,7 @@ export default function ProductDetails({ product }) {
   const [cartState,     setCartState]     = useState("idle");
   const [wishlisted,    setWishlisted]    = useState(false);
   const { addToast } = useToast();
+  const { addItem } = useCart();
 
   if (!product) return null;
 
@@ -62,6 +64,7 @@ export default function ProductDetails({ product }) {
   const handleCart = () => {
     if (cartState === "added") return;
     setCartState("added");
+    addItem(product, qty);
     addToast({ title: "Added to Cart", message: `${product.name} added to cart.`, type: "success" });
     setTimeout(() => setCartState("idle"), 2500);
   };

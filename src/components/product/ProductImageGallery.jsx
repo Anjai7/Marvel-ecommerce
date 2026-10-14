@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  ZoomIn, X, Play, Maximize2, Rows, Columns, Sparkles
+  ZoomIn, X, Play, Pause, Maximize2, Rows, Columns, Sparkles
 } from "lucide-react";
 
 export default function ProductImageGallery({ media = [] }) {
@@ -12,6 +12,12 @@ export default function ProductImageGallery({ media = [] }) {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50, mouseX: 0, mouseY: 0 });
   const [lightbox, setLightbox] = useState(false);
   const [orientation, setOrientation] = useState("vertical"); // "vertical" | "horizontal"
+  const [autoPlay, setAutoPlay] = useState(
+    () => typeof window === "undefined" || !window.matchMedia
+      ? false
+      : !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+  const [slideshowPaused, setSlideshowPaused] = useState(false);
   const mainRef  = useRef(null);
   const videoRef = useRef(null);
   const thumbsRef = useRef(null);
@@ -40,6 +46,13 @@ export default function ProductImageGallery({ media = [] }) {
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [lightbox, activeIdx, media.length]);
+
+  // Auto-slide the main viewer (pauses on hover, lightbox, zoom lens, video, reduced motion)
+  useEffect(() => {
+    if (!autoPlay || slideshowPaused || lightbox || isVideo || media.length < 2) return;
+    const t = setInterval(goNext, 4500);
+    return () => clearInterval(t);
+  }, [autoPlay, slideshowPaused, lightbox, isVideo, media.length, activeIdx]);
 
   // Keep thumbnail strip in sync
   useEffect(() => {
@@ -86,6 +99,15 @@ export default function ProductImageGallery({ media = [] }) {
         <span className="pvg-toolbar-title">
           <Sparkles size={14} color="var(--orange)" /> Interactive Gallery &amp; Zoom
         </span>
+        <button
+          className="pvg-orientation-btn"
+          onClick={() => setAutoPlay((v) => !v)}
+          aria-pressed={autoPlay}
+          aria-label={autoPlay ? "Pause auto-slide" : "Play auto-slide"}
+          title={autoPlay ? "Pause auto-slide" : "Play auto-slide"}
+        >
+          {autoPlay ? (<><Pause size={13} /> Pause</>) : (<><Play size={13} /> Auto-slide</>)}
+        </button>
         <button
           className="pvg-orientation-btn"
           onClick={() => setOrientation(o => o === "vertical" ? "horizontal" : "vertical")}
@@ -203,8 +225,8 @@ export default function ProductImageGallery({ media = [] }) {
           <div
             ref={mainRef}
             className={`pvg-main-img-wrap ${zoom ? "zooming" : ""}`}
-            onMouseEnter={() => !isVideo && setZoom(true)}
-            onMouseLeave={() => setZoom(false)}
+            onMouseEnter={() => { if (!isVideo) setZoom(true); setSlideshowPaused(true); }}
+            onMouseLeave={() => { setZoom(false); setSlideshowPaused(false); }}
             onMouseMove={handleMouseMove}
             onClick={() => setLightbox(true)}
           >

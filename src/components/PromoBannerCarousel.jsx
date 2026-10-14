@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { promoCarouselSlides } from "../data";
 import { Button, Badge } from "./ui";
-import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 
 export default function PromoBannerCarousel() {
   const [current, setCurrent] = useState(0);
@@ -85,7 +85,7 @@ export default function PromoBannerCarousel() {
           <ChevronRight size={20} />
         </button>
 
-        <div className="promo-carousel-dots" role="tablist" aria-label="Promo slides">
+        <div className="promo-carousel-dots" role="toolbar" aria-label="Promo slides">
           {promoCarouselSlides.map((_, i) => (
             <button
               key={i}

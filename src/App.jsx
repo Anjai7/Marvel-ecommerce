@@ -18,6 +18,8 @@ import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { CartProvider, useCart } from "./context/CartContext";
+import CartPage from "./components/cart/CartPage";
 
 // Role-specific Dashboards
 import CustomerPortal from "./components/customer/CustomerPortal";
@@ -28,7 +30,7 @@ import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
 function AppMain() {
   const { user, isLoggedIn, role: userRole, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [cartCount] = useState(8);
+  const { cartCount } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   
@@ -113,6 +115,7 @@ function AppMain() {
   const isVendorPage = currentRoute.page === "vendor" || currentRoute.page === "vendor-dashboard";
   const isAdminPage = currentRoute.page === "admin" || currentRoute.page === "admin-portal" || currentRoute.page === "admin-dashboard";
   const isSuperAdminPage = currentRoute.page === "super-admin" || currentRoute.page === "superadmin" || currentRoute.page === "superadmin-dashboard";
+  const isCartPage = currentRoute.page === "cart";
 
   return (
     <div className="app">
@@ -137,6 +140,7 @@ function AppMain() {
             cartCount={cartCount}
             onMenuOpen={() => setMobileOpen(true)}
             onSelectProduct={handleSelectProduct}
+            onNavigateCart={() => navigateTo("cart")}
           />
 
           {/* Dynamic & Hover Navigation Bars */}
@@ -249,6 +253,16 @@ function AppMain() {
         </ProtectedRoute>
       )}
 
+      {isCartPage && (
+        <CartPage
+          onNavigateHome={() => navigateTo("")}
+          onCheckout={() => {
+            if (!isLoggedIn) navigateTo("login");
+            else navigateTo("account");
+          }}
+        />
+      )}
+
       {/* Floating Return to Top Button */}
       <ScrollToTop />
 
@@ -272,7 +286,9 @@ export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <AppMain />
+        <CartProvider>
+          <AppMain />
+        </CartProvider>
       </AuthProvider>
     </ToastProvider>
   );

@@ -270,7 +270,11 @@ input:focus:not(:focus-visible) {
   padding: 7px 12px;
   color: var(--gray-800);
   cursor: pointer;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
+  font: inherit;
+  line-height: normal;
   transition: background 0.18s, color 0.18s;
   white-space: nowrap;
 }
@@ -307,6 +311,21 @@ input:focus:not(:focus-visible) {
 .hamburger-btn:hover { background: var(--gray-100); }
 
 /* Auth Btn */
+.header-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-auth-actions .ui-btn {
+  height: 36px;
+  min-height: 36px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.header-auth-actions .signup-btn {
+  padding-right: 16px;
+  padding-left: 16px;
+}
 .signin-btn {
   background: var(--orange);
   color: #fff;
@@ -2866,7 +2885,10 @@ input:focus:not(:focus-visible) {
   .ha-sub { display: none; }
   .header-action { padding: 6px 8px; gap: 5px; }
   .ha-label { font-size: 12px; }
-  .signin-btn { padding: 7px 12px; font-size: 12px; }
+  .header-auth-actions { gap: 6px; }
+  .header-auth-actions .signin-btn,
+  .header-auth-actions .signup-btn { padding-right: 12px; padding-left: 12px; }
+  .signin-btn { padding-top: 7px; padding-bottom: 7px; font-size: 12px; }
 
   /* Hero */
   .hero-carousel { height: 340px; }
@@ -4585,7 +4607,15 @@ input:focus:not(:focus-visible) {
   overflow: hidden;
   background-color: #f8fafc;
   color: #0f172a;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, "Segoe UI", Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Console typeface: make form controls inherit Roboto instead of the global Inter token */
+.admin-app-layout button,
+.admin-app-layout input,
+.admin-app-layout select,
+.admin-app-layout textarea {
+  font-family: inherit;
 }
 
 /* ─────────────────────────────────────────────────────────────

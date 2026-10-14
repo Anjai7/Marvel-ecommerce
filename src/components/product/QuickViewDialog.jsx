@@ -11,11 +11,13 @@ import {
   useToast,
 } from "../ui";
 import { ShoppingCart, Check, Heart, ShieldCheck, Truck, RefreshCw } from "lucide-react";
+import { useCart } from "../../context/CartContext";
 
 export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
   const [cartState, setCartState] = useState("idle");
   const [wishlisted, setWishlisted] = useState(false);
   const { addToast } = useToast();
+  const { addItem } = useCart();
 
   if (!product) return null;
 
@@ -30,6 +32,7 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
   const handleCart = () => {
     if (cartState === "added") return;
     setCartState("added");
+    addItem(product, 1);
     addToast({
       title: "Added to Cart",
       message: `${title} has been added to your shopping cart.`,

@@ -38,23 +38,32 @@ Consistently styled according to a highly polished brand palette:
 ## 🚀 Getting Started
 
 ### Prerequisites
-Make sure you have Node.js (v18+) and npm installed.
+Make sure you have Node.js 22.12 or newer and npm 10 or newer. The repository includes a `.nvmrc` for nvm users. Browser checks use the installed Chrome channel on Windows by default (override with `PLAYWRIGHT_CHANNEL`) and Playwright Chromium in CI.
 
 ### Installation
 1. Clone the repository:
    ```bash
    git clone https://github.com/Anjai7/Marvel-ecommerce.git
-   cd Marvel-ecommerce/shopio
+   cd Marvel-ecommerce
    ```
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Run the development server:
+3. Start the API and Vite together:
    ```bash
-   npm run dev
+   npm run dev:all
    ```
-   Open [http://localhost:5174/](http://localhost:5174/) in your browser.
+   Open [http://localhost:5173/](http://localhost:5173/) in your browser. Use `npm run dev` when you only need the frontend.
+
+### Quality checks
+```bash
+npm run check       # Oxlint, unit/component tests, and production build
+npm run test:e2e    # Playwright browser and accessibility checks
+npm run audit       # high/critical npm vulnerability gate
+```
+
+Prettier, EditorConfig, and Lefthook keep formatting and pre-commit checks consistent. Run `npm run format` to format the project, or `npm run format:check` to inspect formatting without writing files. The repository currently has a legacy formatting baseline (97 files at setup time), so avoid a whole-tree `npm run format` during focused changes. `npm run build:analyze` creates `dist/bundle-report.html`, and `npm run analyze:unused` reports dead code and unused dependencies.
 
 ### Building for Production
 To build the application for deployment:

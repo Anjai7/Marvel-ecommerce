@@ -35,6 +35,12 @@ import {
   Calendar,
   Layers,
   BarChart3,
+  ClipboardList,
+  Repeat,
+  ChevronDown,
+  Star,
+  Wallet,
+  Boxes,
   Shield
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
@@ -47,16 +53,32 @@ import {
   apiUpdateUserRole,
   apiUpdateUserStatus,
   apiResetUserPassword,
-  apiDeleteUser
+  apiDeleteUser,
+  apiCreateProduct,
+  apiUpdateProduct,
+  apiDeleteProduct,
+  apiModerateProduct,
+  apiUpdateOrderStatus
 } from "../../api/backendApi";
 import { useAuth } from "../../context/AuthContext";
+import {
+  lastNDayBuckets,
+  salesWindows,
+  revenueGrowth,
+  summarizeStatuses,
+  computeRepeatCustomers,
+  aggregateBestSellers,
+  summarizeInventory,
+  customerStats
+} from "./reportUtils";
+import "./admin-reports.css";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
   const isSuperAdmin = currentRole === "super_admin" || customRole === "super_admin";
 
-  // Active Tab State (Dashboard or Users)
-  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "users"
+  // Active Tab State (Dashboard, Products, Orders, Customers, Users)
+  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "products" | "orders" | "customers" | "users"
 
   // Global Loading and Sync States
   const [loading, setLoading] = useState(true);
@@ -69,7 +91,28 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [orders, setOrders] = useState([]);
 
   // Time Range for Dashboard Charts
-  const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d" | "all"
+  const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d"
+
+  // Sidebar submenu expansion + per-tab sub-views
+  const [expandedMenus, setExpandedMenus] = useState({ dashboard: true });
+  const [dashboardView, setDashboardView] = useState("overview"); // "overview" | "sales"
+  const [productsView, setProductsView] = useState("list"); // "list" | "add"
+  const [ordersView, setOrdersView] = useState("all"); // "all" | order status
+  const [customersView, setCustomersView] = useState("all"); // "all" | "repeat"
+
+  // Products management states
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productSaving, setProductSaving] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [productForm, setProductForm] = useState({
+    title: "",
+    price: "",
+    original_price: "",
+    category: "Electronics",
+    stock: "15",
+    image_url: "",
+    description: ""
+  });
 
   // Users Tab Filter States
   const [searchUser, setSearchUser] = useState("");
@@ -86,7 +129,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     password: "",
     role: "user",
     storeName: "",
-    status: "active",
     plan: "Basic",
     billing: "Auto Debit"
   });
@@ -163,6 +205,105 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     }
   };
 
+  // Sidebar submenu expand/collapse
+  const toggleMenu = (key) => {
+    setExpandedMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // ----------------------------------------------------
+  // PRODUCTS MANAGEMENT HANDLERS (Admin Catalog)
+  // ----------------------------------------------------
+  const handleOpenAddProduct = () => {
+    setEditingProduct(null);
+    setProductForm({ title: "", price: "", original_price: "", category: "Electronics", stock: "15", image_url: "", description: "" });
+    setProductsView("add");
+  };
+
+  const handleOpenEditProduct = (prod) => {
+    setEditingProduct(prod);
+    setProductForm({
+      title: prod.title || "",
+      price: prod.price !== undefined && prod.price !== null ? String(prod.price) : "",
+      original_price: prod.original_price !== undefined && prod.original_price !== null ? String(prod.original_price) : "",
+      category: prod.category || "Electronics",
+      stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "15",
+      image_url: prod.image_url || prod.image || "",
+      description: prod.description || ""
+    });
+    setProductsView("add");
+  };
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    if (!productForm.title.trim() || !productForm.price) {
+      addToast({ title: "Missing Information", message: "Product title and price are required.", type: "error" });
+      return;
+    }
+    setProductSaving(true);
+    try {
+      const payload = {
+        title: productForm.title.trim(),
+        price: parseFloat(productForm.price),
+        original_price: productForm.original_price ? parseFloat(productForm.original_price) : undefined,
+        category: productForm.category,
+        stock: parseInt(productForm.stock, 10) || 0,
+        image_url: productForm.image_url.trim(),
+        description: productForm.description.trim()
+      };
+      if (editingProduct) {
+        const updated = await apiUpdateProduct(editingProduct.id, payload);
+        setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? { ...p, ...updated } : p)));
+        addToast({ title: "Product Updated", message: `'${payload.title}' saved. Live on the storefront.`, type: "success" });
+      } else {
+        const created = await apiCreateProduct(payload);
+        setProducts((prev) => [created, ...prev]);
+        addToast({ title: "Product Published", message: `'${payload.title}' is now live on the storefront.`, type: "success" });
+      }
+      setEditingProduct(null);
+      setProductsView("list");
+    } catch (err) {
+      addToast({ title: "Save Failed", message: err.message || "Failed to save product.", type: "error" });
+    } finally {
+      setProductSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async (id, title) => {
+    if (!window.confirm(`Remove '${title}' from the catalog? It will disappear from the storefront.`)) return;
+    try {
+      await apiDeleteProduct(id);
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      addToast({ title: "Product Deleted", message: `Removed '${title}' from the catalog.`, type: "info" });
+    } catch (err) {
+      addToast({ title: "Delete Failed", message: err.message, type: "error" });
+    }
+  };
+
+  const handleToggleFeatured = async (prod) => {
+    try {
+      const updated = await apiModerateProduct(prod.id, { is_featured: !prod.is_featured });
+      setProducts((prev) => prev.map((p) => (p.id === prod.id ? { ...p, ...updated } : p)));
+      addToast({ title: updated.is_featured ? "Marked Featured" : "Unmarked Featured", message: `'${prod.title}' updated.`, type: "success" });
+    } catch (err) {
+      addToast({ title: "Update Failed", message: err.message, type: "error" });
+    }
+  };
+
+  // ----------------------------------------------------
+  // ORDERS FULFILLMENT (Admin)
+  // ----------------------------------------------------
+  const handleAdvanceOrder = async (order) => {
+    const next = order.status === "processing" ? "shipped" : order.status === "shipped" ? "delivered" : null;
+    if (!next) return;
+    try {
+      const updated = await apiUpdateOrderStatus(order.id, { status: next });
+      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...updated } : o)));
+      addToast({ title: "Order Updated", message: `Order marked as ${next.toUpperCase()}.`, type: "success" });
+    } catch (err) {
+      addToast({ title: "Update Failed", message: err.message, type: "error" });
+    }
+  };
+
   // ----------------------------------------------------
   // DYNAMIC METRICS & CALCULATIONS (Live from DB)
   // ----------------------------------------------------
@@ -216,38 +357,51 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   // Dynamic Chart Data points generated from DB orders timestamps & counts
   const chartData = useMemo(() => {
-    const days = 7;
-    const result = [];
-    const now = new Date();
+    const points = lastNDayBuckets(orders, timeRange === "30d" ? 30 : 7);
 
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "numeric", day: "numeric" });
-      const dayKey = d.toISOString().split("T")[0];
 
-      // Find orders matching this day
-      const dayOrders = orders.filter(o => {
-        if (!o.created_at) return false;
-        return o.created_at.startsWith(dayKey);
-      });
+    const maxRev = Math.max(...points.map((r) => r.revenue), 100);
+    return { points, maxRevenue: maxRev };
+  }, [orders, timeRange]);
 
-      const dayRevenue = dayOrders.reduce((acc, curr) => acc + (parseFloat(curr.total_amount) || 0), 0);
-      
-      // If no orders recorded for this exact day, synthesize a reasonable proportional baseline for visual aesthetic
-      const displayRevenue = dayRevenue > 0 ? dayRevenue : Math.max(80, Math.round(metrics.totalRevenue / (days * 1.8) + (Math.sin(i * 1.5) * 45)));
+  // ----------------------------------------------------
+  // SALES / CUSTOMER / INVENTORY REPORTS (real DB data)
+  // ----------------------------------------------------
+  const salesReport = useMemo(() => {
+    const windows = salesWindows(orders);
+    const growth = revenueGrowth(orders);
+    const statuses = summarizeStatuses(orders);
+    const repeat = computeRepeatCustomers(orders);
+    const sellers = aggregateBestSellers(orders, 5);
+    const inventory = summarizeInventory(products);
+    const delivered = statuses.delivered + statuses.completed;
+    return {
+      windows,
+      growth,
+      statuses,
+      repeat,
+      sellers,
+      inventory,
+      deliveredRate: statuses.total > 0 ? (delivered / statuses.total) * 100 : null
+    };
+  }, [orders, products]);
 
-      result.push({
-        label: dateStr,
-        day: d.toLocaleDateString("en-US", { weekday: "short" }),
-        revenue: displayRevenue,
-        ordersCount: dayOrders.length || (displayRevenue > 100 ? 2 : 1)
-      });
-    }
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => (p.title || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q));
+  }, [products, productSearch]);
 
-    const maxRev = Math.max(...result.map(r => r.revenue), 100);
-    return { points: result, maxRevenue: maxRev };
-  }, [orders, metrics.totalRevenue]);
+  const filteredOrders = useMemo(() => {
+    if (ordersView === "all") return orders;
+    return orders.filter((o) => String(o.status || "pending").toLowerCase() === ordersView);
+  }, [orders, ordersView]);
+
+  const customerRows = useMemo(() => customerStats(users, orders), [users, orders]);
+  const visibleCustomers = useMemo(
+    () => (customersView === "repeat" ? customerRows.filter((c) => c.repeat) : customerRows),
+    [customerRows, customersView]
+  );
 
   // ----------------------------------------------------
   // USER MANAGEMENT HANDLERS
@@ -299,7 +453,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         password: "",
         role: "user",
         storeName: "",
-        status: "active",
         plan: "Basic",
         billing: "Auto Debit"
       });
@@ -498,6 +651,22 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     );
   };
 
+  const TAB_LABELS = {
+    dashboard: dashboardView === "sales" ? "Sales Report" : "Platform Dashboard",
+    products: "Product Catalog",
+    orders: "Orders Pipeline",
+    customers: "Customer Insights",
+    users: "User Management Directory"
+  };
+
+  const TAB_HEADINGS = {
+    dashboard: dashboardView === "sales" ? (<>Sales <span className="gradient-text">Report</span></>) : (<>Dynamic Platform <span className="gradient-text">Overview</span></>),
+    products: (<>Product <span className="gradient-text">Catalog</span></>),
+    orders: (<>Orders <span className="gradient-text">Pipeline</span></>),
+    customers: (<>Customer <span className="gradient-text">Insights</span></>),
+    users: (<>User Accounts & <span className="gradient-text">Access Control</span></>)
+  };
+
   return (
     <div className="admin-app-layout">
       {/* ==================================================== */}
@@ -529,11 +698,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         <nav className="sidebar-navigation">
           <div className="nav-section-label">PLATFORM CONTROLS</div>
 
-          {/* TAB 1: DASHBOARD */}
+          {/* MENU 1: DASHBOARD (with submenu) */}
           <button
             id="admin-tab-dashboard"
-            onClick={() => setActiveTab("dashboard")}
+            onClick={() => { setActiveTab("dashboard"); setDashboardView("overview"); toggleMenu("dashboard"); }}
             className={`sidebar-tab-button ${activeTab === "dashboard" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.dashboard}
           >
             <div className="tab-icon-box">
               <LayoutDashboard size={19} />
@@ -542,8 +712,31 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className="tab-title">Dashboard</span>
               <span className="tab-description">Live Metrics & Charts</span>
             </div>
+            <span className={`sidebar-parent-chevron ${expandedMenus.dashboard ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
             {activeTab === "dashboard" && <div className="active-glow-indicator"></div>}
           </button>
+          {expandedMenus.dashboard && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-dashboard-overview"
+                onClick={() => { setActiveTab("dashboard"); setDashboardView("overview"); }}
+                className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "overview" ? "active" : ""}`}
+              >
+                <BarChart3 size={14} />
+                <span>Overview</span>
+              </button>
+              <button
+                id="admin-tab-dashboard-sales"
+                onClick={() => { setActiveTab("dashboard"); setDashboardView("sales"); }}
+                className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "sales" ? "active" : ""}`}
+              >
+                <Wallet size={14} />
+                <span>Sales Report</span>
+              </button>
+            </div>
+          )}
 
           {/* TAB 2: USERS */}
           <button
@@ -561,6 +754,142 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <span className="tab-badge-counter">{users.length}</span>
             {activeTab === "users" && <div className="active-glow-indicator"></div>}
           </button>
+
+          <div className="nav-section-label">CATALOG & SALES</div>
+
+          {/* MENU 3: PRODUCTS (with submenu) */}
+          <button
+            id="admin-tab-products"
+            onClick={() => { setActiveTab("products"); setProductsView("list"); toggleMenu("products"); }}
+            className={`sidebar-tab-button ${activeTab === "products" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.products}
+          >
+            <div className="tab-icon-box">
+              <Package size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Products</span>
+              <span className="tab-description">Catalog & Inventory</span>
+            </div>
+            <span className="tab-badge-counter">{products.length}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.products ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
+            {activeTab === "products" && <div className="active-glow-indicator"></div>}
+          </button>
+          {expandedMenus.products && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-products-list"
+                onClick={() => { setActiveTab("products"); setProductsView("list"); }}
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
+              >
+                <Package size={14} />
+                <span>All Products</span>
+                <span className="sidebar-submenu-count">{products.length}</span>
+              </button>
+              <button
+                id="admin-tab-products-add"
+                onClick={() => { setActiveTab("products"); handleOpenAddProduct(); }}
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
+              >
+                <Plus size={14} />
+                <span>Add Product</span>
+              </button>
+            </div>
+          )}
+
+          {/* MENU 4: ORDERS (with submenu) */}
+          <button
+            id="admin-tab-orders"
+            onClick={() => { setActiveTab("orders"); setOrdersView("all"); toggleMenu("orders"); }}
+            className={`sidebar-tab-button ${activeTab === "orders" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.orders}
+          >
+            <div className="tab-icon-box">
+              <ClipboardList size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Orders</span>
+              <span className="tab-description">Pipeline & Fulfillment</span>
+            </div>
+            <span className="tab-badge-counter">{orders.length}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.orders ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
+            {activeTab === "orders" && <div className="active-glow-indicator"></div>}
+          </button>
+          {expandedMenus.orders && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-orders-all"
+                onClick={() => { setActiveTab("orders"); setOrdersView("all"); }}
+                className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "all" ? "active" : ""}`}
+              >
+                <ClipboardList size={14} />
+                <span>All Orders</span>
+                <span className="sidebar-submenu-count">{orders.length}</span>
+              </button>
+              <button
+                id="admin-tab-orders-pending"
+                onClick={() => { setActiveTab("orders"); setOrdersView("pending"); }}
+                className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "pending" ? "active" : ""}`}
+              >
+                <Activity size={14} />
+                <span>Pending</span>
+              </button>
+              <button
+                id="admin-tab-orders-delivered"
+                onClick={() => { setActiveTab("orders"); setOrdersView("delivered"); }}
+                className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "delivered" ? "active" : ""}`}
+              >
+                <CheckCircle size={14} />
+                <span>Delivered</span>
+              </button>
+            </div>
+          )}
+
+          {/* MENU 5: CUSTOMERS (with submenu) */}
+          <button
+            id="admin-tab-customers"
+            onClick={() => { setActiveTab("customers"); setCustomersView("all"); toggleMenu("customers"); }}
+            className={`sidebar-tab-button ${activeTab === "customers" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.customers}
+          >
+            <div className="tab-icon-box">
+              <Users size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Customers</span>
+              <span className="tab-description">Insights & Repeat</span>
+            </div>
+            <span className="tab-badge-counter">{salesReport.repeat.totalCustomers}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.customers ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
+            {activeTab === "customers" && <div className="active-glow-indicator"></div>}
+          </button>
+          {expandedMenus.customers && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-customers-all"
+                onClick={() => { setActiveTab("customers"); setCustomersView("all"); }}
+                className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "all" ? "active" : ""}`}
+              >
+                <Users size={14} />
+                <span>All Customers</span>
+              </button>
+              <button
+                id="admin-tab-customers-repeat"
+                onClick={() => { setActiveTab("customers"); setCustomersView("repeat"); }}
+                className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "repeat" ? "active" : ""}`}
+              >
+                <Repeat size={14} />
+                <span>Repeat Buyers</span>
+                <span className="sidebar-submenu-count">{salesReport.repeat.repeatCustomers}</span>
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* SIDEBAR FOOTER: USER PROFILE & SIGNOUT BUTTON */}
@@ -622,15 +951,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span>{isSuperAdmin ? "Super Admin" : "Admin"}</span>
               <ChevronRight size={14} />
               <span className="current-page-label">
-                {activeTab === "dashboard" ? "Platform Dashboard" : "User Management Directory"}
+                {TAB_LABELS[activeTab] || TAB_LABELS.dashboard}
               </span>
             </div>
             <h1 className="navbar-page-heading">
-              {activeTab === "dashboard" ? (
-                <>Dynamic Platform <span className="gradient-text">Overview</span></>
-              ) : (
-                <>User Accounts & <span className="gradient-text">Access Control</span></>
-              )}
+              {TAB_HEADINGS[activeTab] || TAB_HEADINGS.dashboard}
             </h1>
           </div>
 
@@ -669,7 +994,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {/* TAB 1: DYNAMIC DASHBOARD (Charts & Live DB Data)   */}
         {/* ================================================== */}
-        {activeTab === "dashboard" && (
+{activeTab === "dashboard" && dashboardView === "overview" && (
           <div className="dashboard-tab-view animate-fade-in">
             {/* KPI STATS CARDS GRID */}
             <div className="metrics-cards-grid">
@@ -686,10 +1011,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <span className="kpi-number">{metrics.totalRevenue}</span>
                 </div>
                 <div className="kpi-footer-row">
-                  <span className="kpi-growth-badge positive">
-                    <TrendingUp size={13} />
-                    +18.4%
-                  </span>
+                  {salesReport.growth.percent === null ? (
+                    <span className="kpi-subtext">First week of sales data</span>
+                  ) : (
+                    <span className={`kpi-growth-badge ${salesReport.growth.percent >= 0 ? "positive" : "negative"}`}>
+                      <TrendingUp size={13} />
+                      {salesReport.growth.percent >= 0 ? "+" : ""}{salesReport.growth.percent.toFixed(1)}%
+                    </span>
+                  )}
                   <span className="kpi-subtext">Avg Order: ${metrics.aov}</span>
                 </div>
               </div>
@@ -819,8 +1148,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </div>
                   <div className="bottom-metric-item">
                     <span className="dot purple"></span>
-                    <span className="label">Conversion Rate:</span>
-                    <span className="val">4.2%</span>
+                    <span className="label">Delivered Rate:</span>
+                    <span className="val">{salesReport.deliveredRate === null ? "No orders yet" : `${salesReport.deliveredRate.toFixed(1)}%`}</span>
                   </div>
                 </div>
               </div>
@@ -974,6 +1303,152 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
             </div>
           </div>
+        )}
+{activeTab === "dashboard" && dashboardView === "sales" && (
+            <div className="dashboard-tab-view animate-fade-in">
+              {/* Sales window KPI cards */}
+              <div className="sales-mini-grid">
+                <div className="sales-mini-card teal">
+                  <span className="sales-mini-label">Today Orders</span>
+                  <span className="sales-mini-value">${salesReport.windows.today.revenue.toFixed(2)}</span>
+                  <span className="sales-mini-sub">{salesReport.windows.today.orders} orders today</span>
+                </div>
+                <div className="sales-mini-card orange">
+                  <span className="sales-mini-label">Yesterday Orders</span>
+                  <span className="sales-mini-value">${salesReport.windows.yesterday.revenue.toFixed(2)}</span>
+                  <span className="sales-mini-sub">{salesReport.windows.yesterday.orders} orders yesterday</span>
+                </div>
+                <div className="sales-mini-card blue">
+                  <span className="sales-mini-label">This Month</span>
+                  <span className="sales-mini-value">${salesReport.windows.thisMonth.revenue.toFixed(2)}</span>
+                  <span className="sales-mini-sub">{salesReport.windows.thisMonth.orders} orders this month</span>
+                </div>
+                <div className="sales-mini-card green">
+                  <span className="sales-mini-label">Last Month</span>
+                  <span className="sales-mini-value">${salesReport.windows.lastMonth.revenue.toFixed(2)}</span>
+                  <span className="sales-mini-sub">{salesReport.windows.lastMonth.orders} orders last month</span>
+                </div>
+              </div>
+
+              {/* Pipeline + best sellers */}
+              <div className="reports-grid-2">
+                <div className="report-card">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-title">Orders Pipeline</h3>
+                      <p className="chart-subtitle">Live fulfillment stages from the database</p>
+                    </div>
+                    <ClipboardList size={18} className="text-muted" />
+                  </div>
+                  {[["Pending", salesReport.statuses.pending, "slate"], ["Processing", salesReport.statuses.processing, "amber"], ["Shipped", salesReport.statuses.shipped, ""], ["Delivered", salesReport.statuses.delivered, "emerald"], ["Cancelled", salesReport.statuses.cancelled, "rose"]].map(([label, count, tone]) => (
+                    <div key={label} className="pipeline-row">
+                      <span className="pipeline-label">{label}</span>
+                      <div className="pipeline-bar-track">
+                        <div
+                          className={`pipeline-bar-fill ${tone}`}
+                          style={{ width: `${salesReport.statuses.total > 0 ? Math.round((count / salesReport.statuses.total) * 100) : 0}%` }}
+                        />
+                      </div>
+                      <span className="pipeline-count">{count}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="report-card">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-title">Best Selling Products</h3>
+                      <p className="chart-subtitle">Ranked by revenue from order line items</p>
+                    </div>
+                    <Star size={18} className="text-muted" />
+                  </div>
+                  {salesReport.sellers.length === 0 ? (
+                    <p className="report-empty">No product sales recorded yet.</p>
+                  ) : (
+                    salesReport.sellers.map((item, i) => (
+                      <div key={item.title} className="topseller-row">
+                        <span className="topseller-rank">{i + 1}</span>
+                        {item.image ? <img src={item.image} alt={item.title} className="topseller-img" /> : null}
+                        <div className="topseller-info">
+                          <div className="topseller-name">{item.title}</div>
+                          <div className="topseller-meta">{item.qty} sold</div>
+                        </div>
+                        <span className="topseller-rev">${item.revenue.toFixed(2)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Repeat buyers + inventory */}
+              <div className="reports-grid-2">
+                <div className="report-card">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-title">Repeat Customers</h3>
+                      <p className="chart-subtitle">Shoppers who ordered more than once</p>
+                    </div>
+                    <Repeat size={18} className="text-muted" />
+                  </div>
+                  <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
+                    <strong style={{ color: "#0f172a" }}>{salesReport.repeat.repeatRate.toFixed(1)}%</strong>
+                    {` of ${salesReport.repeat.totalCustomers} customers bought more than once`}
+                  </p>
+                  {salesReport.repeat.top.length === 0 ? (
+                    <p className="report-empty">No repeat buyers yet.</p>
+                  ) : (
+                    salesReport.repeat.top.map((buyer) => (
+                      <div key={buyer.key} className="repeat-row">
+                        <div className="repeat-avatar">{(buyer.name || "M").charAt(0).toUpperCase()}</div>
+                        <div className="repeat-info">
+                          <div className="repeat-name">{buyer.name}</div>
+                          <div className="repeat-meta">{buyer.email || "no email"} • {buyer.orders} orders</div>
+                        </div>
+                        <span className="topseller-rev">${buyer.spent.toFixed(2)}</span>
+                        <span className="repeat-badge">Repeat</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="report-card">
+                  <div className="chart-card-header">
+                    <div>
+                      <h3 className="chart-title">Inventory Snapshot</h3>
+                      <p className="chart-subtitle">Catalog value at current selling price</p>
+                    </div>
+                    <Boxes size={18} className="text-muted" />
+                  </div>
+                  <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
+                    Catalog value: 
+                    <strong style={{ color: "#0f172a" }}>${salesReport.inventory.value.toFixed(2)}</strong>
+                  </p>
+                  {[
+                    ["In Stock", salesReport.inventory.inStock, "ok"],
+                    ["Low Stock (5 or fewer)", salesReport.inventory.lowStock, "low"],
+                    ["Out of Stock", salesReport.inventory.outOfStock, "out"]
+                  ].map(([label, count, tone]) => (
+                    <div key={label} className="pipeline-row">
+                      <span className="pipeline-label">{label}</span>
+                      <div className="pipeline-bar-track">
+                        <div
+                          className={`pipeline-bar-fill ${tone === "ok" ? "emerald" : tone === "low" ? "amber" : "rose"}`}
+                          style={{ width: `${salesReport.inventory.total > 0 ? Math.round((count / salesReport.inventory.total) * 100) : 0}%` }}
+                        />
+                      </div>
+                      <span className="pipeline-count">{count}</span>
+                    </div>
+                  ))}
+                  <div className="chart-card-footer-action">
+                    <Button
+                      variant="outline"
+                      className="full-width-btn"
+                      onClick={() => { setActiveTab("products"); setProductsView("list"); }}
+                    >
+                      Manage Product Catalog <ChevronRight size={14} />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
         )}
 
         {/* ================================================== */}
@@ -1230,6 +1705,338 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           </div>
         )}
+
+        {/* ================================================== */}
+        {/* TAB 3: PRODUCT CATALOG (list, add, edit, feature)  */}
+        {/* ================================================== */}
+        {activeTab === "products" && (
+          <div className="dashboard-tab-view animate-fade-in">
+            <div className="products-toolbar">
+              <div className="search-input-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search catalog by title or category..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="users-search-field"
+                />
+              </div>
+              <Button
+                id="admin-add-product-button"
+                onClick={handleOpenAddProduct}
+                className="add-user-primary-btn"
+              >
+                <Plus size={16} />
+                <span>Add Product</span>
+              </Button>
+            </div>
+
+            {productsView === "add" && (
+              <div className="product-form-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">{editingProduct ? "Edit Product" : "Add Product"}</h3>
+                    <p className="chart-subtitle">{editingProduct ? "Updates go live on the storefront immediately." : "New products publish straight to the storefront."}</p>
+                  </div>
+                </div>
+                <form onSubmit={handleSaveProduct} className="modal-form">
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label">Product Title *</label>
+                      <Input required type="text" placeholder="e.g. Aurora Wireless Speaker" value={productForm.title} onChange={(e) => setProductForm((prev) => ({ ...prev, title: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Category</label>
+                      <select value={productForm.category} onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))} className="form-select-field">
+                        {["Electronics", "Fashion", "Home", "Beauty", "Wearables", "Sports", "Grocery", "Toys"].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label">Price (Rs) *</label>
+                      <Input required type="number" min="0" step="0.01" placeholder="e.g. 4999" value={productForm.price} onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Original Price (Rs)</label>
+                      <Input type="number" min="0" step="0.01" placeholder="Optional" value={productForm.original_price} onChange={(e) => setProductForm((prev) => ({ ...prev, original_price: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Stock Units</label>
+                      <Input type="number" min="0" step="1" placeholder="15" value={productForm.stock} onChange={(e) => setProductForm((prev) => ({ ...prev, stock: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Image URL</label>
+                    <Input type="text" placeholder="https://..." value={productForm.image_url} onChange={(e) => setProductForm((prev) => ({ ...prev, image_url: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Description</label>
+                    <Input type="text" placeholder="Short product description" value={productForm.description} onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))} />
+                  </div>
+                  <div className="modal-actions-footer">
+                    <Button type="button" variant="outline" onClick={() => { setEditingProduct(null); setProductsView("list"); }}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={productSaving} className="submit-primary-btn">
+                      {productSaving ? (
+                        <><RefreshCw size={15} className="spin-animation" /> Saving...</>
+                      ) : (
+                        <><Check size={16} /> {editingProduct ? "Save Changes" : "Publish Product"}</>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="users-table-card">
+              <div className="table-card-top-info">
+                <span className="results-count">
+                  Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> catalog items
+                </span>
+              </div>
+              <div className="table-responsive-wrapper">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>PRODUCT</th>
+                      <th>CATEGORY</th>
+                      <th>PRICE</th>
+                      <th>STOCK</th>
+                      <th>FEATURED</th>
+                      <th className="text-right">ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="empty-table-cell">
+                          <Package size={28} className="empty-icon" />
+                          <p>No products found. Add your first product to the catalog.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredProducts.map((prod) => {
+                        const stockCount = parseInt(prod.stock, 10) || 0;
+                        return (
+                        <tr key={prod.id}>
+                          <td>
+                            <div className="product-cell">
+                              {(prod.image_url || prod.image) ? <img src={prod.image_url || prod.image} alt={prod.title} className="product-thumb" /> : null}
+                              <div>
+                                <div className="product-title-text">{prod.title}</div>
+                                <div className="product-sku-text">{prod.sku || String(prod.id).substring(0, 8)}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{prod.category}</td>
+                          <td className="font-bold">
+                            ${parseFloat(prod.price || 0).toFixed(2)}
+                            {prod.original_price ? <span className="text-muted text-sm"> <s>${parseFloat(prod.original_price).toFixed(2)}</s></span> : null}
+                          </td>
+                          <td>
+                            <span className={`stock-pill ${stockCount <= 0 ? "out" : stockCount <= 5 ? "low" : "ok"}`}>
+                              {stockCount} in stock
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="feature-star-btn"
+                              onClick={() => handleToggleFeatured(prod)}
+                              title={prod.is_featured ? "Remove featured flag" : "Mark as featured"}
+                              aria-label={prod.is_featured ? `Unmark ${prod.title} as featured` : `Mark ${prod.title} as featured`}
+                              aria-pressed={!!prod.is_featured}
+                            >
+                              <Star size={17} color={prod.is_featured ? "#f59e0b" : "#cbd5e1"} fill={prod.is_featured ? "#f59e0b" : "none"} />
+                            </button>
+                          </td>
+                          <td className="text-right">
+                            <div className="user-actions-row">
+                              <button
+                                onClick={() => handleOpenEditProduct(prod)}
+                                className="action-btn edit-btn"
+                                title="Edit product"
+                              >
+                                <Edit2 size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProduct(prod.id, prod.title)}
+                                className="action-btn delete-btn"
+                                title="Delete product"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================== */}
+        {/* TAB 4: ORDERS PIPELINE (filter + fulfillment)      */}
+        {/* ================================================== */}
+        {activeTab === "orders" && (
+          <div className="dashboard-tab-view animate-fade-in">
+            <div className="report-pills-row">
+              {[["all", "All Orders", orders.length], ["pending", "Pending", salesReport.statuses.pending], ["processing", "Processing", salesReport.statuses.processing], ["shipped", "Shipped", salesReport.statuses.shipped], ["delivered", "Delivered", salesReport.statuses.delivered]].map(([value, label, count]) => (
+                <button
+                  key={value}
+                  onClick={() => setOrdersView(value)}
+                  className={`chart-pill-btn ${ordersView === value ? "active" : ""}`}
+                >
+                  {label} ({count})
+                </button>
+              ))}
+            </div>
+            <div className="users-table-card">
+              <div className="table-card-top-info">
+                <span className="results-count">
+                  Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> order records
+                </span>
+              </div>
+              <div className="table-responsive-wrapper">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>ORDER ID</th>
+                      <th>CUSTOMER</th>
+                      <th>ITEMS</th>
+                      <th>TOTAL AMOUNT</th>
+                      <th>STATUS</th>
+                      <th>DATE</th>
+                      <th className="text-right">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="empty-table-cell">
+                          <ClipboardList size={28} className="empty-icon" />
+                          <p>No orders in this stage yet.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOrders.slice(0, 20).map((order, idx) => (
+                        <tr key={order.id || idx}>
+                          <td className="font-mono text-primary font-bold">#{String(order.id).substring(0, 8)}</td>
+                          <td>
+                            <div className="customer-info-cell">
+                              <span className="customer-name">{order.customer_name || "Marvel Shopper"}</span>
+                              <span className="customer-email">{order.customer_email || "user@marvel.com"}</span>
+                            </div>
+                          </td>
+                          <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
+                          <td className="font-bold text-emerald">${typeof order.total_amount === "number" ? order.total_amount.toFixed(2) : parseFloat(order.total_amount || 0).toFixed(2)}</td>
+                          <td>
+                            <span className={`status-pill ${order.status || "processing"}`}>
+                              <span className="status-dot"></span>
+                              {order.status || "Processing"}
+                            </span>
+                          </td>
+                          <td className="text-muted text-sm">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Today"}
+                          </td>
+                          <td className="text-right">
+                            {order.status === "processing" || order.status === "shipped" ? (
+                              <Button variant="outline" size="sm" onClick={() => handleAdvanceOrder(order)}>
+                                Mark {order.status === "processing" ? "Shipped" : "Delivered"}
+                              </Button>
+                            ) : (
+                              <span className="text-muted text-sm">No action</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================== */}
+        {/* TAB 5: CUSTOMER INSIGHTS (all + repeat buyers)     */}
+        {/* ================================================== */}
+        {activeTab === "customers" && (
+          <div className="dashboard-tab-view animate-fade-in">
+            <div className="report-pills-row">
+              <button
+                onClick={() => setCustomersView("all")}
+                className={`chart-pill-btn ${customersView === "all" ? "active" : ""}`}
+              >
+                All Customers ({customerRows.length})
+              </button>
+              <button
+                onClick={() => setCustomersView("repeat")}
+                className={`chart-pill-btn ${customersView === "repeat" ? "active" : ""}`}
+              >
+                Repeat Buyers ({salesReport.repeat.repeatCustomers})
+              </button>
+            </div>
+            <div className="users-table-card">
+              <div className="table-card-top-info">
+                <span className="results-count">
+                  Showing <strong>{visibleCustomers.length}</strong> customers
+                </span>
+              </div>
+              <div className="table-responsive-wrapper">
+                <table className="admin-data-table">
+                  <thead>
+                    <tr>
+                      <th>CUSTOMER</th>
+                      <th>ORDERS</th>
+                      <th>TOTAL SPENT</th>
+                      <th>LAST ORDER</th>
+                      <th>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleCustomers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="empty-table-cell">
+                          <Users size={28} className="empty-icon" />
+                          <p>No customers in this segment yet.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      visibleCustomers.slice(0, 20).map((cust) => (
+                        <tr key={cust.id || cust.email}>
+                          <td>
+                            <div className="user-profile-cell">
+                              <div className="user-table-avatar user">{(cust.name || "M").charAt(0).toUpperCase()}</div>
+                              <div className="user-meta-column">
+                                <span className="user-full-name">{cust.name}</span>
+                                <span className="user-email-text">{cust.email || "no email on file"}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="font-bold">{cust.orders}</td>
+                          <td className="font-bold text-emerald">${cust.spent.toFixed(2)}</td>
+                          <td className="text-muted text-sm">
+                            {cust.lastOrderAt ? new Date(cust.lastOrderAt).toLocaleDateString() : "Never"}
+                          </td>
+                          <td>{cust.repeat ? <span className="repeat-badge">Repeat Buyer</span> : renderStatusBadge(cust.status)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ==================================================== */}
@@ -1329,19 +2136,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </select>
                 </div>
 
-                {/* Status Selector */}
-                <div className="form-group">
-                  <label className="form-label">Initial Status</label>
-                  <select
-                    value={addUserForm.status}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, status: e.target.value }))}
-                    className="form-select-field"
-                  >
-                    <option value="active">Active (Immediate Access)</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending Approval</option>
-                  </select>
-                </div>
+
               </div>
 
               {/* Vendor Store Name if role is vendor */}

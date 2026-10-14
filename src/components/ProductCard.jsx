@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { Card, Badge, Button, Rating, ProductPrice, SimpleTooltip, useToast } from "./ui";
 import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
+import { useCart } from "../context/CartContext";
 
 export function ProductCard({ product, onQuickView, onNavigate }) {
   const [wishlisted, setWishlisted] = useState(false);
   const [cartState, setCartState] = useState("idle"); // idle | loading | added
   const [imageLoaded, setImageLoaded] = useState(false);
   const { addToast } = useToast();
+  const { addItem } = useCart();
 
   const title = product?.title || product?.name || "Product";
   const image = product?.image_url || product?.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
@@ -33,6 +35,7 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     setCartState("loading");
     setTimeout(() => {
       setCartState("added");
+      addItem(product, 1);
       addToast({
         title: "Added to Cart",
         message: `${title} was added to your shopping cart.`,

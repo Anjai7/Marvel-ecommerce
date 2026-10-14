@@ -1,0 +1,16 @@
+pre-commit:
+  jobs:
+    - name: Lint staged JavaScript
+      glob: "*.{js,jsx,mjs,cjs}"
+      run: npm exec -- oxlint --fix {staged_files}
+      stage_fixed: true
+
+    - name: Format staged files
+      glob: "*.{js,jsx,mjs,cjs,css,scss,html,json,jsonc,yml,yaml,md}"
+      run: npm exec -- prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - name: Run project checks
+      run: npm run check
