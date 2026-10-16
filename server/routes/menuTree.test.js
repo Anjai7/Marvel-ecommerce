@@ -237,6 +237,36 @@ describe("POST /api/menu is_active persistence", () => {
     expect(saved).toBeDefined();
     expect(saved.is_active).toBe(true);
   });
+
+  it("round-trips section, badge_variant, and promo fields (incl. promo_cta_*)", async () => {
+    const payload = {
+      title: "Promo Round Trip Item",
+      path: "/promo-round-trip",
+      section: "Shop by Type",
+      section_icon: "📱",
+      badge: "New",
+      badge_variant: "success",
+      promo_title: "Round Trip Promo",
+      promo_subtitle: "Promo sub",
+      promo_image_url: "https://example.com/promo.png",
+      promo_cta_text: "Shop the Drop",
+      promo_cta_path: "/promo-drop",
+    };
+    const res = await fetch(`${base}/api/menu`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify(payload),
+    });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()).menu.find((m) => m.title === "Promo Round Trip Item");
+    expect(saved).toBeDefined();
+    expect(saved.section).toBe("Shop by Type");
+    expect(saved.section_icon).toBe("📱");
+    expect(saved.badge_variant).toBe("success");
+    expect(saved.promo_title).toBe("Round Trip Promo");
+    expect(saved.promo_cta_text).toBe("Shop the Drop");
+    expect(saved.promo_cta_path).toBe("/promo-drop");
+  });
 });
 
 describe("PATCH /api/menu/reorder validation", () => {

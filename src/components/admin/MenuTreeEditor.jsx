@@ -41,7 +41,7 @@ function normalizeToTree(data) {
   const list = Array.isArray(data) ? data : Array.isArray(data?.menu) ? data.menu : [];
   if (list.length === 0) return [];
   if (list.some((item) => Array.isArray(item?.children))) {
-    return list;
+    return [...list].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
   }
   const byId = new Map();
   for (const row of list) {
@@ -96,6 +96,8 @@ function blankForm(parent) {
     promo_title: "",
     promo_subtitle: "",
     promo_image_url: "",
+    promo_cta_text: "",
+    promo_cta_path: "",
     parent_id: parent?.id ?? null,
     level: String(parent ? Number(parent.level ?? 1) + 1 : 1),
   };
@@ -116,6 +118,8 @@ function editForm(item, parentId) {
     promo_title: item.promo_title || "",
     promo_subtitle: item.promo_subtitle || "",
     promo_image_url: item.promo_image_url || "",
+    promo_cta_text: item.promo_cta_text || "",
+    promo_cta_path: item.promo_cta_path || "",
     parent_id: item.parent_id ?? parentId ?? null,
     level: String(item.level ?? (parentId ? 2 : 1)),
   };
@@ -237,6 +241,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
         promo_title: editing.promo_title || null,
         promo_subtitle: editing.promo_subtitle || null,
         promo_image_url: editing.promo_image_url || null,
+        promo_cta_text: editing.promo_cta_text || null,
+        promo_cta_path: editing.promo_cta_path || null,
       };
       await apiSaveMenuItem(payload);
       setEditing(null);
@@ -544,6 +550,30 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   value={editing.promo_image_url}
                   onChange={(e) => setFormField("promo_image_url", e.target.value)}
                 />
+              </div>
+              <div className="form-group-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="menu-promo-cta-text">
+                    Promo CTA text
+                  </label>
+                  <Input
+                    id="menu-promo-cta-text"
+                    type="text"
+                    value={editing.promo_cta_text}
+                    onChange={(e) => setFormField("promo_cta_text", e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="menu-promo-cta-path">
+                    Promo CTA path
+                  </label>
+                  <Input
+                    id="menu-promo-cta-path"
+                    type="text"
+                    value={editing.promo_cta_path}
+                    onChange={(e) => setFormField("promo_cta_path", e.target.value)}
+                  />
+                </div>
               </div>
               <div className="modal-actions-footer">
                 <Button type="button" variant="outline" onClick={() => setEditing(null)}>

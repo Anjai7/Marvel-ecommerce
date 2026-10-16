@@ -182,8 +182,16 @@ router.post("/", ...adminOnly, async (req, res) => {
         path: menuItem.path,
         icon: menuItem.icon || "Layers",
         badge: menuItem.badge || null,
+        badge_variant: menuItem.badge_variant || "accent",
         parent_id: menuItem.parent_id || null,
         level,
+        section: menuItem.section || null,
+        section_icon: menuItem.section_icon || null,
+        promo_title: menuItem.promo_title || null,
+        promo_subtitle: menuItem.promo_subtitle || null,
+        promo_image_url: menuItem.promo_image_url || null,
+        promo_cta_text: menuItem.promo_cta_text || null,
+        promo_cta_path: menuItem.promo_cta_path || null,
         roles_allowed: menuItem.roles_allowed || ["user", "vendor", "admin", "super_admin"],
         order_index: menuItem.order_index ?? 0,
         is_active: menuItem.is_active ?? true,
@@ -193,6 +201,7 @@ router.post("/", ...adminOnly, async (req, res) => {
     if (error) console.warn("Supabase menu save warning:", error.message);
   } catch (e) {
     console.warn("Supabase save exception:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to save menu item." });
   }
 
   // Update in-memory fallback
@@ -299,6 +308,7 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
     }
   } catch (e) {
     console.warn("Supabase reorder exception:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to reorder menu items." });
   }
 
   // Mirror in-memory fallback
@@ -323,9 +333,14 @@ router.delete("/:id", ...adminOnly, async (req, res) => {
   const { id } = req.params;
 
   try {
-    await supabase.from("menu_items").delete().eq("id", id);
+    const { error } = await supabase.from("menu_items").delete().eq("id", id);
+    if (error) {
+      console.warn("Supabase delete warning:", error.message);
+      return res.status(500).json({ error: error.message || "Failed to delete menu item." });
+    }
   } catch (e) {
     console.warn("Supabase delete warning:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to delete menu item." });
   }
 
   fallbackMenu = fallbackMenu.filter((m) => m.id !== id);

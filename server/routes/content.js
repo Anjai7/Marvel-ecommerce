@@ -117,6 +117,7 @@ router.post("/hero", ...adminOnly, async (req, res) => {
     }
   } catch (e) {
     console.warn("Supabase hero save exception:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to save hero slide." });
   }
 
   return res.json({ message: "Hero slide saved successfully to Supabase DB" });
@@ -133,6 +134,7 @@ router.delete("/hero/:id", ...adminOnly, async (req, res) => {
     }
   } catch (e) {
     console.warn("Supabase hero delete warning:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to delete hero slide." });
   }
   return res.json({ message: "Hero slide deleted from Supabase DB" });
 });
@@ -179,6 +181,7 @@ router.post("/categories", ...adminOnly, async (req, res) => {
     }
   } catch (e) {
     console.warn("Supabase category save exception:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to save site category." });
   }
 
   return res.json({ message: "Site category saved successfully to Supabase DB" });
@@ -195,6 +198,7 @@ router.delete("/categories/:id", ...adminOnly, async (req, res) => {
     }
   } catch (e) {
     console.warn("Supabase category delete warning:", e.message);
+    return res.status(500).json({ error: e.message || "Failed to delete site category." });
   }
   return res.json({ message: "Site category deleted from Supabase DB" });
 });

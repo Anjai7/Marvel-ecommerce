@@ -106,14 +106,14 @@ function SectionIcon({ value }) {
  * headers (ordered/grouped by `section`), level-3 nodes become links,
  * and a promo card renders when `promo_title` is set.
  */
-function LiveMegaMenu({ root, alignRight, onNavigate }) {
+export function LiveMegaMenu({ root, alignRight, onNavigate }) {
   const level2 = groupBySection((root.children || []).filter(isVisible).sort(byOrder));
   const featured = root.promo_title
     ? {
         title: root.promo_title,
         subtitle: root.promo_subtitle || "",
         image: root.promo_image_url || "",
-        cta: "Shop Now",
+        cta: root.promo_cta_text || "Shop Now",
       }
     : null;
 
@@ -184,7 +184,9 @@ function LiveMegaMenu({ root, alignRight, onNavigate }) {
         <div className="mega-menu-featured-column">
           <MegaMenuFeaturedCard
             {...featured}
-            onSelect={() => onNavigate && onNavigate(root.path || "/", root)}
+            onSelect={() =>
+              onNavigate && onNavigate(root.promo_cta_path || root.path || "/", root)
+            }
           />
         </div>
       )}

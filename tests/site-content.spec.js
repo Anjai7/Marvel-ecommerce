@@ -169,6 +169,43 @@ test("dynamic menu renders live tree with promo when the menu API returns data",
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
+test("homepage nav renders live menu tree when the menu API returns data", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.route("**/api/menu**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(LIVE_MENU_TREE),
+    })
+  );
+
+  // Homepage mounts HoverNav (storefront), which renders live data when present.
+  const response = await page.goto("/");
+  expect(response?.ok()).toBe(true);
+
+  const nav = page.locator("nav.hover-nav");
+  await expect(nav).toBeVisible();
+  const l1 = nav.getByText("LiveDept", { exact: true }).first();
+  await expect(l1).toBeVisible();
+
+  await l1.hover();
+  const mega = page.locator(".mega-menu").first();
+  await expect(mega).toBeVisible();
+  // L2 column header (emoji section_icon renders as-is).
+  await expect(mega.getByText("LiveSection", { exact: true })).toBeVisible();
+  // L3 link button.
+  await expect(mega.getByRole("menuitem", { name: /LiveLink/ })).toBeVisible();
+  // Promo card from promo_title.
+  await expect(mega.getByText("Live Promo", { exact: true })).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test("hero CTA is fully inside the carousel at tablet-768 (showcase hidden)", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
 

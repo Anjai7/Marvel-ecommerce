@@ -118,4 +118,42 @@ describe("content write error surfacing", () => {
     const cats = await (await fetch(`${base}/api/content/categories`)).json();
     expect(cats).toEqual({ categories: [] });
   });
+
+  it("POST /api/content/hero surfaces a thrown exception as 500", async () => {
+    mockFrom.mockImplementation(() => {
+      throw new Error("connection reset");
+    });
+    const res = await fetch(`${base}/api/content/hero`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ title: "Sale", order_index: 0 }),
+    });
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toMatch(/connection reset/);
+  });
+
+  it("POST /api/content/categories surfaces a thrown exception as 500", async () => {
+    mockFrom.mockImplementation(() => {
+      throw new Error("connection reset");
+    });
+    const res = await fetch(`${base}/api/content/categories`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ name: "Mobiles", order_index: 1 }),
+    });
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toMatch(/connection reset/);
+  });
+
+  it("DELETE /api/content/hero/:id surfaces a thrown exception as 500", async () => {
+    mockFrom.mockImplementation(() => {
+      throw new Error("connection reset");
+    });
+    const res = await fetch(`${base}/api/content/hero/some-id`, {
+      method: "DELETE",
+      headers: adminHeaders,
+    });
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toMatch(/connection reset/);
+  });
 });
