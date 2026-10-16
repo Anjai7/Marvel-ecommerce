@@ -71,7 +71,7 @@ export default function CategorySlider() {
                   transition={{ duration: 0.18 }}
                 >
                   <div className="cat-img-wrap">
-                    <img src={cat.image} alt={cat.name} loading="lazy" />
+                    {cat.image && <img src={cat.image} alt={cat.name} loading="lazy" />}
                   </div>
                   <span className="cat-label">{cat.name}</span>
                 </motion.div>

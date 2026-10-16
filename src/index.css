@@ -6283,6 +6283,11 @@ input:focus:not(:focus-visible) {
   min-height: 40px;
 }
 
+/* L1 bar targets: 44px via .hover-nav-item, restated here as an explicit guard */
+.dynamic-menu .hover-nav-item {
+  min-height: 40px;
+}
+
 @media (max-width: 900px) {
   html,
   body {

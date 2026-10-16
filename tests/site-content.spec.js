@@ -88,6 +88,119 @@ test("dynamic menu falls back to static mega-menu when the menu API fails", asyn
   await expect(page.locator(".mega-menu").first()).toBeVisible();
 });
 
+const LIVE_MENU_TREE = [
+  {
+    id: "m-live-1",
+    title: "LiveDept",
+    path: "/live-dept",
+    icon: "Grid",
+    badge: null,
+    order_index: 0,
+    is_active: true,
+    level: 1,
+    parent_id: null,
+    promo_title: "Live Promo",
+    promo_subtitle: "Promo sub",
+    promo_image_url: "",
+    children: [
+      {
+        id: "m-live-2",
+        title: "LiveSection",
+        path: "/live-dept/section",
+        section: "Shop by Type",
+        section_icon: "📱",
+        order_index: 0,
+        is_active: true,
+        level: 2,
+        parent_id: "m-live-1",
+        children: [
+          {
+            id: "m-live-3",
+            title: "LiveLink",
+            path: "/live-dept/section/link",
+            badge: "New",
+            badge_variant: "success",
+            order_index: 0,
+            is_active: true,
+            level: 3,
+            parent_id: "m-live-2",
+          },
+        ],
+      },
+    ],
+  },
+];
+
+test("dynamic menu renders live tree with promo when the menu API returns data", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.route("**/api/menu**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(LIVE_MENU_TREE),
+    })
+  );
+
+  // DynamicMenu renders on non-storefront routes (App.jsx).
+  const response = await page.goto("/#/login");
+  expect(response?.ok()).toBe(true);
+
+  const nav = page.locator("nav.dynamic-menu");
+  await expect(nav).toBeVisible();
+  const l1 = nav.getByText("LiveDept", { exact: true }).first();
+  await expect(l1).toBeVisible();
+
+  await l1.hover();
+  const mega = page.locator(".mega-menu").first();
+  await expect(mega).toBeVisible();
+  // L2 column header (emoji section_icon renders as-is).
+  await expect(mega.getByText("LiveSection", { exact: true })).toBeVisible();
+  await expect(mega.getByText("📱", { exact: true })).toBeVisible();
+  // L3 link button.
+  await expect(mega.getByRole("menuitem", { name: /LiveLink/ })).toBeVisible();
+  // Promo card from promo_title.
+  await expect(mega.getByText("Live Promo", { exact: true })).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("hero CTA is fully inside the carousel at tablet-768 (showcase hidden)", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+
+  const response = await page.goto("/");
+  expect(response?.ok()).toBe(true);
+
+  const carousel = page.locator(".hero-carousel");
+  await expect(carousel).toBeVisible();
+  const cta = page.locator(".hero-slide.active .hero-cta").first();
+  await expect(cta).toBeVisible();
+
+  // Showcase must be hidden at this width (Task 6 guard) so nothing clips.
+  const showcaseDisplay = await page.evaluate(() => {
+    const el = document.querySelector(".hero-png-showcase");
+    return el ? getComputedStyle(el).display : "missing";
+  });
+  expect(showcaseDisplay).toBe("none");
+
+  const boxes = await page.evaluate(() => {
+    const c = document.querySelector(".hero-carousel").getBoundingClientRect();
+    const b = document.querySelector(".hero-slide.active .hero-cta").getBoundingClientRect();
+    return {
+      carousel: { left: c.left, top: c.top, right: c.right, bottom: c.bottom },
+      cta: { left: b.left, top: b.top, right: b.right, bottom: b.bottom },
+    };
+  });
+  expect(boxes.cta.left).toBeGreaterThanOrEqual(boxes.carousel.left - 1);
+  expect(boxes.cta.top).toBeGreaterThanOrEqual(boxes.carousel.top - 1);
+  expect(boxes.cta.right).toBeLessThanOrEqual(boxes.carousel.right + 1);
+  expect(boxes.cta.bottom).toBeLessThanOrEqual(boxes.carousel.bottom + 1);
+});
+
 for (const viewport of [
   { name: "mobile-360", width: 360, height: 800 },
   { name: "tablet-768", width: 768, height: 1024 },

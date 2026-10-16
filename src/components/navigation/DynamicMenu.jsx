@@ -85,6 +85,23 @@ function groupBySection(level2) {
 }
 
 /**
+ * Resolve an L2 `section_icon`: a matching ICON_MAP key renders the Lucide
+ * component, anything else (seeds store emoji like 📱) renders as-is.
+ */
+function SectionIcon({ value }) {
+  if (!value) return null;
+  const Comp = ICON_MAP[value];
+  if (Comp) {
+    return (
+      <span className="mega-menu-section-icon">
+        <Comp size={16} />
+      </span>
+    );
+  }
+  return <span className="mega-menu-section-icon">{value}</span>;
+}
+
+/**
  * Live mega-menu for one level-1 tree node: level-2 nodes become column
  * headers (ordered/grouped by `section`), level-3 nodes become links,
  * and a promo card renders when `promo_title` is set.
@@ -130,9 +147,7 @@ function LiveMegaMenu({ root, alignRight, onNavigate }) {
           return (
             <div key={l2.id} className="mega-menu-col">
               <h4 className="mega-menu-section-header">
-                {l2.section_icon && (
-                  <span className="mega-menu-section-icon">{l2.section_icon}</span>
-                )}
+                <SectionIcon value={l2.section_icon} />
                 <span className="mega-menu-section-title">{l2.title}</span>
               </h4>
               <ul className="mega-menu-item-list" role="menu">
@@ -183,8 +198,8 @@ export default function DynamicMenu({ userRole = "user", onNavigate, activePath 
   const [activeMenu, setActiveMenu] = useState(null);
   const navTimer = useRef(null);
 
-  const loadMenu = async () => {
-    setLoading(true);
+  const loadMenu = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const items = await apiFetchMenuItems(userRole);
       setMenuItems(normalizeToTree(items));
@@ -199,7 +214,8 @@ export default function DynamicMenu({ userRole = "user", onNavigate, activePath 
     loadMenu();
 
     // Listen for custom dynamic menu updates (broadcasted from Super Admin dynamic menu editor!)
-    const handleMenuUpdate = () => loadMenu();
+    // Event-triggered refreshes are silent background updates (no "Loading..." flash).
+    const handleMenuUpdate = () => loadMenu(true);
     window.addEventListener("marvel_menu_updated", handleMenuUpdate);
     return () => {
       window.removeEventListener("marvel_menu_updated", handleMenuUpdate);
