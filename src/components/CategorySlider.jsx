@@ -1,11 +1,35 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { categorySliderItems } from "../data";
+import { apiFetchSiteCategories } from "../api/backendApi";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function CategorySlider() {
   const ref = useRef(null);
   const [activeCat, setActiveCat] = useState(null);
+  const [liveCats, setLiveCats] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchSiteCategories()
+      .then((rows) => {
+        if (cancelled) return;
+        const list = (Array.isArray(rows) ? rows : [])
+          .filter((c) => c && c.is_active !== false && c.name)
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map((c) => ({ name: c.name, image: c.image_url || "" }));
+        setLiveCats(list);
+      })
+      .catch(() => {
+        // Fall back to static categorySliderItems below.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Live categories win when non-empty; otherwise static fallback (never blank).
+  const cats = liveCats.length > 0 ? liveCats : categorySliderItems;
 
   const scroll = (dir) => {
     if (ref.current) ref.current.scrollLeft += dir * 280;
@@ -25,7 +49,7 @@ export default function CategorySlider() {
           </button>
 
           <div className="cat-slider" ref={ref}>
-            {categorySliderItems.map((cat) => {
+            {cats.map((cat) => {
               const isActive = activeCat === cat.name;
               return (
                 <motion.div

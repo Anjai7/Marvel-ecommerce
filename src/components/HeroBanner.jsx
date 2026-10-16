@@ -1,17 +1,69 @@
 import { useState, useEffect, useCallback } from "react";
 import { heroSlides } from "../data";
+import { apiFetchHeroSlides } from "../api/backendApi";
 import { Button, Badge } from "./ui";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
+/** Map a DB hero_slides row to the render shape used by the carousel. */
+function toRenderSlide(row) {
+  return {
+    badge: row.badge || "",
+    title: row.title || "",
+    subtitle: row.subtitle || "",
+    btn: row.btn_text || "Shop Now",
+    btnPath: row.btn_path || "/products",
+    bgImage: row.bg_image_url || "",
+    image: row.bg_image_url || row.product_image_url || "",
+    pngImage: row.product_image_url || "",
+    fallbackPng: row.fallback_image_url || "",
+    bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+    tag: row.tag || "",
+    price: row.price_text || "",
+    ribbonText: row.ribbon_text || "",
+  };
+}
+
 export default function HeroBanner() {
+  const [liveSlides, setLiveSlides] = useState([]);
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    () =>
+      typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
   const [touchStart, setTouchStart] = useState(null);
 
-  const next = useCallback(() => setCurrent((c) => (c + 1) % heroSlides.length), []);
-  const prev = useCallback(() => setCurrent((c) => (c - 1 + heroSlides.length) % heroSlides.length), []);
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchHeroSlides()
+      .then((rows) => {
+        if (cancelled) return;
+        const list = (Array.isArray(rows) ? rows : [])
+          .filter((s) => s && s.is_active !== false)
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+          .map(toRenderSlide)
+          .filter((s) => s.title);
+        setLiveSlides(list);
+      })
+      .catch(() => {
+        // Fall back to static heroSlides below.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Live slides win when non-empty; otherwise static fallback (never blank).
+  const slides = liveSlides.length > 0 ? liveSlides : heroSlides;
+
+  useEffect(() => {
+    setCurrent((c) => (c >= slides.length ? 0 : c));
+  }, [slides.length]);
+
+  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
+  const prev = useCallback(
+    () => setCurrent((c) => (c - 1 + slides.length) % slides.length),
+    [slides.length]
+  );
 
   useEffect(() => {
     if (paused) return;
@@ -46,29 +98,33 @@ export default function HeroBanner() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {heroSlides.map((slide, i) => (
+      {slides.map((slide, i) => (
         <div key={i} className={`hero-slide ${i === current ? "active" : ""}`}>
           {/* Base Background Gradient */}
           <div className="hero-slide-bg" style={{ background: slide.bg }} />
-          
+
           {/* Whole Banner Background Image */}
-          <img
-            className="hero-slide-bg-img"
-            src={slide.bgImage || slide.image}
-            alt={slide.title}
-            loading={i === 0 ? "eager" : "lazy"}
-          />
+          {(slide.bgImage || slide.image) && (
+            <img
+              className="hero-slide-bg-img"
+              src={slide.bgImage || slide.image}
+              alt={slide.title}
+              loading={i === 0 ? "eager" : "lazy"}
+            />
+          )}
           <div className="hero-slide-overlay" />
 
           <div className="hero-slide-inner-grid">
             {/* Left Content Column */}
             <div className="hero-content">
-              <Badge variant="accent" size="md" className="hero-badge">
-                {slide.badge}
-              </Badge>
+              {slide.badge && (
+                <Badge variant="accent" size="md" className="hero-badge">
+                  {slide.badge}
+                </Badge>
+              )}
               <h1 className="hero-title">{slide.title}</h1>
               <p className="hero-sub">{slide.subtitle}</p>
-              
+
               <div className="hero-actions-row">
                 <Button
                   variant="accent"
@@ -91,17 +147,19 @@ export default function HeroBanner() {
             {/* Right Showcase: Small Floating PNG Product Image */}
             <div className="hero-png-showcase">
               <div className="hero-png-card">
-                <img
-                  className="hero-floating-png"
-                  src={slide.pngImage || slide.image}
-                  alt={slide.title}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  onError={(e) => {
-                    if (slide.fallbackPng && e.target.src !== slide.fallbackPng) {
-                      e.target.src = slide.fallbackPng;
-                    }
-                  }}
-                />
+                {(slide.pngImage || slide.image) && (
+                  <img
+                    className="hero-floating-png"
+                    src={slide.pngImage || slide.image}
+                    alt={slide.title}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    onError={(e) => {
+                      if (slide.fallbackPng && e.target.src !== slide.fallbackPng) {
+                        e.target.src = slide.fallbackPng;
+                      }
+                    }}
+                  />
+                )}
                 <div className="hero-png-glow-circle" />
                 {slide.tag && (
                   <div className="hero-floating-badge">
@@ -137,7 +195,7 @@ export default function HeroBanner() {
 
       {/* Centered Slider Indicators (Dots) */}
       <div className="hero-dots" role="toolbar" aria-label="Hero slides">
-        {heroSlides.map((_, i) => (
+        {slides.map((_, i) => (
           <button
             key={i}
             className={`hero-dot ${i === current ? "active" : ""}`}

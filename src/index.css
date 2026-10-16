@@ -6271,3 +6271,37 @@ input:focus:not(:focus-visible) {
   }
 }
 
+/* Task 6: dynamic content responsive guards (appended; existing rules above untouched) */
+.mega-menu,
+.hero-slide-inner-grid,
+.cat-slider {
+  min-width: 0;
+}
+
+/* Touch targets >= 40px for new dynamic-menu interactive elements */
+.dynamic-menu .mega-menu-item-link {
+  min-height: 40px;
+}
+
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  .hero-slide-inner-grid {
+    grid-template-columns: 1fr;
+  }
+  /* Stacked single-column grid inside the fixed-height carousel leaves no
+     room for the 320px showcase below 900px — hide it so title/CTA stay
+     visible (the <600px rule below restates this explicitly per brief). */
+  .hero-png-showcase {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-png-showcase {
+    display: none;
+  }
+}
+
