@@ -186,7 +186,7 @@ router.post("/", ...adminOnly, async (req, res) => {
         level,
         roles_allowed: menuItem.roles_allowed || ["user", "vendor", "admin", "super_admin"],
         order_index: menuItem.order_index ?? 0,
-        is_active: true,
+        is_active: menuItem.is_active ?? true,
       })
       .select();
 
@@ -201,7 +201,12 @@ router.post("/", ...adminOnly, async (req, res) => {
       m.id === menuItem.id ? { ...m, ...menuItem, level } : m
     );
   } else {
-    fallbackMenu.push({ ...menuItem, id: `m-${Date.now()}`, level, is_active: true });
+    fallbackMenu.push({
+      ...menuItem,
+      id: `m-${Date.now()}`,
+      level,
+      is_active: menuItem.is_active ?? true,
+    });
   }
 
   res.json({ message: "Menu item saved successfully to Supabase DB", menu: fallbackMenu });

@@ -110,6 +110,32 @@ describe("ConfirmDialog", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("calls onCancel (not onConfirm) on Escape, and cleans up on close", async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+
+    const { rerender } = render(
+      <ConfirmDialog open title="Delete?" message="..." onCancel={onCancel} onConfirm={onConfirm} />
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    rerender(
+      <ConfirmDialog
+        open={false}
+        title="Delete?"
+        message="..."
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />
+    );
+    await user.keyboard("{Escape}");
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("MenuTreeEditor", () => {

@@ -195,6 +195,50 @@ describe("validateHierarchy", () => {
   });
 });
 
+describe("POST /api/menu is_active persistence", () => {
+  let server;
+  let base;
+  let adminHeaders;
+
+  beforeAll(
+    () =>
+      new Promise((resolve) => {
+        server = app.listen(0, () => {
+          base = `http://127.0.0.1:${server.address().port}`;
+          const token = signUserToken({ id: "t-admin", email: "admin@test.local", role: "admin" });
+          adminHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+          resolve();
+        });
+      })
+  );
+
+  afterAll(() => new Promise((resolve) => server.close(resolve)));
+
+  it("keeps is_active:false when sent false", async () => {
+    const res = await fetch(`${base}/api/menu`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ title: "Hidden Test Item", path: "/hidden-test", is_active: false }),
+    });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()).menu.find((m) => m.title === "Hidden Test Item");
+    expect(saved).toBeDefined();
+    expect(saved.is_active).toBe(false);
+  });
+
+  it("defaults is_active to true when omitted", async () => {
+    const res = await fetch(`${base}/api/menu`, {
+      method: "POST",
+      headers: adminHeaders,
+      body: JSON.stringify({ title: "Visible Test Item", path: "/visible-test" }),
+    });
+    expect(res.status).toBe(200);
+    const saved = (await res.json()).menu.find((m) => m.title === "Visible Test Item");
+    expect(saved).toBeDefined();
+    expect(saved.is_active).toBe(true);
+  });
+});
+
 describe("PATCH /api/menu/reorder validation", () => {
   let server;
   let base;
