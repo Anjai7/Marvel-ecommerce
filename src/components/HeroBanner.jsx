@@ -143,31 +143,6 @@ export default function HeroBanner() {
                 )}
               </div>
             </div>
-
-            {/* Right Showcase: Small Floating PNG Product Image */}
-            <div className="hero-png-showcase">
-              <div className="hero-png-card">
-                {(slide.pngImage || slide.image) && (
-                  <img
-                    className="hero-floating-png"
-                    src={slide.pngImage || slide.image}
-                    alt={slide.title}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    onError={(e) => {
-                      if (slide.fallbackPng && e.target.src !== slide.fallbackPng) {
-                        e.target.src = slide.fallbackPng;
-                      }
-                    }}
-                  />
-                )}
-                <div className="hero-png-glow-circle" />
-                {slide.tag && (
-                  <div className="hero-floating-badge">
-                    <span>{slide.tag}</span>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       ))}

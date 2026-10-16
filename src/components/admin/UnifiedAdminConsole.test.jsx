@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import UnifiedAdminConsole from "./UnifiedAdminConsole";
@@ -33,8 +33,9 @@ describe("UnifiedAdminConsole", () => {
     const user = userEvent.setup();
     render(<UnifiedAdminConsole />);
 
-    await waitFor(() => expect(screen.getByText("Add User")).toBeVisible());
-    await user.click(screen.getByRole("button", { name: "Add User" }));
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Users Accounts/ }));
+    await user.click(within(nav).getByRole("button", { name: "Add User" }));
 
     expect(screen.getByRole("heading", { name: "Create User Account" })).toBeVisible();
     expect(screen.queryByText("Initial Status")).not.toBeInTheDocument();
@@ -49,9 +50,7 @@ describe("UnifiedAdminConsole", () => {
     await user.click(within(nav).getByRole("button", { name: "Add Product" }));
 
     const main = screen.getByRole("main");
-    await expect(
-      within(main).getByRole("button", { name: "Publish Product" })
-    ).toBeVisible();
+    await expect(within(main).getByRole("button", { name: "Publish Product" })).toBeVisible();
   });
 
   it("shows the sales report with real-data sections", async () => {

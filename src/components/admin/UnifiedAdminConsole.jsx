@@ -41,7 +41,7 @@ import {
   Star,
   Wallet,
   Boxes,
-  Shield
+  Shield,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
@@ -58,7 +58,7 @@ import {
   apiUpdateProduct,
   apiDeleteProduct,
   apiModerateProduct,
-  apiUpdateOrderStatus
+  apiUpdateOrderStatus,
 } from "../../api/backendApi";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -69,7 +69,7 @@ import {
   computeRepeatCustomers,
   aggregateBestSellers,
   summarizeInventory,
-  customerStats
+  customerStats,
 } from "./reportUtils";
 import "./admin-reports.css";
 import MenuTreeEditor from "./MenuTreeEditor";
@@ -116,7 +116,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     category: "Electronics",
     stock: "15",
     image_url: "",
-    description: ""
+    description: "",
   });
 
   // Users Tab Filter States
@@ -135,7 +135,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     role: "user",
     storeName: "",
     plan: "Basic",
-    billing: "Auto Debit"
+    billing: "Auto Debit",
   });
   const [addUserLoading, setAddUserLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -152,7 +152,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     status: "active",
     store_name: "",
     plan: "Basic",
-    billing: "Auto Debit"
+    billing: "Auto Debit",
   });
   const [editUserLoading, setEditUserLoading] = useState(false);
 
@@ -172,7 +172,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       const [usersData, productsData, ordersData] = await Promise.all([
         apiFetchAllUsers(),
         apiFetchProducts(),
-        apiFetchOrders({ role: isSuperAdmin ? "super_admin" : "admin" })
+        apiFetchOrders({ role: isSuperAdmin ? "super_admin" : "admin" }),
       ]);
 
       setUsers(Array.isArray(usersData) ? usersData : []);
@@ -183,7 +183,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       addToast({
         title: "Sync Warning",
         message: "Failed to connect to database. Showing cached records.",
-        type: "warning"
+        type: "warning",
       });
     } finally {
       setLoading(false);
@@ -201,7 +201,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     addToast({
       title: "Signed Out",
       message: "You have been successfully signed out from the console.",
-      type: "info"
+      type: "info",
     });
     if (onNavigateHome) {
       onNavigateHome();
@@ -220,7 +220,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // ----------------------------------------------------
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
-    setProductForm({ title: "", price: "", original_price: "", category: "Electronics", stock: "15", image_url: "", description: "" });
+    setProductForm({
+      title: "",
+      price: "",
+      original_price: "",
+      category: "Electronics",
+      stock: "15",
+      image_url: "",
+      description: "",
+    });
     setProductsView("add");
   };
 
@@ -229,11 +237,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setProductForm({
       title: prod.title || "",
       price: prod.price !== undefined && prod.price !== null ? String(prod.price) : "",
-      original_price: prod.original_price !== undefined && prod.original_price !== null ? String(prod.original_price) : "",
+      original_price:
+        prod.original_price !== undefined && prod.original_price !== null
+          ? String(prod.original_price)
+          : "",
       category: prod.category || "Electronics",
       stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "15",
       image_url: prod.image_url || prod.image || "",
-      description: prod.description || ""
+      description: prod.description || "",
     });
     setProductsView("add");
   };
@@ -241,7 +252,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     if (!productForm.title.trim() || !productForm.price) {
-      addToast({ title: "Missing Information", message: "Product title and price are required.", type: "error" });
+      addToast({
+        title: "Missing Information",
+        message: "Product title and price are required.",
+        type: "error",
+      });
       return;
     }
     setProductSaving(true);
@@ -249,36 +264,59 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       const payload = {
         title: productForm.title.trim(),
         price: parseFloat(productForm.price),
-        original_price: productForm.original_price ? parseFloat(productForm.original_price) : undefined,
+        original_price: productForm.original_price
+          ? parseFloat(productForm.original_price)
+          : undefined,
         category: productForm.category,
         stock: parseInt(productForm.stock, 10) || 0,
         image_url: productForm.image_url.trim(),
-        description: productForm.description.trim()
+        description: productForm.description.trim(),
       };
       if (editingProduct) {
         const updated = await apiUpdateProduct(editingProduct.id, payload);
-        setProducts((prev) => prev.map((p) => (p.id === editingProduct.id ? { ...p, ...updated } : p)));
-        addToast({ title: "Product Updated", message: `'${payload.title}' saved. Live on the storefront.`, type: "success" });
+        setProducts((prev) =>
+          prev.map((p) => (p.id === editingProduct.id ? { ...p, ...updated } : p))
+        );
+        addToast({
+          title: "Product Updated",
+          message: `'${payload.title}' saved. Live on the storefront.`,
+          type: "success",
+        });
       } else {
         const created = await apiCreateProduct(payload);
         setProducts((prev) => [created, ...prev]);
-        addToast({ title: "Product Published", message: `'${payload.title}' is now live on the storefront.`, type: "success" });
+        addToast({
+          title: "Product Published",
+          message: `'${payload.title}' is now live on the storefront.`,
+          type: "success",
+        });
       }
       setEditingProduct(null);
       setProductsView("list");
     } catch (err) {
-      addToast({ title: "Save Failed", message: err.message || "Failed to save product.", type: "error" });
+      addToast({
+        title: "Save Failed",
+        message: err.message || "Failed to save product.",
+        type: "error",
+      });
     } finally {
       setProductSaving(false);
     }
   };
 
   const handleDeleteProduct = async (id, title) => {
-    if (!window.confirm(`Remove '${title}' from the catalog? It will disappear from the storefront.`)) return;
+    if (
+      !window.confirm(`Remove '${title}' from the catalog? It will disappear from the storefront.`)
+    )
+      return;
     try {
       await apiDeleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
-      addToast({ title: "Product Deleted", message: `Removed '${title}' from the catalog.`, type: "info" });
+      addToast({
+        title: "Product Deleted",
+        message: `Removed '${title}' from the catalog.`,
+        type: "info",
+      });
     } catch (err) {
       addToast({ title: "Delete Failed", message: err.message, type: "error" });
     }
@@ -288,7 +326,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     try {
       const updated = await apiModerateProduct(prod.id, { is_featured: !prod.is_featured });
       setProducts((prev) => prev.map((p) => (p.id === prod.id ? { ...p, ...updated } : p)));
-      addToast({ title: updated.is_featured ? "Marked Featured" : "Unmarked Featured", message: `'${prod.title}' updated.`, type: "success" });
+      addToast({
+        title: updated.is_featured ? "Marked Featured" : "Unmarked Featured",
+        message: `'${prod.title}' updated.`,
+        type: "success",
+      });
     } catch (err) {
       addToast({ title: "Update Failed", message: err.message, type: "error" });
     }
@@ -298,12 +340,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // ORDERS FULFILLMENT (Admin)
   // ----------------------------------------------------
   const handleAdvanceOrder = async (order) => {
-    const next = order.status === "processing" ? "shipped" : order.status === "shipped" ? "delivered" : null;
+    const next =
+      order.status === "processing" ? "shipped" : order.status === "shipped" ? "delivered" : null;
     if (!next) return;
     try {
       const updated = await apiUpdateOrderStatus(order.id, { status: next });
       setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...updated } : o)));
-      addToast({ title: "Order Updated", message: `Order marked as ${next.toUpperCase()}.`, type: "success" });
+      addToast({
+        title: "Order Updated",
+        message: `Order marked as ${next.toUpperCase()}.`,
+        type: "success",
+      });
     } catch (err) {
       addToast({ title: "Update Failed", message: err.message, type: "error" });
     }
@@ -315,25 +362,34 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const metrics = useMemo(() => {
     // 1. Total Revenue from Real Orders
     const totalRevenue = orders.reduce((sum, order) => {
-      const amt = typeof order.total_amount === "number" ? order.total_amount : parseFloat(order.total_amount) || 0;
+      const amt =
+        typeof order.total_amount === "number"
+          ? order.total_amount
+          : parseFloat(order.total_amount) || 0;
       return sum + amt;
     }, 0);
 
     // 2. Orders breakdown
-    const completedOrders = orders.filter(o => o.status === "delivered" || o.status === "completed").length;
-    const processingOrders = orders.filter(o => o.status === "processing" || o.status === "shipped").length;
-    const pendingOrders = orders.filter(o => o.status === "pending" || !o.status).length;
+    const completedOrders = orders.filter(
+      (o) => o.status === "delivered" || o.status === "completed"
+    ).length;
+    const processingOrders = orders.filter(
+      (o) => o.status === "processing" || o.status === "shipped"
+    ).length;
+    const pendingOrders = orders.filter((o) => o.status === "pending" || !o.status).length;
 
     // 3. Users breakdown
-    const superAdminsCount = users.filter(u => u.role === "super_admin").length;
-    const adminsCount = users.filter(u => u.role === "admin").length;
-    const vendorsCount = users.filter(u => u.role === "vendor").length;
-    const customersCount = users.filter(u => u.role === "user" || !u.role).length;
-    const activeUsersCount = users.filter(u => (u.status || "active").toLowerCase() === "active").length;
+    const superAdminsCount = users.filter((u) => u.role === "super_admin").length;
+    const adminsCount = users.filter((u) => u.role === "admin").length;
+    const vendorsCount = users.filter((u) => u.role === "vendor").length;
+    const customersCount = users.filter((u) => u.role === "user" || !u.role).length;
+    const activeUsersCount = users.filter(
+      (u) => (u.status || "active").toLowerCase() === "active"
+    ).length;
 
     // 4. Products breakdown
-    const inStockProducts = products.filter(p => (parseInt(p.stock, 10) || 0) > 0).length;
-    const lowStockProducts = products.filter(p => {
+    const inStockProducts = products.filter((p) => (parseInt(p.stock, 10) || 0) > 0).length;
+    const lowStockProducts = products.filter((p) => {
       const stock = parseInt(p.stock, 10) || 0;
       return stock > 0 && stock <= 5;
     }).length;
@@ -356,14 +412,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       totalProducts: products.length,
       inStockProducts,
       lowStockProducts,
-      aov
+      aov,
     };
   }, [orders, users, products]);
 
   // Dynamic Chart Data points generated from DB orders timestamps & counts
   const chartData = useMemo(() => {
     const points = lastNDayBuckets(orders, timeRange === "30d" ? 30 : 7);
-
 
     const maxRev = Math.max(...points.map((r) => r.revenue), 100);
     return { points, maxRevenue: maxRev };
@@ -387,14 +442,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       repeat,
       sellers,
       inventory,
-      deliveredRate: statuses.total > 0 ? (delivered / statuses.total) * 100 : null
+      deliveredRate: statuses.total > 0 ? (delivered / statuses.total) * 100 : null,
     };
   }, [orders, products]);
 
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) => (p.title || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q));
+    return products.filter(
+      (p) =>
+        (p.title || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q)
+    );
   }, [products, productSearch]);
 
   const filteredOrders = useMemo(() => {
@@ -412,7 +470,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // USER MANAGEMENT HANDLERS
   // ----------------------------------------------------
   const filteredUsers = useMemo(() => {
-    return users.filter(u => {
+    return users.filter((u) => {
       const matchesSearch =
         u.full_name?.toLowerCase().includes(searchUser.toLowerCase()) ||
         u.email?.toLowerCase().includes(searchUser.toLowerCase()) ||
@@ -438,19 +496,27 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!addUserForm.fullName.trim() || !addUserForm.email.trim() || !addUserForm.password.trim()) {
-      addToast({ title: "Missing Information", message: "Full Name, Email, and Password are required.", type: "error" });
+      addToast({
+        title: "Missing Information",
+        message: "Full Name, Email, and Password are required.",
+        type: "error",
+      });
       return;
     }
 
     if (addUserForm.password.length < 6) {
-      addToast({ title: "Weak Password", message: "Password must be at least 6 characters long.", type: "warning" });
+      addToast({
+        title: "Weak Password",
+        message: "Password must be at least 6 characters long.",
+        type: "warning",
+      });
       return;
     }
 
     setAddUserLoading(true);
     try {
       const created = await apiAdminCreateUser(addUserForm);
-      setUsers(prev => [created, ...prev]);
+      setUsers((prev) => [created, ...prev]);
       setShowAddUserModal(false);
       setAddUserForm({
         fullName: "",
@@ -459,15 +525,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         role: "user",
         storeName: "",
         plan: "Basic",
-        billing: "Auto Debit"
+        billing: "Auto Debit",
       });
       addToast({
         title: "User Created Successfully",
         message: `Account for ${created.full_name} (${created.role.toUpperCase()}) is active.`,
-        type: "success"
+        type: "success",
       });
     } catch (err) {
-      addToast({ title: "Creation Failed", message: err.message || "Failed to create user account.", type: "error" });
+      addToast({
+        title: "Creation Failed",
+        message: err.message || "Failed to create user account.",
+        type: "error",
+      });
     } finally {
       setAddUserLoading(false);
     }
@@ -483,7 +553,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       status: user.status || "active",
       store_name: user.store_name || "",
       plan: user.plan || "Basic",
-      billing: user.billing || "Auto Debit"
+      billing: user.billing || "Auto Debit",
     });
   };
 
@@ -495,8 +565,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setEditUserLoading(true);
     try {
       const updatedUser = await apiUpdateUserDetails(editingUser.id, editUserForm);
-      setUsers(prev => prev.map(u => (u.id === editingUser.id ? { ...u, ...updatedUser } : u)));
-      
+      setUsers((prev) => prev.map((u) => (u.id === editingUser.id ? { ...u, ...updatedUser } : u)));
+
       if (viewingUser && viewingUser.id === editingUser.id) {
         setViewingUser({ ...viewingUser, ...updatedUser });
       }
@@ -505,10 +575,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       addToast({
         title: "User Updated",
         message: `Successfully saved changes for ${updatedUser.full_name || updatedUser.email}.`,
-        type: "success"
+        type: "success",
       });
     } catch (err) {
-      addToast({ title: "Update Failed", message: err.message || "Failed to update user profile.", type: "error" });
+      addToast({
+        title: "Update Failed",
+        message: err.message || "Failed to update user profile.",
+        type: "error",
+      });
     } finally {
       setEditUserLoading(false);
     }
@@ -518,14 +592,18 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const handleQuickRoleChange = async (userId, newRole, userName) => {
     try {
       const updatedList = await apiUpdateUserRole(userId, newRole);
-      setUsers(Array.isArray(updatedList) ? updatedList : prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      setUsers(
+        Array.isArray(updatedList)
+          ? updatedList
+          : (prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
       if (viewingUser && viewingUser.id === userId) {
-        setViewingUser(prev => ({ ...prev, role: newRole }));
+        setViewingUser((prev) => ({ ...prev, role: newRole }));
       }
       addToast({
         title: "Role Updated",
         message: `${userName}'s role elevated to ${newRole.toUpperCase()}.`,
-        type: "success"
+        type: "success",
       });
     } catch (err) {
       addToast({ title: "Role Update Failed", message: err.message, type: "error" });
@@ -537,14 +615,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     const nextStatus = currentStatus === "active" ? "inactive" : "active";
     try {
       await apiUpdateUserStatus(userId, nextStatus);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: nextStatus } : u));
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: nextStatus } : u)));
       if (viewingUser && viewingUser.id === userId) {
-        setViewingUser(prev => ({ ...prev, status: nextStatus }));
+        setViewingUser((prev) => ({ ...prev, status: nextStatus }));
       }
       addToast({
         title: "Status Changed",
         message: `${userName} is now ${nextStatus.toUpperCase()}.`,
-        type: "info"
+        type: "info",
       });
     } catch (err) {
       addToast({ title: "Status Update Failed", message: err.message, type: "error" });
@@ -555,7 +633,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!resetTargetUser || !resetNewPassword || resetNewPassword.length < 6) {
-      addToast({ title: "Invalid Password", message: "Password must be at least 6 characters.", type: "error" });
+      addToast({
+        title: "Invalid Password",
+        message: "Password must be at least 6 characters.",
+        type: "error",
+      });
       return;
     }
 
@@ -568,7 +650,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       addToast({
         title: "Password Reset Successful",
         message: `New credentials set for ${resetTargetUser.email}.`,
-        type: "success"
+        type: "success",
       });
     } catch (err) {
       addToast({ title: "Password Reset Failed", message: err.message, type: "error" });
@@ -583,7 +665,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setDeleteLoading(true);
     try {
       await apiDeleteUser(deletingUser.id);
-      setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
       if (viewingUser && viewingUser.id === deletingUser.id) {
         setViewingUser(null);
       }
@@ -591,7 +673,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       addToast({
         title: "User Deleted",
         message: `Removed ${deletingUser.full_name || deletingUser.email} from the database.`,
-        type: "info"
+        type: "info",
       });
     } catch (err) {
       addToast({ title: "Delete Failed", message: err.message, type: "error" });
@@ -607,7 +689,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     for (let i = 0; i < 10; i++) {
       pass += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setAddUserForm(prev => ({ ...prev, password: pass }));
+    setAddUserForm((prev) => ({ ...prev, password: pass }));
     setShowPassword(true);
   };
 
@@ -664,18 +746,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     users: "User Management Directory",
     menus: "Site Content — Menus",
     hero: "Site Content — Hero",
-    categories: "Site Content — Categories"
-  };
-
-  const TAB_HEADINGS = {
-    dashboard: dashboardView === "sales" ? (<>Sales <span className="gradient-text">Report</span></>) : (<>Dynamic Platform <span className="gradient-text">Overview</span></>),
-    products: (<>Product <span className="gradient-text">Catalog</span></>),
-    orders: (<>Orders <span className="gradient-text">Pipeline</span></>),
-    customers: (<>Customer <span className="gradient-text">Insights</span></>),
-    users: (<>User Accounts & <span className="gradient-text">Access Control</span></>),
-    menus: (<>Site Content <span className="gradient-text">Menus</span></>),
-    hero: (<>Site Content <span className="gradient-text">Hero</span></>),
-    categories: (<>Site Content <span className="gradient-text">Categories</span></>)
+    categories: "Site Content — Categories",
   };
 
   return (
@@ -712,7 +783,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 1: DASHBOARD (with submenu) */}
           <button
             id="admin-tab-dashboard"
-            onClick={() => { setActiveTab("dashboard"); setDashboardView("overview"); toggleMenu("dashboard"); }}
+            onClick={() => {
+              setActiveTab("dashboard");
+              setDashboardView("overview");
+              toggleMenu("dashboard");
+            }}
             className={`sidebar-tab-button ${activeTab === "dashboard" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.dashboard}
           >
@@ -732,7 +807,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-dashboard-overview"
-                onClick={() => { setActiveTab("dashboard"); setDashboardView("overview"); }}
+                onClick={() => {
+                  setActiveTab("dashboard");
+                  setDashboardView("overview");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "overview" ? "active" : ""}`}
               >
                 <BarChart3 size={14} />
@@ -740,7 +818,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-dashboard-sales"
-                onClick={() => { setActiveTab("dashboard"); setDashboardView("sales"); }}
+                onClick={() => {
+                  setActiveTab("dashboard");
+                  setDashboardView("sales");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "sales" ? "active" : ""}`}
               >
                 <Wallet size={14} />
@@ -749,11 +830,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           )}
 
-          {/* TAB 2: USERS */}
+          {/* TAB 2: USERS (with submenu: View Users / Add User) */}
           <button
             id="admin-tab-users"
-            onClick={() => setActiveTab("users")}
+            onClick={() => {
+              setActiveTab("users");
+              setShowAddUserModal(false);
+              toggleMenu("users");
+            }}
             className={`sidebar-tab-button ${activeTab === "users" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.users}
           >
             <div className="tab-icon-box">
               <Users size={19} />
@@ -763,15 +849,49 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className="tab-description">Accounts & Roles</span>
             </div>
             <span className="tab-badge-counter">{users.length}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.users ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
             {activeTab === "users" && <div className="active-glow-indicator"></div>}
           </button>
+          {expandedMenus.users && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-users-list"
+                onClick={() => {
+                  setActiveTab("users");
+                  setShowAddUserModal(false);
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "users" && !showAddUserModal ? "active" : ""}`}
+              >
+                <Eye size={14} />
+                <span>View Users</span>
+                <span className="sidebar-submenu-count">{users.length}</span>
+              </button>
+              <button
+                id="admin-tab-users-add"
+                onClick={() => {
+                  setActiveTab("users");
+                  setShowAddUserModal(true);
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "users" && showAddUserModal ? "active" : ""}`}
+              >
+                <Plus size={14} />
+                <span>Add User</span>
+              </button>
+            </div>
+          )}
 
           <div className="nav-section-label">CATALOG & SALES</div>
 
           {/* MENU 3: PRODUCTS (with submenu) */}
           <button
             id="admin-tab-products"
-            onClick={() => { setActiveTab("products"); setProductsView("list"); toggleMenu("products"); }}
+            onClick={() => {
+              setActiveTab("products");
+              setProductsView("list");
+              toggleMenu("products");
+            }}
             className={`sidebar-tab-button ${activeTab === "products" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.products}
           >
@@ -792,7 +912,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-products-list"
-                onClick={() => { setActiveTab("products"); setProductsView("list"); }}
+                onClick={() => {
+                  setActiveTab("products");
+                  setProductsView("list");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
               >
                 <Package size={14} />
@@ -801,7 +924,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-products-add"
-                onClick={() => { setActiveTab("products"); handleOpenAddProduct(); }}
+                onClick={() => {
+                  setActiveTab("products");
+                  handleOpenAddProduct();
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
               >
                 <Plus size={14} />
@@ -813,7 +939,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 4: ORDERS (with submenu) */}
           <button
             id="admin-tab-orders"
-            onClick={() => { setActiveTab("orders"); setOrdersView("all"); toggleMenu("orders"); }}
+            onClick={() => {
+              setActiveTab("orders");
+              setOrdersView("all");
+              toggleMenu("orders");
+            }}
             className={`sidebar-tab-button ${activeTab === "orders" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.orders}
           >
@@ -834,7 +964,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-orders-all"
-                onClick={() => { setActiveTab("orders"); setOrdersView("all"); }}
+                onClick={() => {
+                  setActiveTab("orders");
+                  setOrdersView("all");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "all" ? "active" : ""}`}
               >
                 <ClipboardList size={14} />
@@ -843,7 +976,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-orders-pending"
-                onClick={() => { setActiveTab("orders"); setOrdersView("pending"); }}
+                onClick={() => {
+                  setActiveTab("orders");
+                  setOrdersView("pending");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "pending" ? "active" : ""}`}
               >
                 <Activity size={14} />
@@ -851,7 +987,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-orders-delivered"
-                onClick={() => { setActiveTab("orders"); setOrdersView("delivered"); }}
+                onClick={() => {
+                  setActiveTab("orders");
+                  setOrdersView("delivered");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "delivered" ? "active" : ""}`}
               >
                 <CheckCircle size={14} />
@@ -863,7 +1002,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 5: CUSTOMERS (with submenu) */}
           <button
             id="admin-tab-customers"
-            onClick={() => { setActiveTab("customers"); setCustomersView("all"); toggleMenu("customers"); }}
+            onClick={() => {
+              setActiveTab("customers");
+              setCustomersView("all");
+              toggleMenu("customers");
+            }}
             className={`sidebar-tab-button ${activeTab === "customers" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.customers}
           >
@@ -884,7 +1027,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-customers-all"
-                onClick={() => { setActiveTab("customers"); setCustomersView("all"); }}
+                onClick={() => {
+                  setActiveTab("customers");
+                  setCustomersView("all");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "all" ? "active" : ""}`}
               >
                 <Users size={14} />
@@ -892,7 +1038,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-customers-repeat"
-                onClick={() => { setActiveTab("customers"); setCustomersView("repeat"); }}
+                onClick={() => {
+                  setActiveTab("customers");
+                  setCustomersView("repeat");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "repeat" ? "active" : ""}`}
               >
                 <Repeat size={14} />
@@ -903,13 +1052,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           )}
 
           {/* ===== SITE CONTENT (Task 4: Menus tab; Task 5 adds Hero/Categories sub-tabs below) ===== */}
-          {canManageSiteContent && (
-            <div className="nav-section-label">SITE CONTENT</div>
-          )}
+          {canManageSiteContent && <div className="nav-section-label">SITE CONTENT</div>}
           {canManageSiteContent && (
             <button
               id="admin-tab-site-content"
-              onClick={() => { setActiveTab("menus"); toggleMenu("siteContent"); }}
+              onClick={() => {
+                setActiveTab("menus");
+                toggleMenu("siteContent");
+              }}
               className={`sidebar-tab-button ${["menus", "hero", "categories"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
@@ -932,7 +1082,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-site-content-menus"
-                onClick={() => { setActiveTab("menus"); }}
+                onClick={() => {
+                  setActiveTab("menus");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "menus" ? "active" : ""}`}
               >
                 <Layers size={14} />
@@ -941,7 +1093,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               {/* Task 5: Hero / Categories sub-tabs */}
               <button
                 id="admin-tab-site-content-hero"
-                onClick={() => { setActiveTab("hero"); }}
+                onClick={() => {
+                  setActiveTab("hero");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "hero" ? "active" : ""}`}
               >
                 <Sparkles size={14} />
@@ -949,7 +1103,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-site-content-categories"
-                onClick={() => { setActiveTab("categories"); }}
+                onClick={() => {
+                  setActiveTab("categories");
+                }}
                 className={`sidebar-submenu-btn ${activeTab === "categories" ? "active" : ""}`}
               >
                 <Star size={14} />
@@ -964,16 +1120,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* Authenticated User Profile Snippet */}
           <div className="sidebar-user-card">
             <div className="user-avatar-circle">
-              {currentUser?.full_name ? currentUser.full_name.charAt(0).toUpperCase() : currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : "A"}
+              {currentUser?.full_name
+                ? currentUser.full_name.charAt(0).toUpperCase()
+                : currentUser?.email
+                  ? currentUser.email.charAt(0).toUpperCase()
+                  : "A"}
               <div className="online-indicator"></div>
             </div>
             <div className="user-details-mini">
               <span className="user-display-name">
-                {currentUser?.full_name || (currentUser?.email ? currentUser.email.split("@")[0] : "Administrator")}
+                {currentUser?.full_name ||
+                  (currentUser?.email ? currentUser.email.split("@")[0] : "Administrator")}
               </span>
-              <span className="user-display-email">
-                {currentUser?.email || "admin@marvel.com"}
-              </span>
+              <span className="user-display-email">{currentUser?.email || "admin@marvel.com"}</span>
               <div className="user-role-badge-row">
                 {renderRoleBadge(isSuperAdmin ? "super_admin" : currentRole || "admin")}
               </div>
@@ -983,7 +1142,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* Action Links: Storefront Shortcut + Signout Button */}
           <div className="sidebar-actions-group">
             <button
-              onClick={() => onNavigateHome ? onNavigateHome() : (window.location.hash = "#/")}
+              onClick={() => (onNavigateHome ? onNavigateHome() : (window.location.hash = "#/"))}
               className="storefront-link-btn"
               title="Return to Customer Storefront"
             >
@@ -1021,9 +1180,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 {TAB_LABELS[activeTab] || TAB_LABELS.dashboard}
               </span>
             </div>
-            <h1 className="navbar-page-heading">
-              {TAB_HEADINGS[activeTab] || TAB_HEADINGS.dashboard}
-            </h1>
           </div>
 
           <div className="navbar-actions-block">
@@ -1043,25 +1199,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <RefreshCw size={15} className={refreshing ? "spin-animation" : ""} />
               <span>{refreshing ? "Syncing..." : "Refresh DB"}</span>
             </Button>
-
-            {/* Quick Add User Shortcut */}
-            <Button
-              onClick={() => {
-                setActiveTab("users");
-                setShowAddUserModal(true);
-              }}
-              className="quick-add-user-btn"
-            >
-              <Plus size={16} />
-              <span>Add User</span>
-            </Button>
           </div>
         </header>
 
         {/* ================================================== */}
         {/* TAB 1: DYNAMIC DASHBOARD (Charts & Live DB Data)   */}
         {/* ================================================== */}
-{activeTab === "dashboard" && dashboardView === "overview" && (
+        {activeTab === "dashboard" && dashboardView === "overview" && (
           <div className="dashboard-tab-view animate-fade-in">
             {/* KPI STATS CARDS GRID */}
             <div className="metrics-cards-grid">
@@ -1081,9 +1225,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   {salesReport.growth.percent === null ? (
                     <span className="kpi-subtext">First week of sales data</span>
                   ) : (
-                    <span className={`kpi-growth-badge ${salesReport.growth.percent >= 0 ? "positive" : "negative"}`}>
+                    <span
+                      className={`kpi-growth-badge ${salesReport.growth.percent >= 0 ? "positive" : "negative"}`}
+                    >
                       <TrendingUp size={13} />
-                      {salesReport.growth.percent >= 0 ? "+" : ""}{salesReport.growth.percent.toFixed(1)}%
+                      {salesReport.growth.percent >= 0 ? "+" : ""}
+                      {salesReport.growth.percent.toFixed(1)}%
                     </span>
                   )}
                   <span className="kpi-subtext">Avg Order: ${metrics.aov}</span>
@@ -1102,8 +1249,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <span className="kpi-number">{metrics.totalOrders}</span>
                 </div>
                 <div className="kpi-footer-row">
-                  <span className="kpi-status-tag completed">{metrics.completedOrders} Delivered</span>
-                  <span className="kpi-status-tag processing">{metrics.processingOrders} In Flight</span>
+                  <span className="kpi-status-tag completed">
+                    {metrics.completedOrders} Delivered
+                  </span>
+                  <span className="kpi-status-tag processing">
+                    {metrics.processingOrders} In Flight
+                  </span>
                 </div>
               </div>
 
@@ -1151,7 +1302,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <div className="chart-card-header">
                   <div>
                     <h3 className="chart-title">Revenue & Sales Trends</h3>
-                    <p className="chart-subtitle">Real-time dynamic aggregation from Supabase database</p>
+                    <p className="chart-subtitle">
+                      Real-time dynamic aggregation from Supabase database
+                    </p>
                   </div>
                   <div className="chart-controls-group">
                     <button
@@ -1173,7 +1326,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <div className="interactive-chart-container">
                   <div className="chart-bars-wrapper">
                     {chartData.points.map((point, idx) => {
-                      const heightPercent = Math.max(15, Math.round((point.revenue / chartData.maxRevenue) * 100));
+                      const heightPercent = Math.max(
+                        15,
+                        Math.round((point.revenue / chartData.maxRevenue) * 100)
+                      );
                       return (
                         <div key={idx} className="chart-bar-column group">
                           {/* Tooltip on Hover */}
@@ -1216,7 +1372,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <div className="bottom-metric-item">
                     <span className="dot purple"></span>
                     <span className="label">Delivered Rate:</span>
-                    <span className="val">{salesReport.deliveredRate === null ? "No orders yet" : `${salesReport.deliveredRate.toFixed(1)}%`}</span>
+                    <span className="val">
+                      {salesReport.deliveredRate === null
+                        ? "No orders yet"
+                        : `${salesReport.deliveredRate.toFixed(1)}%`}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1345,13 +1505,20 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           </td>
                           <td>
                             <div className="customer-info-cell">
-                              <span className="customer-name">{order.customer_name || "Marvel Shopper"}</span>
-                              <span className="customer-email">{order.customer_email || "user@marvel.com"}</span>
+                              <span className="customer-name">
+                                {order.customer_name || "Marvel Shopper"}
+                              </span>
+                              <span className="customer-email">
+                                {order.customer_email || "user@marvel.com"}
+                              </span>
                             </div>
                           </td>
                           <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
                           <td className="font-bold text-emerald">
-                            ${typeof order.total_amount === "number" ? order.total_amount.toFixed(2) : parseFloat(order.total_amount || 0).toFixed(2)}
+                            $
+                            {typeof order.total_amount === "number"
+                              ? order.total_amount.toFixed(2)
+                              : parseFloat(order.total_amount || 0).toFixed(2)}
                           </td>
                           <td>
                             <span className={`status-pill ${order.status || "processing"}`}>
@@ -1360,7 +1527,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             </span>
                           </td>
                           <td className="text-muted text-sm">
-                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Today"}
+                            {order.created_at
+                              ? new Date(order.created_at).toLocaleDateString()
+                              : "Today"}
                           </td>
                         </tr>
                       ))
@@ -1371,151 +1540,190 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           </div>
         )}
-{activeTab === "dashboard" && dashboardView === "sales" && (
-            <div className="dashboard-tab-view animate-fade-in">
-              {/* Sales window KPI cards */}
-              <div className="sales-mini-grid">
-                <div className="sales-mini-card teal">
-                  <span className="sales-mini-label">Today Orders</span>
-                  <span className="sales-mini-value">${salesReport.windows.today.revenue.toFixed(2)}</span>
-                  <span className="sales-mini-sub">{salesReport.windows.today.orders} orders today</span>
-                </div>
-                <div className="sales-mini-card orange">
-                  <span className="sales-mini-label">Yesterday Orders</span>
-                  <span className="sales-mini-value">${salesReport.windows.yesterday.revenue.toFixed(2)}</span>
-                  <span className="sales-mini-sub">{salesReport.windows.yesterday.orders} orders yesterday</span>
-                </div>
-                <div className="sales-mini-card blue">
-                  <span className="sales-mini-label">This Month</span>
-                  <span className="sales-mini-value">${salesReport.windows.thisMonth.revenue.toFixed(2)}</span>
-                  <span className="sales-mini-sub">{salesReport.windows.thisMonth.orders} orders this month</span>
-                </div>
-                <div className="sales-mini-card green">
-                  <span className="sales-mini-label">Last Month</span>
-                  <span className="sales-mini-value">${salesReport.windows.lastMonth.revenue.toFixed(2)}</span>
-                  <span className="sales-mini-sub">{salesReport.windows.lastMonth.orders} orders last month</span>
-                </div>
+        {activeTab === "dashboard" && dashboardView === "sales" && (
+          <div className="dashboard-tab-view animate-fade-in">
+            {/* Sales window KPI cards */}
+            <div className="sales-mini-grid">
+              <div className="sales-mini-card teal">
+                <span className="sales-mini-label">Today Orders</span>
+                <span className="sales-mini-value">
+                  ${salesReport.windows.today.revenue.toFixed(2)}
+                </span>
+                <span className="sales-mini-sub">
+                  {salesReport.windows.today.orders} orders today
+                </span>
               </div>
-
-              {/* Pipeline + best sellers */}
-              <div className="reports-grid-2">
-                <div className="report-card">
-                  <div className="chart-card-header">
-                    <div>
-                      <h3 className="chart-title">Orders Pipeline</h3>
-                      <p className="chart-subtitle">Live fulfillment stages from the database</p>
-                    </div>
-                    <ClipboardList size={18} className="text-muted" />
-                  </div>
-                  {[["Pending", salesReport.statuses.pending, "slate"], ["Processing", salesReport.statuses.processing, "amber"], ["Shipped", salesReport.statuses.shipped, ""], ["Delivered", salesReport.statuses.delivered, "emerald"], ["Cancelled", salesReport.statuses.cancelled, "rose"]].map(([label, count, tone]) => (
-                    <div key={label} className="pipeline-row">
-                      <span className="pipeline-label">{label}</span>
-                      <div className="pipeline-bar-track">
-                        <div
-                          className={`pipeline-bar-fill ${tone}`}
-                          style={{ width: `${salesReport.statuses.total > 0 ? Math.round((count / salesReport.statuses.total) * 100) : 0}%` }}
-                        />
-                      </div>
-                      <span className="pipeline-count">{count}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="report-card">
-                  <div className="chart-card-header">
-                    <div>
-                      <h3 className="chart-title">Best Selling Products</h3>
-                      <p className="chart-subtitle">Ranked by revenue from order line items</p>
-                    </div>
-                    <Star size={18} className="text-muted" />
-                  </div>
-                  {salesReport.sellers.length === 0 ? (
-                    <p className="report-empty">No product sales recorded yet.</p>
-                  ) : (
-                    salesReport.sellers.map((item, i) => (
-                      <div key={item.title} className="topseller-row">
-                        <span className="topseller-rank">{i + 1}</span>
-                        {item.image ? <img src={item.image} alt={item.title} className="topseller-img" /> : null}
-                        <div className="topseller-info">
-                          <div className="topseller-name">{item.title}</div>
-                          <div className="topseller-meta">{item.qty} sold</div>
-                        </div>
-                        <span className="topseller-rev">${item.revenue.toFixed(2)}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
+              <div className="sales-mini-card orange">
+                <span className="sales-mini-label">Yesterday Orders</span>
+                <span className="sales-mini-value">
+                  ${salesReport.windows.yesterday.revenue.toFixed(2)}
+                </span>
+                <span className="sales-mini-sub">
+                  {salesReport.windows.yesterday.orders} orders yesterday
+                </span>
               </div>
+              <div className="sales-mini-card blue">
+                <span className="sales-mini-label">This Month</span>
+                <span className="sales-mini-value">
+                  ${salesReport.windows.thisMonth.revenue.toFixed(2)}
+                </span>
+                <span className="sales-mini-sub">
+                  {salesReport.windows.thisMonth.orders} orders this month
+                </span>
+              </div>
+              <div className="sales-mini-card green">
+                <span className="sales-mini-label">Last Month</span>
+                <span className="sales-mini-value">
+                  ${salesReport.windows.lastMonth.revenue.toFixed(2)}
+                </span>
+                <span className="sales-mini-sub">
+                  {salesReport.windows.lastMonth.orders} orders last month
+                </span>
+              </div>
+            </div>
 
-              {/* Repeat buyers + inventory */}
-              <div className="reports-grid-2">
-                <div className="report-card">
-                  <div className="chart-card-header">
-                    <div>
-                      <h3 className="chart-title">Repeat Customers</h3>
-                      <p className="chart-subtitle">Shoppers who ordered more than once</p>
-                    </div>
-                    <Repeat size={18} className="text-muted" />
+            {/* Pipeline + best sellers */}
+            <div className="reports-grid-2">
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">Orders Pipeline</h3>
+                    <p className="chart-subtitle">Live fulfillment stages from the database</p>
                   </div>
-                  <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
-                    <strong style={{ color: "#0f172a" }}>{salesReport.repeat.repeatRate.toFixed(1)}%</strong>
-                    {` of ${salesReport.repeat.totalCustomers} customers bought more than once`}
-                  </p>
-                  {salesReport.repeat.top.length === 0 ? (
-                    <p className="report-empty">No repeat buyers yet.</p>
-                  ) : (
-                    salesReport.repeat.top.map((buyer) => (
-                      <div key={buyer.key} className="repeat-row">
-                        <div className="repeat-avatar">{(buyer.name || "M").charAt(0).toUpperCase()}</div>
-                        <div className="repeat-info">
-                          <div className="repeat-name">{buyer.name}</div>
-                          <div className="repeat-meta">{buyer.email || "no email"} • {buyer.orders} orders</div>
-                        </div>
-                        <span className="topseller-rev">${buyer.spent.toFixed(2)}</span>
-                        <span className="repeat-badge">Repeat</span>
-                      </div>
-                    ))
-                  )}
+                  <ClipboardList size={18} className="text-muted" />
                 </div>
-                <div className="report-card">
-                  <div className="chart-card-header">
-                    <div>
-                      <h3 className="chart-title">Inventory Snapshot</h3>
-                      <p className="chart-subtitle">Catalog value at current selling price</p>
+                {[
+                  ["Pending", salesReport.statuses.pending, "slate"],
+                  ["Processing", salesReport.statuses.processing, "amber"],
+                  ["Shipped", salesReport.statuses.shipped, ""],
+                  ["Delivered", salesReport.statuses.delivered, "emerald"],
+                  ["Cancelled", salesReport.statuses.cancelled, "rose"],
+                ].map(([label, count, tone]) => (
+                  <div key={label} className="pipeline-row">
+                    <span className="pipeline-label">{label}</span>
+                    <div className="pipeline-bar-track">
+                      <div
+                        className={`pipeline-bar-fill ${tone}`}
+                        style={{
+                          width: `${salesReport.statuses.total > 0 ? Math.round((count / salesReport.statuses.total) * 100) : 0}%`,
+                        }}
+                      />
                     </div>
-                    <Boxes size={18} className="text-muted" />
+                    <span className="pipeline-count">{count}</span>
                   </div>
-                  <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
-                    Catalog value: 
-                    <strong style={{ color: "#0f172a" }}>${salesReport.inventory.value.toFixed(2)}</strong>
-                  </p>
-                  {[
-                    ["In Stock", salesReport.inventory.inStock, "ok"],
-                    ["Low Stock (5 or fewer)", salesReport.inventory.lowStock, "low"],
-                    ["Out of Stock", salesReport.inventory.outOfStock, "out"]
-                  ].map(([label, count, tone]) => (
-                    <div key={label} className="pipeline-row">
-                      <span className="pipeline-label">{label}</span>
-                      <div className="pipeline-bar-track">
-                        <div
-                          className={`pipeline-bar-fill ${tone === "ok" ? "emerald" : tone === "low" ? "amber" : "rose"}`}
-                          style={{ width: `${salesReport.inventory.total > 0 ? Math.round((count / salesReport.inventory.total) * 100) : 0}%` }}
-                        />
+                ))}
+              </div>
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">Best Selling Products</h3>
+                    <p className="chart-subtitle">Ranked by revenue from order line items</p>
+                  </div>
+                  <Star size={18} className="text-muted" />
+                </div>
+                {salesReport.sellers.length === 0 ? (
+                  <p className="report-empty">No product sales recorded yet.</p>
+                ) : (
+                  salesReport.sellers.map((item, i) => (
+                    <div key={item.title} className="topseller-row">
+                      <span className="topseller-rank">{i + 1}</span>
+                      {item.image ? (
+                        <img src={item.image} alt={item.title} className="topseller-img" />
+                      ) : null}
+                      <div className="topseller-info">
+                        <div className="topseller-name">{item.title}</div>
+                        <div className="topseller-meta">{item.qty} sold</div>
                       </div>
-                      <span className="pipeline-count">{count}</span>
+                      <span className="topseller-rev">${item.revenue.toFixed(2)}</span>
                     </div>
-                  ))}
-                  <div className="chart-card-footer-action">
-                    <Button
-                      variant="outline"
-                      className="full-width-btn"
-                      onClick={() => { setActiveTab("products"); setProductsView("list"); }}
-                    >
-                      Manage Product Catalog <ChevronRight size={14} />
-                    </Button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Repeat buyers + inventory */}
+            <div className="reports-grid-2">
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">Repeat Customers</h3>
+                    <p className="chart-subtitle">Shoppers who ordered more than once</p>
                   </div>
+                  <Repeat size={18} className="text-muted" />
+                </div>
+                <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
+                  <strong style={{ color: "#0f172a" }}>
+                    {salesReport.repeat.repeatRate.toFixed(1)}%
+                  </strong>
+                  {` of ${salesReport.repeat.totalCustomers} customers bought more than once`}
+                </p>
+                {salesReport.repeat.top.length === 0 ? (
+                  <p className="report-empty">No repeat buyers yet.</p>
+                ) : (
+                  salesReport.repeat.top.map((buyer) => (
+                    <div key={buyer.key} className="repeat-row">
+                      <div className="repeat-avatar">
+                        {(buyer.name || "M").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="repeat-info">
+                        <div className="repeat-name">{buyer.name}</div>
+                        <div className="repeat-meta">
+                          {buyer.email || "no email"} • {buyer.orders} orders
+                        </div>
+                      </div>
+                      <span className="topseller-rev">${buyer.spent.toFixed(2)}</span>
+                      <span className="repeat-badge">Repeat</span>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">Inventory Snapshot</h3>
+                    <p className="chart-subtitle">Catalog value at current selling price</p>
+                  </div>
+                  <Boxes size={18} className="text-muted" />
+                </div>
+                <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
+                  Catalog value:
+                  <strong style={{ color: "#0f172a" }}>
+                    ${salesReport.inventory.value.toFixed(2)}
+                  </strong>
+                </p>
+                {[
+                  ["In Stock", salesReport.inventory.inStock, "ok"],
+                  ["Low Stock (5 or fewer)", salesReport.inventory.lowStock, "low"],
+                  ["Out of Stock", salesReport.inventory.outOfStock, "out"],
+                ].map(([label, count, tone]) => (
+                  <div key={label} className="pipeline-row">
+                    <span className="pipeline-label">{label}</span>
+                    <div className="pipeline-bar-track">
+                      <div
+                        className={`pipeline-bar-fill ${tone === "ok" ? "emerald" : tone === "low" ? "amber" : "rose"}`}
+                        style={{
+                          width: `${salesReport.inventory.total > 0 ? Math.round((count / salesReport.inventory.total) * 100) : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="pipeline-count">{count}</span>
+                  </div>
+                ))}
+                <div className="chart-card-footer-action">
+                  <Button
+                    variant="outline"
+                    className="full-width-btn"
+                    onClick={() => {
+                      setActiveTab("products");
+                      setProductsView("list");
+                    }}
+                  >
+                    Manage Product Catalog <ChevronRight size={14} />
+                  </Button>
                 </div>
               </div>
             </div>
+          </div>
         )}
 
         {/* ================================================== */}
@@ -1597,7 +1805,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="users-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> registered accounts in Supabase DB
+                  Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong>{" "}
+                  registered accounts in Supabase DB
                 </span>
                 <div className="table-actions-right">
                   <button
@@ -1651,11 +1860,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                                 {userItem.full_name
                                   ? userItem.full_name.charAt(0).toUpperCase()
                                   : userItem.email
-                                  ? userItem.email.charAt(0).toUpperCase()
-                                  : "U"}
+                                    ? userItem.email.charAt(0).toUpperCase()
+                                    : "U"}
                               </div>
                               <div className="user-meta-column">
-                                <span className="user-full-name">{userItem.full_name || "Unnamed User"}</span>
+                                <span className="user-full-name">
+                                  {userItem.full_name || "Unnamed User"}
+                                </span>
                                 <span className="user-email-text">{userItem.email}</span>
                               </div>
                             </div>
@@ -1677,7 +1888,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                                 </span>
                               ) : (
                                 <span className="plan-name-tag">
-                                  {userItem.plan || (userItem.role === "super_admin" || userItem.role === "admin" ? "Enterprise" : "Basic")}
+                                  {userItem.plan ||
+                                    (userItem.role === "super_admin" || userItem.role === "admin"
+                                      ? "Enterprise"
+                                      : "Basic")}
                                 </span>
                               )}
                             </div>
@@ -1689,7 +1903,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                               ? new Date(userItem.created_at).toLocaleDateString("en-US", {
                                   year: "numeric",
                                   month: "short",
-                                  day: "numeric"
+                                  day: "numeric",
                                 })
                               : "Active"}
                           </td>
@@ -1755,14 +1969,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <Button
                       variant="outline"
                       disabled={userPage === 1}
-                      onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
                     >
                       Previous
                     </Button>
                     <Button
                       variant="outline"
                       disabled={userPage === totalUserPages}
-                      onClick={() => setUserPage(p => Math.min(totalUserPages, p + 1))}
+                      onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
                     >
                       Next
                     </Button>
@@ -1789,35 +2003,68 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   className="users-search-field"
                 />
               </div>
-              <Button
-                id="admin-add-product-button"
-                onClick={handleOpenAddProduct}
-                className="add-user-primary-btn"
-              >
-                <Plus size={16} />
-                <span>Add Product</span>
-              </Button>
+              {productsView === "add" && (
+                <Button
+                  id="admin-add-product-button"
+                  onClick={handleOpenAddProduct}
+                  className="add-user-primary-btn"
+                >
+                  <Plus size={16} />
+                  <span>Add Product</span>
+                </Button>
+              )}
             </div>
 
             {productsView === "add" && (
               <div className="product-form-card">
                 <div className="chart-card-header">
                   <div>
-                    <h3 className="chart-title">{editingProduct ? "Edit Product" : "Add Product"}</h3>
-                    <p className="chart-subtitle">{editingProduct ? "Updates go live on the storefront immediately." : "New products publish straight to the storefront."}</p>
+                    <h3 className="chart-title">
+                      {editingProduct ? "Edit Product" : "Add Product"}
+                    </h3>
+                    <p className="chart-subtitle">
+                      {editingProduct
+                        ? "Updates go live on the storefront immediately."
+                        : "New products publish straight to the storefront."}
+                    </p>
                   </div>
                 </div>
                 <form onSubmit={handleSaveProduct} className="modal-form">
                   <div className="form-group-row">
                     <div className="form-group">
                       <label className="form-label">Product Title *</label>
-                      <Input required type="text" placeholder="e.g. Aurora Wireless Speaker" value={productForm.title} onChange={(e) => setProductForm((prev) => ({ ...prev, title: e.target.value }))} />
+                      <Input
+                        required
+                        type="text"
+                        placeholder="e.g. Aurora Wireless Speaker"
+                        value={productForm.title}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, title: e.target.value }))
+                        }
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Category</label>
-                      <select value={productForm.category} onChange={(e) => setProductForm((prev) => ({ ...prev, category: e.target.value }))} className="form-select-field">
-                        {["Electronics", "Fashion", "Home", "Beauty", "Wearables", "Sports", "Grocery", "Toys"].map((c) => (
-                          <option key={c} value={c}>{c}</option>
+                      <select
+                        value={productForm.category}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, category: e.target.value }))
+                        }
+                        className="form-select-field"
+                      >
+                        {[
+                          "Electronics",
+                          "Fashion",
+                          "Home",
+                          "Beauty",
+                          "Wearables",
+                          "Sports",
+                          "Grocery",
+                          "Toys",
+                        ].map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1825,34 +2072,87 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <div className="form-group-row">
                     <div className="form-group">
                       <label className="form-label">Price (Rs) *</label>
-                      <Input required type="number" min="0" step="0.01" placeholder="e.g. 4999" value={productForm.price} onChange={(e) => setProductForm((prev) => ({ ...prev, price: e.target.value }))} />
+                      <Input
+                        required
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g. 4999"
+                        value={productForm.price}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, price: e.target.value }))
+                        }
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Original Price (Rs)</label>
-                      <Input type="number" min="0" step="0.01" placeholder="Optional" value={productForm.original_price} onChange={(e) => setProductForm((prev) => ({ ...prev, original_price: e.target.value }))} />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Optional"
+                        value={productForm.original_price}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, original_price: e.target.value }))
+                        }
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Stock Units</label>
-                      <Input type="number" min="0" step="1" placeholder="15" value={productForm.stock} onChange={(e) => setProductForm((prev) => ({ ...prev, stock: e.target.value }))} />
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="15"
+                        value={productForm.stock}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, stock: e.target.value }))
+                        }
+                      />
                     </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Image URL</label>
-                    <Input type="text" placeholder="https://..." value={productForm.image_url} onChange={(e) => setProductForm((prev) => ({ ...prev, image_url: e.target.value }))} />
+                    <Input
+                      type="text"
+                      placeholder="https://..."
+                      value={productForm.image_url}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({ ...prev, image_url: e.target.value }))
+                      }
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Description</label>
-                    <Input type="text" placeholder="Short product description" value={productForm.description} onChange={(e) => setProductForm((prev) => ({ ...prev, description: e.target.value }))} />
+                    <Input
+                      type="text"
+                      placeholder="Short product description"
+                      value={productForm.description}
+                      onChange={(e) =>
+                        setProductForm((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                    />
                   </div>
                   <div className="modal-actions-footer">
-                    <Button type="button" variant="outline" onClick={() => { setEditingProduct(null); setProductsView("list"); }}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setProductsView("list");
+                      }}
+                    >
                       Cancel
                     </Button>
                     <Button type="submit" disabled={productSaving} className="submit-primary-btn">
                       {productSaving ? (
-                        <><RefreshCw size={15} className="spin-animation" /> Saving...</>
+                        <>
+                          <RefreshCw size={15} className="spin-animation" /> Saving...
+                        </>
                       ) : (
-                        <><Check size={16} /> {editingProduct ? "Save Changes" : "Publish Product"}</>
+                        <>
+                          <Check size={16} /> {editingProduct ? "Save Changes" : "Publish Product"}
+                        </>
                       )}
                     </Button>
                   </div>
@@ -1863,7 +2163,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="users-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> catalog items
+                  Showing <strong>{filteredProducts.length}</strong> of{" "}
+                  <strong>{products.length}</strong> catalog items
                 </span>
               </div>
               <div className="table-responsive-wrapper">
@@ -1890,56 +2191,81 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       filteredProducts.map((prod) => {
                         const stockCount = parseInt(prod.stock, 10) || 0;
                         return (
-                        <tr key={prod.id}>
-                          <td>
-                            <div className="product-cell">
-                              {(prod.image_url || prod.image) ? <img src={prod.image_url || prod.image} alt={prod.title} className="product-thumb" /> : null}
-                              <div>
-                                <div className="product-title-text">{prod.title}</div>
-                                <div className="product-sku-text">{prod.sku || String(prod.id).substring(0, 8)}</div>
+                          <tr key={prod.id}>
+                            <td>
+                              <div className="product-cell">
+                                {prod.image_url || prod.image ? (
+                                  <img
+                                    src={prod.image_url || prod.image}
+                                    alt={prod.title}
+                                    className="product-thumb"
+                                  />
+                                ) : null}
+                                <div>
+                                  <div className="product-title-text">{prod.title}</div>
+                                  <div className="product-sku-text">
+                                    {prod.sku || String(prod.id).substring(0, 8)}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          <td>{prod.category}</td>
-                          <td className="font-bold">
-                            ${parseFloat(prod.price || 0).toFixed(2)}
-                            {prod.original_price ? <span className="text-muted text-sm"> <s>${parseFloat(prod.original_price).toFixed(2)}</s></span> : null}
-                          </td>
-                          <td>
-                            <span className={`stock-pill ${stockCount <= 0 ? "out" : stockCount <= 5 ? "low" : "ok"}`}>
-                              {stockCount} in stock
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              className="feature-star-btn"
-                              onClick={() => handleToggleFeatured(prod)}
-                              title={prod.is_featured ? "Remove featured flag" : "Mark as featured"}
-                              aria-label={prod.is_featured ? `Unmark ${prod.title} as featured` : `Mark ${prod.title} as featured`}
-                              aria-pressed={!!prod.is_featured}
-                            >
-                              <Star size={17} color={prod.is_featured ? "#f59e0b" : "#cbd5e1"} fill={prod.is_featured ? "#f59e0b" : "none"} />
-                            </button>
-                          </td>
-                          <td className="text-right">
-                            <div className="user-actions-row">
-                              <button
-                                onClick={() => handleOpenEditProduct(prod)}
-                                className="action-btn edit-btn"
-                                title="Edit product"
+                            </td>
+                            <td>{prod.category}</td>
+                            <td className="font-bold">
+                              ${parseFloat(prod.price || 0).toFixed(2)}
+                              {prod.original_price ? (
+                                <span className="text-muted text-sm">
+                                  {" "}
+                                  <s>${parseFloat(prod.original_price).toFixed(2)}</s>
+                                </span>
+                              ) : null}
+                            </td>
+                            <td>
+                              <span
+                                className={`stock-pill ${stockCount <= 0 ? "out" : stockCount <= 5 ? "low" : "ok"}`}
                               >
-                                <Edit2 size={15} />
-                              </button>
+                                {stockCount} in stock
+                              </span>
+                            </td>
+                            <td>
                               <button
-                                onClick={() => handleDeleteProduct(prod.id, prod.title)}
-                                className="action-btn delete-btn"
-                                title="Delete product"
+                                className="feature-star-btn"
+                                onClick={() => handleToggleFeatured(prod)}
+                                title={
+                                  prod.is_featured ? "Remove featured flag" : "Mark as featured"
+                                }
+                                aria-label={
+                                  prod.is_featured
+                                    ? `Unmark ${prod.title} as featured`
+                                    : `Mark ${prod.title} as featured`
+                                }
+                                aria-pressed={!!prod.is_featured}
                               >
-                                <Trash2 size={15} />
+                                <Star
+                                  size={17}
+                                  color={prod.is_featured ? "#f59e0b" : "#cbd5e1"}
+                                  fill={prod.is_featured ? "#f59e0b" : "none"}
+                                />
                               </button>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="text-right">
+                              <div className="user-actions-row">
+                                <button
+                                  onClick={() => handleOpenEditProduct(prod)}
+                                  className="action-btn edit-btn"
+                                  title="Edit product"
+                                >
+                                  <Edit2 size={15} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteProduct(prod.id, prod.title)}
+                                  className="action-btn delete-btn"
+                                  title="Delete product"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
                         );
                       })
                     )}
@@ -1956,7 +2282,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {activeTab === "orders" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="report-pills-row">
-              {[["all", "All Orders", orders.length], ["pending", "Pending", salesReport.statuses.pending], ["processing", "Processing", salesReport.statuses.processing], ["shipped", "Shipped", salesReport.statuses.shipped], ["delivered", "Delivered", salesReport.statuses.delivered]].map(([value, label, count]) => (
+              {[
+                ["all", "All Orders", orders.length],
+                ["pending", "Pending", salesReport.statuses.pending],
+                ["processing", "Processing", salesReport.statuses.processing],
+                ["shipped", "Shipped", salesReport.statuses.shipped],
+                ["delivered", "Delivered", salesReport.statuses.delivered],
+              ].map(([value, label, count]) => (
                 <button
                   key={value}
                   onClick={() => setOrdersView(value)}
@@ -1969,7 +2301,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="users-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{filteredOrders.length}</strong> of <strong>{orders.length}</strong> order records
+                  Showing <strong>{filteredOrders.length}</strong> of{" "}
+                  <strong>{orders.length}</strong> order records
                 </span>
               </div>
               <div className="table-responsive-wrapper">
@@ -1996,15 +2329,26 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       filteredOrders.slice(0, 20).map((order, idx) => (
                         <tr key={order.id || idx}>
-                          <td className="font-mono text-primary font-bold">#{String(order.id).substring(0, 8)}</td>
+                          <td className="font-mono text-primary font-bold">
+                            #{String(order.id).substring(0, 8)}
+                          </td>
                           <td>
                             <div className="customer-info-cell">
-                              <span className="customer-name">{order.customer_name || "Marvel Shopper"}</span>
-                              <span className="customer-email">{order.customer_email || "user@marvel.com"}</span>
+                              <span className="customer-name">
+                                {order.customer_name || "Marvel Shopper"}
+                              </span>
+                              <span className="customer-email">
+                                {order.customer_email || "user@marvel.com"}
+                              </span>
                             </div>
                           </td>
                           <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
-                          <td className="font-bold text-emerald">${typeof order.total_amount === "number" ? order.total_amount.toFixed(2) : parseFloat(order.total_amount || 0).toFixed(2)}</td>
+                          <td className="font-bold text-emerald">
+                            $
+                            {typeof order.total_amount === "number"
+                              ? order.total_amount.toFixed(2)
+                              : parseFloat(order.total_amount || 0).toFixed(2)}
+                          </td>
                           <td>
                             <span className={`status-pill ${order.status || "processing"}`}>
                               <span className="status-dot"></span>
@@ -2012,11 +2356,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             </span>
                           </td>
                           <td className="text-muted text-sm">
-                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : "Today"}
+                            {order.created_at
+                              ? new Date(order.created_at).toLocaleDateString()
+                              : "Today"}
                           </td>
                           <td className="text-right">
                             {order.status === "processing" || order.status === "shipped" ? (
-                              <Button variant="outline" size="sm" onClick={() => handleAdvanceOrder(order)}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAdvanceOrder(order)}
+                              >
                                 Mark {order.status === "processing" ? "Shipped" : "Delivered"}
                               </Button>
                             ) : (
@@ -2082,19 +2432,31 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         <tr key={cust.id || cust.email}>
                           <td>
                             <div className="user-profile-cell">
-                              <div className="user-table-avatar user">{(cust.name || "M").charAt(0).toUpperCase()}</div>
+                              <div className="user-table-avatar user">
+                                {(cust.name || "M").charAt(0).toUpperCase()}
+                              </div>
                               <div className="user-meta-column">
                                 <span className="user-full-name">{cust.name}</span>
-                                <span className="user-email-text">{cust.email || "no email on file"}</span>
+                                <span className="user-email-text">
+                                  {cust.email || "no email on file"}
+                                </span>
                               </div>
                             </div>
                           </td>
                           <td className="font-bold">{cust.orders}</td>
                           <td className="font-bold text-emerald">${cust.spent.toFixed(2)}</td>
                           <td className="text-muted text-sm">
-                            {cust.lastOrderAt ? new Date(cust.lastOrderAt).toLocaleDateString() : "Never"}
+                            {cust.lastOrderAt
+                              ? new Date(cust.lastOrderAt).toLocaleDateString()
+                              : "Never"}
                           </td>
-                          <td>{cust.repeat ? <span className="repeat-badge">Repeat Buyer</span> : renderStatusBadge(cust.status)}</td>
+                          <td>
+                            {cust.repeat ? (
+                              <span className="repeat-badge">Repeat Buyer</span>
+                            ) : (
+                              renderStatusBadge(cust.status)
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -2136,7 +2498,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
                 <div>
                   <h3 className="modal-title">Create User Account</h3>
-                  <p className="modal-subtitle">Add a new authenticated user profile to Supabase database</p>
+                  <p className="modal-subtitle">
+                    Add a new authenticated user profile to Supabase database
+                  </p>
                 </div>
               </div>
               <button onClick={() => setShowAddUserModal(false)} className="modal-close-btn">
@@ -2153,7 +2517,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type="text"
                     placeholder="e.g. Alex Morgan"
                     value={addUserForm.fullName}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, fullName: e.target.value }))}
+                    onChange={(e) =>
+                      setAddUserForm((prev) => ({ ...prev, fullName: e.target.value }))
+                    }
                   />
                 </div>
 
@@ -2164,7 +2530,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type="email"
                     placeholder="alex@marvel.com"
                     value={addUserForm.email}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) => setAddUserForm((prev) => ({ ...prev, email: e.target.value }))}
                   />
                 </div>
               </div>
@@ -2186,7 +2552,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type={showPassword ? "text" : "password"}
                     placeholder="Minimum 6 characters"
                     value={addUserForm.password}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    onChange={(e) =>
+                      setAddUserForm((prev) => ({ ...prev, password: e.target.value }))
+                    }
                   />
                   <button
                     type="button"
@@ -2204,19 +2572,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <label className="form-label">Account Role *</label>
                   <select
                     value={addUserForm.role}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, role: e.target.value }))}
+                    onChange={(e) => setAddUserForm((prev) => ({ ...prev, role: e.target.value }))}
                     className="form-select-field"
                   >
                     <option value="user">Customer (Standard Shopper)</option>
                     <option value="vendor">Vendor / Seller</option>
                     <option value="admin">Platform Admin</option>
-                    {isSuperAdmin && (
-                      <option value="super_admin">Super Admin (Root)</option>
-                    )}
+                    {isSuperAdmin && <option value="super_admin">Super Admin (Root)</option>}
                   </select>
                 </div>
-
-
               </div>
 
               {/* Vendor Store Name if role is vendor */}
@@ -2227,24 +2591,18 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type="text"
                     placeholder="e.g. Apex Electronics"
                     value={addUserForm.storeName}
-                    onChange={(e) => setAddUserForm(prev => ({ ...prev, storeName: e.target.value }))}
+                    onChange={(e) =>
+                      setAddUserForm((prev) => ({ ...prev, storeName: e.target.value }))
+                    }
                   />
                 </div>
               )}
 
               <div className="modal-actions-footer">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowAddUserModal(false)}
-                >
+                <Button type="button" variant="outline" onClick={() => setShowAddUserModal(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={addUserLoading}
-                  className="submit-primary-btn"
-                >
+                <Button type="submit" disabled={addUserLoading} className="submit-primary-btn">
                   {addUserLoading ? (
                     <>
                       <RefreshCw size={15} className="spin-animation" /> Creating...
@@ -2289,8 +2647,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   {viewingUser.full_name
                     ? viewingUser.full_name.charAt(0).toUpperCase()
                     : viewingUser.email
-                    ? viewingUser.email.charAt(0).toUpperCase()
-                    : "U"}
+                      ? viewingUser.email.charAt(0).toUpperCase()
+                      : "U"}
                 </div>
                 <div className="view-hero-info">
                   <h4 className="hero-full-name">{viewingUser.full_name || "Unnamed User"}</h4>
@@ -2311,7 +2669,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(viewingUser.id);
-                        addToast({ title: "Copied", message: "User ID copied to clipboard.", type: "info" });
+                        addToast({
+                          title: "Copied",
+                          message: "User ID copied to clipboard.",
+                          type: "info",
+                        });
                       }}
                       className="copy-id-btn"
                       title="Copy ID"
@@ -2324,7 +2686,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <div className="meta-info-item">
                   <span className="meta-label">REGISTERED DATE</span>
                   <span className="meta-value">
-                    {viewingUser.created_at ? new Date(viewingUser.created_at).toLocaleString() : "Live Profile"}
+                    {viewingUser.created_at
+                      ? new Date(viewingUser.created_at).toLocaleString()
+                      : "Live Profile"}
                   </span>
                 </div>
 
@@ -2376,7 +2740,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
                 <Button
                   variant="outline"
-                  onClick={() => handleToggleStatus(viewingUser.id, viewingUser.status, viewingUser.full_name || viewingUser.email)}
+                  onClick={() =>
+                    handleToggleStatus(
+                      viewingUser.id,
+                      viewingUser.status,
+                      viewingUser.full_name || viewingUser.email
+                    )
+                  }
                   className="quick-action-btn"
                 >
                   {viewingUser.status === "active" ? "Deactivate User" : "Activate User"}
@@ -2406,7 +2776,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
                 <div>
                   <h3 className="modal-title">Edit User Profile</h3>
-                  <p className="modal-subtitle">Update user details in Supabase profiles database</p>
+                  <p className="modal-subtitle">
+                    Update user details in Supabase profiles database
+                  </p>
                 </div>
               </div>
               <button onClick={() => setEditingUser(null)} className="modal-close-btn">
@@ -2422,7 +2794,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type="text"
                     required
                     value={editUserForm.full_name}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, full_name: e.target.value }))}
+                    onChange={(e) =>
+                      setEditUserForm((prev) => ({ ...prev, full_name: e.target.value }))
+                    }
                   />
                 </div>
 
@@ -2432,7 +2806,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     type="email"
                     required
                     value={editUserForm.email}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, email: e.target.value }))}
+                    onChange={(e) =>
+                      setEditUserForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -2443,15 +2819,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <label className="form-label">Role</label>
                   <select
                     value={editUserForm.role}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, role: e.target.value }))}
+                    onChange={(e) => setEditUserForm((prev) => ({ ...prev, role: e.target.value }))}
                     className="form-select-field"
                   >
                     <option value="user">Customer (User)</option>
                     <option value="vendor">Vendor</option>
                     <option value="admin">Platform Admin</option>
-                    {isSuperAdmin && (
-                      <option value="super_admin">Super Admin</option>
-                    )}
+                    {isSuperAdmin && <option value="super_admin">Super Admin</option>}
                   </select>
                 </div>
 
@@ -2460,7 +2834,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <label className="form-label">Account Status</label>
                   <select
                     value={editUserForm.status}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, status: e.target.value }))}
+                    onChange={(e) =>
+                      setEditUserForm((prev) => ({ ...prev, status: e.target.value }))
+                    }
                     className="form-select-field"
                   >
                     <option value="active">Active</option>
@@ -2478,7 +2854,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <Input
                     type="text"
                     value={editUserForm.store_name}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, store_name: e.target.value }))}
+                    onChange={(e) =>
+                      setEditUserForm((prev) => ({ ...prev, store_name: e.target.value }))
+                    }
                   />
                 </div>
               )}
@@ -2488,7 +2866,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <label className="form-label">Plan Tier</label>
                   <select
                     value={editUserForm.plan}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, plan: e.target.value }))}
+                    onChange={(e) => setEditUserForm((prev) => ({ ...prev, plan: e.target.value }))}
                     className="form-select-field"
                   >
                     <option value="Basic">Basic</option>
@@ -2501,7 +2879,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <label className="form-label">Billing Method</label>
                   <select
                     value={editUserForm.billing}
-                    onChange={(e) => setEditUserForm(prev => ({ ...prev, billing: e.target.value }))}
+                    onChange={(e) =>
+                      setEditUserForm((prev) => ({ ...prev, billing: e.target.value }))
+                    }
                     className="form-select-field"
                   >
                     <option value="Auto Debit">Auto Debit</option>
@@ -2512,11 +2892,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
 
               <div className="modal-actions-footer">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingUser(null)}
-                >
+                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
                   Cancel
                 </Button>
                 <Button
@@ -2553,7 +2929,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
                 <div>
                   <h3 className="modal-title">Reset User Password</h3>
-                  <p className="modal-subtitle">Set a new secure password for {resetTargetUser.email}</p>
+                  <p className="modal-subtitle">
+                    Set a new secure password for {resetTargetUser.email}
+                  </p>
                 </div>
               </div>
               <button onClick={() => setResetTargetUser(null)} className="modal-close-btn">
@@ -2574,11 +2952,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
 
               <div className="modal-actions-footer">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setResetTargetUser(null)}
-                >
+                <Button type="button" variant="outline" onClick={() => setResetTargetUser(null)}>
                   Cancel
                 </Button>
                 <Button
@@ -2607,7 +2981,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
                 <div>
                   <h3 className="modal-title">Delete User Account</h3>
-                  <p className="modal-subtitle">This action is irreversible and deletes DB records</p>
+                  <p className="modal-subtitle">
+                    This action is irreversible and deletes DB records
+                  </p>
                 </div>
               </div>
               <button onClick={() => setDeletingUser(null)} className="modal-close-btn">
@@ -2627,11 +3003,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
 
             <div className="modal-actions-footer">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDeletingUser(null)}
-              >
+              <Button type="button" variant="outline" onClick={() => setDeletingUser(null)}>
                 Cancel
               </Button>
               <Button

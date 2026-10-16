@@ -169,9 +169,7 @@ test("dynamic menu renders live tree with promo when the menu API returns data",
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("homepage nav renders live menu tree when the menu API returns data", async ({
-  page,
-}) => {
+test("homepage nav renders live menu tree when the menu API returns data", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.route("**/api/menu**", (route) =>
     route.fulfill({
@@ -206,7 +204,7 @@ test("homepage nav renders live menu tree when the menu API returns data", async
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("hero CTA is fully inside the carousel at tablet-768 (showcase hidden)", async ({ page }) => {
+test("hero CTA is fully inside the carousel at tablet-768 (showcase removed)", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 1024 });
 
   const response = await page.goto("/");
@@ -217,12 +215,8 @@ test("hero CTA is fully inside the carousel at tablet-768 (showcase hidden)", as
   const cta = page.locator(".hero-slide.active .hero-cta").first();
   await expect(cta).toBeVisible();
 
-  // Showcase must be hidden at this width (Task 6 guard) so nothing clips.
-  const showcaseDisplay = await page.evaluate(() => {
-    const el = document.querySelector(".hero-png-showcase");
-    return el ? getComputedStyle(el).display : "missing";
-  });
-  expect(showcaseDisplay).toBe("none");
+  // Floating showcase image was removed from the banner — it must be absent.
+  await expect(page.locator(".hero-png-showcase")).toHaveCount(0);
 
   const boxes = await page.evaluate(() => {
     const c = document.querySelector(".hero-carousel").getBoundingClientRect();
