@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth.js";
 import menuRoutes from "./routes/menu.js";
+import contentRoutes from "./routes/content.js";
 import userRoutes from "./routes/users.js";
 import productRoutes from "./routes/products.js";
 import orderRoutes from "./routes/orders.js";
@@ -25,13 +26,14 @@ app.get("/api/health", (req, res) => {
     architecture: "Frontend (React) -> Backend (Express REST API) -> Cloudinary / Supabase DB",
     roles_supported: ["user", "vendor", "admin", "super_admin"],
     cloudinary_active: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/menu", menuRoutes);
+app.use("/api/content", contentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);

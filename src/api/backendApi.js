@@ -45,7 +45,7 @@ export async function apiUploadImage(file, folder = "marvel_products") {
   const res = await fetch(`${API_BASE_URL}/upload`, {
     method: "POST",
     headers: getAuthHeaders(),
-    body: formData
+    body: formData,
   });
 
   const data = await res.json();
@@ -64,7 +64,7 @@ export async function apiLogin({ email, password, expectedRole }) {
   const res = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, expectedRole })
+    body: JSON.stringify({ email, password, expectedRole }),
   });
 
   const data = await res.json();
@@ -82,7 +82,7 @@ export async function apiSignUp({ email, password, fullName, role = "user", stor
   const res = await fetch(`${API_BASE_URL}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, fullName, role, storeName })
+    body: JSON.stringify({ email, password, fullName, role, storeName }),
   });
 
   const data = await res.json();
@@ -102,7 +102,7 @@ export async function apiGetMe() {
 
   try {
     const res = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
 
     if (!res.ok) {
@@ -139,7 +139,7 @@ export async function apiSaveMenuItem(menuItem) {
   const res = await fetch(`${API_BASE_URL}/menu`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(menuItem)
+    body: JSON.stringify(menuItem),
   });
 
   const data = await res.json();
@@ -150,7 +150,7 @@ export async function apiSaveMenuItem(menuItem) {
 export async function apiDeleteMenuItem(id) {
   const res = await fetch(`${API_BASE_URL}/menu/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders()
+    headers: getAuthHeaders(),
   });
 
   const data = await res.json();
@@ -166,7 +166,7 @@ export async function apiDeleteMenuItem(id) {
 export async function apiFetchAllUsers() {
   try {
     const res = await fetch(`${API_BASE_URL}/users`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -181,7 +181,7 @@ export async function apiAdminCreateUser(userData) {
   const res = await fetch(`${API_BASE_URL}/users/admin-create`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(userData)
+    body: JSON.stringify(userData),
   });
 
   const data = await res.json();
@@ -193,7 +193,7 @@ export async function apiUpdateUserRole(userId, newRole) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
     method: "PUT",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ role: newRole })
+    body: JSON.stringify({ role: newRole }),
   });
 
   const data = await res.json();
@@ -205,7 +205,7 @@ export async function apiUpdateUserDetails(userId, userData) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
     method: "PUT",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(userData)
+    body: JSON.stringify(userData),
   });
 
   const data = await res.json();
@@ -217,7 +217,7 @@ export async function apiUpdateUserStatus(userId, status) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
     method: "PUT",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ status })
+    body: JSON.stringify({ status }),
   });
 
   const data = await res.json();
@@ -229,7 +229,7 @@ export async function apiResetUserPassword(userId, newPassword) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}/reset-password`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ newPassword })
+    body: JSON.stringify({ newPassword }),
   });
 
   const data = await res.json();
@@ -240,7 +240,7 @@ export async function apiResetUserPassword(userId, newPassword) {
 export async function apiDeleteUser(userId) {
   const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
     method: "DELETE",
-    headers: getAuthHeaders()
+    headers: getAuthHeaders(),
   });
 
   const data = await res.json();
@@ -252,7 +252,7 @@ export async function apiForgotPassword(email) {
   const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email }),
   });
 
   const data = await res.json();
@@ -264,7 +264,7 @@ export async function apiResetPassword(email, newPassword) {
   const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, newPassword })
+    body: JSON.stringify({ email, newPassword }),
   });
 
   const data = await res.json();
@@ -306,7 +306,7 @@ export async function apiCreateProduct(productData) {
   const res = await fetch(`${API_BASE_URL}/products`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(productData)
+    body: JSON.stringify(productData),
   });
 
   const data = await res.json();
@@ -318,7 +318,7 @@ export async function apiUpdateProduct(id, updates) {
   const res = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: "PUT",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(updates)
+    body: JSON.stringify(updates),
   });
 
   const data = await res.json();
@@ -330,7 +330,7 @@ export async function apiModerateProduct(id, moderationPayload) {
   const res = await fetch(`${API_BASE_URL}/products/${id}/moderation`, {
     method: "PATCH",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(moderationPayload)
+    body: JSON.stringify(moderationPayload),
   });
 
   const data = await res.json();
@@ -341,7 +341,7 @@ export async function apiModerateProduct(id, moderationPayload) {
 export async function apiDeleteProduct(id) {
   const res = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: "DELETE",
-    headers: getAuthHeaders()
+    headers: getAuthHeaders(),
   });
 
   const data = await res.json();
@@ -358,7 +358,7 @@ export async function apiFetchOrders(params = {}) {
   try {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${API_BASE_URL}/orders${query ? `?${query}` : ""}`, {
-      headers: getAuthHeaders()
+      headers: getAuthHeaders(),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to fetch orders.");
@@ -373,7 +373,7 @@ export async function apiCreateOrder(orderData) {
   const res = await fetch(`${API_BASE_URL}/orders`, {
     method: "POST",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(orderData)
+    body: JSON.stringify(orderData),
   });
 
   const data = await res.json();
@@ -385,10 +385,93 @@ export async function apiUpdateOrderStatus(id, statusData) {
   const res = await fetch(`${API_BASE_URL}/orders/${id}/status`, {
     method: "PATCH",
     headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(statusData)
+    body: JSON.stringify(statusData),
   });
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to update order status.");
   return data.order;
+}
+
+/**
+ * ----------------------------------------------------
+ * SITE CONTENT — HERO SLIDES & CATEGORIES
+ * ----------------------------------------------------
+ */
+export async function apiFetchHeroSlides() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/content/hero`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to fetch hero slides.");
+    return data.slides || [];
+  } catch (err) {
+    console.error("Backend Hero API error:", err.message);
+    return [];
+  }
+}
+
+export async function apiSaveHeroSlide(slide) {
+  const payload = {
+    ...slide,
+    order_index: slide.order_index != null ? Number(slide.order_index) : 0,
+  };
+  const res = await fetch(`${API_BASE_URL}/content/hero`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to save hero slide.");
+  return data;
+}
+
+export async function apiDeleteHeroSlide(id) {
+  const res = await fetch(`${API_BASE_URL}/content/hero/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to delete hero slide.");
+  return data;
+}
+
+export async function apiFetchSiteCategories() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/content/categories`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to fetch site categories.");
+    return data.categories || [];
+  } catch (err) {
+    console.error("Backend Categories API error:", err.message);
+    return [];
+  }
+}
+
+export async function apiSaveSiteCategory(category) {
+  const payload = {
+    ...category,
+    order_index: category.order_index != null ? Number(category.order_index) : 0,
+  };
+  const res = await fetch(`${API_BASE_URL}/content/categories`, {
+    method: "POST",
+    headers: getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to save site category.");
+  return data;
+}
+
+export async function apiDeleteSiteCategory(id) {
+  const res = await fetch(`${API_BASE_URL}/content/categories/${id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to delete site category.");
+  return data;
 }
