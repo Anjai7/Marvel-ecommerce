@@ -72,10 +72,13 @@ import {
   customerStats
 } from "./reportUtils";
 import "./admin-reports.css";
+import MenuTreeEditor from "./MenuTreeEditor";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
   const isSuperAdmin = currentRole === "super_admin" || customRole === "super_admin";
+  // Site Content (menus, hero, categories) is admin-gated; Task 5 adds Hero/Categories here.
+  const canManageSiteContent = isSuperAdmin || currentRole === "admin" || customRole === "admin";
 
   // Active Tab State (Dashboard, Products, Orders, Customers, Users)
   const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "products" | "orders" | "customers" | "users"
@@ -656,7 +659,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     products: "Product Catalog",
     orders: "Orders Pipeline",
     customers: "Customer Insights",
-    users: "User Management Directory"
+    users: "User Management Directory",
+    menus: "Site Content — Menus"
   };
 
   const TAB_HEADINGS = {
@@ -664,7 +668,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     products: (<>Product <span className="gradient-text">Catalog</span></>),
     orders: (<>Orders <span className="gradient-text">Pipeline</span></>),
     customers: (<>Customer <span className="gradient-text">Insights</span></>),
-    users: (<>User Accounts & <span className="gradient-text">Access Control</span></>)
+    users: (<>User Accounts & <span className="gradient-text">Access Control</span></>),
+    menus: (<>Site Content <span className="gradient-text">Menus</span></>)
   };
 
   return (
@@ -888,6 +893,44 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <span>Repeat Buyers</span>
                 <span className="sidebar-submenu-count">{salesReport.repeat.repeatCustomers}</span>
               </button>
+            </div>
+          )}
+
+          {/* ===== SITE CONTENT (Task 4: Menus tab; Task 5 adds Hero/Categories sub-tabs below) ===== */}
+          {canManageSiteContent && (
+            <div className="nav-section-label">SITE CONTENT</div>
+          )}
+          {canManageSiteContent && (
+            <button
+              id="admin-tab-site-content"
+              onClick={() => { setActiveTab("menus"); toggleMenu("siteContent"); }}
+              className={`sidebar-tab-button ${activeTab === "menus" ? "active" : ""}`}
+              aria-expanded={!!expandedMenus.siteContent}
+            >
+              <div className="tab-icon-box">
+                <Layers size={19} />
+              </div>
+              <div className="tab-text-box">
+                <span className="tab-title">Site Content</span>
+                <span className="tab-description">Menus & Banners</span>
+              </div>
+              <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
+                <ChevronDown size={15} />
+              </span>
+              {activeTab === "menus" && <div className="active-glow-indicator"></div>}
+            </button>
+          )}
+          {canManageSiteContent && expandedMenus.siteContent && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-site-content-menus"
+                onClick={() => { setActiveTab("menus"); }}
+                className={`sidebar-submenu-btn ${activeTab === "menus" ? "active" : ""}`}
+              >
+                <Layers size={14} />
+                <span>Menus</span>
+              </button>
+              {/* Task 5: Hero / Categories sub-tabs go here */}
             </div>
           )}
         </nav>
@@ -2036,6 +2079,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
             </div>
           </div>
+        )}
+
+        {/* ================================================== */}
+        {/* TAB 6: SITE CONTENT > MENUS (Task 4; Task 5 adds Hero/Categories views here) */}
+        {/* ================================================== */}
+        {activeTab === "menus" && canManageSiteContent && (
+          <MenuTreeEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
         )}
       </main>
 
