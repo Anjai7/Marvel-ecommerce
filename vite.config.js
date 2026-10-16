@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     environment: "happy-dom",
     setupFiles: ["./src/test/setup.js"],
-    include: ["src/**/*.{test,spec}.{js,jsx}"],
+    include: ["src/**/*.{test,spec}.{js,jsx}", "server/**/*.test.js"],
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],

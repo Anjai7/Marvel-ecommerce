@@ -103,35 +103,43 @@ async function fetchActiveRows() {
   return fallbackMenu.filter((item) => item.is_active !== false);
 }
 
-async function findParent(parent_id) {
-  if (parent_id == null) return null;
+async function findMenuItem(id) {
+  if (id == null) return null;
   try {
     const { data, error } = await supabase
       .from("menu_items")
-      .select("id, level")
-      .eq("id", parent_id)
+      .select("id, level, parent_id")
+      .eq("id", id)
       .single();
     if (!error && data) return data;
   } catch (e) {
-    console.warn("Supabase parent lookup warning, using fallback:", e.message);
+    console.warn("Supabase menu item lookup warning, using fallback:", e.message);
   }
-  return fallbackMenu.find((m) => m.id === parent_id) || null;
+  return fallbackMenu.find((m) => m.id === id) || null;
 }
 
-function validateHierarchy({ level = 1, parent_id = null }, parent) {
-  if (level > 3) {
-    return "Menu level must be between 1 and 3.";
+async function findParent(parent_id) {
+  return findMenuItem(parent_id);
+}
+
+export function validateHierarchy({ level = 1, parent_id = null }, parent) {
+  if (!Number.isInteger(level) || level < 1 || level > 3) {
+    return "Menu level must be an integer between 1 and 3.";
   }
-  if (level > 1) {
-    if (!parent_id) {
-      return "parent_id is required for menu items below level 1.";
+  if (level === 1) {
+    if (parent_id != null) {
+      return "Level 1 menu items must not have a parent_id.";
     }
-    if (!parent) {
-      return "Parent menu item not found.";
-    }
-    if (parent.level !== level - 1) {
-      return `Parent level must be ${level - 1} for a level ${level} item.`;
-    }
+    return null;
+  }
+  if (!parent_id) {
+    return "parent_id is required for menu items below level 1.";
+  }
+  if (!parent) {
+    return "Parent menu item not found.";
+  }
+  if (parent.level !== level - 1) {
+    return `Parent level must be ${level - 1} for a level ${level} item.`;
   }
   return null;
 }
@@ -166,7 +174,7 @@ router.post("/", ...adminOnly, async (req, res) => {
   }
 
   try {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("menu_items")
       .upsert({
         id: menuItem.id || undefined,
@@ -211,11 +219,75 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
     return res.status(400).json({ error: "Each order entry must include an 'id'." });
   }
 
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+
+  // Phase 1: resolve current rows — unknown ids rejected before anything persists.
+  const currentById = new Map();
+  for (const o of orders) {
+    const current = await findMenuItem(o.id);
+    if (!current) {
+      return res.status(400).json({ error: `Menu item with id '${o.id}' not found.` });
+    }
+    currentById.set(o.id, current);
+  }
+
+  const effectiveLevel = (id) => orderById.get(id)?.level ?? currentById.get(id)?.level ?? 1;
+  const effectiveParentId = (id) => {
+    const o = orderById.get(id);
+    if (o && o.parent_id !== undefined) return o.parent_id;
+    return currentById.get(id)?.parent_id ?? null;
+  };
+
+  // Ancestor walk over the effective (post-reorder) graph; stale/missing
+  // parents terminate the walk and are reported by the existence check below.
+  const parentCache = new Map();
+  const cachedParentId = async (id) => {
+    if (orderById.has(id)) return effectiveParentId(id);
+    if (!parentCache.has(id)) {
+      const row = await findMenuItem(id);
+      parentCache.set(id, row?.parent_id ?? null);
+    }
+    return parentCache.get(id);
+  };
+  const createsReorderCycle = async (itemId, newParentId) => {
+    const visited = new Set([itemId]);
+    let current = newParentId;
+    let steps = 0;
+    while (current != null && steps < 50) {
+      if (visited.has(current)) return true;
+      visited.add(current);
+      current = await cachedParentId(current);
+      steps += 1;
+    }
+    return false;
+  };
+
+  // Phase 2: per-entry hierarchy validation (entries that only re-sort skip it).
+  for (const o of orders) {
+    if (o.parent_id === undefined && o.level === undefined) continue;
+    const level = effectiveLevel(o.id);
+    const parent_id = effectiveParentId(o.id);
+    const parent = parent_id == null ? null : await findMenuItem(parent_id);
+    const effectiveParent =
+      parent && orderById.has(parent_id) && orderById.get(parent_id).level !== undefined
+        ? { ...parent, level: effectiveLevel(parent_id) }
+        : parent;
+    const hierarchyError = validateHierarchy({ level, parent_id }, effectiveParent);
+    if (hierarchyError) {
+      return res.status(400).json({ error: hierarchyError });
+    }
+    if (level > 1 && (await createsReorderCycle(o.id, parent_id))) {
+      return res.status(400).json({ error: "Reorder would create a circular parent reference." });
+    }
+  }
+
+  // Phase 3: all entries valid — persist.
   try {
     for (const o of orders) {
       const payload = {};
       if (o.order_index !== undefined) payload.order_index = o.order_index;
       if (o.parent_id !== undefined) payload.parent_id = o.parent_id;
+      if (o.level !== undefined) payload.level = o.level;
       if (Object.keys(payload).length === 0) continue;
       const { error } = await supabase.from("menu_items").update(payload).eq("id", o.id);
       if (error) console.warn("Supabase reorder warning:", error.message);
@@ -225,15 +297,15 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
   }
 
   // Mirror in-memory fallback
-  const byId = new Map(orders.map((o) => [o.id, o]));
   fallbackMenu = fallbackMenu
     .map((m) => {
-      const o = byId.get(m.id);
+      const o = orderById.get(m.id);
       if (!o) return m;
       return {
         ...m,
         order_index: o.order_index ?? m.order_index,
         parent_id: o.parent_id !== undefined ? o.parent_id : m.parent_id,
+        level: o.level !== undefined ? o.level : m.level,
       };
     })
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));

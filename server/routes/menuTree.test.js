@@ -1,5 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildMenuTree } from "./menuTree.js";
+import { validateHierarchy } from "./menu.js";
+import app from "../app.js";
+import { signUserToken } from "../middleware/auth.js";
 
 const rows = [
   {
@@ -154,5 +157,95 @@ describe("buildMenuTree", () => {
     const depth = (nodes, d = 1) =>
       nodes.reduce((m, n) => Math.max(m, n.children?.length ? depth(n.children, d + 1) : d), 0);
     expect(depth(tree)).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("validateHierarchy", () => {
+  it("rejects level 0, levels above 3, and non-integer levels", () => {
+    expect(validateHierarchy({ level: 0, parent_id: null }, null)).toMatch(
+      /integer between 1 and 3/
+    );
+    expect(validateHierarchy({ level: -1, parent_id: null }, null)).toMatch(
+      /integer between 1 and 3/
+    );
+    expect(validateHierarchy({ level: 4, parent_id: null }, null)).toMatch(
+      /integer between 1 and 3/
+    );
+    expect(validateHierarchy({ level: 1.5, parent_id: null }, null)).toMatch(
+      /integer between 1 and 3/
+    );
+  });
+
+  it("rejects a parent_id on level 1 items", () => {
+    expect(validateHierarchy({ level: 1, parent_id: "p" }, { id: "p", level: 1 })).toMatch(
+      /must not have a parent_id/
+    );
+  });
+
+  it("accepts a consistent 3-level chain", () => {
+    expect(validateHierarchy({ level: 1, parent_id: null }, null)).toBeNull();
+    expect(validateHierarchy({ level: 2, parent_id: "p" }, { id: "p", level: 1 })).toBeNull();
+    expect(validateHierarchy({ level: 3, parent_id: "p" }, { id: "p", level: 2 })).toBeNull();
+  });
+
+  it("rejects a level-inconsistent parent", () => {
+    expect(validateHierarchy({ level: 3, parent_id: "p" }, { id: "p", level: 1 })).toMatch(
+      /Parent level must be 2/
+    );
+  });
+});
+
+describe("PATCH /api/menu/reorder validation", () => {
+  let server;
+  let base;
+  let adminHeaders;
+
+  beforeAll(
+    () =>
+      new Promise((resolve) => {
+        server = app.listen(0, () => {
+          base = `http://127.0.0.1:${server.address().port}`;
+          const token = signUserToken({ id: "t-admin", email: "admin@test.local", role: "admin" });
+          adminHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+          resolve();
+        });
+      })
+  );
+
+  afterAll(() => new Promise((resolve) => server.close(resolve)));
+
+  const flatMenu = async () => {
+    const res = await fetch(`${base}/api/menu?role=super_admin&flat=1`);
+    return res.json();
+  };
+
+  it("rejects an unknown parent_id and persists nothing", async () => {
+    const res = await fetch(`${base}/api/menu/reorder`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ orders: [{ id: "m-2", level: 2, parent_id: "ghost-parent" }] }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/Parent menu item not found/);
+
+    // Rejected entry persisted nowhere (live DB or in-memory fallback).
+    const menu = await flatMenu();
+    expect(menu.some((m) => m.parent_id === "ghost-parent")).toBe(false);
+  });
+
+  it("rejects a level-inconsistent parent and persists nothing", async () => {
+    const res = await fetch(`${base}/api/menu/reorder`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ orders: [{ id: "m-2", level: 3, parent_id: "m-1" }] }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/Parent level must be 2/);
+
+    // Rejected entry persisted nowhere (live DB or in-memory fallback).
+    const menu = await flatMenu();
+    expect(
+      menu.find((m) => m.id === "m-2" && (m.level === 3 || m.parent_id === "m-1"))
+    ).toBeUndefined();
   });
 });
