@@ -6894,7 +6894,7 @@ input:focus:not(:focus-visible) {
   max-width: 280px;
   height: 100vh;
   max-height: 100vh;
-  background: linear-gradient(180deg, #0f172a 0%, #090d16 100%);
+  background: linear-gradient(180deg, #2874f0 0%, #1b5bc7 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -6919,32 +6919,24 @@ input:focus:not(:focus-visible) {
   gap: 12px;
 }
 
-.brand-icon-shield {
-  width: 44px;
-  height: 44px;
+.brand-logo-img-box {
+  width: 46px;
+  height: 46px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
   flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
 }
 
-.brand-shield-svg {
-  color: #ffffff;
-}
-
-.brand-sparkle-dot {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 6px;
-  height: 6px;
-  background: #38bdf8;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #38bdf8;
+.brand-logo-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text-container {
@@ -6963,9 +6955,7 @@ input:focus:not(:focus-visible) {
   font-size: 19px;
   font-weight: 900;
   letter-spacing: 1.5px;
-  background: linear-gradient(90deg, #ffffff 0%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .brand-role-tag {
@@ -6984,14 +6974,14 @@ input:focus:not(:focus-visible) {
 }
 
 .brand-role-tag.admin {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
 }
 
 .brand-subtitle {
   font-size: 11.5px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.78);
   font-weight: 500;
 }
 
@@ -7009,7 +6999,7 @@ input:focus:not(:focus-visible) {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.72);
   padding: 0 10px 8px 10px;
   text-transform: uppercase;
 }
@@ -7023,7 +7013,7 @@ input:focus:not(:focus-visible) {
   border-radius: 10px;
   background: transparent;
   border: 1px solid transparent;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.82);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
@@ -7037,9 +7027,9 @@ input:focus:not(:focus-visible) {
 }
 
 .sidebar-tab-button.active {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%);
+  background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -7056,9 +7046,9 @@ input:focus:not(:focus-visible) {
 }
 
 .sidebar-tab-button.active .tab-icon-box {
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-  color: #ffffff;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  background: #ffffff;
+  color: #1b5bc7;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
 }
 
 .tab-text-box {
@@ -7076,12 +7066,12 @@ input:focus:not(:focus-visible) {
 
 .tab-description {
   font-size: 11px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.68);
   font-weight: 400;
 }
 
 .sidebar-tab-button.active .tab-description {
-  color: #93c5fd;
+  color: #ffffff;
 }
 
 .tab-badge-counter {
@@ -7094,8 +7084,8 @@ input:focus:not(:focus-visible) {
 }
 
 .sidebar-tab-button.active .tab-badge-counter {
-  background: #3b82f6;
-  color: #ffffff;
+  background: #ffffff;
+  color: #1b5bc7;
 }
 
 .active-glow-indicator {
@@ -7105,8 +7095,8 @@ input:focus:not(:focus-visible) {
   height: 70%;
   width: 4px;
   border-radius: 0 4px 4px 0;
-  background: #38bdf8;
-  box-shadow: 0 0 10px #38bdf8;
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
 }
 
 /* Sidebar Footer & Sign Out */

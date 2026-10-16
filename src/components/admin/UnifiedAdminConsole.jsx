@@ -41,7 +41,6 @@ import {
   Star,
   Wallet,
   Boxes,
-  Shield,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
@@ -758,9 +757,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* LOGO ON LEFT TOP */}
         <div className="sidebar-brand-header">
           <div className="brand-logo-wrapper">
-            <div className="brand-icon-shield">
-              <Shield className="brand-shield-svg" size={24} />
-              <div className="brand-sparkle-dot"></div>
+            <div className="brand-logo-img-box">
+              <img src="/header.png" alt="Marvel" className="brand-logo-img" />
             </div>
             <div className="brand-text-container">
               <div className="brand-title-row">
@@ -1182,24 +1180,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           </div>
 
-          <div className="navbar-actions-block">
-            {/* Live Database Sync Indicator */}
-            <div className="db-status-pill">
-              <span className="pulse-green-dot"></span>
-              <span className="db-status-text">Supabase DB Live</span>
-            </div>
-
-            {/* Refresh Data Button */}
-            <Button
-              variant="outline"
-              onClick={loadDashboardData}
-              disabled={refreshing}
-              className="refresh-db-btn"
-            >
-              <RefreshCw size={15} className={refreshing ? "spin-animation" : ""} />
-              <span>{refreshing ? "Syncing..." : "Refresh DB"}</span>
-            </Button>
-          </div>
+          <div className="navbar-actions-block"></div>
         </header>
 
         {/* ================================================== */}
@@ -2016,147 +1997,171 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
 
             {productsView === "add" && (
-              <div className="product-form-card">
-                <div className="chart-card-header">
-                  <div>
-                    <h3 className="chart-title">
-                      {editingProduct ? "Edit Product" : "Add Product"}
-                    </h3>
-                    <p className="chart-subtitle">
-                      {editingProduct
-                        ? "Updates go live on the storefront immediately."
-                        : "New products publish straight to the storefront."}
-                    </p>
-                  </div>
-                </div>
-                <form onSubmit={handleSaveProduct} className="modal-form">
-                  <div className="form-group-row">
-                    <div className="form-group">
-                      <label className="form-label">Product Title *</label>
-                      <Input
-                        required
-                        type="text"
-                        placeholder="e.g. Aurora Wireless Speaker"
-                        value={productForm.title}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, title: e.target.value }))
-                        }
-                      />
+              <div
+                className="modal-backdrop-overlay"
+                onClick={() => {
+                  setEditingProduct(null);
+                  setProductsView("list");
+                }}
+              >
+                <div
+                  className="modal-content-container animate-scale-up"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="modal-header">
+                    <div className="modal-title-with-icon">
+                      <div>
+                        <h3 className="modal-title">
+                          {editingProduct ? "Edit Product" : "Add Product"}
+                        </h3>
+                        <p className="modal-subtitle">
+                          {editingProduct
+                            ? "Updates go live on the storefront immediately."
+                            : "New products publish straight to the storefront."}
+                        </p>
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Category</label>
-                      <select
-                        value={productForm.category}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, category: e.target.value }))
-                        }
-                        className="form-select-field"
-                      >
-                        {[
-                          "Electronics",
-                          "Fashion",
-                          "Home",
-                          "Beauty",
-                          "Wearables",
-                          "Sports",
-                          "Grocery",
-                          "Toys",
-                        ].map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-group-row">
-                    <div className="form-group">
-                      <label className="form-label">Price (Rs) *</label>
-                      <Input
-                        required
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="e.g. 4999"
-                        value={productForm.price}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, price: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Original Price (Rs)</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Optional"
-                        value={productForm.original_price}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, original_price: e.target.value }))
-                        }
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Stock Units</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="15"
-                        value={productForm.stock}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, stock: e.target.value }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Image URL</label>
-                    <Input
-                      type="text"
-                      placeholder="https://..."
-                      value={productForm.image_url}
-                      onChange={(e) =>
-                        setProductForm((prev) => ({ ...prev, image_url: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Description</label>
-                    <Input
-                      type="text"
-                      placeholder="Short product description"
-                      value={productForm.description}
-                      onChange={(e) =>
-                        setProductForm((prev) => ({ ...prev, description: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div className="modal-actions-footer">
-                    <Button
-                      type="button"
-                      variant="outline"
+                    <button
                       onClick={() => {
                         setEditingProduct(null);
                         setProductsView("list");
                       }}
+                      className="modal-close-btn"
+                      aria-label="Close product form"
                     >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={productSaving} className="submit-primary-btn">
-                      {productSaving ? (
-                        <>
-                          <RefreshCw size={15} className="spin-animation" /> Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Check size={16} /> {editingProduct ? "Save Changes" : "Publish Product"}
-                        </>
-                      )}
-                    </Button>
+                      <X size={18} />
+                    </button>
                   </div>
-                </form>
+                  <form onSubmit={handleSaveProduct} className="modal-form">
+                    <div className="form-group-row">
+                      <div className="form-group">
+                        <label className="form-label">Product Title *</label>
+                        <Input
+                          required
+                          type="text"
+                          placeholder="e.g. Aurora Wireless Speaker"
+                          value={productForm.title}
+                          onChange={(e) =>
+                            setProductForm((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Category</label>
+                        <select
+                          value={productForm.category}
+                          onChange={(e) =>
+                            setProductForm((prev) => ({ ...prev, category: e.target.value }))
+                          }
+                          className="form-select-field"
+                        >
+                          {[
+                            "Electronics",
+                            "Fashion",
+                            "Home",
+                            "Beauty",
+                            "Wearables",
+                            "Sports",
+                            "Grocery",
+                            "Toys",
+                          ].map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-group-row">
+                      <div className="form-group">
+                        <label className="form-label">Price (Rs) *</label>
+                        <Input
+                          required
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="e.g. 4999"
+                          value={productForm.price}
+                          onChange={(e) =>
+                            setProductForm((prev) => ({ ...prev, price: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Original Price (Rs)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Optional"
+                          value={productForm.original_price}
+                          onChange={(e) =>
+                            setProductForm((prev) => ({ ...prev, original_price: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Stock Units</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="15"
+                          value={productForm.stock}
+                          onChange={(e) =>
+                            setProductForm((prev) => ({ ...prev, stock: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Image URL</label>
+                      <Input
+                        type="text"
+                        placeholder="https://..."
+                        value={productForm.image_url}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, image_url: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Description</label>
+                      <Input
+                        type="text"
+                        placeholder="Short product description"
+                        value={productForm.description}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, description: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="modal-actions-footer">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingProduct(null);
+                          setProductsView("list");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={productSaving} className="submit-primary-btn">
+                        {productSaving ? (
+                          <>
+                            <RefreshCw size={15} className="spin-animation" /> Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check size={16} />{" "}
+                            {editingProduct ? "Save Changes" : "Publish Product"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
 
