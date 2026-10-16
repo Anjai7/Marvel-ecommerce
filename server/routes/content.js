@@ -111,7 +111,10 @@ router.post("/hero", ...adminOnly, async (req, res) => {
       order_index: slide.order_index != null ? Number(slide.order_index) : 0,
       is_active: slide.is_active !== undefined ? Boolean(slide.is_active) : true,
     });
-    if (error) console.warn("Supabase hero save warning:", error.message);
+    if (error) {
+      console.warn("Supabase hero save warning:", error.message);
+      return res.status(500).json({ error: error.message || "Failed to save hero slide." });
+    }
   } catch (e) {
     console.warn("Supabase hero save exception:", e.message);
   }
@@ -124,7 +127,10 @@ router.delete("/hero/:id", ...adminOnly, async (req, res) => {
   const { id } = req.params;
   try {
     const { error } = await supabase.from("hero_slides").delete().eq("id", id);
-    if (error) console.warn("Supabase hero delete warning:", error.message);
+    if (error) {
+      console.warn("Supabase hero delete warning:", error.message);
+      return res.status(500).json({ error: error.message || "Failed to delete hero slide." });
+    }
   } catch (e) {
     console.warn("Supabase hero delete warning:", e.message);
   }
@@ -167,7 +173,10 @@ router.post("/categories", ...adminOnly, async (req, res) => {
       order_index: category.order_index != null ? Number(category.order_index) : 0,
       is_active: category.is_active !== undefined ? Boolean(category.is_active) : true,
     });
-    if (error) console.warn("Supabase category save warning:", error.message);
+    if (error) {
+      console.warn("Supabase category save warning:", error.message);
+      return res.status(500).json({ error: error.message || "Failed to save site category." });
+    }
   } catch (e) {
     console.warn("Supabase category save exception:", e.message);
   }
@@ -180,7 +189,10 @@ router.delete("/categories/:id", ...adminOnly, async (req, res) => {
   const { id } = req.params;
   try {
     const { error } = await supabase.from("site_categories").delete().eq("id", id);
-    if (error) console.warn("Supabase category delete warning:", error.message);
+    if (error) {
+      console.warn("Supabase category delete warning:", error.message);
+      return res.status(500).json({ error: error.message || "Failed to delete site category." });
+    }
   } catch (e) {
     console.warn("Supabase category delete warning:", e.message);
   }
