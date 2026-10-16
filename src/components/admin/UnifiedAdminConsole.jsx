@@ -73,6 +73,8 @@ import {
 } from "./reportUtils";
 import "./admin-reports.css";
 import MenuTreeEditor from "./MenuTreeEditor";
+import HeroSlidesEditor from "./HeroSlidesEditor";
+import CategoriesEditor from "./CategoriesEditor";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
@@ -660,7 +662,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     orders: "Orders Pipeline",
     customers: "Customer Insights",
     users: "User Management Directory",
-    menus: "Site Content — Menus"
+    menus: "Site Content — Menus",
+    hero: "Site Content — Hero",
+    categories: "Site Content — Categories"
   };
 
   const TAB_HEADINGS = {
@@ -669,7 +673,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     orders: (<>Orders <span className="gradient-text">Pipeline</span></>),
     customers: (<>Customer <span className="gradient-text">Insights</span></>),
     users: (<>User Accounts & <span className="gradient-text">Access Control</span></>),
-    menus: (<>Site Content <span className="gradient-text">Menus</span></>)
+    menus: (<>Site Content <span className="gradient-text">Menus</span></>),
+    hero: (<>Site Content <span className="gradient-text">Hero</span></>),
+    categories: (<>Site Content <span className="gradient-text">Categories</span></>)
   };
 
   return (
@@ -904,7 +910,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <button
               id="admin-tab-site-content"
               onClick={() => { setActiveTab("menus"); toggleMenu("siteContent"); }}
-              className={`sidebar-tab-button ${activeTab === "menus" ? "active" : ""}`}
+              className={`sidebar-tab-button ${["menus", "hero", "categories"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
               <div className="tab-icon-box">
@@ -917,7 +923,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
                 <ChevronDown size={15} />
               </span>
-              {activeTab === "menus" && <div className="active-glow-indicator"></div>}
+              {["menus", "hero", "categories"].includes(activeTab) && (
+                <div className="active-glow-indicator"></div>
+              )}
             </button>
           )}
           {canManageSiteContent && expandedMenus.siteContent && (
@@ -930,7 +938,23 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Layers size={14} />
                 <span>Menus</span>
               </button>
-              {/* Task 5: Hero / Categories sub-tabs go here */}
+              {/* Task 5: Hero / Categories sub-tabs */}
+              <button
+                id="admin-tab-site-content-hero"
+                onClick={() => { setActiveTab("hero"); }}
+                className={`sidebar-submenu-btn ${activeTab === "hero" ? "active" : ""}`}
+              >
+                <Sparkles size={14} />
+                <span>Hero</span>
+              </button>
+              <button
+                id="admin-tab-site-content-categories"
+                onClick={() => { setActiveTab("categories"); }}
+                className={`sidebar-submenu-btn ${activeTab === "categories" ? "active" : ""}`}
+              >
+                <Star size={14} />
+                <span>Categories</span>
+              </button>
             </div>
           )}
         </nav>
@@ -2087,6 +2111,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {activeTab === "menus" && canManageSiteContent && (
           <MenuTreeEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
         )}
+
+        {/* TAB 7: SITE CONTENT > HERO (Task 5) */}
+        {activeTab === "hero" && canManageSiteContent && <HeroSlidesEditor />}
+
+        {/* TAB 8: SITE CONTENT > CATEGORIES (Task 5) */}
+        {activeTab === "categories" && canManageSiteContent && <CategoriesEditor />}
       </main>
 
       {/* ==================================================== */}
