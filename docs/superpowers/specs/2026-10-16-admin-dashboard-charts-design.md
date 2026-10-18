@@ -1,7 +1,7 @@
 # Admin Dashboard Charts — Design Spec
 
 Date: 2026-10-16
-Slice: Admin analytics (charts) — follows dynamic menus + banners slice
+Slice: Admin analytics (charts)
 Scope: Add `recharts` charting library, build chart components from existing `reportUtils` data, wire into `UnifiedAdminConsole` dashboard Overview + Sales tabs.
 
 Out of scope: New API endpoints (existing `GET /api/orders` + `GET /api/products` suffice), new admin tabs (reuse existing `dashboardView` states), export/print, real-time websocket charts.
@@ -10,6 +10,7 @@ Out of scope: New API endpoints (existing `GET /api/orders` + `GET /api/products
 
 - Admin dashboard (Overview + Sales tabs) renders charts instead of only KPI cards + tables.
 - Charts are driven by existing `reportUtils` aggregations (`lastNDayBuckets`, `salesWindows`, `revenueGrowth`, `summarizeStatuses`, `aggregateBestSellers`, `summarizeInventory`, `computeRepeatCustomers`) — no new backend code.
+- Chart type variety: AreaChart, Vertical BarChart, PieChart, Horizontal BarChart, ComposedChart (bars + line), Doughnut — not just one chart type.
 - Storefront/admin behavior unchanged except dashboard gets visual charts.
 - Responsive: charts render correctly at 360 / 768 / 1280 viewports, no horizontal overflow.
 - `prefers-reduced-motion` respected (chart animations disabled).
@@ -18,28 +19,30 @@ Out of scope: New API endpoints (existing `GET /api/orders` + `GET /api/products
 
 ## 2. Dependency
 
-Add `recharts` (current stable) to `dependencies` in `package.json`. Recharts is React-native, declarative (`LineChart`, `BarChart`, `PieChart`, `ResponsiveContainer`), small bundle, and maps 1:1 to `reportUtils` output shapes. No CSS framework changes — reuse existing `var(--navy)`, `--orange`, `--green` tokens.
+Add `recharts` (current stable) to `dependencies` in `package.json`. Recharts is React-native, declarative (`LineChart`, `BarChart`, `PieChart`, `ResponsiveContainer`, `ComposedChart`), small bundle, and maps 1:1 to `reportUtils` output shapes. No CSS framework changes — reuse existing `var(--navy)`, `--orange`, `--green` tokens.
 
 ## 3. Component Architecture
 
 New directory: `src/components/admin/charts/`
 Each component: pure, takes a single `data` prop (already-aggregated from `reportUtils`), handles empty/missing data, returns JSX only (no side effects).
 
-| Component             | Data source                                             | Chart type                                         | Empty-state            |
-| --------------------- | ------------------------------------------------------- | -------------------------------------------------- | ---------------------- |
-| `RevenueTrendChart`   | `chartData.points` from `lastNDayBuckets(orders, days)` | Line (revenue) + line (orders), dual-axis          | "No sales data yet"    |
-| `OrderStatusChart`    | `salesReport.statuses`                                  | Doughnut/Pie                                       | "No orders yet"        |
-| `BestSellersChart`    | `salesReport.sellers` (top 5)                           | Horizontal Bar                                     | "No products sold yet" |
-| `InventoryChart`      | `salesReport.inventory`                                 | Vertical Bar (in stock / low stock / out of stock) | "No products yet"      |
-| `CustomerRepeatChart` | `salesReport.repeat`                                    | Doughnut (repeat vs one-time)                      | "No customers yet"     |
-| `SalesGrowthCard`     | `salesReport.growth`                                    | Stat card (not a chart)                            | "—"                    |
+| Component                | Data source                                             | Chart type                                                         | Empty-state            |
+| ------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------- |
+| `RevenueTrendChart`      | `chartData.points` from `lastNDayBuckets(orders, days)` | AreaChart (revenue, filled)                                        | "No sales data yet"    |
+| `OrderStatusChart`       | `salesReport.statuses`                                  | Vertical BarChart (pending/processing/shipped/delivered/cancelled) | "No orders yet"        |
+| `UserRolesChart`         | user role counts (from `users` state)                   | PieChart                                                           | "No users yet"         |
+| `BestSellersChart`       | `salesReport.sellers` (top 5)                           | Horizontal BarChart                                                | "No products sold yet" |
+| `OrdersPlusRevenueChart` | `lastNDayBuckets(orders, 30d)`                          | ComposedChart (bars = orders count, line = revenue)                | "No orders yet"        |
+| `InventoryChart`         | `salesReport.inventory`                                 | Vertical BarChart (in stock / low stock / out of stock)            | "No products yet"      |
+| `CustomerRepeatChart`    | `salesReport.repeat`                                    | Doughnut (repeat vs one-time)                                      | "No customers yet"     |
+| `SalesGrowthCard`        | `salesReport.growth`                                    | Stat card (not a chart)                                            | "—"                    |
 
-Styling: brand colors via CSS vars (`var(--navy)`, `--var(--orange)`, `--var(--green)`), `ResponsiveContainer`, animations disabled when `prefers-reduced-motion: reduce`.
+Styling: brand colors via CSS vars (`var(--navy)`, `--orange`, `--green`), `ResponsiveContainer`, animations disabled when `prefers-reduced-motion: reduce`.
 
 ## 4. Dashboard Integration (`UnifiedAdminConsole.jsx`)
 
-- **Overview tab** (existing default): KPI cards (existing) + RevenueTrendChart + OrderStatusChart + BestSellersChart in a 2-column responsive grid.
-- **Sales tab** (existing, currently empty): RevenueTrendChart (30d) + SalesGrowthCard + InventoryChart + CustomerRepeatChart.
+- **Overview tab** (existing default): KPI cards (existing) + RevenueTrendChart (Area) + OrderStatusChart (Vertical Bar) + UserRolesChart (Pie) + BestSellersChart (Horizontal Bar) in a 2-column responsive grid.
+- **Sales tab** (existing, currently empty): OrdersPlusRevenueChart (Composed, 30d) + InventoryChart (Vertical Bar) + CustomerRepeatChart (Doughnut) + SalesGrowthCard (stat).
 - `timeRange` state (`7d` \| `30d`) already exists; RevenueTrendChart reads it.
 - No changes to tab navigation or role gating (admin/super_admin only, existing).
 
@@ -74,4 +77,4 @@ Styling: brand colors via CSS vars (`var(--navy)`, `--var(--orange)`, `--var(--g
 - No TBD/TODO; requirements explicit.
 - No contradictions: data layer already exists; charts only consume it.
 - Single-slice scope; charts only, no new tabs/endpoints/exports.
-- Ambiguity resolved: recharts chosen, Option B (Overview + Sales tabs) chosen.
+- Ambiguity resolved: recharts chosen, Option A (Overview + Sales tabs) chosen, mixed chart types per screenshot review.
