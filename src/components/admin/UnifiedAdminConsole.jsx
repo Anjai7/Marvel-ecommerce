@@ -231,6 +231,26 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setProductsView("add");
   };
 
+  const handleProductImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("image", file);
+    formData.append("folder", "marvel_products");
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("marvel_jwt_token") || ""}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Image upload failed");
+      setProductForm((prev) => ({ ...prev, image_url: data.url || data.signed_url || "" }));
+    } catch (err) {
+      addToast({ title: "Image Upload Failed", message: err.message, type: "error" });
+    }
+  };
+
   const handleOpenEditProduct = (prod) => {
     setEditingProduct(prod);
     setProductForm({
@@ -758,11 +778,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         <div className="sidebar-brand-header">
           <div className="brand-logo-wrapper">
             <div className="brand-logo-img-box">
-              <img src="/header.png" alt="Marvel" className="brand-logo-img" />
+              <img src="/logo.png" alt="Marvel" className="brand-logo-img" />
             </div>
             <div className="brand-text-container">
               <div className="brand-title-row">
-                <span className="brand-name">MARVEL</span>
                 <span className={`brand-role-tag ${isSuperAdmin ? "super" : "admin"}`}>
                   {isSuperAdmin ? "ROOT" : "ADMIN"}
                 </span>
@@ -1769,16 +1788,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <option value="pending">Pending</option>
                   </select>
                 </div>
-
-                {/* PRIMARY ADD USER BUTTON */}
-                <Button
-                  id="admin-add-user-button"
-                  onClick={() => setShowAddUserModal(true)}
-                  className="add-user-primary-btn"
-                >
-                  <Plus size={16} />
-                  <span>Add User</span>
-                </Button>
               </div>
             </div>
 
@@ -2115,14 +2124,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Image URL</label>
-                      <Input
-                        type="text"
-                        placeholder="https://..."
-                        value={productForm.image_url}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, image_url: e.target.value }))
-                        }
+                      <label className="form-label">Product Image</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProductImageUpload}
+                        className="form-select-field"
                       />
                     </div>
                     <div className="form-group">

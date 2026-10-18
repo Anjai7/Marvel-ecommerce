@@ -6920,21 +6920,22 @@ input:focus:not(:focus-visible) {
 }
 
 .brand-logo-img-box {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 72px;
+  height: 72px;
+  border-radius: 14px;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
 }
 
 .brand-logo-img {
-  width: 38px;
-  height: 38px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
   display: block;
 }
