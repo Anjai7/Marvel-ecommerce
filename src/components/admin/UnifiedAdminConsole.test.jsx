@@ -61,7 +61,7 @@ describe("UnifiedAdminConsole", () => {
     await user.click(screen.getByRole("button", { name: "Sales Report" }));
 
     await expect(screen.getByText("Today Orders")).toBeVisible();
-    await expect(screen.getByText("Repeat Customers")).toBeVisible();
-    await expect(screen.getByText("Orders Pipeline")).toBeVisible();
+    await expect(screen.getByText("Orders & Revenue")).toBeVisible();
+    await expect(screen.getByText("Inventory Snapshot")).toBeVisible();
   });
 });

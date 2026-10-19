@@ -71,7 +71,15 @@ import {
   customerStats,
 } from "./reportUtils";
 import "./admin-reports.css";
-import MenuTreeEditor from "./MenuTreeEditor";
+import RevenueTrendChart from "./charts/RevenueTrendChart";
+import OrderStatusChart from "./charts/OrderStatusChart";
+import UserRolesChart from "./charts/UserRolesChart";
+import BestSellersChart from "./charts/BestSellersChart";
+import OrdersPlusRevenueChart from "./charts/OrdersPlusRevenueChart";
+import InventoryChart from "./charts/InventoryChart";
+import CustomerRepeatChart from "./charts/CustomerRepeatChart";
+import SalesGrowthCard from "./charts/SalesGrowthCard";
+import MenuListEditor from "./MenuListEditor";
 import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesEditor from "./CategoriesEditor";
 
@@ -1297,7 +1305,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
             {/* DYNAMIC CHARTS & ANALYTICS SECTION */}
             <div className="dashboard-charts-grid">
-              {/* CHART 1: REVENUE & SALES TIMELINE (INTERACTIVE SVG CHART) */}
+              {/* CHART 1: REVENUE & SALES TRENDS (RECHART AREA CHART) */}
               <div className="dashboard-chart-card revenue-chart-span">
                 <div className="chart-card-header">
                   <div>
@@ -1321,64 +1329,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </button>
                   </div>
                 </div>
-
-                {/* SVG & HTML Interactive Dynamic Bar & Wave Chart */}
-                <div className="interactive-chart-container">
-                  <div className="chart-bars-wrapper">
-                    {chartData.points.map((point, idx) => {
-                      const heightPercent = Math.max(
-                        15,
-                        Math.round((point.revenue / chartData.maxRevenue) * 100)
-                      );
-                      return (
-                        <div key={idx} className="chart-bar-column group">
-                          {/* Tooltip on Hover */}
-                          <div className="chart-bar-tooltip">
-                            <span className="tooltip-date">{point.label}</span>
-                            <span className="tooltip-revenue">${point.revenue.toFixed(2)}</span>
-                            <span className="tooltip-orders">{point.ordersCount} Orders</span>
-                          </div>
-
-                          {/* Bar Graphic */}
-                          <div className="bar-track">
-                            <div
-                              className="bar-fill-gradient"
-                              style={{ height: `${heightPercent}%` }}
-                            >
-                              <div className="bar-glow-cap"></div>
-                            </div>
-                          </div>
-
-                          {/* Day Label */}
-                          <span className="bar-day-label">{point.day}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Chart Summary Badges */}
-                <div className="chart-bottom-metrics">
-                  <div className="bottom-metric-item">
-                    <span className="dot emerald"></span>
-                    <span className="label">Peak Day Revenue:</span>
-                    <span className="val">${chartData.maxRevenue.toFixed(2)}</span>
-                  </div>
-                  <div className="bottom-metric-item">
-                    <span className="dot blue"></span>
-                    <span className="label">Orders Pipeline:</span>
-                    <span className="val">{metrics.totalOrders} Active</span>
-                  </div>
-                  <div className="bottom-metric-item">
-                    <span className="dot purple"></span>
-                    <span className="label">Delivered Rate:</span>
-                    <span className="val">
-                      {salesReport.deliveredRate === null
-                        ? "No orders yet"
-                        : `${salesReport.deliveredRate.toFixed(1)}%`}
-                    </span>
-                  </div>
-                </div>
+                <RevenueTrendChart data={chartData.points} />
               </div>
 
               {/* CHART 2: USER ROLE & DEMOGRAPHICS DISTRIBUTION */}
@@ -1392,67 +1343,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
 
                 <div className="role-distribution-layout">
-                  {/* Radial / Donut representation */}
-                  <div className="donut-chart-container">
-                    <svg viewBox="0 0 100 100" className="donut-svg">
-                      <circle cx="50" cy="50" r="38" className="donut-ring-base" />
-                      {/* Super Admin Segment */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="38"
-                        className="donut-segment super-admin"
-                        strokeDasharray={`${Math.max(5, (metrics.superAdminsCount / Math.max(1, metrics.totalUsers)) * 238)} 238`}
-                        strokeDashoffset="0"
-                      />
-                      {/* Admin Segment */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="38"
-                        className="donut-segment admin"
-                        strokeDasharray={`${Math.max(8, (metrics.adminsCount / Math.max(1, metrics.totalUsers)) * 238)} 238`}
-                        strokeDashoffset={`-${(metrics.superAdminsCount / Math.max(1, metrics.totalUsers)) * 238}`}
-                      />
-                      {/* Vendor Segment */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="38"
-                        className="donut-segment vendor"
-                        strokeDasharray={`${Math.max(15, (metrics.vendorsCount / Math.max(1, metrics.totalUsers)) * 238)} 238`}
-                        strokeDashoffset={`-${((metrics.superAdminsCount + metrics.adminsCount) / Math.max(1, metrics.totalUsers)) * 238}`}
-                      />
-                    </svg>
-                    <div className="donut-center-text">
-                      <span className="donut-total">{metrics.totalUsers}</span>
-                      <span className="donut-label">Users</span>
-                    </div>
-                  </div>
-
-                  {/* Legend List */}
-                  <div className="role-legend-list">
-                    <div className="legend-row">
-                      <div className="legend-color-dot purple"></div>
-                      <span className="legend-name">Super Admins</span>
-                      <span className="legend-count">{metrics.superAdminsCount}</span>
-                    </div>
-                    <div className="legend-row">
-                      <div className="legend-color-dot blue"></div>
-                      <span className="legend-name">Platform Admins</span>
-                      <span className="legend-count">{metrics.adminsCount}</span>
-                    </div>
-                    <div className="legend-row">
-                      <div className="legend-color-dot emerald"></div>
-                      <span className="legend-name">Store Vendors</span>
-                      <span className="legend-count">{metrics.vendorsCount}</span>
-                    </div>
-                    <div className="legend-row">
-                      <div className="legend-color-dot slate"></div>
-                      <span className="legend-name">Customers</span>
-                      <span className="legend-count">{metrics.customersCount}</span>
-                    </div>
-                  </div>
+                  <UserRolesChart
+                    data={[
+                      { name: "Super Admin", value: metrics.superAdminsCount },
+                      { name: "Admin", value: metrics.adminsCount },
+                      { name: "Vendor", value: metrics.vendorsCount },
+                      { name: "Customer", value: metrics.customersCount },
+                    ]}
+                  />
+                  <OrderStatusChart data={salesReport.statuses} />
+                  <BestSellersChart data={salesReport.sellers} />
                 </div>
 
                 <div className="chart-card-footer-action">
@@ -1587,31 +1487,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
-                    <h3 className="chart-title">Orders Pipeline</h3>
-                    <p className="chart-subtitle">Live fulfillment stages from the database</p>
+                    <h3 className="chart-title">Orders & Revenue</h3>
+                    <p className="chart-subtitle">Orders and revenue trends over time</p>
                   </div>
                   <ClipboardList size={18} className="text-muted" />
                 </div>
-                {[
-                  ["Pending", salesReport.statuses.pending, "slate"],
-                  ["Processing", salesReport.statuses.processing, "amber"],
-                  ["Shipped", salesReport.statuses.shipped, ""],
-                  ["Delivered", salesReport.statuses.delivered, "emerald"],
-                  ["Cancelled", salesReport.statuses.cancelled, "rose"],
-                ].map(([label, count, tone]) => (
-                  <div key={label} className="pipeline-row">
-                    <span className="pipeline-label">{label}</span>
-                    <div className="pipeline-bar-track">
-                      <div
-                        className={`pipeline-bar-fill ${tone}`}
-                        style={{
-                          width: `${salesReport.statuses.total > 0 ? Math.round((count / salesReport.statuses.total) * 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="pipeline-count">{count}</span>
-                  </div>
-                ))}
+                <OrdersPlusRevenueChart data={chartData.points} />
               </div>
               <div className="report-card">
                 <div className="chart-card-header">
@@ -1621,23 +1502,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </div>
                   <Star size={18} className="text-muted" />
                 </div>
-                {salesReport.sellers.length === 0 ? (
-                  <p className="report-empty">No product sales recorded yet.</p>
-                ) : (
-                  salesReport.sellers.map((item, i) => (
-                    <div key={item.title} className="topseller-row">
-                      <span className="topseller-rank">{i + 1}</span>
-                      {item.image ? (
-                        <img src={item.image} alt={item.title} className="topseller-img" />
-                      ) : null}
-                      <div className="topseller-info">
-                        <div className="topseller-name">{item.title}</div>
-                        <div className="topseller-meta">{item.qty} sold</div>
-                      </div>
-                      <span className="topseller-rev">${item.revenue.toFixed(2)}</span>
-                    </div>
-                  ))
-                )}
+                <BestSellersChart data={salesReport.sellers} />
               </div>
             </div>
 
@@ -1680,35 +1545,22 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
+                    <h3 className="chart-title">Repeat Customers</h3>
+                    <p className="chart-subtitle">Shoppers who ordered more than once</p>
+                  </div>
+                  <Repeat size={18} className="text-muted" />
+                </div>
+                <CustomerRepeatChart data={salesReport.repeat} />
+              </div>
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
                     <h3 className="chart-title">Inventory Snapshot</h3>
                     <p className="chart-subtitle">Catalog value at current selling price</p>
                   </div>
                   <Boxes size={18} className="text-muted" />
                 </div>
-                <p style={{ fontSize: 13, color: "#475569", margin: "0 0 8px 0" }}>
-                  Catalog value:
-                  <strong style={{ color: "#0f172a" }}>
-                    ${salesReport.inventory.value.toFixed(2)}
-                  </strong>
-                </p>
-                {[
-                  ["In Stock", salesReport.inventory.inStock, "ok"],
-                  ["Low Stock (5 or fewer)", salesReport.inventory.lowStock, "low"],
-                  ["Out of Stock", salesReport.inventory.outOfStock, "out"],
-                ].map(([label, count, tone]) => (
-                  <div key={label} className="pipeline-row">
-                    <span className="pipeline-label">{label}</span>
-                    <div className="pipeline-bar-track">
-                      <div
-                        className={`pipeline-bar-fill ${tone === "ok" ? "emerald" : tone === "low" ? "amber" : "rose"}`}
-                        style={{
-                          width: `${salesReport.inventory.total > 0 ? Math.round((count / salesReport.inventory.total) * 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                    <span className="pipeline-count">{count}</span>
-                  </div>
-                ))}
+                <InventoryChart data={salesReport.inventory} />
                 <div className="chart-card-footer-action">
                   <Button
                     variant="outline"
@@ -2483,7 +2335,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 6: SITE CONTENT > MENUS (Task 4; Task 5 adds Hero/Categories views here) */}
         {/* ================================================== */}
         {activeTab === "menus" && canManageSiteContent && (
-          <MenuTreeEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
+          <MenuListEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
         )}
 
         {/* TAB 7: SITE CONTENT > HERO (Task 5) */}
