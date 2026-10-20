@@ -44,8 +44,9 @@ export default function HeroBanner() {
           .filter((s) => s.title);
         setLiveSlides(list);
       })
-      .catch(() => {
-        // Fall back to static heroSlides below.
+      .catch((error) => {
+        // Fall back to static heroSlides below, but leave a trace for outages.
+        console.error("Failed to load hero slides; using static fallback.", error);
       });
     return () => {
       cancelled = true;

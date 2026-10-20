@@ -298,13 +298,13 @@ function AppMain() {
 export default function App() {
   return (
     <ToastProvider>
-      <ContentProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ContentProvider>
           <CartProvider>
             <AppMain />
           </CartProvider>
-        </AuthProvider>
-      </ContentProvider>
+        </ContentProvider>
+      </AuthProvider>
     </ToastProvider>
   );
 }

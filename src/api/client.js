@@ -47,8 +47,24 @@ function notifyUnauthorized(status) {
   }
 }
 
-/** Parse a response body as JSON, falling back to text, then undefined. */
-async function readBody(res) {
+/**
+ * Parse a successful response. A malformed or empty 2xx body throws instead of
+ * resolving `undefined`, so a success can never silently lose its payload.
+ */
+async function readJsonBody(res) {
+  if (typeof res.json === "function") {
+    return await res.json();
+  }
+  if (typeof res.text === "function") {
+    const text = await res.text();
+    if (text === "") throw new Error("Expected a JSON response body but the body was empty.");
+    return JSON.parse(text);
+  }
+  return undefined;
+}
+
+/** Parse a failed response tolerantly: JSON, then raw text, then undefined. */
+async function readErrorBody(res) {
   if (typeof res.text === "function") {
     try {
       const text = await res.text();
@@ -86,8 +102,9 @@ function errorMessage(body, status) {
  * Fetch `path` under `/api` and resolve the parsed body.
  *
  * Non-2xx responses throw an Error with `.status` and `.body` attached; this
- * function never resolves `[]` or `null` to hide a failure. A `401` also
- * notifies every `onUnauthorized` listener exactly once.
+ * function never resolves `[]` or `null` to hide a failure. A `401` on an
+ * authenticated request notifies every `onUnauthorized` listener exactly once;
+ * a public request (`auth: false`, e.g. a failed login) never does.
  */
 export async function apiFetch(path, options = {}) {
   const { method = "GET", body, formData, auth = true } = options;
@@ -114,10 +131,10 @@ export async function apiFetch(path, options = {}) {
     ...(hasBody ? { body: hasFormData ? payload : JSON.stringify(payload) } : {}),
   });
 
-  if (res.status === 401) notifyUnauthorized(401);
+  if (res.status === 401 && auth !== false) notifyUnauthorized(401);
 
   if (!res.ok) {
-    const errorBody = await readBody(res);
+    const errorBody = await readErrorBody(res);
     const error = new Error(errorMessage(errorBody, res.status));
     error.status = res.status;
     error.body = errorBody;
@@ -125,5 +142,5 @@ export async function apiFetch(path, options = {}) {
   }
 
   if (res.status === 204) return undefined;
-  return readBody(res);
+  return readJsonBody(res);
 }

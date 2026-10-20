@@ -1,6 +1,22 @@
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Edit2, Trash2, ArrowUp, ArrowDown, Eye, Layers, Search, Filter } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Plus, Edit2, Trash2, ArrowUp, ArrowDown, Layers, Search } from "lucide-react";
 import { Button, Input, useToast, Dialog, DialogContent, DialogHeader } from "../ui";
+import {
+  apiFetchMenuItems,
+  apiSaveMenuItem,
+  apiUpdateMenuItem,
+  apiDeleteMenuItem,
+  apiReorderMenuItems,
+} from "../../api/contentApi";
+
+/** Flatten a tree response so sibling groups are complete whether the API
+ * answered with a tree or a legacy flat list. */
+function flattenMenu(nodes) {
+  return (Array.isArray(nodes) ? nodes : []).flatMap((node) => [
+    node,
+    ...flattenMenu(node.children),
+  ]);
+}
 
 export default function MenuListEditor({ role = "user" }) {
   const [menuItems, setMenuItems] = useState([]);
@@ -23,21 +39,21 @@ export default function MenuListEditor({ role = "user" }) {
   const [search, setSearch] = useState("");
   const { addToast } = useToast();
 
-  useEffect(() => {
-    loadMenu();
-  }, []);
-
-  const loadMenu = async () => {
+  const loadMenu = useCallback(async () => {
     try {
-      const res = await fetch(`/api/menu?role=${role}`);
-      const data = await res.json();
+      const data = await apiFetchMenuItems(role);
       setMenuItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Menu load error:", err);
+      addToast({ title: "Menu load failed", message: err.message, type: "error" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [role, addToast]);
+
+  useEffect(() => {
+    loadMenu();
+  }, [loadMenu]);
 
   const filtered = useMemo(() => {
     const s = search.toLowerCase();
@@ -48,23 +64,16 @@ export default function MenuListEditor({ role = "user" }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setShowForm(false);
     try {
       const payload = { ...form };
       delete payload.badge_variant;
+      // An edit is a PATCH: the server has no PUT /api/menu/:id.
       if (editingId) {
-        await fetch(`/api/menu/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await apiUpdateMenuItem(editingId, payload);
       } else {
-        await fetch("/api/menu", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await apiSaveMenuItem(payload);
       }
+      setShowForm(false);
       setEditingId(null);
       setForm({
         title: "",
@@ -88,7 +97,7 @@ export default function MenuListEditor({ role = "user" }) {
     if (!window.confirm("Delete this menu item?")) return;
     setDeletingId(id);
     try {
-      await fetch(`/api/menu/${id}`, { method: "DELETE" });
+      await apiDeleteMenuItem(id);
       await loadMenu();
       addToast({ title: "Deleted", type: "success" });
     } catch (err) {
@@ -99,24 +108,26 @@ export default function MenuListEditor({ role = "user" }) {
   };
 
   const handleReorder = async (id, delta) => {
-    const item = menuItems.find((m) => m.id === id);
+    const flat = flattenMenu(menuItems);
+    const item = flat.find((m) => m.id === id);
     if (!item) return;
-    const siblings = menuItems.filter((m) => m.parent_id === item.parent_id);
+    const siblings = flat
+      .filter((m) => (m.parent_id ?? null) === (item.parent_id ?? null))
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     const idx = siblings.findIndex((m) => m.id === id);
-    const target = siblings[idx + delta];
-    if (!target) return;
-    const [a, b] = [item, target].sort((x, y) => x.order_index - y.order_index);
-    await fetch("/api/menu/reorder", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orders: [
-          { id: a.id, order_index: a.order_index },
-          { id: b.id, order_index: b.order_index },
-        ],
-      }),
-    });
-    await loadMenu();
+    if (idx < 0 || idx + delta < 0 || idx + delta >= siblings.length) return;
+
+    // The reorder route requires the complete sibling set in its new order.
+    const next = [...siblings];
+    [next[idx], next[idx + delta]] = [next[idx + delta], next[idx]];
+    const orders = next.map((sibling, index) => ({ id: sibling.id, display_order: index }));
+
+    try {
+      await apiReorderMenuItems(orders);
+      await loadMenu();
+    } catch (err) {
+      addToast({ title: "Reorder failed", message: err.message, type: "error" });
+    }
   };
 
   const columns = [
@@ -240,16 +251,23 @@ export default function MenuListEditor({ role = "user" }) {
                   <td className="cell-order">{item.order_index}</td>
                   <td className="cell-active">
                     <button
-                      onClick={() => {
-                        const idx = menuItems.findIndex((m) => m.id === item.id);
-                        const next = [...menuItems];
-                        next[idx].is_active = !next[idx].is_active;
-                        setMenuItems(next);
-                        fetch(`/api/menu/${item.id}`, {
-                          method: "PUT",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ ...next[idx], is_active: next[idx].is_active }),
-                        });
+                      onClick={async () => {
+                        const previous = menuItems;
+                        setMenuItems(
+                          menuItems.map((m) =>
+                            m.id === item.id ? { ...m, is_active: !m.is_active } : m
+                          )
+                        );
+                        try {
+                          await apiUpdateMenuItem(item.id, { is_active: !item.is_active });
+                        } catch (err) {
+                          setMenuItems(previous);
+                          addToast({
+                            title: "Update failed",
+                            message: err.message,
+                            type: "error",
+                          });
+                        }
                       }}
                       className={`toggle-btn ${item.is_active ? "active" : "inactive"}`}
                     >
@@ -346,16 +364,16 @@ export default function MenuListEditor({ role = "user" }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Roles Allowed</label>
-                <Select
-                  value={form.roles_allowed.join(",")}
+                <select
+                  className="ui-select-trigger"
+                  value={(form.roles_allowed ?? []).join(",")}
                   onChange={(e) => setForm({ ...form, roles_allowed: e.target.value.split(",") })}
-                  placeholder="Select roles"
                 >
                   <option value="user">User</option>
                   <option value="vendor">Vendor</option>
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super Admin</option>
-                </Select>
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Order Index</label>

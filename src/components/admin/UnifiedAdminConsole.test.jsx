@@ -21,6 +21,15 @@ vi.mock("../../api/backendApi", () => ({
   apiUploadImage: vi.fn(),
 }));
 
+vi.mock("../../api/contentApi", () => ({
+  apiFetchMenuItems: vi.fn().mockResolvedValue([]),
+  apiSaveMenuItem: vi.fn(),
+  apiUpdateMenuItem: vi.fn(),
+  apiDeleteMenuItem: vi.fn(),
+  apiReorderMenuItems: vi.fn(),
+  apiFetchCategoryTree: vi.fn().mockResolvedValue({ categories: [] }),
+}));
+
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     user: { full_name: "Admin User", email: "admin@example.com" },

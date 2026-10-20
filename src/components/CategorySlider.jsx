@@ -20,8 +20,9 @@ export default function CategorySlider() {
           .map((c) => ({ name: c.name, image: c.image_url || "" }));
         setLiveCats(list);
       })
-      .catch(() => {
-        // Fall back to static categorySliderItems below.
+      .catch((error) => {
+        // Fall back to static categorySliderItems below, but leave a trace for outages.
+        console.error("Failed to load site categories; using static fallback.", error);
       });
     return () => {
       cancelled = true;

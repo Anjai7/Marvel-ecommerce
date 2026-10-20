@@ -83,6 +83,16 @@ describe("apiFetch", () => {
     expect(options.headers.Authorization).toBeUndefined();
   });
 
+  it("sends no Authorization header when no token is stored", async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ ok: true }));
+
+    await apiFetch("/content/hero");
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(localStorage.getItem("marvel_jwt_token")).toBeNull();
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
   it("sends a JSON body with Content-Type: application/json", async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: true }, { status: 201 }));
 
@@ -119,6 +129,22 @@ describe("apiFetch", () => {
     unsubscribe();
   });
 
+  it("does not notify onUnauthorized listeners for a 401 on a public request", async () => {
+    localStorage.setItem("marvel_jwt_token", "jwt-123");
+    const listener = vi.fn();
+    const unsubscribe = onUnauthorized(listener);
+    mockFetch.mockResolvedValue(
+      jsonResponse({ error: "Invalid email or password." }, { status: 401 })
+    );
+
+    await expect(
+      apiFetch("/auth/login", { method: "POST", body: { email: "a@b.c" }, auth: false })
+    ).rejects.toThrow("Invalid email or password.");
+
+    expect(listener).not.toHaveBeenCalled();
+    unsubscribe();
+  });
+
   it("propagates a network rejection", async () => {
     mockFetch.mockRejectedValue(new Error("down"));
 
@@ -151,6 +177,17 @@ describe("apiFetch", () => {
     mockFetch.mockResolvedValue({ ok: true, status: 204, json: () => Promise.resolve(null) });
 
     await expect(apiFetch("/menu/1", { method: "DELETE" })).resolves.toBeUndefined();
+  });
+
+  it("rejects when a successful response body cannot be parsed", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new SyntaxError("Unexpected token < in JSON at position 0")),
+      text: () => Promise.reject(new Error("Body has already been consumed.")),
+    });
+
+    await expect(apiFetch("/content/hero")).rejects.toThrow("Unexpected token < in JSON");
   });
 
   it("falls back to the status message when the error body is not JSON", async () => {

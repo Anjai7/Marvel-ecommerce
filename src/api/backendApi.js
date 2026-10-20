@@ -1,6 +1,6 @@
 // Architecture: Frontend (Browser) -> Express Backend (/api/*) -> Database & Cloudinary
 // Transport (token, headers, error mapping) lives in client.js. This module owns
-// the auth, user, product, order, menu and legacy-content endpoints.
+// the auth, user, product, order and legacy-content endpoints.
 import { apiFetch, getStoredToken, setStoredToken } from "./client.js";
 
 export { getStoredToken, setStoredToken };
@@ -47,23 +47,6 @@ export async function apiGetMe() {
   if (!getStoredToken()) return null;
   const data = await apiFetch("/auth/me");
   return data.user;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Dynamic navigation menu                                                    */
-/* -------------------------------------------------------------------------- */
-export async function apiFetchMenuItems(userRole = "user") {
-  const query = new URLSearchParams({ role: userRole }).toString();
-  return apiFetch(`/menu?${query}`);
-}
-
-export async function apiSaveMenuItem(menuItem) {
-  const data = await apiFetch("/menu", { method: "POST", body: menuItem });
-  return data.item;
-}
-
-export async function apiDeleteMenuItem(id) {
-  return apiFetch(`/menu/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 /* -------------------------------------------------------------------------- */

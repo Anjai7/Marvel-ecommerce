@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useAuth } from "./AuthContext";
 import {
   apiFetchBanners,
   apiFetchCategories,
@@ -43,9 +44,18 @@ function messageOf(error) {
 }
 
 export function ContentProvider({ children }) {
+  const { role } = useAuth();
   const [state, setState] = useState(INITIAL_STATE);
   const aliveRef = useRef(false);
   const requestRef = useRef(0);
+  const menuRequestRef = useRef(0);
+  const roleRef = useRef(role);
+  const menuRoleRef = useRef(role);
+
+  // Track the newest role outside render; the loader reads it at request time.
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   /**
    * Run all six reads in parallel; each settles on its own, so one failed
@@ -53,6 +63,9 @@ export function ContentProvider({ children }) {
    */
   const load = useCallback(async () => {
     const request = ++requestRef.current;
+    const menuRequest = ++menuRequestRef.current;
+    const menuRole = roleRef.current;
+    menuRoleRef.current = menuRole;
 
     const [hero, banners, categories, categoryTree, footer, menu] = await Promise.all([
       settle(apiFetchHeroSlides()),
@@ -60,7 +73,7 @@ export function ContentProvider({ children }) {
       settle(apiFetchCategories()),
       settle(apiFetchCategoryTree()),
       settle(apiFetchFooter()),
-      settle(apiFetchMenuItems()),
+      settle(apiFetchMenuItems(menuRole)),
     ]);
 
     // A late response after unmount (or after a newer refresh) is discarded.
@@ -70,7 +83,7 @@ export function ContentProvider({ children }) {
       (result) => result.error
     );
 
-    setState({
+    setState((previous) => ({
       hero: hero.error ? [] : asList(hero.value?.slides),
       banners: banners.error ? [] : asList(banners.value?.banners),
       categories: categories.error ? [] : asList(categories.value?.categories),
@@ -78,10 +91,30 @@ export function ContentProvider({ children }) {
       footer: footer.error
         ? EMPTY_FOOTER
         : { sections: asList(footer.value?.sections), links: asList(footer.value?.links) },
-      menu: menu.error ? [] : asList(menu.value),
+      // A menu-only refresh that started later owns the menu value.
+      menu:
+        menuRequest === menuRequestRef.current
+          ? menu.error
+            ? []
+            : asList(menu.value)
+          : previous.menu,
       loading: false,
       error: failure ? messageOf(failure.error) : null,
-    });
+    }));
+  }, []);
+
+  /** Role changes only affect the role-scoped menu, so nothing else reloads. */
+  const refreshMenu = useCallback(async (nextRole) => {
+    const menuRequest = ++menuRequestRef.current;
+    const result = await settle(apiFetchMenuItems(nextRole));
+
+    if (!aliveRef.current || menuRequest !== menuRequestRef.current) return;
+
+    setState((previous) => ({
+      ...previous,
+      menu: result.error ? [] : asList(result.value),
+      error: result.error ? messageOf(result.error) : previous.error,
+    }));
   }, []);
 
   useEffect(() => {
@@ -91,6 +124,14 @@ export function ContentProvider({ children }) {
       aliveRef.current = false;
     };
   }, [load]);
+
+  // The server filters GET /api/menu by roles_allowed, so the signed-in role
+  // must pick the menu; a logged-out visitor reads it as "user".
+  useEffect(() => {
+    if (menuRoleRef.current === role) return;
+    menuRoleRef.current = role;
+    refreshMenu(role);
+  }, [role, refreshMenu]);
 
   // Admin editors dispatch this after a successful write.
   useEffect(() => {

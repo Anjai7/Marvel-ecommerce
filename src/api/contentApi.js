@@ -16,7 +16,7 @@ function query(params = {}) {
 }
 
 const idPath = (base, id) => `${base}/${enc(id)}`;
-const orders = (list) => ({ method: "PATCH", body: { orders: list } });
+const reorderBody = (orders) => ({ method: "PATCH", body: { orders } });
 
 /* -------------------------------------------------------------------------- */
 /* Hero slides — /content/hero                                                */
@@ -33,7 +33,7 @@ export const apiUpdateHeroSlide = (id, patch) =>
 
 export const apiDeleteHeroSlide = (id) => apiFetch(idPath(HERO, id), { method: "DELETE" });
 
-export const apiReorderHeroSlides = (list) => apiFetch(`${HERO}/reorder`, orders(list));
+export const apiReorderHeroSlides = (orders) => apiFetch(`${HERO}/reorder`, reorderBody(orders));
 
 /* -------------------------------------------------------------------------- */
 /* Categories — /categories                                                   */
@@ -58,7 +58,8 @@ export const apiUpdateCategory = (id, patch) =>
 
 export const apiDeleteCategory = (id) => apiFetch(idPath(CATEGORIES, id), { method: "DELETE" });
 
-export const apiReorderCategories = (list) => apiFetch(`${CATEGORIES}/reorder`, orders(list));
+export const apiReorderCategories = (orders) =>
+  apiFetch(`${CATEGORIES}/reorder`, reorderBody(orders));
 
 /* -------------------------------------------------------------------------- */
 /* Promo banners — /content/banners                                           */
@@ -77,7 +78,7 @@ export const apiUpdateBanner = (id, patch) =>
 
 export const apiDeleteBanner = (id) => apiFetch(idPath(BANNERS, id), { method: "DELETE" });
 
-export const apiReorderBanners = (list) => apiFetch(`${BANNERS}/reorder`, orders(list));
+export const apiReorderBanners = (orders) => apiFetch(`${BANNERS}/reorder`, reorderBody(orders));
 
 /* -------------------------------------------------------------------------- */
 /* Footer — /content/footer                                                   */
@@ -98,8 +99,8 @@ export const apiUpdateFooterSection = (id, patch) =>
 export const apiDeleteFooterSection = (id) =>
   apiFetch(idPath(FOOTER_SECTIONS, id), { method: "DELETE" });
 
-export const apiReorderFooterSections = (list) =>
-  apiFetch(`${FOOTER_SECTIONS}/reorder`, orders(list));
+export const apiReorderFooterSections = (orders) =>
+  apiFetch(`${FOOTER_SECTIONS}/reorder`, reorderBody(orders));
 
 export const apiSaveFooterLink = (link) => apiFetch(FOOTER_LINKS, { method: "POST", body: link });
 
@@ -108,7 +109,8 @@ export const apiUpdateFooterLink = (id, patch) =>
 
 export const apiDeleteFooterLink = (id) => apiFetch(idPath(FOOTER_LINKS, id), { method: "DELETE" });
 
-export const apiReorderFooterLinks = (list) => apiFetch(`${FOOTER_LINKS}/reorder`, orders(list));
+export const apiReorderFooterLinks = (orders) =>
+  apiFetch(`${FOOTER_LINKS}/reorder`, reorderBody(orders));
 
 /* -------------------------------------------------------------------------- */
 /* Navigation menu — /menu (the one bare-array response)                      */
@@ -126,7 +128,7 @@ export const apiUpdateMenuItem = (id, patch) =>
 
 export const apiDeleteMenuItem = (id) => apiFetch(idPath(MENU, id), { method: "DELETE" });
 
-export const apiReorderMenuItems = (list) => apiFetch(`${MENU}/reorder`, orders(list));
+export const apiReorderMenuItems = (orders) => apiFetch(`${MENU}/reorder`, reorderBody(orders));
 
 /* -------------------------------------------------------------------------- */
 /* Images — /upload                                                           */

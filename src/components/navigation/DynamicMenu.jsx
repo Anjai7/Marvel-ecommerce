@@ -15,7 +15,7 @@ import {
   Users,
   ChevronDown,
 } from "lucide-react";
-import { apiFetchMenuItems } from "../../api/backendApi";
+import { apiFetchMenuItems } from "../../api/contentApi";
 import { navCategories, megaMenuData } from "../../data";
 import { MegaMenu, MegaMenuFeaturedCard, Badge } from "../ui";
 
@@ -184,9 +184,7 @@ export function LiveMegaMenu({ root, alignRight, onNavigate }) {
         <div className="mega-menu-featured-column">
           <MegaMenuFeaturedCard
             {...featured}
-            onSelect={() =>
-              onNavigate && onNavigate(root.promo_cta_path || root.path || "/", root)
-            }
+            onSelect={() => onNavigate && onNavigate(root.promo_cta_path || root.path || "/", root)}
           />
         </div>
       )}

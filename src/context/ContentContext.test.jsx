@@ -10,6 +10,12 @@ import {
   apiFetchMenuItems,
 } from "../api/contentApi";
 
+const authState = vi.hoisted(() => ({ role: "user" }));
+
+vi.mock("./AuthContext", () => ({
+  useAuth: () => ({ role: authState.role }),
+}));
+
 vi.mock("../api/contentApi", () => ({
   apiFetchHeroSlides: vi.fn(),
   apiFetchBanners: vi.fn(),
@@ -27,6 +33,8 @@ const FETCHERS = [
   apiFetchFooter,
   apiFetchMenuItems,
 ];
+
+const NON_MENU_FETCHERS = FETCHERS.filter((fetcher) => fetcher !== apiFetchMenuItems);
 
 function Probe() {
   const { hero, banners, categories, categoryTree, footer, menu, loading, error, refresh } =
@@ -61,6 +69,7 @@ function renderProvider() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  authState.role = "user";
   apiFetchHeroSlides.mockResolvedValue({ slides: [{ id: "h1", title: "Hero One" }] });
   apiFetchBanners.mockResolvedValue({ banners: [{ id: "b1", title: "Banner One" }] });
   apiFetchCategories.mockResolvedValue({
@@ -88,6 +97,56 @@ describe("ContentProvider", () => {
     for (const fetcher of FETCHERS) {
       expect(fetcher).toHaveBeenCalledTimes(1);
     }
+  });
+
+  it("fetches the menu with the signed-in user's role", async () => {
+    authState.role = "admin";
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+
+    expect(apiFetchMenuItems).toHaveBeenCalledTimes(1);
+    expect(apiFetchMenuItems).toHaveBeenCalledWith("admin");
+  });
+
+  it("re-fetches only the menu when the role changes", async () => {
+    const { rerender } = renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+    expect(apiFetchMenuItems).toHaveBeenCalledWith("user");
+
+    apiFetchMenuItems.mockResolvedValueOnce([{ id: "m2", title: "Vendor Home" }]);
+    authState.role = "vendor";
+
+    rerender(
+      <ContentProvider>
+        <Probe />
+      </ContentProvider>
+    );
+
+    await waitFor(() => expect(screen.getByTestId("menu")).toHaveTextContent("Vendor Home"));
+
+    expect(apiFetchMenuItems).toHaveBeenCalledTimes(2);
+    expect(apiFetchMenuItems).toHaveBeenLastCalledWith("vendor");
+
+    for (const fetcher of NON_MENU_FETCHERS) {
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("does not re-fetch the menu when the role is unchanged", async () => {
+    const { rerender } = renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+
+    rerender(
+      <ContentProvider>
+        <Probe />
+      </ContentProvider>
+    );
+
+    expect(apiFetchMenuItems).toHaveBeenCalledTimes(1);
   });
 
   it("exposes the fetched collections", async () => {

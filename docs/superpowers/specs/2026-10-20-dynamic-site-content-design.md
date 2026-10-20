@@ -880,13 +880,15 @@ export function useContent(): {
   path.
 - Listens for the `window` event `marvel_content_updated` (dispatched by every admin editor
   after a successful write) and calls `refresh()`. The listener is removed on unmount.
-- Mounted above `AuthProvider` in `App.jsx` (content does not depend on auth, but the admin
-  menu preview does):
+- **Mounted inside `AuthProvider`** in `App.jsx`, because the **menu is role-scoped**: the
+  server filters `GET /api/menu` by `roles_allowed`, so a shared context that loaded the menu
+  with a fixed role would hand an admin or a vendor the _user_ menu. The context reads the
+  current role from `useAuth()` and re-fetches the menu when the role changes:
 
 ```jsx
 <ToastProvider>
-  <ContentProvider>
-    <AuthProvider>
+  <AuthProvider>
+    <ContentProvider>
       <CartProvider>
         <AppMain />
 ```

@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import ConfirmDialog from "./ConfirmDialog";
 import MenuTreeEditor from "./MenuTreeEditor";
-import { apiFetchMenuItems, apiSaveMenuItem, apiDeleteMenuItem } from "../../api/backendApi";
+import { apiFetchMenuItems, apiSaveMenuItem, apiDeleteMenuItem } from "../../api/contentApi";
 
-vi.mock("../../api/backendApi", () => ({
+vi.mock("../../api/contentApi", () => ({
   apiFetchMenuItems: vi.fn(),
   apiSaveMenuItem: vi.fn(),
   apiDeleteMenuItem: vi.fn(),
-  getStoredToken: vi.fn().mockReturnValue("test-token"),
+  apiReorderMenuItems: vi.fn(),
 }));
 
 const TREE_DATA = [

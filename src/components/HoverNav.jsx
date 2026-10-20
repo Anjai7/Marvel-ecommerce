@@ -3,8 +3,16 @@ import { navCategories, megaMenuData } from "../data";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { MegaMenu } from "./ui";
 import { LiveMegaMenu } from "./navigation/DynamicMenu";
-import { apiFetchMenuItems } from "../api/backendApi";
-import { Menu, ChevronDown, ChevronLeft, ChevronRight, Store, ShieldCheck, Zap } from "lucide-react";
+import { apiFetchMenuItems } from "../api/contentApi";
+import {
+  Menu,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Store,
+  ShieldCheck,
+  Zap,
+} from "lucide-react";
 
 const byOrder = (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0);
 
@@ -172,11 +180,7 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
           </button>
 
           {browseOpen && (
-            <div
-              className="browse-dropdown"
-              onMouseEnter={browseEnter}
-              onMouseLeave={browseLeave}
-            >
+            <div className="browse-dropdown" onMouseEnter={browseEnter} onMouseLeave={browseLeave}>
               <BrowseCategoriesMenu onClose={() => setBrowseOpen(false)} />
             </div>
           )}
@@ -267,52 +271,52 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
 
           {!useLive &&
             filteredNavCategories.map((cat, idx) => {
-            const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
+              const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
 
-            return (
-              <div
-                key={cat.name}
-                className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-                onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
-                onMouseLeave={cat.hasDropdown ? navLeave : undefined}
-                onFocus={() => cat.hasDropdown && navEnter(cat.name)}
-                onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget)) {
-                    navLeave();
-                  }
-                }}
-              >
-                <span
-                  tabIndex={cat.hasDropdown ? 0 : undefined}
-                  className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
-                  id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
-                  onKeyDown={(e) => {
-                    if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
-                      e.preventDefault();
-                      setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
+              return (
+                <div
+                  key={cat.name}
+                  className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
+                  onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
+                  onMouseLeave={cat.hasDropdown ? navLeave : undefined}
+                  onFocus={() => cat.hasDropdown && navEnter(cat.name)}
+                  onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      navLeave();
                     }
-                    if (e.key === "Escape") setActiveMenu(null);
                   }}
                 >
-                  {cat.name}
-                  {cat.hasDropdown && (
-                    <ChevronDown
-                      size={14}
-                      className="nav-arrow"
-                      style={{
-                        transition: "transform 0.2s ease",
-                        transform: activeMenu === cat.name ? "rotate(180deg)" : "none",
-                      }}
-                    />
-                  )}
-                </span>
+                  <span
+                    tabIndex={cat.hasDropdown ? 0 : undefined}
+                    className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
+                    id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
+                    onKeyDown={(e) => {
+                      if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
+                      }
+                      if (e.key === "Escape") setActiveMenu(null);
+                    }}
+                  >
+                    {cat.name}
+                    {cat.hasDropdown && (
+                      <ChevronDown
+                        size={14}
+                        className="nav-arrow"
+                        style={{
+                          transition: "transform 0.2s ease",
+                          transform: activeMenu === cat.name ? "rotate(180deg)" : "none",
+                        }}
+                      />
+                    )}
+                  </span>
 
-                {activeMenu === cat.name && megaMenuData[cat.name] && (
-                  <MegaMenu data={megaMenuData[cat.name]} alignRight={alignRight} />
-                )}
-              </div>
-            );
-          })}
+                  {activeMenu === cat.name && megaMenuData[cat.name] && (
+                    <MegaMenu data={megaMenuData[cat.name]} alignRight={alignRight} />
+                  )}
+                </div>
+              );
+            })}
 
           {/* Dynamic Role Navigation Portals */}
           {(userRole === "vendor" || userRole === "admin" || userRole === "super_admin") && (
@@ -330,7 +334,7 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
-                whiteSpace: "nowrap"
+                whiteSpace: "nowrap",
               }}
             >
               <Store size={14} /> Vendor Store
@@ -352,7 +356,7 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
-                whiteSpace: "nowrap"
+                whiteSpace: "nowrap",
               }}
             >
               <ShieldCheck size={14} /> Admin Console
@@ -374,7 +378,7 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
                 fontSize: 12,
                 fontWeight: 800,
                 cursor: "pointer",
-                whiteSpace: "nowrap"
+                whiteSpace: "nowrap",
               }}
             >
               <Zap size={14} /> Super Admin
