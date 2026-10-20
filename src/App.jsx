@@ -14,6 +14,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
 import ProductViewPage from "./components/product/ProductViewPage";
+import CategoryPage from "./components/category/CategoryPage";
 import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -28,6 +29,44 @@ import VendorDashboard from "./components/vendor/VendorDashboard";
 import AdminPortal from "./components/admin/AdminPortal";
 import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
 
+/**
+ * Real hash routing. `#/product/:id` keeps its single id; `category/*` carries
+ * the whole ancestor path because slugs are unique only per parent, so the
+ * last segment alone cannot identify a category.
+ */
+export function getHashRoute() {
+  const raw = window.location.hash.replace(/^#\/?/, "").trim();
+  if (!raw) return { page: "home", id: null, path: null, full: "" };
+
+  const parts = raw.split("?")[0].split("/");
+  const page = (parts[0] || "home").toLowerCase();
+
+  if (page === "category") {
+    const remainder = parts.slice(1).join("/");
+    let path = remainder;
+    try {
+      path = decodeURIComponent(remainder);
+    } catch {
+      // A malformed escape keeps the raw remainder; the page shows its
+      // unknown-category state rather than crashing the router.
+    }
+    path = path.replace(/^\/+|\/+$/g, "");
+    return { page, id: path || null, path, full: raw };
+  }
+
+  return { page, id: parts[1] || null, path: null, full: raw };
+}
+
+/**
+ * `menu_items.path` already is the full category path, so the nav mapping is a
+ * string strip — the menu path and the category path are the same string.
+ */
+export function menuPathToCategoryPath(path) {
+  const clean = String(path ?? "").replace(/^\/+/, "");
+  if (!clean.startsWith("category/")) return null;
+  return clean.slice("category/".length);
+}
+
 function AppMain() {
   const { user, isLoggedIn, role: userRole, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -35,19 +74,7 @@ function AppMain() {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Real URL Hash-based Routing with Route Parameters (e.g. #/product/:id)
-  const getHashRoute = () => {
-    const raw = window.location.hash.replace(/^#\/?/, "").trim();
-    if (!raw) return { page: "home", id: null, full: "" };
-
-    const parts = raw.split("?")[0].split("/");
-    const page = (parts[0] || "home").toLowerCase();
-    const id = parts[1] || null;
-
-    return { page, id, full: raw };
-  };
-
-  const [currentRoute, setCurrentRoute] = useState(getHashRoute());
+  const [currentRoute, setCurrentRoute] = useState(getHashRoute);
   const [loginDefaultRole, setLoginDefaultRole] = useState("user");
 
   useEffect(() => {
@@ -77,6 +104,7 @@ function AppMain() {
 
   const handleDynamicMenuClick = (path) => {
     const cleanPath = path.replace(/^\//, "");
+    const categoryPath = menuPathToCategoryPath(path);
     if (cleanPath === "vendor-dashboard" || cleanPath === "vendor") {
       if (!isLoggedIn) navigateTo("login", "vendor");
       else navigateTo("vendor");
@@ -103,6 +131,8 @@ function AppMain() {
       else navigateTo("account");
     } else if (cleanPath === "products" || cleanPath === "product") {
       navigateTo("product");
+    } else if (categoryPath !== null) {
+      navigateTo(`category/${categoryPath}`);
     } else {
       navigateTo("");
     }
@@ -124,6 +154,7 @@ function AppMain() {
   const isLoginPage = currentRoute.page === "login";
   const isSignUpPage = currentRoute.page === "signup";
   const isProductPage = currentRoute.page === "product" || currentRoute.page === "products";
+  const isCategoryPage = currentRoute.page === "category";
   const isAccountPage =
     currentRoute.page === "account" ||
     currentRoute.page === "customer-portal" ||
@@ -169,11 +200,7 @@ function AppMain() {
           {isStorefront ? (
             <HoverNav userRole={userRole} onDynamicNavigate={handleDynamicMenuClick} />
           ) : (
-            <DynamicMenu
-              userRole={userRole}
-              onNavigate={handleDynamicMenuClick}
-              activePath={`/${currentRoute.page}`}
-            />
+            <DynamicMenu onNavigate={handleDynamicMenuClick} activePath={`/${currentRoute.page}`} />
           )}
         </div>
       )}
@@ -197,6 +224,15 @@ function AppMain() {
           />
           <Footer />
         </>
+      )}
+
+      {/* 2. CATEGORY LANDING PAGE */}
+      {isCategoryPage && (
+        <CategoryPage
+          path={currentRoute.path}
+          onNavigate={handleDynamicMenuClick}
+          onSelectProduct={handleSelectProduct}
+        />
       )}
 
       {/* 2. AUTHENTICATION (LOGIN & SIGNUP) */}
