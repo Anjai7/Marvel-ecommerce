@@ -511,48 +511,57 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
   - `show_in_homepage` is set to `true` only for the level-1 rows whose `title` is one of `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports & Fitness`, `Toys & Baby`, `Accessories`.
   - `image_url` is backfilled from `public.site_categories.image_url` by matching `lower(site_categories.name) = lower(categories.name)`; unmatched rows keep `image_url` NULL and fall back to a per-root image.
   - `products.category_id` backfill: `UPDATE public.products p SET category_id = c.id FROM public.categories c WHERE lower(c.name) = lower(p.category) AND c.level = (SELECT MIN(level) FROM public.categories c2 WHERE lower(c2.name) = lower(p.category))`. Rows that match nothing are left with `category_id IS NULL` and keep their `category` text; the seed script in Task 5 rewrites them onto real categories.
-  - `site_categories` is **not** dropped in this migration. The storefront still calls `GET /api/content/categories` until Task 13, and the new `/api/categories` route does not exist until Task 6 — dropping the table here would break the running app mid-plan. The table is dropped in Task 6, after the replacement API is in place, and Task 6 keeps a temporary alias route so the storefront keeps working until Task 13.
+  - `site_categories` is **not** dropped in this migration. The storefront still calls `GET /api/content/categories` until Task 13, and the new `/api/categories` route does not exist until Task 6 — dropping the table here would break the running app mid-plan. The table is dropped in Task 6, after the replacement API is in place, and Task 6 keeps a temporary alias route so the storefront keeps working until Task 13. The drop ships as a **second** paste bundle (`docs/sql/apply-02-drop-site-categories.sql`) that the human applies only after Task 6's code is deployed.
 
-- [ ] **Step 1: Apply the migration to a local/staging database and verify the shape**
+- [ ] **Step 1: Produce the paste-ready SQL bundle and verify its shape statically**
 
-Run: `supabase db push` (or `supabase db reset` locally). Then verify with the Supabase CLI or a psql session:
+This environment has no Docker, the Supabase project is not linked to the CLI, and `.env` carries no access token or DB password — **the DDL cannot be applied from here.** The human partner applies it (this was their explicit decision).
 
-```sql
-SELECT level, count(*) FROM public.categories GROUP BY level ORDER BY level;
-SELECT count(*) FROM public.products WHERE category_id IS NOT NULL;
-```
+Create `docs/sql/apply-01-content-taxonomy.sql` containing, in order and fully concatenated (no psql meta-commands, no `\i` includes — a single script the human can paste into the Supabase SQL Editor as-is):
 
-Expected: three level groups (7 / ~30 / ~140), and at least 5 products backfilled.
+1. The full contents of `supabase/migrations/20261020000007_content_taxonomy.sql`.
+2. The full contents of `supabase/migrations/20261020000008_seed_categories.sql`.
+3. A trailing comment block listing the verification queries the human should run afterwards (Step 5 below), each prefixed with `--` so the script stays valid SQL.
+
+The two migration files in `supabase/migrations/` remain the source of truth for a future `supabase db push`; the bundle in `docs/sql/` is the human-facing artifact and must contain the same statements in the same order.
+
+Verify statically that the script is valid SQL by eye: every statement is terminated, every `CREATE TABLE` is followed by its `CREATE INDEX` and both RLS policies, and the `set_updated_at` trigger is created before it is attached to a table.
 
 - [ ] **Step 2: Verify the RLS policies are scoped, not unscoped**
 
-Run:
+Read the policy statements you just wrote and confirm every `FOR ALL` policy names `TO service_role`. If any says `TO public` or omits the role, fix it before continuing. The unscoped `FOR ALL USING (true)` form is the existing bug on `products` and `orders` (`supabase/migrations/20260822000002_enhance_products_and_orders.sql:43-44,54-55`) and must not be repeated.
+
+- [ ] **Step 3: Verify the `categories` seed inserts in level order**
+
+The `categories` seed must be **three separate `INSERT` statements, one per level** (level 1, then 2, then 3) — a single `INSERT … SELECT` inserting self-referencing rows gives no ordering guarantee and can violate the `parent_id` foreign key, because the FK is immediate rather than deferred. Confirm the bundle contains three inserts, in that order.
+
+- [ ] **Step 4: Verify the slug expression derives the right slug at each level**
+
+The slug expression must be `regexp_replace(split_part(regexp_replace(path, '^/category/', ''), '/', 3), '[^a-zA-Z0-9-]+', '-', 'g')` — for `/category/electronics` → `electronics`, for `/category/electronics/mobiles` → `mobiles`, for `/category/electronics/mobiles/smartphones` → `smartphones`. Trace all three by hand and confirm the three insert statements in the bundle match.
+
+- [ ] **Step 5: Write the verification checklist for the human partner**
+
+Append to `docs/sql/apply-01-content-taxonomy.sql` (as SQL comments) the queries the human should run after pasting, each with its expected result:
 
 ```sql
+-- Expected: three groups, 7 / ~38 / ~140
+SELECT level, count(*) FROM public.categories GROUP BY level ORDER BY level;
+-- Expected: 0
+SELECT count(*) FROM public.menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;
+-- Expected: NULL
+SELECT to_regclass('public.site_categories');
+-- Expected: 10
+SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','TVs','Headphones','Watches','Shoes','Bags','Perfumes','Cameras','Gaming');
+-- Expected: every FOR ALL policy scoped to service_role
 SELECT tablename, policyname, roles, cmd FROM pg_policies
 WHERE schemaname='public' AND tablename IN ('categories','promo_banners','footer_sections','footer_links');
 ```
 
-Expected: every `FOR ALL` policy has `roles = {service_role}`. If any shows `{public}` or `{anon,authenticated}`, fix the `CREATE POLICY` before continuing.
+Copy this same checklist into the task report so the human partner has it in one place.
 
-- [ ] **Step 3: Verify the `categories` tree matches the menu tree**
+- [ ] **Step 6: Regenerate `supabase/schema.sql`**
 
-Run:
-
-```sql
-SELECT count(*) FROM public.menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;
-```
-
-Expected: `0`.
-
-- [ ] **Step 4: Verify `site_categories` still exists and its rows survived the copy**
-
-Run: `SELECT to_regclass('public.site_categories');` → **`public.site_categories`** (it is not dropped until Task 6).
-Run: `SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','TVs','Headphones','Watches','Shoes','Bags','Perfumes','Cameras','Gaming');` → `10`.
-
-- [ ] **Step 5: Regenerate `supabase/schema.sql`**
-
-Run: `supabase db dump --file supabase/schema.sql --schema public` (or `supabase db diff` to produce the diff and apply it). The file must now list `categories`, `promo_banners`, `footer_sections`, `footer_links`, and `password_reset_tokens`, and must include the `products.category_id` and `menu_items.category_id` columns. Do not hand-edit it.
+`supabase db dump` requires a linked project, which is unavailable here. **Hand-append** the new tables' DDL to `supabase/schema.sql` in the same style as the existing file: the `categories`, `promo_banners`, `footer_sections`, `footer_links` tables, the `products.category_id` and `menu_items.category_id` columns, the new indexes, the scoped RLS policies, and the `set_updated_at` function and triggers. Do not rewrite the parts of the file you are not adding to. Note in the report that `schema.sql` was hand-maintained rather than dumped, and that it should be regenerated with `supabase db dump` once a linked project is available.
 
 - [ ] **Step 6: Commit**
 
@@ -601,30 +610,35 @@ Rewrite `server/seed_dynamic_products.js`:
 - Images: use the category's `image_url` with a distinct `&sig=<n>` crop seed per product so the images differ but need only one real URL per category. If the category has no `image_url`, fall back to `https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&sig=<n>`.
 - Cloudinary upload is attempted only when `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_API_KEY` are both set; otherwise the Unsplash URL is stored directly and `access_type` is left `"public"`. Never write a fake `cloudinary_public_id` (the current `server/services/cloudinary.js:70-79` fallback does exactly that — do not reuse it here).
 - Do not insert orders.
-- [ ] **Step 5: Run the seeds against the database and verify**
+- [ ] **Step 5: Verify the seeds against a mocked database and hand the run commands to the human**
 
-Run: `npm run seed:content` then `npm run seed:products`
-Expected: no errors. Then:
+The live database cannot be reached from this environment (no linked project, no DB password), so the seeds are exercised against a mocked `server/db.js` in `server/seed_content.test.js`. The test must assert that `seedContent()` issues upserts keyed on the deterministic ids, that it issues **no** delete statements, and that a second call produces the same upsert payload as the first (idempotency, proven without a real database).
+
+Then produce a human-facing runbook at `docs/sql/apply-03-run-seeds.md` containing:
+
+1. The prerequisites: Task 4's `apply-01-content-taxonomy.sql` must already be applied, and `.env` must contain `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+2. The two commands, in order: `npm run seed:content` and then `npm run seed:products`.
+3. The verification queries with their expected results:
 
 ```sql
 SELECT count(*) FROM public.promo_banners;      -- 9
 SELECT count(*) FROM public.footer_sections;   -- 5
 SELECT count(*) FROM public.footer_links;      -- 34
-SELECT count(*) FROM public.products;          -- >= 3 * 7 + 30
+SELECT count(*) FROM public.products;          -- >= 3 * 7 + 38
 ```
 
-- [ ] **Step 6: Verify idempotency — run both seeds a second time and re-check the counts**
+4. A note that `npm run seed:products` uploads images to Cloudinary when `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_API_KEY` are set, and falls back to plain Unsplash URLs when they are not.
+5. An idempotency check: run both commands a second time and re-run the four `count(*)` queries — the counts must be **identical**. If they grew, the upsert keys are wrong.
 
-Run: `npm run seed:content` then `npm run seed:products`, then re-run the four `count(*)` queries.
-Expected: the counts are **identical** to Step 5. If they grew, the upsert keys are wrong.
+Do not run the seeds yourself against any database.
 
-- [ ] **Step 7: Run the full gate and commit**
+- [ ] **Step 6: Run the full gate and commit**
 
 Run: `npm run check`
 Expected: exit 0.
 
 ```bash
-git add server/seed_content.js server/seed_content.test.js server/seed_dynamic_products.js package.json
+git add server/seed_content.js server/seed_content.test.js server/seed_dynamic_products.js package.json docs/sql/apply-03-run-seeds.md
 git commit -m "feat(seed): populate taxonomy, banners, footer and products"
 ```
 
@@ -693,7 +707,7 @@ router.get("/categories", async (req, res) => {
 });
 ```
 
-- [ ] **Step 5: Drop `site_categories`**
+- [ ] **Step 5: Produce the second paste bundle that drops `site_categories`**
 
 Create `supabase/migrations/20261020000009_drop_site_categories.sql`:
 
@@ -701,7 +715,9 @@ Create `supabase/migrations/20261020000009_drop_site_categories.sql`:
 DROP TABLE IF EXISTS public.site_categories;
 ```
 
-Apply it. Verify: `SELECT to_regclass('public.site_categories');` → `NULL`, and `SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','TVs','Headphones','Watches','Shoes','Bags','Perfumes','Cameras','Gaming');` → `10`.
+Create `docs/sql/apply-02-drop-site-categories.sql` containing that one statement plus a trailing SQL-comment block with the human's verification query (`SELECT to_regclass('public.site_categories');` → expect `NULL`) and a header comment stating **when** to apply it: only after Task 6's code is deployed, because the storefront calls the old `GET /api/content/categories` path until Task 13. The Task 6 alias route keeps that path working, so the drop is safe once this code is live.
+
+Do not apply it yourself — the human partner applies both bundles.
 
 - [ ] **Step 6: Fix the existing live-DB test**
 
@@ -1541,7 +1557,9 @@ Expected: FAIL — the category route does not exist and the round-trip does not
 - [ ] **Step 4: Run the whole e2e suite**
 
 Run: `npm run test:e2e`
-Expected: PASS, or the two pre-existing live-dependent specs skip cleanly when credentials are absent. Do **not** mark them `test.skip` unconditionally — a skip that hides a real failure is worse than a red test.
+Expected: PASS.
+
+The DB-backed specs (`tests/category-page.spec.js`, `tests/admin-content.spec.js`, and the two pre-existing live-dependent specs `tests/gallery.spec.js` and `tests/admin-console.spec.js`) require the new tables to exist. **The human partner applies `docs/sql/apply-01-content-taxonomy.sql` and runs the seeds (`docs/sql/apply-03-run-seeds.md`) before those specs can pass.** Until then, those specs must **skip with an explicit reason** ("database schema not applied — run docs/sql/apply-01-content-taxonomy.sql"), not fail and not be silently skipped. Gate the skip on a cheap environment probe — for example, a request to `GET /api/categories` returning `200` with a non-empty `categories` array — rather than on a hard-coded flag, so the specs start passing by themselves the moment the schema is applied. Do **not** mark them `test.skip` unconditionally: a skip that hides a real failure is worse than a red test.
 
 - [ ] **Step 5: Commit**
 
@@ -1586,11 +1604,20 @@ Run: `git status --short` → only the intended files.
 Run: `git log --oneline -20` → 20 commits, one per task.
 Run: `git remote -v` → confirm the remote exists but **do not push**. Verify with `git status -sb` that the branch is still ahead of its upstream and nothing was published.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Write the SQL handoff note for the human partner**
+
+Create `docs/sql/README.md` — the single place the human looks for what to run, in what order, and how to check it worked:
+
+1. **Order matters.** `apply-01-content-taxonomy.sql` (DDL + the category tree + the products backfill) → deploy the Task 6 code → `apply-02-drop-site-categories.sql` (drops the old table) → `apply-03-run-seeds.md` (populates banners, footer and products).
+2. For each bundle: what it does, what to paste where (Supabase SQL Editor), and its verification queries with expected results.
+3. A short "how to roll back" section: what to restore to undo the migration, and the fact that `apply-02` is not reversible without a backup of the dropped `site_categories` rows.
+4. A note that `supabase/schema.sql` was hand-maintained because no linked project was available, and should be regenerated with `supabase db dump` when one is.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add README.md docs/admin-content-guide.md
-git commit -m "docs: admin content guide"
+git add README.md docs/admin-content-guide.md docs/sql/README.md
+git commit -m "docs: admin content guide and SQL handoff"
 ```
 
 ---
