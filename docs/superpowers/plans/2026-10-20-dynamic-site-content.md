@@ -700,7 +700,7 @@ Then produce a human-facing runbook at `docs/sql/apply-03-run-seeds.md` containi
 SELECT count(*) FROM public.promo_banners;      -- 9
 SELECT count(*) FROM public.footer_sections;   -- 5
 SELECT count(*) FROM public.footer_links;      -- 34
-SELECT count(*) FROM public.products;          -- >= 3 * 7 + 38
+SELECT count(*) FROM public.products;          -- >= 3 * 7 + 31 = 52 (3 per root, 1 per level-2)
 ```
 
 4. A note that `npm run seed:products` uploads images to Cloudinary when `CLOUDINARY_CLOUD_NAME` and `CLOUDINARY_API_KEY` are set, and falls back to plain Unsplash URLs when they are not.
