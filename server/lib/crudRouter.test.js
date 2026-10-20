@@ -1,6 +1,6 @@
 // @vitest-environment node
 import express from "express";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const { mockFrom } = vi.hoisted(() => ({ mockFrom: vi.fn() }));
 
@@ -138,6 +138,26 @@ function userHeaders() {
 
 beforeEach(() => {
   mockFrom.mockReset();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("createCrudRouter — configuration", () => {
+  it("throws when toPayload is supplied but is not a function, naming the key", () => {
+    expect(() => createCrudRouter(defaultConfig({ toPayload: { title: "x" } }))).toThrow(TypeError);
+    expect(() => createCrudRouter(defaultConfig({ toPayload: "title" }))).toThrow(/toPayload/);
+  });
+
+  it("names a missing required key in the constructor error", () => {
+    expect(() => createCrudRouter(defaultConfig({ validate: undefined }))).toThrow(/validate/);
+    expect(() => createCrudRouter(defaultConfig({ table: undefined }))).toThrow(/table/);
+  });
+
+  it("allows an omitted toPayload and falls back to the body-present keys", () => {
+    expect(() => createCrudRouter(defaultConfig())).not.toThrow();
+  });
 });
 
 describe("createCrudRouter — POST", () => {
@@ -547,30 +567,40 @@ describe("createCrudRouter — GET", () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it("surfaces a list read database error as 500", async () => {
+  it("surfaces a list read database error as a generic 500 without the database text", async () => {
     makeDb({ select: () => ({ data: null, error: { message: "db list boom" } }) });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = buildApp();
 
     await withServer(app, async (base) => {
       const res = await fetch(`${base}/api/widgets`);
       expect(res.status).toBe(500);
-      expect((await res.json()).error).toMatch(/db list boom/);
+      const body = await res.json();
+      expect(body).toEqual({ error: "Could not load content." });
+      expect(JSON.stringify(body)).not.toMatch(/db list boom/);
     });
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "db list boom");
   });
 
-  it("surfaces a thrown list read as 500", async () => {
+  it("surfaces a thrown list read as a generic 500 without the exception text", async () => {
     makeDb({
       select: () => {
         throw new Error("connection reset");
       },
     });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = buildApp();
 
     await withServer(app, async (base) => {
       const res = await fetch(`${base}/api/widgets`);
       expect(res.status).toBe(500);
-      expect((await res.json()).error).toMatch(/connection reset/);
+      const body = await res.json();
+      expect(body).toEqual({ error: "Could not load content." });
+      expect(JSON.stringify(body)).not.toMatch(/connection reset/);
     });
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "connection reset");
   });
 
   it("returns a single row under resourceKey", async () => {
@@ -596,15 +626,20 @@ describe("createCrudRouter — GET", () => {
     });
   });
 
-  it("surfaces a single row read error as 500", async () => {
+  it("surfaces a single row read error as a generic 500 without the database text", async () => {
     makeDb({ maybeSingle: () => ({ data: null, error: { message: "single read boom" } }) });
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const app = buildApp();
 
     await withServer(app, async (base) => {
       const res = await fetch(`${base}/api/widgets/w1`);
       expect(res.status).toBe(500);
-      expect((await res.json()).error).toMatch(/single read boom/);
+      const body = await res.json();
+      expect(body).toEqual({ error: "Could not load content." });
+      expect(JSON.stringify(body)).not.toMatch(/single read boom/);
     });
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.any(String), "single read boom");
   });
 });
 

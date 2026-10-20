@@ -3,21 +3,15 @@ import { supabase } from "../db.js";
 import { verifyToken, requireRole } from "../middleware/auth.js";
 
 /**
- * Generic CRUD router factory for content tables. Everything content-specific
- * arrives through the config object:
- *
- *   { table, fields, orderColumn, validate, resourceKey,
- *     toPayload, listKey, readGuard, writeGuard, includeInactiveParam }
- *
- * `toPayload` is optional; it defaults to the body-present keys. The write set
- * is exactly what it returns, filtered to `fields`, with undefined dropped, so
- * a config that renames or derives a column owns that consequence while an
- * omitted field is never nulled. The body is always validated before toPayload
- * runs: strict integer strings ("1.5", "01", "1e3") must not be coerced first.
+ * Generic CRUD router factory for content tables. All content-specific detail
+ * arrives through the config; `toPayload` is optional and defaults to
+ * body-present keys, and the write set is exactly its output filtered to
+ * `fields` with undefined dropped (so a builder may rename or derive a column,
+ * while an omitted field is never nulled). The body is validated before the
+ * builder runs, so strict integer strings ("1.5", "01", "1e3") are never coerced.
  */
 
 const ADMIN_ROLES = ["admin", "super_admin"];
-const INACTIVE_PARAM = "includeInactive";
 const REORDER_INCOMPLETE = "Reorder must include every item in the scope.";
 
 /** Copy the listed fields the source carries; undefined is never written. */
@@ -100,28 +94,37 @@ export function createCrudRouter(config = {}) {
     toPayload,
     readGuard = [],
     writeGuard = [verifyToken, requireRole(ADMIN_ROLES)],
-    includeInactiveParam = INACTIVE_PARAM,
+    includeInactiveParam = "includeInactive",
     resourceKey,
     listKey = resourceKey,
   } = config;
 
-  const buildPayload = typeof toPayload === "function" ? toPayload : defaultToPayload;
-
-  if (
-    typeof table !== "string" ||
-    !Array.isArray(fields) ||
-    typeof orderColumn !== "string" ||
-    typeof validate !== "function" ||
-    typeof resourceKey !== "string"
-  ) {
-    throw new TypeError("createCrudRouter: missing required configuration.");
+  const required = {
+    table: "string",
+    fields: "array",
+    orderColumn: "string",
+    validate: "function",
+    resourceKey: "string",
+  };
+  for (const [key, kind] of Object.entries(required)) {
+    const value = config[key];
+    const valid = kind === "array" ? Array.isArray(value) : typeof value === kind && value !== "";
+    if (!valid) {
+      throw new TypeError(`createCrudRouter: invalid or missing configuration key '${key}'.`);
+    }
   }
+  if (toPayload !== undefined && typeof toPayload !== "function") {
+    throw new TypeError("createCrudRouter: configuration key 'toPayload' must be a function.");
+  }
+
+  const buildPayload = toPayload ?? defaultToPayload;
 
   const adminGuard = [verifyToken, requireRole(ADMIN_ROLES)];
   const savedMessage = `${resourceKey} saved successfully.`;
   const deleteMessage = `${resourceKey} deleted successfully.`;
   const notFoundMessage = `${resourceKey} not found.`;
   const loadMessage = `Failed to load ${resourceKey}.`;
+  const readErrorMessage = "Could not load content.";
 
   const router = Router();
 
@@ -139,11 +142,13 @@ export function createCrudRouter(config = {}) {
         .order("created_at", { ascending: true });
 
       if (error) {
-        return res.status(500).json({ error: error.message || loadMessage });
+        console.error(`Supabase ${table} list error:`, error.message);
+        return res.status(500).json({ error: readErrorMessage });
       }
       return res.json({ [listKey]: data || [] });
     } catch (thrown) {
-      return res.status(500).json({ error: thrown.message || loadMessage });
+      console.error(`Supabase ${table} list exception:`, thrown.message);
+      return res.status(500).json({ error: readErrorMessage });
     }
   });
 
@@ -157,12 +162,14 @@ export function createCrudRouter(config = {}) {
         .maybeSingle();
 
       if (error) {
-        return res.status(500).json({ error: error.message || loadMessage });
+        console.error(`Supabase ${table} read error:`, error.message);
+        return res.status(500).json({ error: readErrorMessage });
       }
       if (!data) return res.status(404).json({ error: notFoundMessage });
       return res.json({ [resourceKey]: data });
     } catch (thrown) {
-      return res.status(500).json({ error: thrown.message || loadMessage });
+      console.error(`Supabase ${table} read exception:`, thrown.message);
+      return res.status(500).json({ error: readErrorMessage });
     }
   });
 
@@ -188,7 +195,7 @@ export function createCrudRouter(config = {}) {
     }
   });
 
-  // PATCH /:id — partial validation, and only the keys the caller sent are written.
+  // PATCH /:id — partial validation; the write set is the payload builder's output.
   router.patch("/:id", ...writeGuard, async (req, res) => {
     try {
       const body = req.body || {};
