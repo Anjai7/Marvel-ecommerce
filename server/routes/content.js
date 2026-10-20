@@ -322,6 +322,28 @@ function isUniqueViolation(error) {
   );
 }
 
+const STORED_INCONSISTENT = "Stored category is inconsistent and cannot be saved.";
+const DUPLICATE_SLUG = "A category with that slug already exists.";
+
+/**
+ * Coerce the columns an edit writes back from storage. A legacy row can hold a
+ * null level, a stale order value or a non-string parent_id; answer a
+ * validation error instead of handing Postgres a value that becomes a 500.
+ */
+function storedCategoryFields(row) {
+  const level = Number(row.level);
+  const parentId = row.parent_id ?? null;
+  const displayOrder = row.display_order;
+
+  const levelOk = Number.isInteger(level) && level >= 1 && level <= 3;
+  const parentOk = parentId === null || typeof parentId === "string";
+  const orderOk = typeof displayOrder === "number" && Number.isInteger(displayOrder);
+  const activeOk = typeof row.is_active === "boolean";
+
+  if (!levelOk || !parentOk || !orderOk || !activeOk) return null;
+  return { level, parentId, displayOrder, isActive: row.is_active };
+}
+
 contentRouter.get("/categories", async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -343,13 +365,13 @@ contentRouter.post("/categories", ...adminOnly, async (req, res) => {
 
   try {
     // The slug is the public URL segment and is independent of the display
-    // name (spec §3.2), so an edit must reuse the stored slug, level and
-    // parent instead of re-deriving them from the legacy payload.
+    // name (spec §3.2), so an edit must reuse the stored slug, level, parent,
+    // order and visibility instead of re-deriving them from the legacy payload.
     let existing = null;
     if (isEdit) {
       const { data, error } = await supabase
         .from("categories")
-        .select("id, slug, level, parent_id")
+        .select("id, slug, level, parent_id, display_order, is_active")
         .eq("id", body.id)
         .maybeSingle();
       if (error) return res.status(500).json({ error: "Failed to load category." });
@@ -357,42 +379,60 @@ contentRouter.post("/categories", ...adminOnly, async (req, res) => {
       existing = data;
     }
 
+    const stored = isEdit ? storedCategoryFields(existing) : null;
+    if (isEdit && !stored) return res.status(400).json({ error: STORED_INCONSISTENT });
+
     const slug = isEdit ? existing.slug : (body.slug ?? slugify(body.name));
 
-    const validationError = validateCategory({ ...body, slug });
+    // On an edit the stored level is authoritative, so the legacy payload's
+    // level is neither written nor validated.
+    const validationBody = { ...body, slug };
+    if (isEdit) delete validationBody.level;
+    const validationError = validateCategory(validationBody);
     if (validationError) return res.status(400).json({ error: validationError });
 
     // The old editor speaks `order_index`; the new table speaks `display_order`.
     // A spread row from GET already carries `display_order`, which wins so that a
-    // visibility toggle does not reset the position to 0.
+    // visibility toggle does not reset the position to 0. An edit that omits both
+    // keeps the stored order instead of resetting it to 0.
     const hasOrder = Object.hasOwn(body, "display_order") || Object.hasOwn(body, "order_index");
     const orderValue = Object.hasOwn(body, "display_order") ? body.display_order : body.order_index;
     if (hasOrder && !isValidOrderValue(orderValue)) {
       return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
     }
 
+    const displayOrder = hasOrder ? Number(orderValue) : isEdit ? stored.displayOrder : 0;
+    const isActive = body.is_active ?? (isEdit ? stored.isActive : true);
+
     const payload = {
       name: body.name,
       slug,
       image_url: body.image_url ?? null,
-      is_active: body.is_active ?? true,
-      display_order: orderValue === undefined ? 0 : Number(orderValue),
+      is_active: isActive,
+      display_order: displayOrder,
     };
 
     if (isEdit) {
       payload.id = body.id;
-      payload.level = existing.level;
-      payload.parent_id = existing.parent_id;
+      payload.level = stored.level;
+      payload.parent_id = stored.parentId;
     } else {
       payload.level = 1;
       payload.parent_id = null;
     }
 
-    const { data, error } = await supabase.from("categories").upsert(payload).select();
+    let result;
+    try {
+      result = await supabase.from("categories").upsert(payload).select();
+    } catch (thrown) {
+      // Some drivers throw constraint violations instead of returning them.
+      if (isUniqueViolation(thrown)) return res.status(400).json({ error: DUPLICATE_SLUG });
+      throw thrown;
+    }
+
+    const { data, error } = result;
     if (error) {
-      if (isUniqueViolation(error)) {
-        return res.status(400).json({ error: "A category with that slug already exists." });
-      }
+      if (isUniqueViolation(error)) return res.status(400).json({ error: DUPLICATE_SLUG });
       return res.status(500).json({ error: "Failed to save category." });
     }
     return res

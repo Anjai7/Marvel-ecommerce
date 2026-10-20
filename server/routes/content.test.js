@@ -809,7 +809,14 @@ describe("content API", () => {
     });
 
     it("POST /api/content/categories keeps the stored slug when an edit only renames", async () => {
-      const stored = { id: "c2", slug: "men-s-fashion", level: 2, parent_id: "c1" };
+      const stored = {
+        id: "c2",
+        slug: "men-s-fashion",
+        level: 2,
+        parent_id: "c1",
+        display_order: 4,
+        is_active: true,
+      };
       const calls = makeDb({
         maybeSingle: () => ({ data: stored, error: null }),
         upsert: (state) => ({ data: [state.row], error: null }),
@@ -840,7 +847,14 @@ describe("content API", () => {
     });
 
     it("POST /api/content/categories keeps an edited child's stored hierarchy", async () => {
-      const stored = { id: "c2", slug: "phones", level: 2, parent_id: "c1" };
+      const stored = {
+        id: "c2",
+        slug: "phones",
+        level: 2,
+        parent_id: "c1",
+        display_order: 4,
+        is_active: true,
+      };
       const calls = makeDb({
         maybeSingle: () => ({ data: stored, error: null }),
         upsert: (state) => ({ data: [state.row], error: null }),
@@ -867,6 +881,100 @@ describe("content API", () => {
       ]);
     });
 
+    it("POST /api/content/categories ignores a stale level on an edit", async () => {
+      const stored = {
+        id: "c2",
+        slug: "phones",
+        level: 2,
+        parent_id: "c1",
+        display_order: 4,
+        is_active: true,
+      };
+      const calls = makeDb({
+        maybeSingle: () => ({ data: stored, error: null }),
+        upsert: (state) => ({ data: [state.row], error: null }),
+      });
+
+      const res = await send("POST", "/api/content/categories", {
+        id: "c2",
+        name: "Phones",
+        level: 9,
+      });
+
+      expect(res.status).toBe(201);
+      expect(calls.upsert).toEqual([
+        {
+          id: "c2",
+          name: "Phones",
+          slug: "phones",
+          image_url: null,
+          is_active: true,
+          display_order: 4,
+          level: 2,
+          parent_id: "c1",
+        },
+      ]);
+    });
+
+    it("POST /api/content/categories keeps the stored is_active and display_order when an edit omits them", async () => {
+      const stored = {
+        id: "c2",
+        slug: "phones",
+        level: 2,
+        parent_id: "c1",
+        display_order: 7,
+        is_active: false,
+      };
+      const calls = makeDb({
+        maybeSingle: () => ({ data: stored, error: null }),
+        upsert: (state) => ({ data: [state.row], error: null }),
+      });
+
+      const res = await send("POST", "/api/content/categories", { id: "c2", name: "Phones" });
+
+      expect(res.status).toBe(201);
+      expect(calls.upsert).toEqual([
+        {
+          id: "c2",
+          name: "Phones",
+          slug: "phones",
+          image_url: null,
+          is_active: false,
+          display_order: 7,
+          level: 2,
+          parent_id: "c1",
+        },
+      ]);
+    });
+
+    it.each([
+      [
+        "a null level",
+        {
+          id: "c2",
+          slug: "phones",
+          level: null,
+          parent_id: null,
+          display_order: 0,
+          is_active: true,
+        },
+      ],
+      [
+        "a non-string parent_id",
+        { id: "c2", slug: "phones", level: 2, parent_id: 42, display_order: 0, is_active: true },
+      ],
+    ])("POST /api/content/categories rejects a stored row with %s", async (label, stored) => {
+      const calls = makeDb({ maybeSingle: () => ({ data: stored, error: null }) });
+
+      const res = await send("POST", "/api/content/categories", { id: "c2", name: "Phones" });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "Stored category is inconsistent and cannot be saved.",
+      });
+      expect(calls.upsert).toEqual([]);
+    });
+
     it("POST /api/content/categories on a missing edit target is 404 and never upserts", async () => {
       const calls = makeDb({ maybeSingle: () => ({ data: null, error: null }) });
 
@@ -886,6 +994,26 @@ describe("content API", () => {
             message: 'duplicate key value violates unique constraint "categories_slug_root_unique"',
           },
         }),
+      });
+
+      const res = await send("POST", "/api/content/categories", { name: "Electronics" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toEqual({ error: "A category with that slug already exists." });
+      expect(JSON.stringify(body)).not.toMatch(/duplicate key|constraint|23505/);
+    });
+
+    it("POST /api/content/categories maps a thrown unique violation to 400 without a raw db message", async () => {
+      makeDb({
+        upsert: () => {
+          throw Object.assign(
+            new Error(
+              'duplicate key value violates unique constraint "categories_slug_root_unique"'
+            ),
+            { code: "23505" }
+          );
+        },
       });
 
       const res = await send("POST", "/api/content/categories", { name: "Electronics" });
