@@ -26,6 +26,20 @@ never writes an order. Running either one twice must leave every row count uncha
    variables the scripts need. Values stay in `.env` (gitignored) and must never be pasted
    into this document, a log, or a commit.
 
+   **`SUPABASE_SERVICE_ROLE_KEY` is required, not optional.** `server/db.js` falls back to
+   `SUPABASE_ANON_KEY` (and then `VITE_SUPABASE_ANON_KEY`) when the service-role key is
+   absent. The seeds would then write with the anon role, and the scoped RLS policies added
+   by `apply-01` refuse every write. The failure looks like a permission error rather than a
+   missing variable:
+
+   ```
+   ❌ seed:content failed: Could not upsert footer_sections: new row violates row-level
+      security policy for table "footer_sections"
+   ```
+
+   If you see that message, the key is missing or wrong — not the table definition. Do not
+   "fix" it by loosening RLS.
+
 3. **Node.js >= 22.12.0 and `node_modules` installed** (`npm install`).
 
 No Docker, no linked Supabase CLI project, and no database password are required: the scripts
@@ -52,6 +66,20 @@ and labelled with the category name.
 they are not, the plain Unsplash URL is stored directly with `access_type = "public"`. A
 `cloudinary_public_id` is only ever written from a real upload — never fabricated.
 
+**Duration.** With Cloudinary configured the product seed fetches and uploads one image per
+product — 201 on a fresh taxonomy — so it takes **several minutes** and is network-bound. A
+`… 20/201 products prepared` line prints every 20 products so you can tell it is still
+running; it is not hung. Without Cloudinary there are no fetches and the run is near-instant.
+
+At the end it reports what actually happened, for example:
+
+```
+☁️  187 of 201 images uploaded to Cloudinary; the rest use their Unsplash URL.
+```
+
+That count comes from successful uploads, not from configuration: a row whose upload failed
+keeps its Unsplash URL and is not counted.
+
 ---
 
 ## 3. Verification queries
@@ -74,9 +102,16 @@ SELECT heading, count(*) FROM public.footer_sections s
 JOIN public.footer_links l ON l.section_id = s.id
 GROUP BY s.heading, s.display_order ORDER BY s.display_order;
 
--- No product is unbound, and no category page is empty.
-SELECT count(*) FROM public.products WHERE category_id IS NULL;   -- 0
-SELECT count(*) FROM public.products;                            -- > 0
+-- The seeded catalog is bound to the taxonomy: >= 52 rows (201 on a fresh taxonomy:
+-- 3*7 + 31 + 149). This is the spec's gate.
+SELECT count(*) FROM public.products WHERE category_id IS NOT NULL;   -- >= 52
+
+-- Products that matched no taxonomy row keep category_id = NULL *by design*
+-- (spec 7.1): legacy products whose free-text `category` — `Wearables`,
+-- `Smart Home`, … — matches no category name stay unbound and keep their text
+-- label. This count therefore equals the number of such legacy rows and is
+-- NOT expected to be 0 on a shared database.
+SELECT count(*) FROM public.products WHERE category_id IS NULL;
 
 -- Every level-2 and level-3 category has at least one product.
 SELECT c.level, count(*) AS categories_without_products
@@ -110,6 +145,7 @@ id), and that must be fixed before the seeds are considered done.
 | `No categories found. Apply docs/sql/apply-01-content-taxonomy.sql first.` | The table exists but the category seed did not run or was rolled back | Re-apply the second half of `apply-01`               |
 | `Could not upsert categories: ... violates foreign key constraint`         | A level-2/3 row is missing its parent in `menu_items`                 | Fix the `menu_items` rows, then re-run               |
 | `seed:products` warns about an image fetch                                 | Unsplash is unreachable; the row still gets a deterministic URL       | Re-run when the network is available                 |
+| `new row violates row-level security policy for table "…"`                 | `SUPABASE_SERVICE_ROLE_KEY` is missing, so `db.js` used the anon key  | Set it in `.env`; never loosen the RLS policies      |
 
 Nothing in either script prints an environment value; the failure messages only carry the
 Supabase error text.

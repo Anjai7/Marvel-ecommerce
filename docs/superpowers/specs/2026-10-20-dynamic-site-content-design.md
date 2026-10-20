@@ -1308,7 +1308,10 @@ second tree.
 Rewrite, non-destructive:
 
 - **Remove the current `delete().neq("id", "00000000-…")`.** It wipes the live catalog.
-- Upsert by deterministic id (`p1000000-0000-4000-8000-0000000000NN`); a re-run updates
+- Upsert by deterministic id. **The id must be a valid UUID literal**: Postgres' `uuid_in`
+  rejects a non-hexadecimal character, and PostgREST answers 400 for the whole bulk upsert if
+  one id is malformed — so the prefix is hex-only, e.g. `e1000000-0000-4000-8000-0000000000NN`.
+  (A `p1…` prefix is **not** valid: `p` is not a hex digit.) A re-run updates
   instead of duplicating.
 - Read the real tree from `public.categories` at run time and generate **at least 3 products
   for every level-1 category and at least 1 for every level-2 category**, so no category

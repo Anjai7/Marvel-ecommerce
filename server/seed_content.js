@@ -196,7 +196,39 @@ const PROMO_STRIP_SEEDS = [
   },
 ];
 
-const BANNER_COMMON = { is_active: true };
+/**
+ * One row shape for all nine banners. PostgREST requires every object in a
+ * single bulk upsert to carry the same keys ("All object keys must match"), so
+ * the layout, carousel and strip families share this shape and spell out the
+ * columns they do not use: `null` where the column is nullable, `[]` for
+ * `gallery` because `promo_banners.gallery` is `TEXT[] NOT NULL DEFAULT '{}'`.
+ *
+ * `defaultToNull` is deliberately NOT used on the upsert: it only affects rows
+ * that are missing a key and would rewrite `gallery`/`image_url` of an existing
+ * row on every run.
+ */
+function bannerRow({ id, placement, variant, display_order, ...fields }) {
+  return {
+    id,
+    placement,
+    variant,
+    title: fields.title ?? null,
+    subtitle: fields.subtitle ?? null,
+    badge: fields.badge ?? null,
+    highlight: fields.highlight ?? null,
+    description: fields.description ?? null,
+    cta_text: fields.cta_text ?? null,
+    cta_path: fields.cta_path ?? null,
+    image_url: fields.image_url ?? null,
+    bg_color: fields.bg_color ?? null,
+    accent: fields.accent ?? null,
+    emoji: fields.emoji ?? null,
+    code: fields.code ?? null,
+    gallery: fields.gallery ?? [],
+    display_order,
+    is_active: true,
+  };
+}
 
 /**
  * The nine banners: 1 large + 2 small `home_banner_layout` rows, 3
@@ -208,92 +240,105 @@ export function buildBannerSeeds() {
   const rows = [];
 
   BANNER_LAYOUT_SEEDS.forEach((banner, index) => {
-    rows.push({
-      id: seedId(BANNER_ID_PREFIX, index + 1),
-      placement: "home_banner_layout",
-      ...BANNER_COMMON,
-      ...banner,
-      display_order: index,
-    });
+    rows.push(
+      bannerRow({
+        id: seedId(BANNER_ID_PREFIX, index + 1),
+        placement: "home_banner_layout",
+        variant: banner.variant,
+        display_order: index,
+        ...banner,
+      })
+    );
   });
 
   PROMO_CAROUSEL_SEEDS.forEach((banner, index) => {
-    rows.push({
-      id: seedId(BANNER_ID_PREFIX, BANNER_LAYOUT_SEEDS.length + index + 1),
-      placement: "home_promo_carousel",
-      variant: "standard",
-      ...BANNER_COMMON,
-      ...banner,
-      display_order: index,
-    });
+    rows.push(
+      bannerRow({
+        id: seedId(BANNER_ID_PREFIX, BANNER_LAYOUT_SEEDS.length + index + 1),
+        placement: "home_promo_carousel",
+        variant: "standard",
+        display_order: index,
+        ...banner,
+      })
+    );
   });
 
   PROMO_STRIP_SEEDS.forEach((banner, index) => {
-    rows.push({
-      id: seedId(
-        BANNER_ID_PREFIX,
-        BANNER_LAYOUT_SEEDS.length + PROMO_CAROUSEL_SEEDS.length + index + 1
-      ),
-      placement: "promo_strip",
-      variant: "standard",
-      ...BANNER_COMMON,
-      ...banner,
-      display_order: index,
-    });
+    rows.push(
+      bannerRow({
+        id: seedId(
+          BANNER_ID_PREFIX,
+          BANNER_LAYOUT_SEEDS.length + PROMO_CAROUSEL_SEEDS.length + index + 1
+        ),
+        placement: "promo_strip",
+        variant: "standard",
+        display_order: index,
+        ...banner,
+      })
+    );
   });
 
   return rows;
 }
 
 /**
- * Footer columns copied from `Footer.jsx` COLS. The component rendered every
- * anchor with `href="#"`; a `#` is not a valid href per the API contract
- * (https URL or site-relative path), so each label keeps its verbatim text and
- * gets the site-relative destination it has always meant.
+ * Footer columns copied from `Footer.jsx` COLS (labels verbatim). The component
+ * rendered every anchor with `href="#"`, which is not a destination at all.
+ *
+ * This app has **no path-based router**: `src/App.jsx` reads
+ * `window.location.hash` (`#/route`). A bare `/help` href therefore triggers a
+ * full page load and a server 404, so every href here is a hash route:
+ *
+ *   * the six taxonomy links point at `#/category/<full path>`;
+ *   * account rows point at the real `#/account` page;
+ *   * columns with no page yet (support, legal) fall back to `#/` — the
+ *     storefront — rather than inventing a route that does not exist.
+ *
+ * The tag block below uses `#/products?q=<slug>` for the same reason.
  */
 const FOOTER_COLUMNS = [
   {
     heading: "Customer Support",
     links: [
-      ["Help Center", "/help"],
-      ["Contact Us", "/contact"],
-      ["Returns & Refunds", "/returns"],
-      ["Shipping Information", "/shipping"],
-      ["Track Order", "/track-order"],
-      ["Support Chat", "/support"],
+      ["Help Center", "#/"],
+      ["Contact Us", "#/"],
+      ["Returns & Refunds", "#/"],
+      ["Shipping Information", "#/"],
+      ["Track Order", "#/"],
+      ["Support Chat", "#/"],
     ],
   },
   {
     heading: "Policy & Legal",
     links: [
-      ["Privacy Policy", "/privacy"],
-      ["Terms of Service", "/terms"],
-      ["Return Policy", "/returns-policy"],
-      ["Cancellation Policy", "/cancellation-policy"],
-      ["E-Waste Policy", "/ewaste-policy"],
-      ["Security", "/security"],
+      ["Privacy Policy", "#/"],
+      ["Terms of Service", "#/"],
+      ["Return Policy", "#/"],
+      ["Cancellation Policy", "#/"],
+      ["E-Waste Policy", "#/"],
+      ["Security", "#/"],
     ],
   },
   {
     heading: "My Account",
     links: [
-      ["My Profile", "/account"],
-      ["Orders & History", "/orders"],
-      ["Saved Wishlist", "/wishlist"],
-      ["Manage Addresses", "/account/addresses"],
-      ["Marvel Club Points", "/account/rewards"],
-      ["Notifications", "/account/notifications"],
+      ["My Profile", "#/account"],
+      ["Orders & History", "#/account"],
+      ["Saved Wishlist", "#/account"],
+      ["Manage Addresses", "#/account"],
+      ["Marvel Club Points", "#/account"],
+      ["Notifications", "#/account"],
     ],
   },
   {
     heading: "Popular Categories",
     links: [
-      ["Mobiles & Tablets", "/category/electronics/mobiles"],
-      ["Laptops & PCs", "/category/electronics/computers"],
-      ["Smartwatches", "/category/accessories/watches/smartwatches"],
-      ["Audio & Headphones", "/category/electronics/audio"],
-      ["Men's & Women's Fashion", "/category/fashion"],
-      ["Home & Kitchen", "/category/home-and-kitchen"],
+      ["Mobiles & Tablets", "#/category/electronics/mobiles"],
+      ["Laptops & PCs", "#/category/electronics/computers"],
+      ["Smartwatches", "#/category/accessories/watches/smartwatches"],
+      ["Audio & Headphones", "#/category/electronics/audio"],
+      ["Men's & Women's Fashion", "#/category/fashion"],
+      ["Home & Kitchen", "#/category/home-and-kitchen"],
     ],
   },
 ];
@@ -372,7 +417,8 @@ export function buildFooterSeeds() {
       id: seedId(LINK_ID_PREFIX, linkIndex),
       section_id: tagsSectionId,
       label: tag,
-      href: `/search?q=${searchSlug(tag)}`,
+      // Hash route: a bare `/search?q=…` would be a server request and a 404.
+      href: `#/products?q=${searchSlug(tag)}`,
       display_order: order,
       is_active: true,
     });

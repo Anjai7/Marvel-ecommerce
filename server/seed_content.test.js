@@ -161,44 +161,56 @@ const CATEGORY_TREE_ROWS = [
   {
     id: "e1000000-0000-4000-8000-000000000001",
     name: "Electronics",
+    parent_id: null,
     level: 1,
     display_order: 10,
     image_url: "https://images.unsplash.com/photo-electronics?w=600&h=600&fit=crop",
+    is_active: true,
   },
   {
     id: "e1000000-0000-4000-8000-000000000002",
     name: "Fashion",
+    parent_id: null,
     level: 1,
     display_order: 11,
     image_url: null,
+    is_active: true,
   },
   {
     id: "e1000000-0000-4000-8000-000000000003",
     name: "Mobiles",
+    parent_id: "e1000000-0000-4000-8000-000000000001",
     level: 2,
     display_order: 1,
     image_url: null,
+    is_active: true,
   },
   {
     id: "e1000000-0000-4000-8000-000000000004",
     name: "Men's Fashion",
+    parent_id: "e1000000-0000-4000-8000-000000000002",
     level: 2,
     display_order: 1,
     image_url: null,
+    is_active: true,
   },
   {
     id: "e1000000-0000-4000-8000-000000000005",
     name: "Smartphones",
+    parent_id: "e1000000-0000-4000-8000-000000000003",
     level: 3,
     display_order: 1,
     image_url: null,
+    is_active: true,
   },
   {
     id: "e1000000-0000-4000-8000-000000000006",
     name: "Shirts",
+    parent_id: "e1000000-0000-4000-8000-000000000004",
     level: 3,
     display_order: 2,
     image_url: null,
+    is_active: true,
   },
 ];
 
@@ -208,11 +220,11 @@ function rowsForTable(table) {
   return [];
 }
 
-function settle(table, operation) {
+function settle(table, operation, rows) {
   if (operation === "upsert") return { data: null, error: null };
   if (operation === "delete") return { data: null, error: null, count: 1 };
   if (table === "profiles") return { data: db.vendor, error: null };
-  return { data: rowsForTable(table), error: null };
+  return { data: rows, error: null };
 }
 
 beforeEach(() => {
@@ -225,14 +237,22 @@ beforeEach(() => {
 
   mockFrom.mockReset();
   mockFrom.mockImplementation((table) => {
-    const state = { operation: null };
+    const state = { operation: null, filters: [] };
+    // Apply `.eq()` the way PostgREST does, so a missing filter is visible.
+    const matchedRows = () =>
+      rowsForTable(table).filter((row) =>
+        state.filters.every(([column, value]) => row[column] === value)
+      );
     const query = {
       select() {
         if (state.operation === null) state.operation = "select";
         db.selects.push(table);
         return query;
       },
-      eq: () => query,
+      eq(column, value) {
+        state.filters.push([column, value]);
+        return query;
+      },
       order: () => query,
       limit: () => query,
       in: () => query,
@@ -246,10 +266,10 @@ beforeEach(() => {
         db.deletes += 1;
         return query;
       },
-      maybeSingle: () => Promise.resolve(settle(table, state.operation ?? "select")),
-      single: () => Promise.resolve(settle(table, state.operation ?? "select")),
+      maybeSingle: () => Promise.resolve(settle(table, state.operation ?? "select", matchedRows())),
+      single: () => Promise.resolve(settle(table, state.operation ?? "select", matchedRows())),
       then(onFulfilled, onRejected) {
-        return Promise.resolve(settle(table, state.operation ?? "select")).then(
+        return Promise.resolve(settle(table, state.operation ?? "select", matchedRows())).then(
           onFulfilled,
           onRejected
         );
@@ -383,7 +403,29 @@ describe("buildBannerSeeds", () => {
     expect(layout.image_url).toContain("images.unsplash.com");
     expect(layout.cta_path).toBe("/category/home-and-kitchen");
   });
+
+  it("gives every banner row one identical key set for the bulk upsert", () => {
+    const banners = buildBannerSeeds();
+    const keySets = new Set(banners.map((banner) => Object.keys(banner).sort().join(",")));
+
+    expect(keySets.size).toBe(1);
+    // PostgREST rejects mixed keys; the unused nullable columns must be null
+    // and `gallery` must stay an array because the column is NOT NULL.
+    expect(banners.every((banner) => Array.isArray(banner.gallery))).toBe(true);
+    expect(banners.every((banner) => "subtitle" in banner && "badge" in banner)).toBe(true);
+
+    const strip = banners.find((banner) => banner.placement === "promo_strip");
+    expect(strip.image_url).toBeNull();
+    expect(strip.gallery).toEqual([]);
+    const carousel = banners.find((banner) => banner.placement === "home_promo_carousel");
+    expect(carousel.cta_path).toBeNull();
+  });
 });
+
+const UUID_LITERAL = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** No network in tests: every image falls back to its Unsplash URL. */
+const offlineUpload = async () => null;
 
 describe("buildFooterSeeds", () => {
   it("returns five sections with 6/6/6/6/10 links", () => {
@@ -399,9 +441,31 @@ describe("buildFooterSeeds", () => {
     expect(sections.map((section) => section.links.length)).toEqual([6, 6, 6, 6, 10]);
     expect(sections.flatMap((section) => section.links)).toHaveLength(34);
 
-    expect(sections[0].links[0]).toMatchObject({ label: "Help Center", href: "/help" });
+    expect(sections[0].links[0]).toMatchObject({ label: "Help Center", href: "#/" });
     expect(sections[4].section_type).toBe("tags");
-    expect(sections[4].links[0]).toMatchObject({ label: "iPhone 15", href: "/search?q=iphone-15" });
+    expect(sections[4].links[0]).toMatchObject({
+      label: "iPhone 15",
+      href: "#/products?q=iphone-15",
+    });
+  });
+
+  it("uses hash routes only, so no footer link is a bare path that 404s", () => {
+    const links = buildFooterSeeds().flatMap((section) => section.links);
+
+    expect(links.every((link) => link.href.startsWith("#/"))).toBe(true);
+    expect(links.filter((link) => !link.href.startsWith("#/"))).toEqual([]);
+
+    const categoryLinks = links.filter((link) => link.href.startsWith("#/category/"));
+    expect(categoryLinks.map((link) => link.href)).toEqual([
+      "#/category/electronics/mobiles",
+      "#/category/electronics/computers",
+      "#/category/accessories/watches/smartwatches",
+      "#/category/electronics/audio",
+      "#/category/fashion",
+      "#/category/home-and-kitchen",
+    ]);
+
+    expect(links.filter((link) => link.href === "#/account")).toHaveLength(6);
   });
 
   it("uses the deterministic section and link ids", () => {
@@ -417,7 +481,6 @@ describe("buildFooterSeeds", () => {
     ]);
     expect(links[0].id).toBe(seedId("f2", 1));
     expect(links[33].id).toBe(seedId("f2", 34));
-    expect(links.every((link) => link.href.startsWith("/"))).toBe(true);
   });
 });
 
@@ -524,8 +587,19 @@ describe("seedContent", () => {
     const generated = db.upserts
       .filter((call) => call.table !== "categories")
       .flatMap((call) => call.rows.map((row) => row.id));
-    expect(generated.every((id) => /^[bf][12]0{6}-0000-4000-8000-\d{12}$/.test(id))).toBe(true);
+    expect(generated.every((id) => UUID_LITERAL.test(id))).toBe(true);
     expect(new Set(generated).size).toBe(generated.length);
+  });
+
+  it("sends one identical key set per upsert call, as PostgREST requires", async () => {
+    db.menuRows = MENU_ROWS;
+    await seedContent();
+
+    expect(db.upserts.length).toBeGreaterThan(0);
+    for (const call of db.upserts) {
+      const keySets = new Set(call.rows.map((row) => Object.keys(row).sort().join(",")));
+      expect(keySets.size, `${call.table} rows carry ${keySets.size} different key sets`).toBe(1);
+    }
   });
 });
 
@@ -560,6 +634,45 @@ describe("buildProductSeeds", () => {
     expect(seeds.every((seed) => seed.price > 0)).toBe(true);
   });
 
+  it("puts the parent path in the title so duplicate category names stay distinct", () => {
+    const seeds = buildProductSeeds(CATEGORY_TREE_ROWS);
+
+    // A leaf keeps its ancestors in the title...
+    expect(seeds.find((seed) => seed.category === "Smartphones").title).toBe(
+      "Electronics / Mobiles / Smartphones Lite"
+    );
+    expect(seeds.find((seed) => seed.category === "Shirts").title).toBe(
+      "Fashion / Men's Fashion / Shirts Max"
+    );
+
+    // ...and two categories with the same name never produce the same title.
+    const twins = [
+      ...CATEGORY_TREE_ROWS.filter((row) => row.level === 1),
+      {
+        id: "e1000000-0000-4000-8000-00000000000a",
+        name: "Accessories",
+        parent_id: "e1000000-0000-4000-8000-000000000001",
+        level: 2,
+        display_order: 2,
+        image_url: null,
+        is_active: true,
+      },
+      {
+        id: "e1000000-0000-4000-8000-00000000000b",
+        name: "Accessories",
+        parent_id: "e1000000-0000-4000-8000-000000000002",
+        level: 2,
+        display_order: 2,
+        image_url: null,
+        is_active: true,
+      },
+    ];
+    const twinSeeds = buildProductSeeds(twins);
+    expect(twinSeeds.map((seed) => seed.title)).toContain("Electronics / Accessories Essentials");
+    expect(twinSeeds.map((seed) => seed.title)).toContain("Fashion / Accessories Essentials");
+    expect(new Set(twinSeeds.map((seed) => seed.title)).size).toBe(twinSeeds.length);
+  });
+
   it("crops each image with a distinct seed and falls back when a category has none", () => {
     const seeds = buildProductSeeds(CATEGORY_TREE_ROWS);
 
@@ -573,15 +686,13 @@ describe("buildProductSeeds", () => {
 });
 
 describe("seedProducts", () => {
-  const offlineUpload = async () => null;
-
   it("upserts without deleting and stores plain image URLs with access_type public", async () => {
     db.categoryRows = CATEGORY_TREE_ROWS;
 
-    const counts = await seedProducts({ uploadImage: offlineUpload });
+    const counts = await seedProducts({ uploadImage: offlineUpload, log: () => {} });
 
     expect(db.deletes).toBe(0);
-    expect(counts).toEqual({ products: 10, categories: 6 });
+    expect(counts).toEqual({ products: 10, categories: 6, uploaded: 0 });
 
     const productCall = db.upserts.find((call) => call.table === "products");
     expect(productCall.options).toEqual({ onConflict: "id" });
@@ -590,16 +701,68 @@ describe("seedProducts", () => {
     expect(productCall.rows.every((row) => row.access_type === "public")).toBe(true);
     expect(productCall.rows.every((row) => row.cloudinary_public_id === null)).toBe(true);
     expect(productCall.rows.every((row) => row.status === "active")).toBe(true);
+    const productKeys = new Set(productCall.rows.map((row) => Object.keys(row).sort().join(",")));
+    expect(productKeys.size).toBe(1);
+  });
+
+  it("counts only the uploads that actually succeeded", async () => {
+    db.categoryRows = CATEGORY_TREE_ROWS;
+
+    let calls = 0;
+    const flakyUpload = async () => {
+      calls += 1;
+      return calls % 2 === 0
+        ? {
+            image_url: `https://res.cloudinary.com/demo/image/upload/${calls}.jpg`,
+            cloudinary_public_id: `marvel_products/${calls}`,
+            access_type: "upload",
+          }
+        : null;
+    };
+
+    const counts = await seedProducts({ uploadImage: flakyUpload, log: () => {} });
+    const rows = db.upserts.find((call) => call.table === "products").rows;
+
+    expect(counts.uploaded).toBe(5);
+    expect(rows.filter((row) => row.cloudinary_public_id !== null)).toHaveLength(5);
+    expect(rows.filter((row) => row.cloudinary_public_id === null)).toHaveLength(5);
+    expect(rows.every((row) => UUID_LITERAL.test(row.id))).toBe(true);
+  });
+
+  it("prints a running progress count while preparing the catalog", async () => {
+    db.categoryRows = CATEGORY_TREE_ROWS;
+    const lines = [];
+
+    await seedProducts({ uploadImage: offlineUpload, log: (line) => lines.push(line) });
+
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("10/10 products prepared");
+  });
+
+  it("skips hidden categories, matching the storefront's active-only reads", async () => {
+    db.categoryRows = CATEGORY_TREE_ROWS.map((row) => ({
+      ...row,
+      is_active: row.name !== "Shirts",
+    }));
+
+    const counts = await seedProducts({ uploadImage: offlineUpload, log: () => {} });
+    const rows = db.upserts.find((call) => call.table === "products").rows;
+
+    expect(counts.categories).toBe(5);
+    expect(rows.some((row) => row.category === "Shirts")).toBe(false);
+    expect(rows.some((row) => row.category_id === "e1000000-0000-4000-8000-000000000006")).toBe(
+      false
+    );
   });
 
   it("is idempotent and never writes an order", async () => {
     db.categoryRows = CATEGORY_TREE_ROWS;
 
-    await seedProducts({ uploadImage: offlineUpload });
+    await seedProducts({ uploadImage: offlineUpload, log: () => {} });
     const firstPayload = db.upserts.map((call) => ({ table: call.table, rows: call.rows }));
 
     db.upserts = [];
-    await seedProducts({ uploadImage: offlineUpload });
+    await seedProducts({ uploadImage: offlineUpload, log: () => {} });
     const secondPayload = db.upserts.map((call) => ({ table: call.table, rows: call.rows }));
 
     expect(secondPayload).toEqual(firstPayload);
@@ -609,7 +772,7 @@ describe("seedProducts", () => {
 
   it("refuses to run before the taxonomy exists", async () => {
     db.categoryRows = [];
-    await expect(seedProducts({ uploadImage: offlineUpload })).rejects.toThrow(
+    await expect(seedProducts({ uploadImage: offlineUpload, log: () => {} })).rejects.toThrow(
       /apply-01-content-taxonomy\.sql/
     );
     expect(db.upserts).toEqual([]);
@@ -628,5 +791,22 @@ describe("seedProducts", () => {
         CLOUDINARY_API_SECRET: "secret",
       })
     ).toBe(true);
+  });
+
+  it("emits only valid UUID literals from both seeds, so uuid_in accepts every id", async () => {
+    db.menuRows = MENU_ROWS;
+    db.categoryRows = CATEGORY_TREE_ROWS;
+
+    await seedContent();
+    await seedProducts({ uploadImage: offlineUpload, log: () => {} });
+
+    const ids = db.upserts.flatMap((call) => call.rows.map((row) => row.id));
+
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids.filter((id) => !UUID_LITERAL.test(id))).toEqual([]);
+
+    // The exact regression: `p` is not a hex digit, `e` is.
+    expect(productSeedId(1)).toBe("e1000000-0000-4000-8000-000000000001");
+    expect(UUID_LITERAL.test(productSeedId(1))).toBe(true);
   });
 });

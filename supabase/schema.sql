@@ -1,6 +1,21 @@
 -- ==========================================
 -- MARVEL E-COMMERCE SUPABASE DATABASE SCHEMA
 -- Multi-Role Auth, Dynamic Menu, Products & Orders
+--
+-- ⚠️ STALE SNAPSHOT OF AN EARLY MIGRATION STATE — NOT A COMPLETE SCHEMA.
+-- DO NOT USE THIS FILE TO BOOTSTRAP A DATABASE.
+--
+-- This file is a hand-maintained snapshot from an early stage of the project
+-- and has never been re-dumped. It does not create every object the app uses
+-- (for example public.hero_slides, public.password_reset_tokens, the
+-- `menu_items.level` column, or public.site_categories, which migration
+-- 20261020000009 drops), so running it alone produces a database the API
+-- cannot serve.
+--
+-- The source of truth is supabase/migrations/*.sql, applied in order; see
+-- docs/sql/apply-01-content-taxonomy.sql for the human-runnable bundle. The
+-- content-taxonomy block at the end of this file mirrors migration
+-- 20261020000007 only and is self-contained and re-runnable.
 -- ==========================================
 
 -- 1. ENUMS FOR USER ROLES
@@ -251,32 +266,40 @@ CREATE INDEX IF NOT EXISTS footer_links_section_order
 
 -- 10. RLS FOR THE CONTENT TABLES (public reads active rows, service_role writes)
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read active categories" ON public.categories;
 CREATE POLICY "Public read active categories" ON public.categories
     FOR SELECT TO anon, authenticated USING (is_active = true);
+DROP POLICY IF EXISTS "Service role full access on categories" ON public.categories;
 CREATE POLICY "Service role full access on categories" ON public.categories
     FOR ALL TO service_role USING (true);
 
 ALTER TABLE public.promo_banners ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read active promo_banners" ON public.promo_banners;
 CREATE POLICY "Public read active promo_banners" ON public.promo_banners
     FOR SELECT TO anon, authenticated USING (is_active = true);
+DROP POLICY IF EXISTS "Service role full access on promo_banners" ON public.promo_banners;
 CREATE POLICY "Service role full access on promo_banners" ON public.promo_banners
     FOR ALL TO service_role USING (true);
 
 ALTER TABLE public.footer_sections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read active footer_sections" ON public.footer_sections;
 CREATE POLICY "Public read active footer_sections" ON public.footer_sections
     FOR SELECT TO anon, authenticated USING (is_active = true);
+DROP POLICY IF EXISTS "Service role full access on footer_sections" ON public.footer_sections;
 CREATE POLICY "Service role full access on footer_sections" ON public.footer_sections
     FOR ALL TO service_role USING (true);
 
 ALTER TABLE public.footer_links ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read active footer_links" ON public.footer_links;
 CREATE POLICY "Public read active footer_links" ON public.footer_links
     FOR SELECT TO anon, authenticated USING (is_active = true);
+DROP POLICY IF EXISTS "Service role full access on footer_links" ON public.footer_links;
 CREATE POLICY "Service role full access on footer_links" ON public.footer_links
     FOR ALL TO service_role USING (true);
 
--- hero_slides (created in 20261016000006) gains the scoped service-role policy.
-CREATE POLICY "Service role full access on hero_slides" ON public.hero_slides
-    FOR ALL TO service_role USING (true);
+-- hero_slides is NOT created by this file; its scoped policy lives in
+-- migration 20261020000007, which is the source of truth. Nothing about that
+-- table may be added here — it would abort this snapshot on a fresh database.
 
 -- 11. updated_at TRIGGER
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -288,17 +311,18 @@ BEGIN
     RETURN NEW;
 END $$;
 
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.categories;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.categories
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.promo_banners;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.promo_banners
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.footer_sections;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.footer_sections
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.footer_links;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.footer_links
-    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
-CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.hero_slides
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

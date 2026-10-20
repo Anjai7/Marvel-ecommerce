@@ -8,8 +8,10 @@
 //     version ran delete().neq("id", "00000000-…"), which wiped every product
 //     in the shared database before inserting — that call is gone;
 //   * every product has a deterministic id
-//     (p1000000-0000-4000-8000-0000000000NN), so a re-run updates the same
-//     rows instead of duplicating them;
+//     (e1000000-0000-4000-8000-0000000000NN), so a re-run updates the same
+//     rows instead of duplicating them. The prefix is hex-only on purpose:
+//     Postgres' uuid_in rejects `p`, and one malformed id makes PostgREST
+//     answer 400 for the whole bulk upsert;
 //   * orders are never written.
 //
 // The product list is built from the LIVE `public.categories` tree, so it can
@@ -29,7 +31,11 @@
 import { pathToFileURL } from "node:url";
 import { supabase } from "./db.js";
 
-const PRODUCT_ID_PREFIX = "p1";
+/**
+ * Hex-only prefix: a `p` is not a hexadecimal digit, so `p1000000-…` is not a
+ * UUID literal and Postgres rejects the entire bulk upsert with a 400.
+ */
+const PRODUCT_ID_PREFIX = "e1";
 
 /** One real Unsplash URL, reused with a distinct crop seed per product. */
 const FALLBACK_IMAGE_URL =
@@ -41,7 +47,7 @@ const ROOT_VARIANTS = ["Signature", "Everyday", "Premium"];
 /** One product per level-3 leaf, cycled for variety. */
 const LEAF_VARIANTS = ["Classic", "Studio", "Pro", "Lite", "Max"];
 
-/** p1000000-0000-4000-8000-000000000001 for index 1. */
+/** e1000000-0000-4000-8000-000000000001 for index 1. */
 export function productSeedId(index) {
   return `${PRODUCT_ID_PREFIX}000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
 }
@@ -75,18 +81,37 @@ function compareCategories(left, right) {
  * always yields the same ids, titles, prices and images, on both calls.
  * `category` is the display label (`products.category` is NOT NULL) and
  * `category_id` is the taxonomy binding.
+ *
+ * The title carries the full ancestor path ("Electronics / Accessories
+ * Essentials") because a bare category name is not unique: `Accessories`
+ * exists under both Electronics and Fashion, and leaves such as `Jewelry` or
+ * `Sunglasses` may repeat under different parents.
  */
 export function buildProductSeeds(categories = []) {
   const sorted = [...categories].sort(compareCategories);
+  const byId = new Map(sorted.map((category) => [String(category.id), category]));
   const seeds = [];
+
+  const pathLabel = (category) => {
+    const names = [];
+    const seen = new Set();
+    let cursor = category;
+    while (cursor && !seen.has(String(cursor.id))) {
+      seen.add(String(cursor.id));
+      names.unshift(cursor.name);
+      cursor = cursor.parent_id ? byId.get(String(cursor.parent_id)) : null;
+    }
+    return names.join(" / ");
+  };
 
   const push = (category, suffix) => {
     const index = seeds.length + 1;
+    const label = pathLabel(category);
     const price = Number((499 + ((index * 137) % 3800) + 0.99).toFixed(2));
     seeds.push({
       id: productSeedId(index),
-      title: `${category.name} ${suffix}`,
-      description: `${suffix} pick from our ${category.name} range.`,
+      title: `${label} ${suffix}`,
+      description: `${suffix} pick from our ${label} range.`,
       price,
       original_price: Number((price * 1.2).toFixed(2)),
       category: category.name,
@@ -131,7 +156,7 @@ async function uploadSeedImage(imageUrl, index) {
     const response = await fetch(imageUrl);
     if (!response.ok) throw new Error(`image fetch failed with ${response.status}`);
     const buffer = Buffer.from(await response.arrayBuffer());
-    const upload = await uploadBufferToCloudinary(buffer, "marvel_products", "public");
+    const upload = await uploadBufferToCloudinary(buffer, "marvel_products", "upload");
     return {
       image_url: upload.signed_url || upload.url,
       cloudinary_public_id: upload.public_id ?? null,
@@ -146,7 +171,8 @@ async function uploadSeedImage(imageUrl, index) {
 async function readCategories() {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, level, display_order, image_url")
+    .select("id, name, parent_id, level, display_order, image_url, is_active")
+    .eq("is_active", true)
     .order("level", { ascending: true })
     .order("display_order", { ascending: true });
 
@@ -173,9 +199,9 @@ async function readVendor() {
 /**
  * Upsert the whole catalog. `uploadImage` is injectable so the test can prove
  * the upsert/no-delete behaviour without network access; production uses the
- * Cloudinary-aware default.
+ * Cloudinary-aware default. `log` is injectable for the same reason.
  */
-export async function seedProducts({ uploadImage = uploadSeedImage } = {}) {
+export async function seedProducts({ uploadImage = uploadSeedImage, log = console.log } = {}) {
   const categories = await readCategories();
   if (categories.length === 0) {
     throw new Error("No categories found. Apply docs/sql/apply-01-content-taxonomy.sql first.");
@@ -185,8 +211,10 @@ export async function seedProducts({ uploadImage = uploadSeedImage } = {}) {
   const seeds = buildProductSeeds(categories);
 
   const rows = [];
-  for (const seed of seeds) {
-    const uploaded = await uploadImage(seed.image_url, seed.id);
+  let uploaded = 0;
+  for (const [position, seed] of seeds.entries()) {
+    const upload = await uploadImage(seed.image_url, seed.id);
+    if (upload) uploaded += 1;
     rows.push({
       id: seed.id,
       title: seed.title,
@@ -198,21 +226,28 @@ export async function seedProducts({ uploadImage = uploadSeedImage } = {}) {
       stock: seed.stock,
       rating: seed.rating,
       reviews_count: seed.reviews_count,
-      image_url: uploaded?.image_url || seed.image_url,
-      cloudinary_public_id: uploaded?.cloudinary_public_id ?? null,
-      access_type: uploaded?.access_type || "public",
+      image_url: upload?.image_url || seed.image_url,
+      cloudinary_public_id: upload?.cloudinary_public_id ?? null,
+      access_type: upload?.access_type || "public",
       is_featured: seed.is_featured,
       moderation_status: "approved",
       vendor_id: vendor?.id ?? null,
       vendor_name: vendor?.store_name || "Marvel Verified Seller",
       status: "active",
     });
+
+    // A full run fetches one image per product; without a running count the
+    // human has no idea whether it is progressing or hung.
+    const done = position + 1;
+    if (done % 20 === 0 || done === seeds.length) {
+      log(`   … ${done}/${seeds.length} products prepared`);
+    }
   }
 
   const { error } = await supabase.from("products").upsert(rows, { onConflict: "id" });
   if (error) throw new Error(`Could not upsert products: ${error.message}`);
 
-  return { products: rows.length, categories: categories.length };
+  return { products: rows.length, categories: categories.length, uploaded };
 }
 
 const isDirectRun =
@@ -222,11 +257,17 @@ if (isDirectRun) {
   seedProducts()
     .then((counts) => {
       console.log(`🛍️  Seeded ${counts.products} products across ${counts.categories} categories.`);
-      console.log(
-        cloudinaryConfigured()
-          ? "☁️  Images uploaded to Cloudinary (access_type: public)."
-          : "🖼️  Cloudinary is not configured — plain Unsplash URLs were stored."
-      );
+      if (cloudinaryConfigured()) {
+        console.log(
+          `☁️  ${counts.uploaded} of ${counts.products} images uploaded to Cloudinary; ` +
+            "the rest use their Unsplash URL."
+        );
+        if (counts.uploaded < counts.products) {
+          console.warn("⚠️ Some uploads failed; see the warnings above for the reason.");
+        }
+      } else {
+        console.log("🖼️  Cloudinary is not configured — plain Unsplash URLs were stored.");
+      }
     })
     .catch((error) => {
       console.error(`❌ seed:products failed: ${error.message}`);
