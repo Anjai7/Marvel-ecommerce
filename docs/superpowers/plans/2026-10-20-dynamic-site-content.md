@@ -197,7 +197,7 @@ Each validator returns `null` when valid, otherwise a human-readable error strin
   - `validateFooterSection({heading:"H"})` → null; `validateFooterSection({})` → `"Footer section heading is required."`
   - `validateFooterLink({label:"L", href:"/help"})` → null; `validateFooterLink({label:"L"})` → `"Footer link href is required."`
   - `validateDepth({level:1, parent_id:null}, null)` → null; `validateDepth({level:2, parent_id:null}, null)` → `"parent_id is required for categories below level 1."`; `validateDepth({level:3, parent_id:"p"}, {id:"p", level:2})` → null; `validateDepth({level:3, parent_id:"p"}, {id:"p", level:1})` → `"Parent category must be at level 2 for a level 3 category."`; `validateDepth({level:2, parent_id:"p"}, {id:"p", level:2})` → `"Parent category must be at level 1 for a level 2 category."`; `validateDepth({level:1, parent_id:"p"}, null)` → `"Level 1 categories must not have a parent_id."`
-  - `slugify("Men's Fashion")` → `"mens-fashion"`; `slugify("Home & Kitchen")` → `"home-kitchen"`; `slugify("TVs")` → `"tvs"`.
+  - `slugify("Men's Fashion")` → `"men-s-fashion"`; `slugify("Home & Kitchen")` → `"home-kitchen"`; `slugify("TVs")` → `"tvs"`. The rule is "lowercase, replace every run of non-alphanumeric characters with a single `-`, trim leading and trailing `-`" — so `Men's Fashion` yields `men-s-fashion` (the apostrophe and the space are two separate runs), which matches the seeded path segment `men-s-fashion`.
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run server/lib/validation.test.js`
@@ -510,7 +510,58 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
   (Level 1 → 1 segment, level 2 → 2 segments, level 3 → 3 segments; `split_part(..., '/', 3)` returns the last segment for all three.)
   - `show_in_homepage` is set to `true` for **all 7 level-1 rows**. The seeded level-1 titles are exactly `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories` (verified against `supabase/migrations/20261016000006_dynamic_menus_banners.sql`) — note the seeded root is `Sports`, not "Sports & Fitness". Set it with a `CASE` on `level = 1` rather than a name list, so a future seed-title change cannot silently leave the homepage with zero tiles.
   - `image_url` is backfilled from `public.site_categories.image_url` by matching `lower(site_categories.name) = lower(categories.name)`; unmatched rows keep `image_url` NULL and fall back to a per-root image.
-  - `products.category_id` backfill: `UPDATE public.products p SET category_id = c.id FROM public.categories c WHERE lower(c.name) = lower(p.category) AND c.level = (SELECT MIN(level) FROM public.categories c2 WHERE lower(c2.name) = lower(p.category))`. Rows that match nothing are left with `category_id IS NULL` and keep their `category` text; the seed script in Task 5 rewrites them onto real categories.
+  - `products.category_id` backfill, with a deterministic three-key tiebreak (level, then `display_order`, then `id`) so a name that appears twice at the same minimum level — `Ethnic Wear` exists at level 3 under both Men's and Women's Fashion — binds to exactly one row:
+    ```sql
+    UPDATE public.products p SET category_id = c.id
+    FROM public.categories c
+    WHERE lower(c.name) = lower(p.category)
+      AND c.id = (
+        SELECT c2.id FROM public.categories c2
+        WHERE lower(c2.name) = lower(p.category)
+        ORDER BY c2.level ASC, c2.display_order ASC, c2.id ASC
+        LIMIT 1
+      );
+    ```
+    Rows that match nothing are left with `category_id IS NULL` and keep their `category` text; the seed script in Task 5 rewrites them onto real categories.
+  - The `categories` seed selects **only the mega-menu rows** with the fixed-UUID prefix predicate, because `menu_items` also contains 6 legacy flat rows seeded by `supabase/migrations/20260822000000_init_schema.sql:143-151` (`Home & Shop` `/`, `Electronics & Tech` `/category/electronics`, `Fashion & Lifestyle` `/category/fashion`, `Vendor Portal`, `Admin Panel`, `Super Admin System`). Migration `20261016000006:13` adds `level INT DEFAULT 1`, so all 6 are level 1 with `parent_id IS NULL` and no migration deletes them. Selecting them would collide `Electronics & Tech` → slug `electronics` with the real root, produce an empty slug for `Home & Shop` (path `/`), and turn the three dashboard rows into categories. The mega-menu rows are the ones migration `20261016000006` seeded with fixed ids: `d1c…` (level 1), `d2c…` (level 2), `d3c…` (level 3) — e.g. `d1c00000-0000-4000-8000-000000000001`. So:
+    ```sql
+    WHERE m.id::text LIKE 'd1c%' OR m.id::text LIKE 'd2c%' OR m.id::text LIKE 'd3c%'
+    ```
+    The 6 legacy rows are **navigation-only**: they keep `category_id IS NULL` and are not part of the taxonomy.
+  - The seed runs as **three separate inserts, one per level** (level 1, then 2, then 3), because a single `INSERT … SELECT` gives no row-ordering guarantee and the self-referencing `parent_id` FK is immediate, not deferred.
+  - The seed ends with a **hard guard** that aborts the migration rather than applying a corrupted tree. Compare the inserted counts against the **live per-prefix counts in `menu_items`** — not hard-coded numbers — so the guard stays correct when the mega-menu seed grows:
+    ```sql
+    DO $$
+    DECLARE
+      expected_roots INT; expected_l2 INT; expected_l3 INT;
+      actual_roots INT; actual_l2 INT; actual_l3 INT; orphan_count INT; empty_slug_count INT;
+    BEGIN
+      SELECT count(*) FILTER (WHERE id::text LIKE 'd1c%'),
+             count(*) FILTER (WHERE id::text LIKE 'd2c%'),
+             count(*) FILTER (WHERE id::text LIKE 'd3c%')
+        INTO expected_roots, expected_l2, expected_l3
+        FROM public.menu_items;
+      SELECT count(*) FILTER (WHERE level = 1),
+             count(*) FILTER (WHERE level = 2),
+             count(*) FILTER (WHERE level = 3)
+        INTO actual_roots, actual_l2, actual_l3
+        FROM public.categories
+       WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
+      SELECT count(*) INTO orphan_count FROM public.categories WHERE level > 1 AND parent_id IS NULL;
+      SELECT count(*) INTO empty_slug_count FROM public.categories WHERE slug IS NULL OR slug = '';
+      IF actual_roots <> expected_roots OR actual_l2 <> expected_l2 OR actual_l3 <> expected_l3 THEN
+        RAISE EXCEPTION 'categories seed mismatch: expected %/%/%, got %/%/%',
+          expected_roots, expected_l2, expected_l3, actual_roots, actual_l2, actual_l3;
+      END IF;
+      IF orphan_count > 0 THEN
+        RAISE EXCEPTION 'categories seed produced % orphan rows above level 1', orphan_count;
+      END IF;
+      IF empty_slug_count > 0 THEN
+        RAISE EXCEPTION 'categories seed produced % rows with an empty slug', empty_slug_count;
+      END IF;
+    END $$;
+    ```
+    The empty-slug check is what catches a stray legacy row (for example `Home & Shop`, whose path `/` yields an empty slug) even if it somehow matched the prefix predicate.
   - `site_categories` is **not** dropped in this migration. The storefront still calls `GET /api/content/categories` until Task 13, and the new `/api/categories` route does not exist until Task 6 — dropping the table here would break the running app mid-plan. The table is dropped in Task 6, after the replacement API is in place, and Task 6 keeps a temporary alias route so the storefront keeps working until Task 13. The drop ships as a **second** paste bundle (`docs/sql/apply-02-drop-site-categories.sql`) that the human applies only after Task 6's code is deployed.
 
 - [ ] **Step 1: Produce the paste-ready SQL bundle and verify its shape statically**
@@ -556,14 +607,19 @@ Trace all three levels by hand and confirm the three insert statements in the bu
 Append to `docs/sql/apply-01-content-taxonomy.sql` (as SQL comments) the queries the human should run after pasting, each with its expected result:
 
 ```sql
--- Expected: three groups, 7 / ~38 / ~140
+-- Expected: three groups, 7 / 31 / 149
 SELECT level, count(*) FROM public.categories GROUP BY level ORDER BY level;
--- Expected: 0
-SELECT count(*) FROM public.menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;
+-- Expected: 0 for taxonomy rows (the 6 legacy flat menu_items rows keep category_id IS NULL by design)
+SELECT count(*) FROM public.menu_items
+WHERE (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%')
+  AND category_id IS NULL;
+-- Expected: 6 (the legacy flat rows: Home & Shop, Electronics & Tech, Fashion & Lifestyle, Vendor Portal, Admin Panel, Super Admin System)
+SELECT count(*) FROM public.menu_items WHERE category_id IS NULL;
 -- Expected: NULL
 SELECT to_regclass('public.site_categories');
--- Expected: 10
-SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','TVs','Headphones','Watches','Shoes','Bags','Perfumes','Cameras','Gaming');
+-- Expected: 7 — only names that are also menu_items titles are migrated. TVs, Shoes and Perfumes exist
+-- only in the old site_categories seed, so they are NOT in the taxonomy and their images fall back.
+SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','Headphones','Watches','Bags','Cameras','Gaming');
 -- Expected: every FOR ALL policy scoped to service_role
 SELECT tablename, policyname, roles, cmd FROM pg_policies
 WHERE schemaname='public' AND tablename IN ('categories','promo_banners','footer_sections','footer_links');
@@ -670,18 +726,21 @@ git commit -m "feat(seed): populate taxonomy, banners, footer and products"
 - Consumes: `createCrudRouter` (Task 2), `validateCategory` + `validateDepth` + `slugify` (Task 1).
 - Produces these routes:
 
-  | Method | Path                         | Auth   | Response                                                                                                                                      |
-  | ------ | ---------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-  | GET    | `/api/categories`            | public | `{ categories: [...] }` — flat list, `is_active = true` unless `?includeInactive=1` + admin                                                   |
-  | GET    | `/api/categories/tree`       | public | `{ categories: [...] }` — nested `children` arrays, each node `{ ...row, children: [...] }`, roots first, siblings ordered by `display_order` |
-  | GET    | `/api/categories/slug/:slug` | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — `ancestors` root→parent, `descendants` all levels below                         |
-  | GET    | `/api/categories/:id`        | public | `{ category: {...} }`                                                                                                                         |
-  | POST   | `/api/categories`            | admin  | `201 { message, category }`                                                                                                                   |
-  | PATCH  | `/api/categories/:id`        | admin  | `200 { message, category }` — partial                                                                                                         |
-  | PATCH  | `/api/categories/reorder`    | admin  | `200 { message }` — body `{ orders: [{id, display_order}] }`, renumbers one sibling group                                                     |
-  | DELETE | `/api/categories/:id`        | admin  | `200 { message }` — cascades to descendants via the FK                                                                                        |
+  | Method | Path                         | Auth   | Response                                                                                                                                                                                                                                                                                                                                     |
+  | ------ | ---------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | GET    | `/api/categories`            | public | `{ categories: [...] }` — flat list, `is_active = true` unless `?includeInactive=1` + admin                                                                                                                                                                                                                                                  |
+  | GET    | `/api/categories/tree`       | public | `{ categories: [...] }` — nested `children` arrays, each node `{ ...row, children: [...] }`, roots first, siblings ordered by `display_order`                                                                                                                                                                                                |
+  | GET    | `/api/categories/slug/:slug` | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — **bare-slug lookup**: resolves to the shallowest match and sets `category.ambiguous = true` when several rows share the slug. The storefront does **not** use this route — slugs are only unique per parent, so `accessories` exists 3× and `watches` 2×.                      |
+  | GET    | `/api/categories/path`       | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — **exact path lookup**: `?path=electronics/mobiles/smartphones`. Resolves by walking segments: the level-1 row whose slug is segment 1, then its child whose slug is segment 2, and so on. `404 { error }` when there is no exact match. This is the route the storefront uses. |
+  | GET    | `/api/categories/:id`        | public | `{ category: {...} }`                                                                                                                                                                                                                                                                                                                        |
+  | POST   | `/api/categories`            | admin  | `201 { message, category }`                                                                                                                                                                                                                                                                                                                  |
+  | PATCH  | `/api/categories/:id`        | admin  | `200 { message, category }` — partial                                                                                                                                                                                                                                                                                                        |
+  | PATCH  | `/api/categories/reorder`    | admin  | `200 { message }` — body `{ orders: [{id, display_order}] }`, renumbers one sibling group                                                                                                                                                                                                                                                    |
+  | DELETE | `/api/categories/:id`        | admin  | `200 { message }` — cascades to descendants via the FK                                                                                                                                                                                                                                                                                       |
 
-  `:slug` matching in `GET /slug/:slug` resolves **one** category, preferring the shallowest match; ambiguity is resolved by lowest `level`, then lowest `display_order`. Document this in the response as `category.ambiguous` = `true` when more than one row shares the slug.
+  `:slug` matching in `GET /slug/:slug` resolves **one** category, preferring the shallowest match; ambiguity is resolved by lowest `level`, then lowest `display_order`. Document this in the response as `category.ambiguous` = `true` when more than one row shares the slug. `GET /path` resolves **exactly** and never sets `ambiguous` — the path is the identity.
+
+  **Both lookup routes must be registered before `GET /:id`**, and `GET /tree` before both, so neither `tree` nor `path` is captured as an id.
 
   **`/reorder` must be registered before `/:id`**, or Express captures the literal string `reorder` as an id. The admin tree editor calls it, so it is part of the editor contract, not an optional extra.
 
@@ -702,7 +761,7 @@ Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `server/routes/categories.js`**
 
-Use `createCrudRouter` for the CRUD set, with `fields: ["name","slug","parent_id","level","description","icon","image_url","banner_image_url","display_order","is_active","show_in_nav","show_in_homepage"]`, `orderColumn: "display_order"`, `resourceKey: "category"`, and a `toPayload` that coerces `display_order`/`level` to integers and derives `level` from `parent_id` when the caller omits it (parent level + 1). Wrap the CRUD router in an `express.Router()` that also defines `GET /tree` **before** `GET /:id` so `tree` is not captured as an id, and `PATCH /reorder` **before** `PATCH /:id` so `reorder` is not captured as an id. `GET /slug/:slug` queries by `slug` (all levels), picks the lowest `level` match, then loads ancestors by walking `parent_id` and descendants by selecting rows whose `parent_id` is in the descendant set (repeat to a fixed depth of 3).
+Use `createCrudRouter` for the CRUD set, with `fields: ["name","slug","parent_id","level","description","icon","image_url","banner_image_url","display_order","is_active","show_in_nav","show_in_homepage"]`, `orderColumn: "display_order"`, `resourceKey: "category"`, and a `toPayload` that coerces `display_order`/`level` to integers and derives `level` from `parent_id` when the caller omits it (parent level + 1). Wrap the CRUD router in an `express.Router()` that also defines `GET /tree` **before** `GET /:id` so `tree` is not captured as an id, `GET /path` **before** `GET /:id` so `path` is not captured as an id, and `PATCH /reorder` **before** `PATCH /:id` so `reorder` is not captured as an id. `GET /slug/:slug` queries by `slug` (all levels), picks the lowest `level` match, then loads ancestors by walking `parent_id` and descendants by selecting rows whose `parent_id` is in the descendant set (repeat to a fixed depth of 3). `GET /path?path=a/b/c` resolves **exactly** by segment walk — read `?path`, split on `/`, and for each segment find the child of the previously matched row whose `slug` equals that segment; `404 { error: "No category found for path '<path>'." }` when any segment fails to match.
 
 - [ ] **Step 4: Mount the router and add the backwards-compatible alias**
 
@@ -902,8 +961,10 @@ git commit -m "feat(api): menu partial update, includeInactive and working reord
 
 - Consumes: the `categories` table (Task 4).
 - Produces:
-  - `GET /api/products?category=<slug>` — resolves `<slug>` to a category (lowest level match), expands to that category **and all descendants**, and filters `products.category_id` with `.in("category_id", ids)`. An unknown slug returns `200` with an **empty array** (unchanged behavior) and a `X-Category-Not-Found: true` response header so the client can distinguish "empty category" from "no such category".
-  - `GET /api/products?categoryId=<uuid>` — filters by an exact category id without descendant expansion.
+  - `GET /api/products?categoryPath=<a/b/c>` — resolves the **path** to a category, expands to that category **and all descendants**, and filters `products.category_id` with `.in("category_id", ids)`. An unknown path returns `200` with an **empty array** and a `X-Category-Not-Found: true` response header so the client can distinguish "empty category" from "no such category".
+  - `GET /api/products?categoryPath=<a/b/c>` — resolves the **path** to a category, expands to that category **and all descendants**, and filters `products.category_id` with `.in("category_id", ids)`. An unknown path returns `200` with an **empty array** and a `X-Category-Not-Found: true` response header so the client can distinguish "empty category" from "no such category".
+  - `GET /api/products?categoryId=<uuid>` — the same expansion, keyed on the category's id instead of its path.
+  - `GET /api/products?category=<free text>` — **not** the taxonomy filter. It keeps the existing `ilike("category", …)` behaviour, which matches the free-text `products.category` values the vendor dashboard still writes.
   - `POST /api/products` and `PUT /api/products/:id` accept an optional `category_id` (a `categories.id` UUID). When `category_id` is supplied and `category` text is not, `category` is filled from the category's `name`.
   - `GET /api/categories/:slug` already returns `descendants` (Task 6) so the client can filter locally without a second round trip.
   - A new shared component `src/components/admin/CategoryPicker.jsx`:
@@ -912,8 +973,9 @@ git commit -m "feat(api): menu partial update, includeInactive and working reord
     ```
     It fetches `apiFetchCategoryTree()` once, renders a grouped `<select>` whose `<optgroup>` labels are the level-1 categories and whose options are the level-2 and level-3 categories indented by depth, and calls `onChange` with the selected id and its name. It must include a "— Uncategorised —" option with a `null` id. Both the admin product form and the vendor product form use it.
 - [ ] **Step 1: Write the failing test** in a new file `server/routes/products.test.js`. Mock `../db.js`. Cover:
-  - `GET /api/products?category=electronics` resolves the slug, loads descendants, and calls `.in("category_id", [ids])` with the resolved ids.
-  - `GET /api/products?category=does-not-exist` returns `200 []` and sets the `X-Category-Not-Found` header.
+  - `GET /api/products?categoryPath=electronics` resolves the path, loads descendants, and calls `.in("category_id", [ids])` with the resolved ids.
+  - `GET /api/products?categoryPath=does/not/exist` returns `200 []` and sets the `X-Category-Not-Found` header.
+  - `GET /api/products?category=Electronics` (free text) still uses the `ilike` filter and does **not** call the categories table.
   - `GET /api/products` with no `category` param does **not** call the categories table at all.
   - `POST /api/products` with `{category_id:"<uuid>"}` and no `category` text writes `category` = the category's `name`.
   - `POST /api/products` with an unknown `category_id` → `400 { error: "Category not found." }`.
@@ -933,7 +995,7 @@ Expected: FAIL — the category filter is not implemented.
 
 - [ ] **Step 3: Implement the product category binding**
 
-  - In `server/routes/products.js:53-92`, when `req.query.category` is present and is not `"All"`, resolve the slug against `categories` (lowest `level` match, then lowest `display_order`), collect the id plus all descendant ids, and filter with `.in("category_id", ids)`. Keep the old `ilike("category", ...)` path only when the value matches **no** category slug AND no existing `products.category` value — this preserves the old behaviour for the free-text values the vendor dashboard still writes.
+  - In `server/routes/products.js:53-92`, the taxonomy filter is `req.query.categoryPath`. Resolve the path **exactly** by segment walk against `categories` (the level-1 row whose slug is segment 1, then its child whose slug is segment 2, and so on) — the same walk the categories route uses — collect that row's id plus all descendant ids, and filter with `.in("category_id", ids)`. A path that resolves to nothing returns `200 []` with `X-Category-Not-Found: true`. `req.query.categoryId` does the same, keyed on the id. `req.query.category` (free text, and the literal `"All"`) keeps the existing `ilike("category", ...)` path untouched — it is **not** the taxonomy filter and must not call the categories table.
   - Escape the `search` term before interpolating it into `.or(...)`: replace `,` `.` `(` `)` with a space.
   - In `POST` (`:111-166`) and `PUT` (`:169-200`), accept `category_id`; look up the category; if found and `category` text is absent, set `category = category.name`; if `category_id` is present but not found, return `400 { error: "Category not found." }`.
 
@@ -996,7 +1058,8 @@ git commit -m "feat(api): filter products by category taxonomy and pick categori
   apiReorderHeroSlides(orders: { id: string; display_order: number }[]): Promise<{ message: string }>
   apiFetchCategories(opts?: { includeInactive?: boolean }): Promise<{ categories: Category[] }>
   apiFetchCategoryTree(opts?: { includeInactive?: boolean }): Promise<{ categories: CategoryNode[] }>
-  apiFetchCategoryBySlug(slug: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
+  apiFetchCategoryBySlug(slug: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[]; ambiguous?: boolean }>
+  apiFetchCategoryByPath(path: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
   apiSaveCategory(c: object): Promise<{ category: Category }>
   apiUpdateCategory(id: string, patch: object): Promise<{ category: Category }>
   apiDeleteCategory(id: string): Promise<{ message: string }>
@@ -1149,18 +1212,21 @@ git commit -m "feat(client): ContentProvider loads all site content once"
 
 - Consumes: `useContent()` (Task 11), `apiFetchProducts` from `src/api/backendApi.js` (until Task 13 migrates it; after that it moves to `src/api/productsApi.js`).
 - Produces:
-  - A new hash route `#/category/:slug`. `getHashRoute` (`src/App.jsx:38-47`) must recognise a first segment of `category` and pass the **second** segment as the slug. The current parser only keeps `parts[0]` and `parts[1]`, and `category` currently falls through to `navigateTo("")` at `:93-95` — that silent bounce must be replaced with a route to the category page.
-  - `CategoryPage` props: `{ slug: string }`. It resolves the category via `apiFetchCategoryBySlug(slug)`, then fetches products via `apiFetchProducts({ category: slug })`, and renders: a breadcrumb (`Home / <ancestor titles> / <category name>`), the category title and description, the list of subcategories (from `descendants` at level = category.level + 1) as clickable chips, and a `ProductCard` grid.
+  - A new hash route `#/category/<full path>` — for example `#/category/electronics/mobiles/smartphones`. `getHashRoute` (`src/App.jsx:38-47`) must recognise a first segment of `category` and pass **the entire remainder after `category/`** as the path, URL-decoded, with the leading `/category/` stripped. The current parser only keeps `parts[0]` and `parts[1]`, and `category` currently falls through to `navigateTo("")` at `:93-95` — that silent bounce must be replaced with a route to the category page.
+  - **The route is the full ancestor path, not a bare slug.** Slugs are unique only per parent, so `accessories` exists 3× in the seeded tree and `watches` 2×; a last-segment-only route would send _Electronics › Accessories_ to the root Accessories page. The path is the identity.
+  - `CategoryPage` props: `{ path: string }`. It resolves the category from `useContent().categoryTree` when the tree contains the path (each node's ancestor-joined path is computed locally), and falls back to `apiFetchCategoryByPath(path)` otherwise. It then fetches products via `apiFetchProducts({ categoryPath: path })`, and renders: a breadcrumb (`Home / <ancestor titles> / <category name>`), the category title and description, the list of subcategories (from `descendants` at level = category.level + 1) as clickable chips, and a `ProductCard` grid.
   - Loading state, empty state ("No products in this category yet.") and error state are all distinct and visible.
-  - Clicking a subcategory chip navigates to `#/category/<child-slug>`.
-  - `handleDynamicMenuClick` must route a `category/...` path to `#/category/<last-slug>` instead of `navigateTo("")`. Because the category path is hierarchical (`/category/electronics/mobiles/smartphones`) and the API resolves by slug, the **last** segment is the slug. A parent path that matches no category slug must fall back to its nearest matching ancestor, and if none matches, show the category page's "unknown category" empty state rather than bouncing home.
+  - Clicking a subcategory chip navigates to `#/category/<child's full ancestor path>` — the chip's path is the parent's path plus `/` plus the child's slug.
+  - `handleDynamicMenuClick` must route a `category/...` path to `#/category/<the remainder after `/category/`>` instead of `navigateTo("")`. `menu_items.path` already **is** the full path, so this is a string strip: remove the leading `/category/` and append the rest. A path that matches no category must show the category page's "unknown category" empty state rather than bouncing home.
 
 - [ ] **Step 1: Write the failing test** `src/components/category/CategoryPage.test.jsx`. Mock `../api/contentApi` and the products fetch. Cover:
   - Renders the category name and its subcategory chips.
   - Renders the products returned by the product fetch.
   - Shows the empty state when the product list is empty.
   - Shows the error state when the product fetch rejects.
-  - Clicking a subcategory chip calls the navigate callback with the child's slug.
+  - Clicking a subcategory chip calls the navigate callback with the child's **full ancestor path**, not its bare slug.
+  - Resolves the category from `categoryTree` without calling `apiFetchCategoryByPath` when the tree contains the path.
+  - Falls back to `apiFetchCategoryByPath` when the tree does not contain it.
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `npx vitest run src/components/category/CategoryPage.test.jsx`
@@ -1168,13 +1234,13 @@ Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `CategoryPage.jsx`**
 
-Follow the pattern of `src/components/product/ProductViewPage.jsx` (loading + error + content states, `ProductCard` grid). Use `useContent().categoryTree` to resolve the slug locally when possible, and fall back to `apiFetchCategoryBySlug` for the ancestors/descendants.
+Follow the pattern of `src/components/product/ProductViewPage.jsx` (loading + error + content states, `ProductCard` grid). Resolve the path locally against `useContent().categoryTree` first, and fall back to `apiFetchCategoryByPath` for the ancestors/descendants.
 
 - [ ] **Step 4: Wire the route in `src/App.jsx`**
 
-  - Extend `getHashRoute` to return `{ page, id }` where `page === "category"` and `id` is the slug when the path starts with `category/`.
-  - Add a `category` branch to the page switch at `:110-118` rendering `<CategoryPage slug={currentRoute.id} onNavigate={handleDynamicMenuClick} />`.
-  - In `handleDynamicMenuClick` (`:77-96`), add a branch before the final `else`: when the cleaned path starts with `category/`, take the last segment as the slug and `navigateTo("category", slug)`.
+  - Extend `getHashRoute` to return `{ page, id }` where `page === "category"` and `id` is the **full path** (everything after `category/`) when the path starts with `category/`.
+  - Add a `category` branch to the page switch at `:110-118` rendering `<CategoryPage path={currentRoute.id} onNavigate={handleDynamicMenuClick} />`.
+  - In `handleDynamicMenuClick` (`:77-96`), add a branch before the final `else`: when the cleaned path starts with `category/`, strip the leading `/category/` and `navigateTo("category", remainder)`.
   - Add a `category` entry to the page titles / document title logic if one exists.
 
 - [ ] **Step 5: Run the test to verify it passes, then the full gate**
@@ -1221,7 +1287,7 @@ Expected: FAIL — the surfaces still read from `data.js` / their own fetches.
 - [ ] **Step 3: Migrate each surface**
 
   - `HeroBanner.jsx` — drop the `apiFetchHeroSlides` effect and the `data.js` import; read `const { hero } = useContent();`. Render `btn_path` on the CTA. If `hero` is empty, render a static hero slide defined **inline in the component** (a hardcoded emergency fallback, ~8 lines) so the homepage is never blank — this is the only place a static fallback is kept, per the spec.
-  - `CategorySlider.jsx` — read `categories` from the context, filter to `show_in_homepage === true`, and navigate to `#/category/${slug}` on click.
+  - `CategorySlider.jsx` — read `categories` from the context, filter to `show_in_homepage === true`, and navigate to `#/category/${path}` on click, where `path` is the category's **full ancestor path** (for a level-1 category that is just its slug).
   - `BannerLayout.jsx` — read `banners`, filter to `placement === "home_banner_layout"`, sort by `display_order`, and use `variant` to pick the large vs small slot. If fewer than 3 banners exist, render only what is present.
   - `PromoBannerCarousel.jsx` — read `banners`, filter to `placement === "home_promo_carousel"`. Replace the hardcoded `"⚡ ENDS IN 04H 22M"` (`src/components/PromoBannerCarousel.jsx:45`) with a countdown computed from the banner's `ends_at` when present, falling back to the literal only when `ends_at` is null.
   - `Footer.jsx` — replace `COLS`, `SEARCH_TAGS` and their rendering with `footer.sections` and `footer.links` from the context. Keep the value-prop bar, the social block, the payment chips and the copyright line **as code** (out of scope per the spec). Render the `"Popular Searches"` section as tags using `section_type === "tags"`.
