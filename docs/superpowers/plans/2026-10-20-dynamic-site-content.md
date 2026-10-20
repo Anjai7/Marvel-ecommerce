@@ -205,7 +205,7 @@ Expected: FAIL — `Cannot find module '../server/lib/validation'`.
 
 - [ ] **Step 3: Implement `server/lib/validation.js`**
 
-Move `isHttpsOrRelative`, `validateHeroSlide`, `validateSiteCategory` verbatim from `server/routes/content.js:13-67` and `validateHierarchy` from `server/routes/menu.js:125-145`, then add the `partial` option (when `opts.partial === true`, skip required-field checks and only validate the fields actually present), `validateCategory` (name + slug + optional `level`/`parent_id`/`icon`/`image_url`/`banner_image_url`/`description`), `validateBanner` (title + placement required; placement must be one of `home_banner_layout`, `home_promo_carousel`, `promo_strip`; `cta_path`/`image_url`/`bg_image_url` must be https-or-relative; `starts_at`/`ends_at` must be ISO-8601 strings when present; `ends_at` must be after `starts_at`), `validateFooterSection`, `validateFooterLink`, `validateDepth` (levels 1–3, parent level must be exactly `level - 1`), and `slugify` (lowercase, strip everything except `[a-z0-9]`, collapse runs of separators to a single `-`, trim leading/trailing `-`).
+Move `isHttpsOrRelative`, `validateHeroSlide`, `validateSiteCategory` verbatim from `server/routes/content.js:13-67` and `validateHierarchy` from `server/routes/menu.js:125-145`, then add the `partial` option (when `opts.partial === true`, skip required-field checks and only validate the fields actually present), `validateCategory` (name + slug + optional `level`/`parent_id`/`icon`/`image_url`/`banner_image_url`/`description`), `validateBanner` (title + placement required; placement must be one of `home_banner_layout`, `home_promo_carousel`, `promo_strip`; `cta_path`/`image_url`/`bg_image_url` must be https-or-relative; `starts_at`/`ends_at` must be ISO-8601 strings when present; `ends_at` must be after `starts_at`), `validateFooterSection`, `validateFooterLink`, `validateDepth` (levels 1–3, parent level must be exactly `level - 1`), and `slugify` (lowercase, then replace every run of non-alphanumeric characters with a single `-`, then trim leading and trailing `-`; so `Men's Fashion` → `men-s-fashion`, because the apostrophe and the space are two separate runs).
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -529,7 +529,7 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
     ```
     The 6 legacy rows are **navigation-only**: they keep `category_id IS NULL` and are not part of the taxonomy.
   - The seed runs as **three separate inserts, one per level** (level 1, then 2, then 3), because a single `INSERT … SELECT` gives no row-ordering guarantee and the self-referencing `parent_id` FK is immediate, not deferred.
-  - The seed ends with a **hard guard** that aborts the migration rather than applying a corrupted tree. Compare the inserted counts against the **live per-prefix counts in `menu_items`** — not hard-coded numbers — so the guard stays correct when the mega-menu seed grows:
+  - The seed's **hard guard** follows the three inserts — it does not have to be the last statement in the file, because the backfills that follow it do not touch the columns it checks. It aborts the migration rather than applying a corrupted tree. Compare the inserted counts against the **live per-prefix counts in `menu_items`** — not hard-coded numbers — so the guard stays correct when the mega-menu seed grows:
     ```sql
     DO $$
     DECLARE
