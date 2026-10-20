@@ -142,3 +142,163 @@ INSERT INTO public.menu_items (title, path, icon, roles_allowed, order_index, ba
 ('Vendor Dashboard', '/vendor', 'Store', ARRAY['vendor', 'admin', 'super_admin'], 5, 'VENDOR', true),
 ('Admin Control Panel', '/admin', 'ShieldCheck', ARRAY['admin', 'super_admin'], 6, 'ADMIN', true),
 ('Super Admin System', '/super-admin', 'Zap', ARRAY['super_admin'], 7, 'SYSTEM', true);
+
+-- ==========================================
+-- DYNAMIC SITE CONTENT (migration 20261020000007)
+-- Category taxonomy, checkout-free content tables, bindings and triggers.
+--
+-- HAND-MAINTAINED, NOT DUMPED: `supabase db dump` needs a linked project,
+-- which is unavailable in this environment. Replace this section with a real
+-- dump once the project is linked. This file also predates migrations
+-- 20261016000006 (hero_slides, site_categories) and 20261020000006
+-- (password_reset_tokens), so a dump is the only way to get it complete.
+-- ==========================================
+
+-- 6. CATEGORIES (3-level taxonomy; slug is the last path segment only)
+CREATE TABLE IF NOT EXISTS public.categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL,
+    parent_id UUID REFERENCES public.categories(id) ON DELETE CASCADE,
+    level INT NOT NULL DEFAULT 1 CHECK (level BETWEEN 1 AND 3),
+    description TEXT,
+    icon TEXT,
+    image_url TEXT,
+    banner_image_url TEXT,
+    display_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    show_in_nav BOOLEAN NOT NULL DEFAULT true,
+    show_in_homepage BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS categories_slug_root_unique
+    ON public.categories (slug) WHERE parent_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS categories_slug_child_unique
+    ON public.categories (parent_id, slug) WHERE parent_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS categories_parent_order
+    ON public.categories (parent_id, display_order);
+CREATE INDEX IF NOT EXISTS categories_active_order
+    ON public.categories (is_active, display_order);
+
+-- 7. TAXONOMY BINDINGS
+ALTER TABLE public.products
+    ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS products_category_id_idx
+    ON public.products (category_id);
+
+ALTER TABLE public.menu_items
+    ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
+
+-- 8. PROMO BANNERS (home banner layout / promo carousel / promo strip)
+CREATE TABLE IF NOT EXISTS public.promo_banners (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    placement TEXT NOT NULL CHECK (placement IN ('home_banner_layout','home_promo_carousel','promo_strip')),
+    variant TEXT NOT NULL DEFAULT 'standard',
+    badge TEXT,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    highlight TEXT,
+    description TEXT,
+    cta_text TEXT,
+    cta_path TEXT,
+    image_url TEXT,
+    bg_image_url TEXT,
+    fallback_image_url TEXT,
+    bg_gradient TEXT,
+    emoji TEXT,
+    code TEXT,
+    accent TEXT,
+    bg_color TEXT,
+    gallery TEXT[] NOT NULL DEFAULT '{}',
+    display_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    starts_at TIMESTAMPTZ,
+    ends_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE INDEX IF NOT EXISTS promo_banners_placement_order
+    ON public.promo_banners (placement, display_order);
+
+-- 9. FOOTER SECTIONS AND LINKS
+CREATE TABLE IF NOT EXISTS public.footer_sections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    heading TEXT NOT NULL,
+    section_type TEXT NOT NULL DEFAULT 'links' CHECK (section_type IN ('links','tags')),
+    column_index INT NOT NULL DEFAULT 0,
+    display_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE TABLE IF NOT EXISTS public.footer_links (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    section_id UUID NOT NULL REFERENCES public.footer_sections(id) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    href TEXT NOT NULL,
+    display_order INT NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE INDEX IF NOT EXISTS footer_links_section_order
+    ON public.footer_links (section_id, display_order);
+
+-- 10. RLS FOR THE CONTENT TABLES (public reads active rows, service_role writes)
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read active categories" ON public.categories
+    FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "Service role full access on categories" ON public.categories
+    FOR ALL TO service_role USING (true);
+
+ALTER TABLE public.promo_banners ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read active promo_banners" ON public.promo_banners
+    FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "Service role full access on promo_banners" ON public.promo_banners
+    FOR ALL TO service_role USING (true);
+
+ALTER TABLE public.footer_sections ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read active footer_sections" ON public.footer_sections
+    FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "Service role full access on footer_sections" ON public.footer_sections
+    FOR ALL TO service_role USING (true);
+
+ALTER TABLE public.footer_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read active footer_links" ON public.footer_links
+    FOR SELECT TO anon, authenticated USING (is_active = true);
+CREATE POLICY "Service role full access on footer_links" ON public.footer_links
+    FOR ALL TO service_role USING (true);
+
+-- hero_slides (created in 20261016000006) gains the scoped service-role policy.
+CREATE POLICY "Service role full access on hero_slides" ON public.hero_slides
+    FOR ALL TO service_role USING (true);
+
+-- 11. updated_at TRIGGER
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    NEW.updated_at = timezone('utc', now());
+    RETURN NEW;
+END $$;
+
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.categories
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.promo_banners
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.footer_sections
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.footer_links
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.hero_slides
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
