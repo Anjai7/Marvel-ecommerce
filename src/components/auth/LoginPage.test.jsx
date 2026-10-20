@@ -99,6 +99,17 @@ describe("LoginPage forgot-password wizard", () => {
     expect(mockResetPassword).not.toHaveBeenCalled();
   });
 
+  it("does not promise an email that nothing sends", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const tokenInput = await openStepTwo(user);
+    const stepText = tokenInput.closest("form")?.textContent || "";
+
+    expect(stepText).not.toMatch(/by email|sent to|check your inbox/i);
+    expect(stepText).toMatch(/In local development/i);
+  });
+
   it("keeps the six-character minimum and the mismatch check", async () => {
     const user = userEvent.setup();
     renderPage();

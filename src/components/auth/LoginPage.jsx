@@ -87,12 +87,13 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
       if (forgotStep === 1) {
         const body = await apiRequestPasswordReset(forgotEmail.trim());
         // Local development only: the server echoes the token when
-        // EXPOSE_RESET_TOKEN=true. In every other case it is delivered by email.
+        // EXPOSE_RESET_TOKEN=true. In every other case no token is returned and
+        // reset delivery is still a follow-up.
         setResetToken(body?.resetToken || "");
         setForgotStep(2);
       } else if (forgotStep === 2) {
         if (!resetToken.trim()) {
-          setForgotError("Enter the reset token from your email.");
+          setForgotError("Enter the reset token you received.");
           setForgotLoading(false);
           return;
         }
@@ -616,9 +617,8 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                     Set New Password
                   </h3>
                   <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
-                    Enter the reset token sent to <strong>{forgotEmail}</strong> by email, then
-                    choose a new password. In local development the token is filled in below
-                    automatically.
+                    Enter the reset token you received for <strong>{forgotEmail}</strong>. In local
+                    development it is filled in automatically.
                   </p>
                 </div>
 
@@ -655,7 +655,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                     <Input
                       type="text"
                       aria-label="Reset Token"
-                      placeholder="Paste the reset token from your email"
+                      placeholder="Paste the reset token"
                       value={resetToken}
                       onChange={(e) => setResetToken(e.target.value)}
                       required

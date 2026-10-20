@@ -64,7 +64,15 @@ export function verifyToken(req, res, next) {
     return res.status(401).json({ error: "Access denied. Malformed authorization token." });
   }
 
-  const secret = getJwtSecret();
+  let secret;
+  try {
+    secret = getJwtSecret();
+  } catch (configError) {
+    // Fail loudly in the log, but never echo the configuration detail to the
+    // caller: a misconfigured secret must not disclose how to fix or bypass it.
+    console.error("[auth] JWT secret is not configured; refusing to verify tokens.", configError);
+    return res.status(500).json({ error: "Authentication is temporarily unavailable." });
+  }
 
   try {
     const decoded = jwt.verify(token, secret);

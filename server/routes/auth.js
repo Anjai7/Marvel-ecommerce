@@ -157,11 +157,16 @@ const RESET_REQUEST_MESSAGE = "If this email is registered, a reset link has bee
 const INVALID_RESET_TOKEN_MESSAGE = "Invalid or expired reset token.";
 const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 
+function emailDomain(email) {
+  const at = email.lastIndexOf("@");
+  return at === -1 ? "unknown" : email.slice(at + 1);
+}
+
 // POST /api/auth/request-reset (Password reset request)
 // Always answers with the same body so the response never reveals whether the
 // email belongs to an account. The reset token is only echoed back when
-// EXPOSE_RESET_TOKEN=true, an explicit local-development opt-in, because this
-// codebase has no mailer yet.
+// EXPOSE_RESET_TOKEN=true AND the process is not production, because this
+// codebase has no mailer yet and the field is a local-development affordance.
 router.post("/request-reset", async (req, res) => {
   const { email } = req.body || {};
   if (!email || typeof email !== "string") {
@@ -170,7 +175,15 @@ router.post("/request-reset", async (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
   const isProduction = process.env.NODE_ENV === "production";
+  const exposeRequested = process.env.EXPOSE_RESET_TOKEN === "true";
+  const canExposeResetToken = exposeRequested && !isProduction;
   let resetToken = null;
+
+  if (exposeRequested && isProduction) {
+    console.warn(
+      "[auth] EXPOSE_RESET_TOKEN is set but ignored in production; the reset token was not exposed."
+    );
+  }
 
   try {
     const { data: profile } = await supabase
@@ -193,7 +206,9 @@ router.post("/request-reset", async (req, res) => {
       } else {
         resetToken = token;
         if (!isProduction) {
-          console.log(`[auth] Password reset token for ${cleanEmail}: ${token}`);
+          console.log(
+            `[auth] Password reset token for domain ${emailDomain(cleanEmail)}: ${token}`
+          );
         }
       }
     }
@@ -204,11 +219,11 @@ router.post("/request-reset", async (req, res) => {
 
   if (isProduction) {
     // The reset link is not delivered yet; record the request, never the token.
-    console.log(`[auth] Password reset requested for ${cleanEmail}.`);
+    console.log(`[auth] Password reset requested for domain ${emailDomain(cleanEmail)}.`);
   }
 
   const body = { message: RESET_REQUEST_MESSAGE };
-  if (process.env.EXPOSE_RESET_TOKEN === "true") {
+  if (canExposeResetToken) {
     // For an unknown address the token is random and never stored, so the
     // response shape cannot be used to enumerate accounts.
     body.resetToken = resetToken || crypto.randomBytes(32).toString("hex");
@@ -255,14 +270,22 @@ router.post("/reset-password", async (req, res) => {
     const usedAt = new Date().toISOString();
 
     // Consume the token before changing the password so it cannot be replayed.
-    const { error: consumeError } = await supabase
+    // The `used_at IS NULL` filter makes the single-use guarantee atomic: a
+    // concurrent request that already consumed the row matches zero rows here.
+    const { data: consumedRows, error: consumeError } = await supabase
       .from("password_reset_tokens")
       .update({ used_at: usedAt })
-      .eq("id", resetToken.id);
+      .eq("id", resetToken.id)
+      .is("used_at", null)
+      .select("id");
 
     if (consumeError) {
       console.error("Password reset token consume failed:", consumeError.message);
       return res.status(500).json({ error: "Failed to reset password." });
+    }
+
+    if (!consumedRows || consumedRows.length === 0) {
+      return res.status(400).json({ error: INVALID_RESET_TOKEN_MESSAGE });
     }
 
     const { error: updateErr } = await supabase.auth.admin.updateUserById(resetToken.user_id, {

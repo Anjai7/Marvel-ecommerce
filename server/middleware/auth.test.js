@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readFileSync } from "node:fs";
 import jwt from "jsonwebtoken";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -130,6 +131,23 @@ describe("verifyToken", () => {
     expect(res.statusCode).toBe(401);
     expect(res.body.error).toMatch(/expired/i);
   });
+
+  it("answers a production secret misconfiguration with a generic 500, not the config text", () => {
+    const token = signUserToken({ id: "user-1", email: "user@test.local", role: "admin" });
+    process.env.NODE_ENV = "production";
+    delete process.env.JWT_SECRET;
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const req = makeReq({ authorization: `Bearer ${token}` });
+    const res = makeRes();
+    const next = vi.fn();
+
+    verifyToken(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toEqual({ error: "Authentication is temporarily unavailable." });
+    expect(JSON.stringify(res.body)).not.toContain("JWT_SECRET");
+  });
 });
 
 describe("requireRole", () => {
@@ -190,13 +208,14 @@ describe("assertJwtSecret", () => {
     expect(() => assertJwtSecret()).not.toThrow();
   });
 
-  it("does not hard-block development without a secret, but still signs and verifies", () => {
+  it("does not hard-block development without a secret, but warns exactly once", () => {
     process.env.NODE_ENV = "development";
     delete process.env.JWT_SECRET;
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     expect(() => assertJwtSecret()).not.toThrow();
-    expect(warn).toHaveBeenCalled();
+    expect(() => assertJwtSecret()).not.toThrow();
+    expect(warn).toHaveBeenCalledTimes(1);
 
     const token = signUserToken({ id: "dev-1", email: "dev@test.local", role: "admin" });
     const req = makeReq({ authorization: `Bearer ${token}` });
@@ -207,5 +226,20 @@ describe("assertJwtSecret", () => {
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user.id).toBe("dev-1");
+  });
+});
+
+describe(".env.example", () => {
+  it("ships a JWT_SECRET placeholder that fails the production secret gate", () => {
+    const contents = readFileSync(new URL("../../.env.example", import.meta.url), "utf8");
+    const line = contents.split(/\r?\n/).find((candidate) => candidate.startsWith("JWT_SECRET="));
+    expect(line).toBeDefined();
+
+    const placeholder = line.slice("JWT_SECRET=".length).trim();
+    expect(placeholder.length).toBeLessThan(32);
+
+    process.env.NODE_ENV = "production";
+    process.env.JWT_SECRET = placeholder;
+    expect(() => assertJwtSecret()).toThrow(/JWT_SECRET is required/);
   });
 });

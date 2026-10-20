@@ -14,6 +14,15 @@ import { assertJwtSecret } from "./middleware/auth.js";
 dotenv.config();
 assertJwtSecret();
 
+// Warn once at startup when a deployed process has no origin allowlist: every
+// browser call would be blocked with no hint as to why. Local development is
+// expected to fall back to the localhost defaults, so it stays quiet there.
+if (!(process.env.ALLOWED_ORIGINS || "").trim() && process.env.NODE_ENV === "production") {
+  console.warn(
+    "[cors] ALLOWED_ORIGINS is not set. Browser requests will be limited to the localhost defaults (http://localhost:5173, http://127.0.0.1:5173)."
+  );
+}
+
 const app = express();
 
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
@@ -69,10 +78,11 @@ app.use("/api/*", (req, res) => {
 });
 
 // Terminal error handler: always answer with JSON, never Express's HTML page.
-app.use((err, req, res, next) => {
+export function apiErrorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
   console.error("[api] unhandled error:", err);
   res.status(err.status || 500).json({ error: err.message || "Internal server error." });
-});
+}
+app.use(apiErrorHandler);
 
 export default app;

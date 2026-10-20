@@ -45,7 +45,23 @@ function installDb() {
       if (state.op === "select") {
         return { data: dbOptions.resetToken ?? null, error: dbOptions.resetTokenError ?? null };
       }
+      if (state.op === "update") {
+        const consuming = state.filters.some(
+          ([column, value]) => column === "used_at" && value === null
+        );
+        return {
+          data: consuming ? (dbOptions.consumeRows ?? []) : null,
+          error: dbOptions.writeError ?? null,
+        };
+      }
       return { data: null, error: dbOptions.writeError ?? null };
+    };
+
+    const snapshot = () => {
+      if (state.op === "select") {
+        dbOptions.log.selects.push({ table, filters: [...state.filters] });
+      }
+      return result();
     };
 
     const chain = {
@@ -76,13 +92,13 @@ function installDb() {
         return chain;
       },
       maybeSingle() {
-        return Promise.resolve(result());
+        return Promise.resolve(snapshot());
       },
       single() {
-        return Promise.resolve(result());
+        return Promise.resolve(snapshot());
       },
       then(onFulfilled, onRejected) {
-        return Promise.resolve(result()).then(onFulfilled, onRejected);
+        return Promise.resolve(snapshot()).then(onFulfilled, onRejected);
       },
     };
 
@@ -112,7 +128,12 @@ beforeAll(
 afterAll(() => new Promise((resolve) => server.close(resolve)));
 
 beforeEach(() => {
-  dbOptions = { profile: null, resetToken: null, log: { inserts: [], updates: [] } };
+  dbOptions = {
+    profile: null,
+    resetToken: null,
+    consumeRows: [{ id: "token-1" }],
+    log: { inserts: [], updates: [], selects: [] },
+  };
   installDb();
   mockUpdateUserById.mockReset();
   mockUpdateUserById.mockResolvedValue({ data: { id: "user-1" }, error: null });
@@ -153,8 +174,9 @@ describe("POST /api/auth/request-reset", () => {
     expect(dbOptions.log.inserts).toHaveLength(0);
   });
 
-  it("includes resetToken only when EXPOSE_RESET_TOKEN is true", async () => {
+  it("includes resetToken only when EXPOSE_RESET_TOKEN is true outside production", async () => {
     process.env.EXPOSE_RESET_TOKEN = "true";
+    process.env.NODE_ENV = "test";
     dbOptions.profile = { id: "user-1" };
 
     const known = await post("/request-reset", { email: "known@example.com" });
@@ -179,6 +201,22 @@ describe("POST /api/auth/request-reset", () => {
     expect(dbOptions.log.inserts).toHaveLength(0);
   });
 
+  it("suppresses resetToken in production even when the opt-in is set", async () => {
+    process.env.EXPOSE_RESET_TOKEN = "true";
+    process.env.NODE_ENV = "production";
+    dbOptions.profile = { id: "user-1" };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const res = await post("/request-reset", { email: "known@example.com" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ message: RESET_REQUEST_MESSAGE });
+    expect("resetToken" in res.body).toBe(false);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0].join(" ")).toMatch(/not exposed/i);
+  });
+
   it("logs the token outside production", async () => {
     process.env.NODE_ENV = "test";
     dbOptions.profile = { id: "user-1" };
@@ -190,7 +228,7 @@ describe("POST /api/auth/request-reset", () => {
     expect(log.mock.calls.some((args) => args.join(" ").includes(token))).toBe(true);
   });
 
-  it("never logs the token in production", async () => {
+  it("never logs the token in production and logs only the email domain", async () => {
     process.env.NODE_ENV = "production";
     dbOptions.profile = { id: "user-1" };
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -201,7 +239,8 @@ describe("POST /api/auth/request-reset", () => {
 
     expect(logged).not.toContain(token);
     expect(logged).toMatch(/requested/i);
-    expect(logged).toContain("known@example.com");
+    expect(logged).toContain("example.com");
+    expect(logged).not.toContain("known@");
   });
 
   it("requires an email", async () => {
@@ -219,6 +258,11 @@ describe("POST /api/auth/reset-password", () => {
     expect(res.body).toEqual({ error: INVALID_TOKEN_MESSAGE });
     expect(mockUpdateUserById).not.toHaveBeenCalled();
     expect(dbOptions.log.updates).toHaveLength(0);
+
+    // The lookup must filter by the submitted token, not by some other column.
+    const lookup = dbOptions.log.selects.find((s) => s.table === "password_reset_tokens");
+    expect(lookup).toBeDefined();
+    expect(lookup.filters).toEqual([["token", "nope"]]);
   });
 
   it("rejects an expired token", async () => {
@@ -279,9 +323,29 @@ describe("POST /api/auth/reset-password", () => {
     expect(tokenUpdates).toHaveLength(2);
     expect(tokenUpdates[0].row.used_at).toBeTruthy();
     expect(tokenUpdates[0].filters).toContainEqual(["id", "token-1"]);
+    expect(tokenUpdates[0].filters).toContainEqual(["used_at", null]);
     expect(tokenUpdates[1].row.used_at).toBeTruthy();
     expect(tokenUpdates[1].filters).toContainEqual(["user_id", "user-1"]);
     expect(tokenUpdates[1].filters).toContainEqual(["id", "token-1"]);
+
+    const lookup = dbOptions.log.selects.find((s) => s.table === "password_reset_tokens");
+    expect(lookup.filters).toEqual([["token", "good-token"]]);
+  });
+
+  it("rejects the token when the atomic consume matches zero rows", async () => {
+    dbOptions.resetToken = {
+      id: "token-1",
+      user_id: "user-1",
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      used_at: null,
+    };
+    dbOptions.consumeRows = [];
+
+    const res = await post("/reset-password", { token: "raced", newPassword: "newpass123" });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: INVALID_TOKEN_MESSAGE });
+    expect(mockUpdateUserById).not.toHaveBeenCalled();
   });
 
   it("does not accept the legacy { email, newPassword } body", async () => {

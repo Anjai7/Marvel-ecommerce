@@ -1382,12 +1382,14 @@ upsert key is wrong.
 
    **Delivery, and the hole it leaves.** There is no mailer in this codebase, so nothing
    sends the token. The response therefore carries an extra `resetToken` field **only when
-   `process.env.EXPOSE_RESET_TOKEN === "true"`** — a deliberate, explicit opt-in for local
-   development. Without that opt-in the response is exactly the generic message above and
-   nothing else, and the token is written to the server log **only** outside production. A
-   production mailer — or Supabase's own `resetPasswordForEmail` recovery email — is an
-   explicit follow-up; until one exists, password reset is **unavailable in production**
-   rather than exploitable. The account-takeover hole is closed either way.
+   `process.env.EXPOSE_RESET_TOKEN === "true"`** _and_ `NODE_ENV !== "production"` — a
+   deliberate, explicit opt-in for local development, with a production guard so it can
+   never be armed in a deployed environment by accident. Without the opt-in the response is
+   exactly the generic message above and nothing else, and the token is written to the server
+   log **only** outside production. A production mailer — or Supabase's own
+   `resetPasswordForEmail` recovery email — is an explicit follow-up; until one exists,
+   password reset is **unavailable in production** rather than exploitable. The
+   account-takeover hole is closed either way.
 
 6. **CORS allowlist.** `ALLOWED_ORIGINS` (comma-separated). When unset, allow only
    `http://localhost:5173` and `http://127.0.0.1:5173`.

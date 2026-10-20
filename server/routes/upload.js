@@ -30,7 +30,11 @@ const upload = multer({
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed."));
+      // A client mistake, not a server fault: the terminal handler answers with
+      // err.status so this must not surface as a 500.
+      const error = new Error("Only image files are allowed.");
+      error.status = 400;
+      cb(error);
     }
   },
 });

@@ -120,7 +120,7 @@ describe("POST /api/upload folder whitelist", () => {
 });
 
 describe("upload error handling", () => {
-  it("returns a JSON error when multer rejects a non-image file", async () => {
+  it("returns a JSON 400 when multer rejects a non-image file", async () => {
     const form = new FormData();
     form.append("image", new Blob(["not an image"], { type: "text/plain" }), "notes.txt");
 
@@ -130,7 +130,7 @@ describe("upload error handling", () => {
       body: form,
     });
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(400);
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
     expect(await res.json()).toEqual({ error: "Only image files are allowed." });
     expect(mockUpload).not.toHaveBeenCalled();
