@@ -9,15 +9,17 @@ import app from "../app.js";
 import { signUserToken } from "../middleware/auth.js";
 
 // Chain builders mimicking the supabase-js query interface used by menu.js:
-// upsert: from().upsert().select() ; delete: from().delete().eq() ;
+// upsert: from().upsert().select().single() ; delete: from().delete().eq() ;
 // lookup: from().select().eq().single()
 function upsertChain({ error = null, throws = null } = {}) {
   return {
     upsert: vi.fn(() => ({
-      select: vi.fn(async () => {
-        if (throws) throw throws;
-        return { data: [], error };
-      }),
+      select: vi.fn(() => ({
+        single: vi.fn(async () => {
+          if (throws) throw throws;
+          return { data: error ? null : { id: "saved-item" }, error };
+        }),
+      })),
     })),
   };
 }
@@ -73,19 +75,18 @@ describe("menu write error surfacing", () => {
       body: JSON.stringify({ title: "Boom Item", path: "/boom" }),
     });
     expect(res.status).toBe(500);
-    expect((await res.json()).error).toMatch(/db connection reset/);
+    expect((await res.json()).error).toBe("Failed to save menu item.");
   });
 
-  it("POST /api/menu still degrades to in-memory on a returned error", async () => {
+  it("POST /api/menu surfaces a returned error as 500, never a silent 200", async () => {
     mockFrom.mockReturnValue(upsertChain({ error: { message: "table missing" } }));
     const res = await fetch(`${base}/api/menu`, {
       method: "POST",
       headers: adminHeaders,
       body: JSON.stringify({ title: "Fallback Item", path: "/fallback" }),
     });
-    expect(res.status).toBe(200);
-    const saved = (await res.json()).menu.find((m) => m.title === "Fallback Item");
-    expect(saved).toBeDefined();
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toBe("Failed to save menu item.");
   });
 
   it("DELETE /api/menu/:id surfaces a Supabase delete error as 500", async () => {
@@ -95,7 +96,7 @@ describe("menu write error surfacing", () => {
       headers: adminHeaders,
     });
     expect(res.status).toBe(500);
-    expect((await res.json()).error).toMatch(/db delete boom/);
+    expect((await res.json()).error).toBe("Failed to delete menu item.");
   });
 
   it("DELETE /api/menu/:id surfaces a thrown exception as 500", async () => {
@@ -107,7 +108,7 @@ describe("menu write error surfacing", () => {
       headers: adminHeaders,
     });
     expect(res.status).toBe(500);
-    expect((await res.json()).error).toMatch(/db connection reset/);
+    expect((await res.json()).error).toBe("Failed to delete menu item.");
   });
 
   it("DELETE /api/menu/:id succeeds when the delete succeeds", async () => {

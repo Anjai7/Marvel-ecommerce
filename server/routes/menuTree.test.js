@@ -17,7 +17,29 @@ function emptyQuery() {
   const chain = {
     select: () => chain,
     eq: () => chain,
-    order: () => resolved,
+    order: () => chain,
+    // POST upserts and answers with the persisted row; echo the payload so the
+    // assertion can read it back from the response.
+    single: async () => ({ data: chain.row ?? null, error: null }),
+    maybeSingle: async () => ({ data: null, error: null }),
+    upsert: (row) => {
+      chain.row = row;
+      return chain;
+    },
+    update: () => chain,
+    delete: () => chain,
+    then: (onFulfilled, onRejected) => resolved.then(onFulfilled, onRejected),
+  };
+  return chain;
+}
+
+/** A read double that returns `rows` for both list and reorder reads. */
+function rowsQuery(rows) {
+  const resolved = Promise.resolve({ data: rows, error: null });
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    order: () => chain,
     single: async () => ({ data: null, error: null }),
     maybeSingle: async () => ({ data: null, error: null }),
     upsert: () => chain,
@@ -250,8 +272,9 @@ describe("POST /api/menu is_active persistence", () => {
       body: JSON.stringify({ title: "Hidden Test Item", path: "/hidden-test", is_active: false }),
     });
     expect(res.status).toBe(200);
-    const saved = (await res.json()).menu.find((m) => m.title === "Hidden Test Item");
+    const saved = (await res.json()).item;
     expect(saved).toBeDefined();
+    expect(saved.title).toBe("Hidden Test Item");
     expect(saved.is_active).toBe(false);
   });
 
@@ -262,8 +285,9 @@ describe("POST /api/menu is_active persistence", () => {
       body: JSON.stringify({ title: "Visible Test Item", path: "/visible-test" }),
     });
     expect(res.status).toBe(200);
-    const saved = (await res.json()).menu.find((m) => m.title === "Visible Test Item");
+    const saved = (await res.json()).item;
     expect(saved).toBeDefined();
+    expect(saved.title).toBe("Visible Test Item");
     expect(saved.is_active).toBe(true);
   });
 
@@ -287,8 +311,9 @@ describe("POST /api/menu is_active persistence", () => {
       body: JSON.stringify(payload),
     });
     expect(res.status).toBe(200);
-    const saved = (await res.json()).menu.find((m) => m.title === "Promo Round Trip Item");
+    const saved = (await res.json()).item;
     expect(saved).toBeDefined();
+    expect(saved.title).toBe("Promo Round Trip Item");
     expect(saved.section).toBe("Shop by Type");
     expect(saved.section_icon).toBe("📱");
     expect(saved.badge_variant).toBe("success");
@@ -323,6 +348,13 @@ describe("PATCH /api/menu/reorder validation", () => {
   };
 
   it("rejects an unknown parent_id and persists nothing", async () => {
+    mockFrom.mockImplementation(() =>
+      rowsQuery([
+        { id: "m-1", parent_id: null, level: 1, order_index: 0 },
+        { id: "m-2", parent_id: "m-1", level: 2, order_index: 0 },
+      ])
+    );
+
     const res = await fetch(`${base}/api/menu/reorder`, {
       method: "PATCH",
       headers: adminHeaders,
@@ -331,12 +363,19 @@ describe("PATCH /api/menu/reorder validation", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/Parent menu item not found/);
 
-    // Rejected entry persisted nowhere (live DB or in-memory fallback).
+    // Rejected entry persisted nowhere: the stored row still points at m-1.
     const menu = await flatMenu();
     expect(menu.some((m) => m.parent_id === "ghost-parent")).toBe(false);
   });
 
   it("rejects a level-inconsistent parent and persists nothing", async () => {
+    mockFrom.mockImplementation(() =>
+      rowsQuery([
+        { id: "m-1", parent_id: null, level: 1, order_index: 0 },
+        { id: "m-2", parent_id: "m-1", level: 2, order_index: 0 },
+      ])
+    );
+
     const res = await fetch(`${base}/api/menu/reorder`, {
       method: "PATCH",
       headers: adminHeaders,
@@ -345,10 +384,10 @@ describe("PATCH /api/menu/reorder validation", () => {
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/Parent level must be 2/);
 
-    // Rejected entry persisted nowhere (live DB or in-memory fallback).
+    // Rejected entry persisted nowhere: the stored row is still level 2 under m-1.
     const menu = await flatMenu();
     expect(
       menu.find((m) => m.id === "m-2" && (m.level === 3 || m.parent_id === "m-1"))
-    ).toBeUndefined();
+    ).toBeDefined();
   });
 });

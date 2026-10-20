@@ -7,16 +7,19 @@
  * (levels 1-3).
  *
  * @param {Array<object>} rows - flat menu rows
- * @param {string|{role?:string}} [roleOrOptions] - role used for
- *   roles_allowed filtering; "super_admin" sees all rows
+ * @param {string|{role?:string, includeInactive?:boolean}} [roleOrOptions] -
+ *   role used for roles_allowed filtering ("super_admin" sees all rows);
+ *   includeInactive keeps hidden rows in the tree for an admin editor
  * @returns {Array<object>} root nodes, each with a `children` array
  */
 export function buildMenuTree(rows, roleOrOptions) {
-  const role = typeof roleOrOptions === "string" ? roleOrOptions : roleOrOptions?.role;
+  const options = typeof roleOrOptions === "string" ? { role: roleOrOptions } : roleOrOptions || {};
+  const role = options.role;
+  const includeInactive = options.includeInactive === true;
   const list = Array.isArray(rows) ? rows : [];
 
   const visible = (row) => {
-    if (row && row.is_active === false) return false;
+    if (!includeInactive && row && row.is_active === false) return false;
     if (!role || role === "super_admin") return true;
     if (!row.roles_allowed || row.roles_allowed.length === 0) return true;
     return row.roles_allowed.includes(role);
