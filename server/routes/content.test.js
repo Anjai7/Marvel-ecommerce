@@ -112,12 +112,13 @@ describe("content write error surfacing", () => {
     expect((await res.json()).error).toMatch(/db category delete boom/);
   });
 
-  it("public GETs still degrade to empty arrays when reads fail", async () => {
+  it("public GETs surface failures: the hero list degrades, the categories alias is a 500", async () => {
     mockFrom.mockReturnValue(selectChain({ data: null, error: { message: "missing table" } }));
     const hero = await (await fetch(`${base}/api/content/hero`)).json();
     expect(hero).toEqual({ slides: [] });
-    const cats = await (await fetch(`${base}/api/content/categories`)).json();
-    expect(cats).toEqual({ categories: [] });
+    const cats = await fetch(`${base}/api/content/categories`);
+    expect(cats.status).toBe(500);
+    expect((await cats.json()).error).toMatch(/missing table/);
   });
 
   it("POST /api/content/hero surfaces a thrown exception as 500", async () => {

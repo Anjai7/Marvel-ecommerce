@@ -139,23 +139,15 @@ router.delete("/hero/:id", ...adminOnly, async (req, res) => {
   return res.json({ message: "Hero slide deleted from Supabase DB" });
 });
 
-// GET /api/content/categories — public, active categories ordered by order_index
+// TEMPORARY (removed in Task 13): the storefront still calls the old path.
 router.get("/categories", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("site_categories")
-      .select("*")
-      .eq("is_active", true)
-      .order("order_index", { ascending: true });
-    if (error) {
-      console.warn("Supabase categories fetch warning:", error.message);
-      return res.json({ categories: [] });
-    }
-    return res.json({ categories: data || [] });
-  } catch (e) {
-    console.warn("Supabase categories fetch exception:", e.message);
-    return res.json({ categories: [] });
-  }
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order");
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ categories: data ?? [] });
 });
 
 // POST /api/content/categories — admin only

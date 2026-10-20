@@ -1,9 +1,37 @@
 // @vitest-environment node
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from "vitest";
+
+const { mockFrom } = vi.hoisted(() => ({ mockFrom: vi.fn() }));
+
+// The menu routes fall back to their in-memory seed when the database returns
+// no rows, so an empty double keeps this suite off the live Supabase project.
+vi.mock("../db.js", () => ({ supabase: { from: mockFrom } }));
+
 import { buildMenuTree } from "./menuTree.js";
 import { validateHierarchy } from "./menu.js";
 import app from "../app.js";
 import { signUserToken } from "../middleware/auth.js";
+
+function emptyQuery() {
+  const resolved = Promise.resolve({ data: [], error: null });
+  const chain = {
+    select: () => chain,
+    eq: () => chain,
+    order: () => resolved,
+    single: async () => ({ data: null, error: null }),
+    maybeSingle: async () => ({ data: null, error: null }),
+    upsert: () => chain,
+    update: () => chain,
+    delete: () => chain,
+    then: (onFulfilled, onRejected) => resolved.then(onFulfilled, onRejected),
+  };
+  return chain;
+}
+
+beforeEach(() => {
+  mockFrom.mockReset();
+  mockFrom.mockImplementation(() => emptyQuery());
+});
 
 const rows = [
   {
