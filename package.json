@@ -32,6 +32,8 @@
     "audit": "npm audit --audit-level=high",
     "check": "npm run lint && npm run test && npm run build",
     "db:push": "supabase db push",
+    "seed:content": "node server/seed_content.js",
+    "seed:products": "node server/seed_dynamic_products.js",
     "prepare": "lefthook install"
   },
   "dependencies": {
