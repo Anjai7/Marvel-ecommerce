@@ -149,11 +149,13 @@ CREATE INDEX IF NOT EXISTS categories_active_order ON public.categories (is_acti
   path segment only. Every lookup that has to name one category uses the whole path, never
   the bare slug (section 4.2).
 - **Slug versus name.** The slug _is_ the URL path segment and is independent of the display
-  name: the seed keeps the segment that already exists in `menu_items.path`
-  (`men-s-fashion`, not `mens-fashion`), while `slugify` produces only the _suggested
-  default_ filled into the form for a newly created row. Changing a category's `slug`
-  changes its path and therefore its URL and its menu path; changing its `name` does not
-  change either. Deleting `site_categories` does not change any existing menu path.
+  name: the seed copies the segment that already exists in `menu_items.path`
+  (`men-s-fashion`) and never re-slugifies the name, while `slugify` produces only the
+  _suggested default_ filled into the form for a newly created row. The two agree for
+  `Men's Fashion` under the current rule, but the seed does not rely on that — a hand-edited
+  path segment always wins. Changing a category's `slug` changes its path and therefore its
+  URL and its menu path; changing its `name` does not change either. Deleting
+  `site_categories` does not change any existing menu path.
 - `show_in_nav` controls whether the category appears in nav surfaces built from the
   taxonomy; `show_in_homepage` controls the homepage category strip.
 - `is_active = false` hides the row from the storefront but keeps it in the admin list.
@@ -714,8 +716,10 @@ checks are skipped and only present fields are validated.
 | menu                    | level 1–3, parent level exactly `level - 1`                                                                              | `Menu level must be an integer between 1 and 3.` / `Parent level must be 1 for a level 2 item.` / `Parent level must be 2 for a level 3 item.` / `Parent menu item not found.` |
 | `slugify`               | lowercase, then replace every run of characters outside `[a-z0-9]` with a single `-`, then trim leading and trailing `-` | pure function, no error                                                                                                                                                        |
 
-`slugify` reference cases: `"Men's Fashion"` → `mens-fashion`; `"Home & Kitchen"` →
-`home-kitchen`; `"TVs"` → `tvs`.
+`slugify` reference cases: `"Men's Fashion"` → `men-s-fashion`; `"Home & Kitchen"` →
+`home-kitchen`; `"TVs"` → `tvs`. The apostrophe and the space in the first case are two
+separate runs of non-alphanumeric characters, so each becomes its own `-`; that matches the
+seeded path segment `men-s-fashion` (§3.2, §7.1).
 
 ### 4.9 Route registration and mounting
 
@@ -1143,26 +1147,46 @@ level 2. The regexp form above has no fixed-index assumption.
 ```sql
 DO $$
 DECLARE
-  root_count INT;
-  orphan_count INT;
+  expected_roots INT; expected_l2 INT; expected_l3 INT;
+  actual_roots INT; actual_l2 INT; actual_l3 INT; orphan_count INT; empty_slug_count INT;
 BEGIN
-  SELECT count(*) INTO root_count
-  FROM public.categories
-  WHERE level = 1 AND id::text LIKE 'd1c%';
-
-  SELECT count(*) INTO orphan_count
-  FROM public.categories
-  WHERE level > 1 AND parent_id IS NULL;
-
-  IF root_count <> 7 OR orphan_count <> 0 THEN
-    RAISE EXCEPTION 'categories seed guard: expected 7 level-1 roots and 0 parentless rows below level 1, found % roots and % orphans', root_count, orphan_count;
+  SELECT count(*) FILTER (WHERE id::text LIKE 'd1c%'),
+         count(*) FILTER (WHERE id::text LIKE 'd2c%'),
+         count(*) FILTER (WHERE id::text LIKE 'd3c%')
+    INTO expected_roots, expected_l2, expected_l3
+    FROM public.menu_items;
+  SELECT count(*) FILTER (WHERE level = 1),
+         count(*) FILTER (WHERE level = 2),
+         count(*) FILTER (WHERE level = 3)
+    INTO actual_roots, actual_l2, actual_l3
+    FROM public.categories
+   WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
+  SELECT count(*) INTO orphan_count FROM public.categories WHERE level > 1 AND parent_id IS NULL;
+  SELECT count(*) INTO empty_slug_count FROM public.categories WHERE slug IS NULL OR slug = '';
+  IF actual_roots <> expected_roots OR actual_l2 <> expected_l2 OR actual_l3 <> expected_l3 THEN
+    RAISE EXCEPTION 'categories seed mismatch: expected %/%/%, got %/%/%',
+      expected_roots, expected_l2, expected_l3, actual_roots, actual_l2, actual_l3;
+  END IF;
+  IF orphan_count > 0 THEN
+    RAISE EXCEPTION 'categories seed produced % orphan rows above level 1', orphan_count;
+  END IF;
+  IF empty_slug_count > 0 THEN
+    RAISE EXCEPTION 'categories seed produced % rows with an empty slug', empty_slug_count;
   END IF;
 END $$;
 ```
 
-The guard runs after the three inserts and before the backfills. `RAISE EXCEPTION` with two
-`%` placeholders is valid PL/pgSQL; the message quotes both the actual and the expected
-counts, so a failed apply names the defect instead of leaving a half-built tree.
+`expected_*` is read from `menu_items` at apply time, so the guard compares the inserted tree
+against the live seed rather than a hard-coded number and stays correct when the mega-menu
+seed grows. The three checks are independent: the per-level counts catch a dropped,
+duplicated or wrong-depth insert; `orphan_count` catches a row whose parent insert failed
+(the `parent_id` FK is immediate, so this is belt-and-braces); `empty_slug_count` catches a
+row whose path had no last segment (for example `Home & Shop`, whose `/` path yields `''`)
+if such a row ever enters `categories`. `count(*) FILTER (…)` and `SELECT … INTO` with
+several aggregates are valid PL/pgSQL. The guard runs after the three inserts and before the
+backfills, which cannot change `level`, `parent_id` or `slug`; each message reports the
+counts involved (the mismatch message quotes expected and actual per level), so a failed
+apply reports the defect instead of leaving a half-built tree.
 
 Then link the rows back and backfill the display data:
 
