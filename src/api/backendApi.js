@@ -1,413 +1,197 @@
 // Architecture: Frontend (Browser) -> Express Backend (/api/*) -> Database & Cloudinary
-const API_BASE_URL = "/api";
-const TOKEN_KEY = "marvel_jwt_token";
+// Transport (token, headers, error mapping) lives in client.js. This module owns
+// the auth, user, product, order, menu and legacy-content endpoints.
+import { apiFetch, getStoredToken, setStoredToken } from "./client.js";
 
-/**
- * ----------------------------------------------------
- * JWT TOKEN STORAGE HELPERS
- * ----------------------------------------------------
- */
-export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
-}
-
-export function setStoredToken(token) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
-}
+export { getStoredToken, setStoredToken };
 
 export function clearStoredToken() {
-  localStorage.removeItem(TOKEN_KEY);
+  setStoredToken(null);
 }
 
-function getAuthHeaders(extraHeaders = {}) {
-  const token = getStoredToken();
-  const headers = { ...extraHeaders };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-/**
- * ----------------------------------------------------
- * CLOUDINARY IMAGE UPLOADS
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Cloudinary image uploads                                                   */
+/* -------------------------------------------------------------------------- */
 export async function apiUploadImage(file, folder = "marvel_products") {
   const formData = new FormData();
   formData.append("image", file);
   formData.append("folder", folder);
-
-  const res = await fetch(`${API_BASE_URL}/upload`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: formData,
-  });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Failed to upload image to Cloudinary.");
-  }
-  return data;
+  return apiFetch("/upload", { method: "POST", formData });
 }
 
-/**
- * ----------------------------------------------------
- * AUTHENTICATION & SESSIONS
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Authentication & sessions                                                  */
+/* -------------------------------------------------------------------------- */
 export async function apiLogin({ email, password, expectedRole }) {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const data = await apiFetch("/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, expectedRole }),
+    body: { email, password, expectedRole },
+    auth: false,
   });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Login failed on backend server.");
-  }
-
-  if (data.token) {
-    setStoredToken(data.token);
-  }
+  if (data.token) setStoredToken(data.token);
   return data;
 }
 
 export async function apiSignUp({ email, password, fullName, role = "user", storeName = "" }) {
-  const res = await fetch(`${API_BASE_URL}/auth/signup`, {
+  const data = await apiFetch("/auth/signup", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, fullName, role, storeName }),
+    body: { email, password, fullName, role, storeName },
+    auth: false,
   });
-
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || "Registration failed on backend server.");
-  }
-
-  if (data.token) {
-    setStoredToken(data.token);
-  }
+  if (data.token) setStoredToken(data.token);
   return data;
 }
 
+/** Restore the session user, or `null` when there is no token to check. */
 export async function apiGetMe() {
-  const token = getStoredToken();
-  if (!token) return null;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/me`, {
-      headers: getAuthHeaders(),
-    });
-
-    if (!res.ok) {
-      clearStoredToken();
-      return null;
-    }
-
-    const data = await res.json();
-    return data.user;
-  } catch (err) {
-    console.error("Session restore error:", err.message);
-    return null;
-  }
+  if (!getStoredToken()) return null;
+  const data = await apiFetch("/auth/me");
+  return data.user;
 }
 
-/**
- * ----------------------------------------------------
- * DYNAMIC NAVIGATION MENU
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Dynamic navigation menu                                                    */
+/* -------------------------------------------------------------------------- */
 export async function apiFetchMenuItems(userRole = "user") {
-  try {
-    const res = await fetch(`${API_BASE_URL}/menu?role=${userRole}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to fetch menu.");
-    return data;
-  } catch (err) {
-    console.error("Backend Menu API error:", err.message);
-    return [];
-  }
+  const query = new URLSearchParams({ role: userRole }).toString();
+  return apiFetch(`/menu?${query}`);
 }
 
 export async function apiSaveMenuItem(menuItem) {
-  const res = await fetch(`${API_BASE_URL}/menu`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(menuItem),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to save menu item.");
-  return data.menu;
+  const data = await apiFetch("/menu", { method: "POST", body: menuItem });
+  return data.item;
 }
 
 export async function apiDeleteMenuItem(id) {
-  const res = await fetch(`${API_BASE_URL}/menu/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to delete menu item.");
-  return data.menu;
+  return apiFetch(`/menu/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-/**
- * ----------------------------------------------------
- * USERS & ROLE MANAGEMENT
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Users & role management                                                    */
+/* -------------------------------------------------------------------------- */
 export async function apiFetchAllUsers() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/users`, {
-      headers: getAuthHeaders(),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    return data;
-  } catch (err) {
-    console.error("Backend Users API error:", err.message);
-    return [];
-  }
+  return apiFetch("/users");
 }
 
 export async function apiAdminCreateUser(userData) {
-  const res = await fetch(`${API_BASE_URL}/users/admin-create`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(userData),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to create user account.");
+  const data = await apiFetch("/users/admin-create", { method: "POST", body: userData });
   return data.user;
 }
 
 export async function apiUpdateUserRole(userId, newRole) {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/role`, {
+  const data = await apiFetch(`/users/${encodeURIComponent(userId)}/role`, {
     method: "PUT",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ role: newRole }),
+    body: { role: newRole },
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update role.");
   return data.users;
 }
 
 export async function apiUpdateUserDetails(userId, userData) {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
+  const data = await apiFetch(`/users/${encodeURIComponent(userId)}`, {
     method: "PUT",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(userData),
+    body: userData,
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update user.");
   return data.user;
 }
 
 export async function apiUpdateUserStatus(userId, status) {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/status`, {
+  return apiFetch(`/users/${encodeURIComponent(userId)}/status`, {
     method: "PUT",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ status }),
+    body: { status },
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update user status.");
-  return data;
 }
 
 export async function apiResetUserPassword(userId, newPassword) {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}/reset-password`, {
+  return apiFetch(`/users/${encodeURIComponent(userId)}/reset-password`, {
     method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ newPassword }),
+    body: { newPassword },
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to reset password.");
-  return data;
 }
 
 export async function apiDeleteUser(userId) {
-  const res = await fetch(`${API_BASE_URL}/users/${userId}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to delete user.");
-  return data;
+  return apiFetch(`/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }
 
 export async function apiRequestPasswordReset(email) {
-  const res = await fetch(`${API_BASE_URL}/auth/request-reset`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to request password reset.");
-  return data;
+  return apiFetch("/auth/request-reset", { method: "POST", body: { email }, auth: false });
 }
 
 export async function apiResetPassword(token, newPassword) {
-  const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+  return apiFetch("/auth/reset-password", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, newPassword }),
+    body: { token, newPassword },
+    auth: false,
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to reset password.");
-  return data;
 }
 
-/**
- * ----------------------------------------------------
- * PRODUCT CATALOG (CRUD & Moderation)
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Product catalog                                                            */
+/* -------------------------------------------------------------------------- */
 export async function apiFetchProducts(params = {}) {
-  try {
-    const query = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_BASE_URL}/products${query ? `?${query}` : ""}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to fetch products.");
-    return data;
-  } catch (err) {
-    console.error("Products API error:", err.message);
-    return [];
-  }
+  const query = new URLSearchParams(params).toString();
+  return apiFetch(`/products${query ? `?${query}` : ""}`);
 }
 
 export async function apiFetchProductById(id) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/products/${id}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Product not found.");
-    return data;
-  } catch (err) {
-    console.error(`Product API error for id ${id}:`, err.message);
-    return null;
-  }
+  return apiFetch(`/products/${encodeURIComponent(id)}`);
 }
 
 export async function apiCreateProduct(productData) {
-  const res = await fetch(`${API_BASE_URL}/products`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(productData),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to create product.");
+  const data = await apiFetch("/products", { method: "POST", body: productData });
   return data.product;
 }
 
 export async function apiUpdateProduct(id, updates) {
-  const res = await fetch(`${API_BASE_URL}/products/${id}`, {
+  const data = await apiFetch(`/products/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(updates),
+    body: updates,
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update product.");
   return data.product;
 }
 
 export async function apiModerateProduct(id, moderationPayload) {
-  const res = await fetch(`${API_BASE_URL}/products/${id}/moderation`, {
+  const data = await apiFetch(`/products/${encodeURIComponent(id)}/moderation`, {
     method: "PATCH",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(moderationPayload),
+    body: moderationPayload,
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to moderate product.");
   return data.product;
 }
 
 export async function apiDeleteProduct(id) {
-  const res = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to delete product.");
-  return data;
+  return apiFetch(`/products/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-/**
- * ----------------------------------------------------
- * ORDERS & FULFILLMENT
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Orders & fulfillment                                                       */
+/* -------------------------------------------------------------------------- */
 export async function apiFetchOrders(params = {}) {
-  try {
-    const query = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_BASE_URL}/orders${query ? `?${query}` : ""}`, {
-      headers: getAuthHeaders(),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to fetch orders.");
-    return data;
-  } catch (err) {
-    console.error("Orders API error:", err.message);
-    return [];
-  }
+  const query = new URLSearchParams(params).toString();
+  return apiFetch(`/orders${query ? `?${query}` : ""}`);
 }
 
 export async function apiCreateOrder(orderData) {
-  const res = await fetch(`${API_BASE_URL}/orders`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(orderData),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to place order.");
+  const data = await apiFetch("/orders", { method: "POST", body: orderData });
   return data.order;
 }
 
 export async function apiUpdateOrderStatus(id, statusData) {
-  const res = await fetch(`${API_BASE_URL}/orders/${id}/status`, {
+  const data = await apiFetch(`/orders/${encodeURIComponent(id)}/status`, {
     method: "PATCH",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(statusData),
+    body: statusData,
   });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to update order status.");
   return data.order;
 }
 
-/**
- * ----------------------------------------------------
- * SITE CONTENT — HERO SLIDES & CATEGORIES
- * ----------------------------------------------------
- */
+/* -------------------------------------------------------------------------- */
+/* Legacy site content — hero slides & the temporary category alias           */
+/*                                                                             */
+/* These keep their old exported names and return shapes for the components    */
+/* that still import them; the storefront migrates to contentApi.js. They now  */
+/* resolve arrays instead of swallowing failures: a 5xx throws.                */
+/* -------------------------------------------------------------------------- */
 export async function apiFetchHeroSlides() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/content/hero`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to fetch hero slides.");
-    return data.slides || [];
-  } catch (err) {
-    console.error("Backend Hero API error:", err.message);
-    return [];
-  }
+  const data = await apiFetch("/content/hero");
+  return data.slides;
 }
 
 export async function apiSaveHeroSlide(slide) {
@@ -415,38 +199,16 @@ export async function apiSaveHeroSlide(slide) {
     ...slide,
     order_index: slide.order_index != null ? Number(slide.order_index) : 0,
   };
-  const res = await fetch(`${API_BASE_URL}/content/hero`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to save hero slide.");
-  return data;
+  return apiFetch("/content/hero", { method: "POST", body: payload });
 }
 
 export async function apiDeleteHeroSlide(id) {
-  const res = await fetch(`${API_BASE_URL}/content/hero/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to delete hero slide.");
-  return data;
+  return apiFetch(`/content/hero/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function apiFetchSiteCategories() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/content/categories`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to fetch site categories.");
-    return data.categories || [];
-  } catch (err) {
-    console.error("Backend Categories API error:", err.message);
-    return [];
-  }
+  const data = await apiFetch("/content/categories");
+  return data.categories;
 }
 
 export async function apiSaveSiteCategory(category) {
@@ -454,24 +216,9 @@ export async function apiSaveSiteCategory(category) {
     ...category,
     order_index: category.order_index != null ? Number(category.order_index) : 0,
   };
-  const res = await fetch(`${API_BASE_URL}/content/categories`, {
-    method: "POST",
-    headers: getAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to save site category.");
-  return data;
+  return apiFetch("/content/categories", { method: "POST", body: payload });
 }
 
 export async function apiDeleteSiteCategory(id) {
-  const res = await fetch(`${API_BASE_URL}/content/categories/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to delete site category.");
-  return data;
+  return apiFetch(`/content/categories/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

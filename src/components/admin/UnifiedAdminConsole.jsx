@@ -59,6 +59,7 @@ import {
   apiDeleteProduct,
   apiModerateProduct,
   apiUpdateOrderStatus,
+  apiUploadImage,
 } from "../../api/backendApi";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -245,18 +246,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const handleProductImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const formData = new FormData();
-    formData.append("image", file);
-    formData.append("folder", "marvel_products");
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("marvel_jwt_token") || ""}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Image upload failed");
-      setProductForm((prev) => ({ ...prev, image_url: data.url || data.signed_url || "" }));
+      const data = await apiUploadImage(file, "marvel_products");
+      setProductForm((prev) => ({ ...prev, image_url: data.url || "" }));
     } catch (err) {
       addToast({ title: "Image Upload Failed", message: err.message, type: "error" });
     }

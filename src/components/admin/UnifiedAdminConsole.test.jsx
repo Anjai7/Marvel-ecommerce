@@ -18,6 +18,7 @@ vi.mock("../../api/backendApi", () => ({
   apiDeleteProduct: vi.fn(),
   apiModerateProduct: vi.fn(),
   apiUpdateOrderStatus: vi.fn(),
+  apiUploadImage: vi.fn(),
 }));
 
 vi.mock("../../context/AuthContext", () => ({

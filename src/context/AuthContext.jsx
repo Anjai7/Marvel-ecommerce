@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { apiLogin, apiSignUp, apiGetMe, getStoredToken, setStoredToken, clearStoredToken } from "../api/backendApi";
+import { apiLogin, apiSignUp, apiGetMe, clearStoredToken } from "../api/backendApi";
+import { getStoredToken, setStoredToken, onUnauthorized } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -41,6 +42,18 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // The app's only global 401 handler: a revoked or expired token logs out.
+  // Registered before the session restore below so that first call is covered.
+  useEffect(() => {
+    return onUnauthorized(() => {
+      setStoredToken(null);
+      setToken("");
+      setUser(null);
+      setAuthError(null);
+      window.location.hash = "#/login";
+    });
   }, []);
 
   useEffect(() => {
@@ -107,7 +120,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
-    refreshUser
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

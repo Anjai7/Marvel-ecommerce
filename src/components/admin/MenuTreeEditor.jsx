@@ -1,31 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronDown, ChevronRight, ChevronUp, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
-import {
-  apiFetchMenuItems,
-  apiSaveMenuItem,
-  apiDeleteMenuItem,
-  getStoredToken,
-} from "../../api/backendApi";
+import { apiFetchMenuItems, apiSaveMenuItem, apiDeleteMenuItem } from "../../api/backendApi";
+import { apiReorderMenuItems } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
 
 const ALL_ROLES = ["user", "vendor", "admin", "super_admin"];
-
-/** PATCH /api/menu/reorder — bulk order/parent updates (admin JWT). */
-async function apiReorderMenuItems(orders) {
-  const token = getStoredToken();
-  const res = await fetch("/api/menu/reorder", {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ orders }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || "Failed to reorder menu items.");
-  return data.menu;
-}
 
 function stripChildren(item) {
   const { children: _children, ...rest } = item;
