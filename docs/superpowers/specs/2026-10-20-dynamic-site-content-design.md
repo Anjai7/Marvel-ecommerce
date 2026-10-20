@@ -422,6 +422,12 @@ order_index)` and `hero_slides (is_active, order_index)` are reused unchanged.
   set of items in it, no more and no fewer.
   Reorder handlers are registered **before** `/:id` handlers.
 - **Ordering in lists.** `orderColumn` ascending, then `created_at` ascending.
+- **Hash routes in link fields.** This application has no path-based router — it is a hash
+  router (`src/App.jsx`) — so a stored link must be a **hash route** (`#/category/electronics/mobiles`)
+  or an absolute `https://` URL. A bare path such as `/help` would cause a full page load and a
+  server 404. The footer-link validator therefore accepts a value that is `null`/`""`, starts
+  with `/`, starts with `#/`, or is an `https://` URL. `isHttpsOrRelative` keeps its existing
+  narrower rule for image and asset URLs, and a separate helper covers the link case.
 
 ### 4.2 Categories — `/api/categories`
 
@@ -727,7 +733,7 @@ checks are skipped and only present fields are validated.
 | `validateBanner`        | `starts_at`/`ends_at` ISO-8601; `ends_at > starts_at`                                                                    | 400 naming the field                                                                                                                                                           |
 | `validateFooterSection` | `heading` required                                                                                                       | `Footer section heading is required.`                                                                                                                                          |
 | `validateFooterLink`    | `label` required                                                                                                         | 400 naming the field                                                                                                                                                           |
-| `validateFooterLink`    | `href` required, https-or-relative                                                                                       | `Footer link href is required.`                                                                                                                                                |
+| `validateFooterLink`    | `href` required, https-or-relative **or a hash route**                                                                   | `Footer link href is required.`                                                                                                                                                |
 | menu                    | `title` and `path` required                                                                                              | `Menu item title and path are required.`                                                                                                                                       |
 | menu                    | level 1–3, parent level exactly `level - 1`                                                                              | `Menu level must be an integer between 1 and 3.` / `Parent level must be 1 for a level 2 item.` / `Parent level must be 2 for a level 3 item.` / `Parent menu item not found.` |
 | `slugify`               | lowercase, then replace every run of characters outside `[a-z0-9]` with a single `-`, then trim leading and trailing `-` | pure function, no error                                                                                                                                                        |

@@ -681,6 +681,22 @@ describe("content API", () => {
       expect(calls.upsert).toEqual([{ section_id: "s1", label: "Help Center", href: "/help" }]);
     });
 
+    it("POST /api/content/footer/links accepts a hash route href", async () => {
+      const href = "#/category/electronics/mobiles";
+      const saved = { ...helpLink, id: "l-new", label: "Mobiles", href };
+      const calls = makeDb({ upsert: () => ({ data: [saved], error: null }) });
+
+      const res = await send("POST", "/api/content/footer/links", {
+        section_id: "s1",
+        label: "Mobiles",
+        href,
+      });
+
+      expect(res.status).toBe(201);
+      expect((await res.json()).link).toEqual(saved);
+      expect(calls.upsert).toEqual([{ section_id: "s1", label: "Mobiles", href }]);
+    });
+
     it("PATCH /api/content/footer/links/reorder renumbers one section to 0..n-1", async () => {
       const calls = makeDb({ select: () => ({ data: footerLinks, error: null }) });
 

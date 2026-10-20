@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  isHrefOrUrl,
   isHttpsOrRelative,
   slugify,
   validateBanner,
@@ -28,6 +29,33 @@ describe("isHttpsOrRelative", () => {
     expect(isHttpsOrRelative("javascript:alert(1)")).toBe(false);
     expect(isHttpsOrRelative("ftp://x")).toBe(false);
     expect(isHttpsOrRelative(42)).toBe(false);
+  });
+
+  it("keeps rejecting hash routes: it guards image and asset URLs", () => {
+    expect(isHttpsOrRelative("#/products")).toBe(false);
+    expect(isHttpsOrRelative("#/category/electronics/mobiles")).toBe(false);
+  });
+});
+
+describe("isHrefOrUrl", () => {
+  it("accepts null, the empty string, relative paths, https URLs and hash routes", () => {
+    expect(isHrefOrUrl(null)).toBe(true);
+    expect(isHrefOrUrl(undefined)).toBe(true);
+    expect(isHrefOrUrl("")).toBe(true);
+    expect(isHrefOrUrl("/help")).toBe(true);
+    expect(isHrefOrUrl("#/")).toBe(true);
+    expect(isHrefOrUrl("#/category/electronics/mobiles")).toBe(true);
+    expect(isHrefOrUrl("  #/cart  ")).toBe(true);
+    expect(isHrefOrUrl("https://x.com/help")).toBe(true);
+  });
+
+  it("rejects other schemes, a bare fragment and non-strings", () => {
+    expect(isHrefOrUrl("javascript:alert(1)")).toBe(false);
+    expect(isHrefOrUrl("http://x.com")).toBe(false);
+    expect(isHrefOrUrl("ftp://x")).toBe(false);
+    expect(isHrefOrUrl("#")).toBe(false);
+    expect(isHrefOrUrl("help")).toBe(false);
+    expect(isHrefOrUrl(42)).toBe(false);
   });
 });
 
@@ -258,6 +286,20 @@ describe("validateFooterLink", () => {
   it("accepts a label and a relative href", () => {
     expect(validateFooterLink({ label: "L", href: "/help" })).toBeNull();
     expect(validateFooterLink({ label: "L", href: "https://x.com/help" })).toBeNull();
+  });
+
+  it("accepts a hash route, so a seeded footer row can be re-saved", () => {
+    expect(validateFooterLink({ label: "L", href: "#/category/electronics/mobiles" })).toBeNull();
+    expect(validateFooterLink({ label: "L", href: "#/" })).toBeNull();
+    expect(validateFooterLink({ label: "L", href: "/help" })).toBeNull();
+    expect(validateFooterLink({ label: "L", href: "https://x.com/help" })).toBeNull();
+    expect(validateFooterLink({ label: "L", href: "#/cart" }, { partial: true })).toBeNull();
+  });
+
+  it("still rejects a javascript: href", () => {
+    expect(validateFooterLink({ label: "L", href: "javascript:alert(1)" })).toBe(
+      "Field 'href' must be an https URL or a relative path."
+    );
   });
 
   it("requires a label", () => {

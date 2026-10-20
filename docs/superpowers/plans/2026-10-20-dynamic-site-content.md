@@ -701,7 +701,7 @@ Export the three pure builders (`buildCategorySeeds`, `buildBannerSeeds`, `build
 Rewrite `server/seed_dynamic_products.js`:
 
 - **Remove** the `delete().neq("id", "00000000-…")` call at the current line 186 — it wipes the live catalog.
-- Upsert by a deterministic product id (`p1000000-0000-4000-8000-0000000000NN`) so re-running updates instead of duplicating.
+- Upsert by a deterministic product id so re-running updates instead of duplicating. **The id must be a valid UUID literal** — Postgres' `uuid_in` rejects a non-hexadecimal character and PostgREST answers 400 for the whole bulk upsert — so the prefix is hex-only, e.g. `e1000000-0000-4000-8000-0000000000NN`. A `p1…` prefix is **not** valid: `p` is not a hex digit.
 - Generate **at least 3 products for every level-1 category and at least 1 for every level-2 category** — read the real tree from `public.categories` at run time and build the product list from it, so the seed always matches the taxonomy.
 - Set `category` (display label) to the category `name` and `category_id` to the category `id`.
 - Images: use the category's `image_url` with a distinct `&sig=<n>` crop seed per product so the images differ but need only one real URL per category. If the category has no `image_url`, fall back to `https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&sig=<n>`.

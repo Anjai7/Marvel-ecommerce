@@ -37,6 +37,7 @@ import {
   seedProducts,
   withCropSeed,
 } from "./seed_dynamic_products.js";
+import { validateFooterLink } from "./lib/validation.js";
 
 const D1_ELECTRONICS = "d1c00000-0000-4000-8000-000000000001";
 const D1_FASHION = "d1c00000-0000-4000-8000-000000000002";
@@ -481,6 +482,18 @@ describe("buildFooterSeeds", () => {
     ]);
     expect(links[0].id).toBe(seedId("f2", 1));
     expect(links[33].id).toBe(seedId("f2", 34));
+  });
+
+  it("round-trips every seeded href through the footer-link validator", () => {
+    // The admin editor validates with this function, so a seeded href it
+    // rejects would make the row impossible to re-save.
+    const links = buildFooterSeeds().flatMap((section) => section.links);
+    const rejected = links
+      .map((link) => [link.href, validateFooterLink({ label: link.label, href: link.href })])
+      .filter(([, error]) => error !== null);
+
+    expect(links).toHaveLength(34);
+    expect(rejected).toEqual([]);
   });
 });
 

@@ -64,14 +64,35 @@ function isIsoTimestamp(value) {
 }
 
 /**
- * URL validation: empty/undefined allowed (optional fields);
- * otherwise must be an https:// URL or a site-relative path (/...).
+ * URL validation for images and assets: empty/undefined allowed (optional
+ * fields); otherwise must be an https:// URL or a site-relative path (/...).
+ * Deliberately does NOT accept `#/...` — an asset or hero image pointing at a
+ * hash route would render nothing. Link fields use `isHrefOrUrl` instead.
  */
 export function isHttpsOrRelative(value) {
   if (value == null || value === "") return true;
   if (typeof value !== "string") return false;
   const v = value.trim();
   if (v.startsWith("/")) return true;
+  return v.startsWith("https://");
+}
+
+/**
+ * Link validation (footer links today, any stored href tomorrow): empty/
+ * undefined allowed, otherwise an https:// URL, a site-relative path (/...) or
+ * a hash route (#/...). The hash form is required because this app has no
+ * path-based router — `src/App.jsx` reads `window.location.hash` — so a bare
+ * path such as `/help` would cause a full page load and a server 404.
+ *
+ * `isHttpsOrRelative` stays narrower on purpose: it guards image and asset
+ * URLs, where a hash route is meaningless.
+ */
+export function isHrefOrUrl(value) {
+  if (value == null || value === "") return true;
+  if (typeof value !== "string") return false;
+  const v = value.trim();
+  if (v.startsWith("/")) return true;
+  if (v.startsWith("#/")) return true;
   return v.startsWith("https://");
 }
 
@@ -169,7 +190,7 @@ export function validateFooterLink(body = {}, opts = {}) {
   if (typeof href !== "string" || href.trim() === "") {
     return "Footer link href is required.";
   }
-  if (!isHttpsOrRelative(href)) return urlFieldMessage("href");
+  if (!isHrefOrUrl(href)) return urlFieldMessage("href");
 
   return null;
 }
