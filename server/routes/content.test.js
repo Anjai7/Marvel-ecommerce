@@ -808,14 +808,47 @@ describe("content API", () => {
       ]);
     });
 
-    it("POST /api/content/categories keeps an edited child's hierarchy", async () => {
-      const calls = makeDb({ upsert: (state) => ({ data: [state.row], error: null }) });
+    it("POST /api/content/categories keeps the stored slug when an edit only renames", async () => {
+      const stored = { id: "c2", slug: "men-s-fashion", level: 2, parent_id: "c1" };
+      const calls = makeDb({
+        maybeSingle: () => ({ data: stored, error: null }),
+        upsert: (state) => ({ data: [state.row], error: null }),
+      });
+
+      const res = await send("POST", "/api/content/categories", {
+        id: "c2",
+        name: "Fashion",
+        image_url: "https://cdn.example.com/fashion.jpg",
+        path: "/products",
+        order_index: 4,
+        is_active: true,
+      });
+
+      expect(res.status).toBe(201);
+      expect(calls.upsert).toEqual([
+        {
+          id: "c2",
+          name: "Fashion",
+          slug: "men-s-fashion",
+          image_url: "https://cdn.example.com/fashion.jpg",
+          is_active: true,
+          display_order: 4,
+          level: 2,
+          parent_id: "c1",
+        },
+      ]);
+    });
+
+    it("POST /api/content/categories keeps an edited child's stored hierarchy", async () => {
+      const stored = { id: "c2", slug: "phones", level: 2, parent_id: "c1" };
+      const calls = makeDb({
+        maybeSingle: () => ({ data: stored, error: null }),
+        upsert: (state) => ({ data: [state.row], error: null }),
+      });
 
       const res = await send("POST", "/api/content/categories", {
         id: "c2",
         name: "Phones",
-        level: 2,
-        parent_id: "c1",
         order_index: 4,
       });
 
@@ -832,6 +865,35 @@ describe("content API", () => {
           parent_id: "c1",
         },
       ]);
+    });
+
+    it("POST /api/content/categories on a missing edit target is 404 and never upserts", async () => {
+      const calls = makeDb({ maybeSingle: () => ({ data: null, error: null }) });
+
+      const res = await send("POST", "/api/content/categories", { id: "ghost", name: "Ghost" });
+
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "category not found." });
+      expect(calls.upsert).toEqual([]);
+    });
+
+    it("POST /api/content/categories turns a duplicate root slug into 400 without a raw db message", async () => {
+      makeDb({
+        upsert: () => ({
+          data: null,
+          error: {
+            code: "23505",
+            message: 'duplicate key value violates unique constraint "categories_slug_root_unique"',
+          },
+        }),
+      });
+
+      const res = await send("POST", "/api/content/categories", { name: "Electronics" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body).toEqual({ error: "A category with that slug already exists." });
+      expect(JSON.stringify(body)).not.toMatch(/duplicate key|constraint|23505/);
     });
 
     it("POST /api/content/categories without a name is 400 and never touches the db", async () => {
@@ -857,6 +919,18 @@ describe("content API", () => {
       expect(mockFrom).not.toHaveBeenCalled();
     });
 
+    it("GET /api/content/categories surfaces a list read error as a generic 500", async () => {
+      makeDb({ select: () => ({ data: null, error: { message: "db alias boom" } }) });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const res = await get("/api/content/categories");
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body).toEqual({ error: "Could not load content." });
+      expect(JSON.stringify(body)).not.toContain("db alias boom");
+    });
+
     it("DELETE /api/content/categories/:id deletes from categories and returns 200 { message }", async () => {
       const calls = makeDb({ delete: () => ({ data: null, error: null }) });
 
@@ -864,18 +938,39 @@ describe("content API", () => {
 
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ message: "category deleted successfully." });
-      expect(calls.tables).toEqual(["categories"]);
+      expect(calls.tables).toEqual(["categories", "categories"]);
+      expect(calls.eq).toContainEqual(["parent_id", "c1"]);
       expect(calls.eq).toContainEqual(["id", "c1"]);
       expect(calls.delete).toBe(1);
     });
 
-    it("DELETE /api/content/categories/:id surfaces a delete error as 500", async () => {
+    it("DELETE /api/content/categories/:id refuses a row that has subcategories", async () => {
+      const calls = makeDb({
+        select: (state, table, recorded) =>
+          recorded.eq.some(([column]) => column === "parent_id")
+            ? { data: [{ id: "c2" }], error: null }
+            : { data: [], error: null },
+        delete: () => ({ data: null, error: null }),
+      });
+
+      const res = await send("DELETE", "/api/content/categories/c1");
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        error: "Cannot delete a category that has subcategories.",
+      });
+      expect(calls.delete).toBe(0);
+    });
+
+    it("DELETE /api/content/categories/:id surfaces a delete error as a generic 500", async () => {
       makeDb({ delete: () => ({ data: null, error: { message: "fk boom" } }) });
 
       const res = await send("DELETE", "/api/content/categories/c1");
 
       expect(res.status).toBe(500);
-      expect(await res.json()).toEqual({ error: "fk boom" });
+      const body = await res.json();
+      expect(body).toEqual({ error: "Failed to delete category." });
+      expect(JSON.stringify(body)).not.toContain("fk boom");
     });
   });
 

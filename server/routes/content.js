@@ -312,70 +312,117 @@ contentRouter.use("/hero", heroCrud);
 // read and write the new `categories` table; none of them touches the dropped
 // `site_categories` table.
 // ---------------------------------------------------------------------------
+
+/** A Postgres unique-constraint violation, however the driver wraps it. */
+function isUniqueViolation(error) {
+  return (
+    error?.code === "23505" ||
+    (typeof error?.message === "string" &&
+      error.message.includes("duplicate key value violates unique constraint"))
+  );
+}
+
 contentRouter.get("/categories", async (req, res) => {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("is_active", true)
-    .order("display_order");
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ categories: data ?? [] });
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("is_active", true)
+      .order("display_order");
+    if (error) return res.status(500).json({ error: READ_ERROR });
+    return res.json({ categories: data ?? [] });
+  } catch (thrown) {
+    console.error("Supabase category alias list exception:", thrown.message);
+    return res.status(500).json({ error: READ_ERROR });
+  }
 });
 
 contentRouter.post("/categories", ...adminOnly, async (req, res) => {
   const body = req.body && typeof req.body === "object" ? req.body : {};
-  const slug = body.slug ?? slugify(body.name);
-
-  const validationError = validateCategory({ ...body, slug });
-  if (validationError) return res.status(400).json({ error: validationError });
-
-  // The old editor speaks `order_index`; the new table speaks `display_order`.
-  // A spread row from GET already carries `display_order`, which wins so that a
-  // visibility toggle does not reset the position to 0.
-  const hasOrder = Object.hasOwn(body, "display_order") || Object.hasOwn(body, "order_index");
-  const orderValue = Object.hasOwn(body, "display_order") ? body.display_order : body.order_index;
-  if (hasOrder && !isValidOrderValue(orderValue)) {
-    return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
-  }
-
-  const payload = {
-    name: body.name,
-    slug,
-    image_url: body.image_url ?? null,
-    is_active: body.is_active ?? true,
-    display_order: orderValue === undefined ? 0 : Number(orderValue),
-  };
-
-  if (body.id !== undefined && body.id !== null) {
-    // An edit: keep the row's hierarchy unless the body explicitly moves it,
-    // otherwise renaming a child through the flat old editor would flatten it.
-    payload.id = body.id;
-    if (Number.isInteger(body.level)) payload.level = body.level;
-    if (body.parent_id !== undefined) payload.parent_id = body.parent_id;
-  } else {
-    payload.level = 1;
-    payload.parent_id = null;
-  }
+  const isEdit = body.id !== undefined && body.id !== null;
 
   try {
+    // The slug is the public URL segment and is independent of the display
+    // name (spec §3.2), so an edit must reuse the stored slug, level and
+    // parent instead of re-deriving them from the legacy payload.
+    let existing = null;
+    if (isEdit) {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, slug, level, parent_id")
+        .eq("id", body.id)
+        .maybeSingle();
+      if (error) return res.status(500).json({ error: "Failed to load category." });
+      if (!data) return res.status(404).json({ error: "category not found." });
+      existing = data;
+    }
+
+    const slug = isEdit ? existing.slug : (body.slug ?? slugify(body.name));
+
+    const validationError = validateCategory({ ...body, slug });
+    if (validationError) return res.status(400).json({ error: validationError });
+
+    // The old editor speaks `order_index`; the new table speaks `display_order`.
+    // A spread row from GET already carries `display_order`, which wins so that a
+    // visibility toggle does not reset the position to 0.
+    const hasOrder = Object.hasOwn(body, "display_order") || Object.hasOwn(body, "order_index");
+    const orderValue = Object.hasOwn(body, "display_order") ? body.display_order : body.order_index;
+    if (hasOrder && !isValidOrderValue(orderValue)) {
+      return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
+    }
+
+    const payload = {
+      name: body.name,
+      slug,
+      image_url: body.image_url ?? null,
+      is_active: body.is_active ?? true,
+      display_order: orderValue === undefined ? 0 : Number(orderValue),
+    };
+
+    if (isEdit) {
+      payload.id = body.id;
+      payload.level = existing.level;
+      payload.parent_id = existing.parent_id;
+    } else {
+      payload.level = 1;
+      payload.parent_id = null;
+    }
+
     const { data, error } = await supabase.from("categories").upsert(payload).select();
-    if (error) return res.status(500).json({ error: error.message || "Failed to save category." });
+    if (error) {
+      if (isUniqueViolation(error)) {
+        return res.status(400).json({ error: "A category with that slug already exists." });
+      }
+      return res.status(500).json({ error: "Failed to save category." });
+    }
     return res
       .status(201)
       .json({ message: "category saved successfully.", category: data?.[0] ?? null });
   } catch (thrown) {
-    return res.status(500).json({ error: thrown.message || "Failed to save category." });
+    console.error("Supabase category alias save exception:", thrown.message);
+    return res.status(500).json({ error: "Failed to save category." });
   }
 });
 
 contentRouter.delete("/categories/:id", ...adminOnly, async (req, res) => {
   try {
+    // `parent_id` is ON DELETE CASCADE, and the legacy editor renders the whole
+    // taxonomy flat, so refuse to delete a row that still has children.
+    const { data: children, error: childrenError } = await supabase
+      .from("categories")
+      .select("id")
+      .eq("parent_id", req.params.id);
+    if (childrenError) return res.status(500).json({ error: "Failed to delete category." });
+    if ((children ?? []).length > 0) {
+      return res.status(400).json({ error: "Cannot delete a category that has subcategories." });
+    }
+
     const { error } = await supabase.from("categories").delete().eq("id", req.params.id);
-    if (error)
-      return res.status(500).json({ error: error.message || "Failed to delete category." });
+    if (error) return res.status(500).json({ error: "Failed to delete category." });
     return res.json({ message: "category deleted successfully." });
   } catch (thrown) {
-    return res.status(500).json({ error: thrown.message || "Failed to delete category." });
+    console.error("Supabase category alias delete exception:", thrown.message);
+    return res.status(500).json({ error: "Failed to delete category." });
   }
 });
 

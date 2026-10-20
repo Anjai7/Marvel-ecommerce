@@ -14,9 +14,14 @@ export const adminGuards = [verifyToken, requireRole(ADMIN_ROLES)];
 const INACTIVE_FALSE = ["0", "false", "off"];
 
 /**
- * The strict integer rule for an order column. `validateOrderIndex` in
- * validation.js owns the same rule but is not exported and that module is
- * frozen, so this mirrors it and its exact message.
+ * The strict integer rule for an order column.
+ *
+ * DELIBERATE MIRROR: `isExactInteger`/`validateOrderIndex` in
+ * `server/lib/validation.js` (lines 38-48) own this rule, but neither is
+ * exported and that module is frozen for Tasks 6 and 7. This copy is
+ * byte-for-byte behaviourally identical (including the message). Do not edit
+ * one in isolation: when `validation.js` is unfrozen, export `isExactInteger`
+ * and delete this duplicate.
  */
 export const ORDER_INTEGER_MESSAGE = "order_index must be an integer.";
 
