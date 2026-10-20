@@ -388,9 +388,23 @@ order_index)` and `hero_slides (is_active, order_index)` are reused unchanged.
   token → `401`; valid token with the wrong role → `403`. No write may reach the database
   before the guard passes.
 - **Partial updates.** `PATCH` validates with `{ partial: true }` (required-field checks are
-  skipped for omitted fields) and writes **only the keys present in the request body**.
-  Omitted fields keep their stored values. Sending `null` explicitly clears a nullable
-  column — that is the only way to clear one.
+  skipped for omitted fields) and writes **only the keys present in the request body**, plus any
+  field the content type's payload builder explicitly derives (see below). Omitted fields keep
+  their stored values. Sending `null` explicitly clears a nullable column — that is the only way
+  to clear one.
+  - **The write set is the payload builder's output.** The shared CRUD factory writes exactly the
+    keys that `toPayload(body)` returns, filtered to the content type's writable fields, with
+    `undefined` values dropped. The factory supplies a **default** `toPayload` that returns only
+    the body-present keys, so the "never null an omitted field" guarantee holds for any content
+    type that does not override it. A content type that must **derive** a column from another
+    (categories deriving `level` from `parent_id`) or **rename** one supplies its own
+    `toPayload` and owns the consequence: the derived key is written even though the client did
+    not send it. A client-sent key must never be silently dropped — if `toPayload` renames it,
+    the renamed column is what gets written.
+- **List errors are surfaced.** A database error on a list read is a `500 { "error": "..." }`, not
+  an empty list. The storefront's content context has a first-class error state and renders an
+  explicit empty state for the failed section; degrading a failure to `[]` would make an outage
+  look like "no content" to both the storefront and the admin editor.
 - **Upsert.** `POST` accepts an optional `id`. With an `id` present it updates that row;
   without one Supabase generates the UUID. The response always contains the persisted row,
   so the client learns generated ids.
@@ -402,9 +416,10 @@ order_index)` and `hero_slides (is_active, order_index)` are reused unchanged.
   **complete** set of ids in the affected scope (all hero slides; all banners of one
   placement; all footer sections; all links of one section; all sibling categories; all
   siblings of one menu parent). The server renumbers to `0..n-1` in array order and returns
-  `200 { "message": "..." }`. A body that omits an id currently present in the scope is
-  rejected with
-  `400 { "error": "Reorder must include every item in the scope." }`.
+  `200 { "message": "..." }`. A body that omits an id currently present in the scope, or that
+  contains an id outside the scope, or that repeats an id or omits an `id`, is rejected with
+  `400 { "error": "Reorder must include every item in the scope." }` — the scope is exactly the
+  set of items in it, no more and no fewer.
   Reorder handlers are registered **before** `/:id` handlers.
 - **Ordering in lists.** `orderColumn` ascending, then `created_at` ascending.
 
@@ -470,7 +485,8 @@ routes on the full path (§5.5) and never calls this route.
 ```
 
 `name` and `slug` are required. `level` is optional: when omitted the server derives it from
-`parent_id` (`parent.level + 1`, or `1` when `parent_id` is null). When supplied it must
+`parent_id` (`parent.level + 1`, or `1` when `parent_id` is null) — on `POST` **and** on `PATCH`,
+so moving a category to a new parent cannot leave a stale level behind. When supplied it must
 agree with the parent. `display_order`/`level` are coerced to integers by `toPayload`.
 Writable fields are exactly: `name, slug, parent_id, level, description, icon, image_url,
 banner_image_url, display_order, is_active, show_in_nav, show_in_homepage`.
