@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { buildMenuTree } from "./menuTree.js";
 import { validateHierarchy } from "./menu.js";

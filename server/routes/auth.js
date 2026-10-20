@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import express from "express";
 import { supabase } from "../db.js";
 import { signUserToken, verifyToken } from "../middleware/auth.js";
@@ -16,12 +17,12 @@ router.post("/login", async (req, res) => {
     // 1. Authenticate with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      password
+      password,
     });
 
     if (authError || !authData?.user) {
       return res.status(401).json({
-        error: "Invalid email or password. Please check your credentials."
+        error: "Invalid email or password. Please check your credentials.",
       });
     }
 
@@ -42,7 +43,7 @@ router.post("/login", async (req, res) => {
         email: authData.user.email,
         full_name: meta.full_name || authData.user.email,
         role: meta.role || "user",
-        store_name: meta.store_name || null
+        store_name: meta.store_name || null,
       };
     }
 
@@ -52,7 +53,7 @@ router.post("/login", async (req, res) => {
       email: profile.email,
       role: profile.role,
       full_name: profile.full_name,
-      store_name: profile.store_name
+      store_name: profile.store_name,
     });
 
     res.json({
@@ -63,8 +64,8 @@ router.post("/login", async (req, res) => {
         email: profile.email,
         full_name: profile.full_name,
         role: profile.role,
-        store_name: profile.store_name
-      }
+        store_name: profile.store_name,
+      },
     });
   } catch (err) {
     console.error("Login route error:", err);
@@ -82,9 +83,14 @@ router.post("/signup", async (req, res) => {
 
   // 🔒 Security Restriction: Public signup cannot create admin or super_admin accounts
   const sanitizedRole = (role || "user").toLowerCase().trim();
-  if (sanitizedRole === "admin" || sanitizedRole === "super_admin" || sanitizedRole === "moderator") {
+  if (
+    sanitizedRole === "admin" ||
+    sanitizedRole === "super_admin" ||
+    sanitizedRole === "moderator"
+  ) {
     return res.status(403).json({
-      error: "Public registration is limited to Customer and Vendor accounts only. Admin accounts must be created by an existing administrator from the Admin Console."
+      error:
+        "Public registration is limited to Customer and Vendor accounts only. Admin accounts must be created by an existing administrator from the Admin Console.",
     });
   }
 
@@ -99,8 +105,8 @@ router.post("/signup", async (req, res) => {
       user_metadata: {
         full_name: fullName,
         role: validRole,
-        store_name: validRole === "vendor" ? (storeName || `${fullName}'s Store`) : null
-      }
+        store_name: validRole === "vendor" ? storeName || `${fullName}'s Store` : null,
+      },
     });
 
     if (createError) {
@@ -108,7 +114,7 @@ router.post("/signup", async (req, res) => {
     }
 
     const newUser = createData.user;
-    const resolvedStore = validRole === "vendor" ? (storeName || `${fullName}'s Store`) : null;
+    const resolvedStore = validRole === "vendor" ? storeName || `${fullName}'s Store` : null;
 
     // Upsert into profiles table
     await supabase.from("profiles").upsert({
@@ -118,7 +124,7 @@ router.post("/signup", async (req, res) => {
       role: validRole,
       store_name: resolvedStore,
       status: "active",
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     });
 
     // Issue JWT token
@@ -127,7 +133,7 @@ router.post("/signup", async (req, res) => {
       email: newUser.email,
       role: validRole,
       full_name: fullName,
-      store_name: resolvedStore
+      store_name: resolvedStore,
     });
 
     res.status(201).json({
@@ -138,8 +144,8 @@ router.post("/signup", async (req, res) => {
         email: newUser.email,
         full_name: fullName,
         role: validRole,
-        store_name: resolvedStore
-      }
+        store_name: resolvedStore,
+      },
     });
   } catch (err) {
     console.error("Signup error:", err);
@@ -147,10 +153,16 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-// POST /api/auth/forgot-password (Password reset request)
-router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
+const RESET_REQUEST_MESSAGE = "If this email is registered, a reset link has been sent.";
+const INVALID_RESET_TOKEN_MESSAGE = "Invalid or expired reset token.";
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+// POST /api/auth/request-reset (Password reset request)
+// Always answers with the same body so the response never reveals whether the
+// email belongs to an account.
+router.post("/request-reset", async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Email is required." });
   }
 
@@ -158,64 +170,101 @@ router.post("/forgot-password", async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id")
       .eq("email", cleanEmail)
-      .single();
+      .maybeSingle();
 
-    if (!profile) {
-      // Don't reveal if account exists for security, return success response
-      return res.json({
-        message: "If this email is registered, you will receive password reset instructions."
+    if (profile) {
+      const token = crypto.randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+      const { error: insertError } = await supabase.from("password_reset_tokens").insert({
+        user_id: profile.id,
+        token,
+        expires_at: expiresAt,
       });
-    }
 
-    res.json({
-      message: "Password reset request verified. You may proceed to set a new password.",
-      email: cleanEmail,
-      userId: profile.id
-    });
+      if (insertError) {
+        console.error("Password reset token insert failed:", insertError.message);
+      }
+    }
   } catch (err) {
-    res.status(500).json({ error: "Failed to process password reset request." });
+    // Log without echoing details; the caller still receives the neutral body.
+    console.error("Password reset request error:", err);
   }
+
+  res.json({ message: RESET_REQUEST_MESSAGE });
 });
 
-// POST /api/auth/reset-password (Set new password)
+// POST /api/auth/reset-password (Set new password with a single-use token)
 router.post("/reset-password", async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { token, newPassword } = req.body || {};
 
-  if (!email || !newPassword) {
-    return res.status(400).json({ error: "Email and new password are required." });
+  if (!token || typeof token !== "string") {
+    return res.status(400).json({ error: INVALID_RESET_TOKEN_MESSAGE });
   }
 
-  if (newPassword.length < 6) {
+  if (typeof newPassword !== "string" || newPassword.length < 6) {
     return res.status(400).json({ error: "Password must be at least 6 characters." });
   }
 
   try {
-    const cleanEmail = email.trim().toLowerCase();
-    
-    // Find profile
-    const { data: profile, error: profileErr } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .eq("email", cleanEmail)
-      .single();
+    const { data: resetToken, error: tokenError } = await supabase
+      .from("password_reset_tokens")
+      .select("id, user_id, expires_at, used_at")
+      .eq("token", token)
+      .maybeSingle();
 
-    if (profileErr || !profile) {
-      return res.status(404).json({ error: "No account found with this email address." });
+    if (tokenError) {
+      console.error("Password reset token lookup failed:", tokenError.message);
+      return res.status(500).json({ error: "Failed to reset password." });
     }
 
-    // Update password in Supabase Auth
-    const { error: updateErr } = await supabase.auth.admin.updateUserById(profile.id, {
-      password: newPassword
+    const expiresAtMs = resetToken ? new Date(resetToken.expires_at).getTime() : Number.NaN;
+
+    if (
+      !resetToken ||
+      resetToken.used_at ||
+      !Number.isFinite(expiresAtMs) ||
+      expiresAtMs < Date.now()
+    ) {
+      return res.status(400).json({ error: INVALID_RESET_TOKEN_MESSAGE });
+    }
+
+    const usedAt = new Date().toISOString();
+
+    // Consume the token before changing the password so it cannot be replayed.
+    const { error: consumeError } = await supabase
+      .from("password_reset_tokens")
+      .update({ used_at: usedAt })
+      .eq("id", resetToken.id);
+
+    if (consumeError) {
+      console.error("Password reset token consume failed:", consumeError.message);
+      return res.status(500).json({ error: "Failed to reset password." });
+    }
+
+    const { error: updateErr } = await supabase.auth.admin.updateUserById(resetToken.user_id, {
+      password: newPassword,
     });
 
     if (updateErr) {
       return res.status(500).json({ error: updateErr.message });
     }
 
+    // Every other outstanding token for this user is now invalid.
+    const { error: invalidateError } = await supabase
+      .from("password_reset_tokens")
+      .update({ used_at: usedAt })
+      .eq("user_id", resetToken.user_id)
+      .neq("id", resetToken.id);
+
+    if (invalidateError) {
+      console.error("Password reset token invalidation failed:", invalidateError.message);
+    }
+
     res.json({
-      message: "Password has been successfully updated. You can now sign in with your new password."
+      message:
+        "Password has been successfully updated. You can now sign in with your new password.",
     });
   } catch (err) {
     res.status(500).json({ error: err.message || "Failed to reset password." });
@@ -241,8 +290,8 @@ router.get("/me", verifyToken, async (req, res) => {
         email: profile.email,
         full_name: profile.full_name,
         role: profile.role,
-        store_name: profile.store_name
-      }
+        store_name: profile.store_name,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to restore user session." });
