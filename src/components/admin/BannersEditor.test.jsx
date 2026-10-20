@@ -183,6 +183,14 @@ describe("BannersEditor", () => {
     const payload = apiSaveBanner.mock.calls[0][0];
     expect(payload.placement).toBe("home_promo_carousel");
     expect(payload.gallery).toEqual([]);
+
+    // The new banner joins the placement's ordered list: the whole group is
+    // renumbered so no two banners share a display_order.
+    await waitFor(() => expect(apiReorderBanners).toHaveBeenCalledTimes(1));
+    expect(apiReorderBanners).toHaveBeenCalledWith([
+      { id: "c1", display_order: 0 },
+      { id: "b9", display_order: 1 },
+    ]);
   });
 
   it("edits through apiUpdateBanner with only the changed fields", async () => {
@@ -202,6 +210,68 @@ describe("BannersEditor", () => {
     expect(apiUpdateBanner).toHaveBeenCalledWith("b1", { id: "b1", title: "Bigger Sale" });
     expect(apiSaveBanner).not.toHaveBeenCalled();
     expect(broadcast).toHaveBeenCalled();
+  });
+
+  it("updates the banner in place when the edit changes its placement", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Big Sale");
+    await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    await user.selectOptions(within(dialog).getByLabelText("Placement"), "home_promo_carousel");
+    await user.click(within(dialog).getByRole("button", { name: "Save Banner" }));
+
+    // The tab refetched the new placement, so the edited row is no longer in
+    // the list — the save must still be an update, never a duplicate create.
+    await waitFor(() => expect(apiUpdateBanner).toHaveBeenCalledTimes(1));
+    expect(apiUpdateBanner).toHaveBeenCalledWith("b1", {
+      id: "b1",
+      placement: "home_promo_carousel",
+    });
+    expect(apiSaveBanner).not.toHaveBeenCalled();
+  });
+
+  it("reports a no-op save without writing or broadcasting", async () => {
+    const user = userEvent.setup();
+    const broadcast = captureContentUpdates();
+    renderEditor();
+
+    await screen.findByText("Big Sale");
+    await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
+    await user.click(screen.getByRole("button", { name: "Save Banner" }));
+
+    expect(await screen.findByText("No Changes")).toBeVisible();
+    expect(screen.getByText("'Big Sale' was not modified.")).toBeVisible();
+    expect(apiUpdateBanner).not.toHaveBeenCalled();
+    expect(apiSaveBanner).not.toHaveBeenCalled();
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it("surfaces display_order in the form and renumbers the placement on save", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Big Sale");
+    await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    expect(within(dialog).getByText("Display order")).toBeVisible();
+    expect(within(dialog).getByText("Position 1 of 2")).toBeVisible();
+
+    await user.click(within(dialog).getByRole("button", { name: "Move down this banner" }));
+    expect(within(dialog).getByText("Position 2 of 2")).toBeVisible();
+    await user.click(within(dialog).getByRole("button", { name: "Save Banner" }));
+
+    await waitFor(() => expect(apiUpdateBanner).toHaveBeenCalledTimes(1));
+    expect(apiUpdateBanner).toHaveBeenCalledWith("b1", { id: "b1", display_order: 1 });
+    // Every sibling is renumbered, so no two banners share a position.
+    await waitFor(() => expect(apiReorderBanners).toHaveBeenCalledTimes(1));
+    expect(apiReorderBanners).toHaveBeenCalledWith([
+      { id: "b2", display_order: 0 },
+      { id: "b1", display_order: 1 },
+    ]);
   });
 
   it("sends ends_at as an ISO string", async () => {

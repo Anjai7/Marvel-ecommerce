@@ -114,6 +114,17 @@ function toLinkPayload(form) {
   };
 }
 
+/**
+ * The complete sibling group renumbered 0..n-1. A create reuses a
+ * display_order that a delete left behind, so the group is renumbered after
+ * every create instead of writing a raw position that may still be taken.
+ */
+function groupOrders(rows, extraId = null) {
+  const ids = rows.map((row) => row.id);
+  if (extraId && !ids.includes(extraId)) ids.push(extraId);
+  return ids.map((id, index) => ({ id, display_order: index }));
+}
+
 function storedValue(row, key) {
   switch (key) {
     case "column_index":
@@ -228,7 +239,11 @@ export default function FooterEditor() {
             stored ? changedFields(stored, payload) : { ...payload, id: editing.form.id }
           );
         } else {
-          await apiSaveFooterSection(payload);
+          const saved = await apiSaveFooterSection(payload);
+          const createdId = saved?.section?.id ?? null;
+          // The new section joins the ordered column: renumber the group so
+          // no two sections share a position.
+          if (createdId) await apiReorderFooterSections(groupOrders(sections, createdId));
         }
       } else {
         const payload = toLinkPayload(editing.form);
@@ -257,7 +272,11 @@ export default function FooterEditor() {
             stored ? changedFields(stored, payload) : { ...payload, id: editing.form.id }
           );
         } else {
-          await apiSaveFooterLink(payload);
+          const saved = await apiSaveFooterLink(payload);
+          const createdId = saved?.link?.id ?? null;
+          // The new link joins the section's ordered list: renumber the group
+          // so no two links share a position.
+          if (createdId) await apiReorderFooterLinks(groupOrders(links, createdId));
         }
       }
 
@@ -398,23 +417,17 @@ export default function FooterEditor() {
 
   const isSectionForm = editing?.kind === "section";
   const form = editing?.form;
-  const formIndex = Number(form?.displayOrder ?? 0);
-  const formTotal = isSectionForm
-    ? form?.id
-      ? sections.length
-      : sections.length + 1
-    : form?.id
-      ? links.length
-      : links.length + 1;
   const deleteLinks =
     deleteTarget?.kind === "section"
       ? (sections.find((section) => section.id === deleteTarget.item.id)?.links ?? []).length
       : 0;
   const deleteTitle =
     deleteTarget?.kind === "section"
-      ? `Delete '${deleteTarget.item.heading}' and its ${deleteLinks} ${
-          deleteLinks === 1 ? "link" : "links"
-        }?`
+      ? deleteLinks === 0
+        ? `Delete '${deleteTarget.item.heading}'?`
+        : `Delete '${deleteTarget.item.heading}' and its ${deleteLinks} ${
+            deleteLinks === 1 ? "link" : "links"
+          }?`
       : `Delete '${deleteTarget?.item?.label || "link"}'?`;
 
   return (
@@ -699,38 +712,23 @@ export default function FooterEditor() {
                       onChange={(event) => setField("href", event.target.value)}
                     />
                     <p className="form-hint">
-                      Use a hash route (<code>#/category/electronics</code>), a site path, or an
-                      https URL.
+                      Use a hash route such as <code>#/category/electronics</code>, or an https URL.
+                      A bare path like <code>/help</code> leaves the app and will not resolve.
                     </p>
                   </div>
                 </>
               )}
 
-              <div className="form-group-row">
-                <div className="form-group">
-                  <span className="form-label">Display order</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <OrderControls
-                      index={formIndex}
-                      total={formTotal}
-                      label={isSectionForm ? "this section" : "this link"}
-                      onMove={(_from, to) => setField("displayOrder", to)}
-                    />
-                    <span className="text-sm text-muted">
-                      Position {formIndex + 1} of {formTotal}
-                    </span>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <span className="form-label">Active</span>
-                  <ActiveToggle
-                    active={form.isActive}
-                    label={
-                      isSectionForm ? form.heading || "this section" : form.label || "this link"
-                    }
-                    onChange={(active) => setField("isActive", active)}
-                  />
-                </div>
+              {/* Ordering lives in the row-level up/down controls, which
+                  renumber the complete sibling group; a raw form-level
+                  display_order could leave two rows sharing a position. */}
+              <div className="form-group">
+                <span className="form-label">Active</span>
+                <ActiveToggle
+                  active={form.isActive}
+                  label={isSectionForm ? form.heading || "this section" : form.label || "this link"}
+                  onChange={(active) => setField("isActive", active)}
+                />
               </div>
 
               {formError && (
@@ -757,9 +755,11 @@ export default function FooterEditor() {
         title={deleteTitle}
         message={
           deleteTarget?.kind === "section"
-            ? `Every link in this section is deleted with it (${deleteLinks} ${
-                deleteLinks === 1 ? "link" : "links"
-              }). This cannot be undone.`
+            ? deleteLinks === 0
+              ? "This section has no links. This cannot be undone."
+              : `Every link in this section is deleted with it (${deleteLinks} ${
+                  deleteLinks === 1 ? "link" : "links"
+                }). This cannot be undone.`
             : "This removes the link from the footer. This cannot be undone."
         }
         destructive

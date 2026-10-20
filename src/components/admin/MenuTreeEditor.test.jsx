@@ -309,7 +309,7 @@ describe("MenuTreeEditor", () => {
     );
   });
 
-  it("reorders with the complete sibling group", async () => {
+  it("reorders with the complete sibling group and no move keys", async () => {
     const user = userEvent.setup();
     renderEditor();
 
@@ -318,9 +318,19 @@ describe("MenuTreeEditor", () => {
 
     await waitFor(() => expect(apiReorderMenuItems).toHaveBeenCalledTimes(1));
     expect(apiReorderMenuItems).toHaveBeenCalledWith([
-      { id: "4", display_order: 0, parent_id: null, level: 1 },
-      { id: "1", display_order: 1, parent_id: null, level: 1 },
+      { id: "4", display_order: 0 },
+      { id: "1", display_order: 1 },
     ]);
+
+    // A within-group move never changes parents. `parent_id`/`level` are
+    // optional (§3.6) and the server re-validates the hierarchy when they are
+    // present, so a row whose stored level disagrees with its parent would
+    // turn an otherwise valid reorder into a 400.
+    const orders = apiReorderMenuItems.mock.calls[0][0];
+    for (const order of orders) {
+      expect(order).not.toHaveProperty("parent_id");
+      expect(order).not.toHaveProperty("level");
+    }
   });
 
   it("derives the path from a chosen category's full ancestor path", async () => {

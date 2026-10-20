@@ -149,6 +149,28 @@ describe("FooterEditor", () => {
     expect(broadcast).toHaveBeenCalled();
   });
 
+  it("renumbers the section's links after a create so no position is shared", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Customer Support");
+    await user.click(screen.getByRole("button", { name: "Add Link" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    await user.type(within(dialog).getByLabelText("Label *"), "Contact Us");
+    await user.type(within(dialog).getByLabelText("Href *"), "#/contact");
+    await user.click(within(dialog).getByRole("button", { name: "Save Link" }));
+
+    await waitFor(() => expect(apiReorderFooterLinks).toHaveBeenCalledTimes(1));
+    // The whole group is renumbered 0..n-1: a create must not reuse a
+    // display_order that a delete left behind.
+    expect(apiReorderFooterLinks).toHaveBeenCalledWith([
+      { id: "l1", display_order: 0 },
+      { id: "l2", display_order: 1 },
+      { id: "l9", display_order: 2 },
+    ]);
+  });
+
   it("accepts a hash route as the href without adding a stricter client rule", async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -181,6 +203,57 @@ describe("FooterEditor", () => {
     const dialog = screen.getByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(apiDeleteFooterSection).toHaveBeenCalledWith("s1"));
+  });
+
+  it("drops the link clause from the delete title when the section is empty", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Popular Searches");
+    await user.click(screen.getByRole("button", { name: "Delete section Popular Searches" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Delete 'Popular Searches'?")).toBeVisible();
+    expect(within(dialog).queryByText(/0 links/i)).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText("This section has no links. This cannot be undone.")
+    ).toBeVisible();
+  });
+
+  it("keeps ordering out of the form so links cannot share a position", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Help Center");
+    await user.click(screen.getByRole("button", { name: "Edit link Help Center" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    // The row-level up/down controls renumber the complete group; a raw
+    // display_order in the form would leave two links on the same position.
+    expect(within(dialog).queryByText("Display order")).not.toBeInTheDocument();
+
+    const label = within(dialog).getByLabelText("Label *");
+    await user.clear(label);
+    await user.type(label, "Help & Support");
+    await user.click(within(dialog).getByRole("button", { name: "Save Link" }));
+
+    await waitFor(() => expect(apiUpdateFooterLink).toHaveBeenCalledTimes(1));
+    expect(apiUpdateFooterLink).toHaveBeenCalledWith("l1", {
+      id: "l1",
+      label: "Help & Support",
+    });
+  });
+
+  it("steers admins to hash routes in the href hint", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Help Center");
+    await user.click(screen.getByRole("button", { name: "Edit link Help Center" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    expect(within(dialog).getByText(/#\/category\/electronics/)).toBeVisible();
+    expect(within(dialog).getByText(/leaves the app/i)).toBeVisible();
   });
 
   it("reorders links with the complete list for that section", async () => {

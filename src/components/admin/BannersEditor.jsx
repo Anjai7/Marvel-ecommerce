@@ -9,7 +9,7 @@ import {
   apiUpdateBanner,
 } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
-import { ActiveToggle, ImageField, OrderControls } from "./ContentEditorKit";
+import { ActiveToggle, cellValue, ImageField, OrderControls } from "./ContentEditorKit";
 
 const CONTENT_EVENT = "marvel_content_updated";
 
@@ -30,12 +30,6 @@ const trimOrNull = (value) => {
   return text || null;
 };
 
-const cellValue = (value) => {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
-};
-
 /** A datetime-local value in the browser's zone, for an ISO timestamp. */
 function toDatetimeLocal(value) {
   if (!value) return "";
@@ -50,6 +44,10 @@ function toDatetimeLocal(value) {
 function newForm(placement, order) {
   return {
     id: null,
+    // The row this edit was opened from, captured so the save can diff against
+    // the values the admin actually saw — the list may have been refetched
+    // since (changing the placement tab refetches it).
+    original: null,
     placement,
     title: "",
     subtitle: "",
@@ -74,6 +72,7 @@ function newForm(placement, order) {
 function editForm(row) {
   return {
     id: row.id,
+    original: row,
     placement: row.placement,
     title: row.title ?? "",
     subtitle: row.subtitle ?? "",
@@ -177,6 +176,25 @@ function changedFields(row, payload) {
     if (comparable(key, storedValue(row, key)) !== comparable(key, value)) patch[key] = value;
   }
   return patch;
+}
+
+/**
+ * A complete, renumbered order list for one placement with `rowId` at
+ * `position`. Positions must be unique inside a placement, so a form-level
+ * move renumbers every sibling instead of writing a single raw display_order.
+ * The list is fetched fresh: the caller may just have changed the row's
+ * placement, in which case the cached list is the old placement's.
+ */
+async function renumberPlacement(rowId, placement, position) {
+  const data = await apiFetchBanners({ placement, includeInactive: true });
+  const rows = Array.isArray(data?.banners) ? data.banners : [];
+  const source = rows.find((row) => row.id === rowId) ?? { id: rowId };
+  const others = rows.filter((row) => row.id !== rowId);
+  const target = Math.max(0, Math.min(Number(position ?? 0) || 0, others.length));
+  const reordered = [...others];
+  reordered.splice(target, 0, source);
+  if (reordered.length < 2) return;
+  await apiReorderBanners(reordered.map((row, index) => ({ id: row.id, display_order: index })));
 }
 
 const textField = ({ id, label, value, onChange, type = "text" }) => (
@@ -346,12 +364,38 @@ export default function BannersEditor() {
         return;
       }
 
-      const stored = editing.id ? (banners.find((row) => row.id === editing.id) ?? null) : null;
+      // Diff against the row captured when the edit opened, not the current
+      // list: changing the placement tab refetches the list, so the edited row
+      // is no longer in it and a list lookup would create a duplicate instead
+      // of moving it (§3.4 allows a banner to move between placements).
+      const stored = editing.original ?? null;
       if (stored) {
         const patch = changedFields(stored, payload);
-        if (Object.keys(patch).length > 1) await apiUpdateBanner(stored.id, patch);
+        const changed = Object.keys(patch).filter((key) => key !== "id");
+        if (changed.length === 0) {
+          // A no-op save is not a write: no toast claim, no refresh event.
+          setEditing(null);
+          addToast({
+            title: "No Changes",
+            message: `'${payload.title}' was not modified.`,
+            type: "info",
+          });
+          return;
+        }
+
+        await apiUpdateBanner(stored.id, patch);
+        // A moved row must not leave two banners sharing a display_order.
+        if (patch.display_order !== undefined || patch.placement !== undefined) {
+          await renumberPlacement(stored.id, payload.placement, payload.display_order);
+        }
       } else {
-        await apiSaveBanner(payload);
+        const saved = await apiSaveBanner(payload);
+        const createdId = saved?.banner?.id ?? saved?.id ?? null;
+        // The new banner joins the placement's ordered list: renumber the
+        // whole group so no two banners share a display_order.
+        if (createdId) {
+          await renumberPlacement(createdId, payload.placement, payload.display_order);
+        }
       }
 
       setEditing(null);
@@ -375,6 +419,14 @@ export default function BannersEditor() {
 
   const isCarousel = editing?.placement === "home_promo_carousel";
   const isStrip = editing?.placement === "promo_strip";
+  // The edited row belongs to the visible list unless the placement changed
+  // (the tab refetched another placement), in which case it is an extra slot.
+  const rowIsListed = Boolean(editing?.original) && banners.some((row) => row.id === editing?.id);
+  const formTotal = banners.length + (rowIsListed ? 0 : 1);
+  const formPosition = Math.max(
+    0,
+    Math.min(Number(editing?.displayOrder ?? 0) || 0, Math.max(formTotal - 1, 0))
+  );
 
   return (
     <div className="dashboard-tab-view animate-fade-in">
@@ -709,13 +761,29 @@ export default function BannersEditor() {
                 </>
               )}
 
-              <div className="form-group">
-                <span className="form-label">Active</span>
-                <ActiveToggle
-                  active={editing.isActive}
-                  label={editing.title || "this banner"}
-                  onChange={(active) => setField("isActive", active)}
-                />
+              <div className="form-group-row">
+                <div className="form-group">
+                  <span className="form-label">Display order</span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <OrderControls
+                      index={formPosition}
+                      total={formTotal}
+                      label="this banner"
+                      onMove={(_from, to) => setField("displayOrder", to)}
+                    />
+                    <span className="text-sm text-muted">
+                      Position {formPosition + 1} of {formTotal}
+                    </span>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <span className="form-label">Active</span>
+                  <ActiveToggle
+                    active={editing.isActive}
+                    label={editing.title || "this banner"}
+                    onChange={(active) => setField("isActive", active)}
+                  />
+                </div>
               </div>
 
               {formError && (

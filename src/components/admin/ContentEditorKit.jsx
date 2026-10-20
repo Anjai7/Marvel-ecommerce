@@ -137,7 +137,8 @@ export function ActiveToggle({ active, onChange, label }) {
   );
 }
 
-const cellValue = (value) => {
+/** Text for one table cell; shared so every editor renders values the same way. */
+export const cellValue = (value) => {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);

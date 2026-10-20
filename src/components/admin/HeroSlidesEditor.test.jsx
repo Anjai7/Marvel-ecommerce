@@ -191,6 +191,20 @@ describe("HeroSlidesEditor", () => {
     expect(apiSaveHeroSlide).not.toHaveBeenCalled();
   });
 
+  it("activates a hidden slide using the value the toggle computed", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Winter Drop");
+    await user.click(screen.getByRole("button", { name: "Activate Winter Drop" }));
+
+    // The kit's ActiveToggle hands the next state to onChange; the editor must
+    // write that value instead of re-deriving it from the stale row.
+    await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
+    expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s2", { id: "s2", is_active: true });
+    expect(apiSaveHeroSlide).not.toHaveBeenCalled();
+  });
+
   it("dispatches marvel_content_updated after a successful write", async () => {
     const user = userEvent.setup();
     const broadcast = captureContentUpdates();

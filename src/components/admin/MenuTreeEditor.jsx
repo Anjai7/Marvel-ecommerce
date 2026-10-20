@@ -310,13 +310,13 @@ export default function MenuTreeEditor({ role = "admin" }) {
     const reordered = [...siblings];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
-    const parentId = parent?.id ?? null;
     // The API rejects a partial scope, so every sibling is sent renumbered.
+    // A within-group move never changes parents: a present `parent_id`/`level`
+    // would make the server treat the entry as a move and re-validate the
+    // hierarchy, turning one stale stored level into a 400 (§3.6).
     const orders = reordered.map((sibling, index) => ({
       id: sibling.id,
       display_order: index,
-      parent_id: sibling.parent_id ?? parentId,
-      level: Number(sibling.level ?? (parent ? Number(parent.level ?? 1) + 1 : 1)),
     }));
 
     requestInFlight.current = true;
@@ -397,8 +397,6 @@ export default function MenuTreeEditor({ role = "admin" }) {
       setDeleting(false);
     }
   };
-
-  const menuCategoryChoices = categories;
 
   const renderNode = (item, depth) => {
     const children = item.children ?? [];
@@ -577,7 +575,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   onChange={(event) => handleCategoryChange(event.target.value)}
                 >
                   <option value="">No category link</option>
-                  {menuCategoryChoices.map((choice) => (
+                  {categories.map((choice) => (
                     <option key={choice.id} value={choice.id}>
                       {choice.label}
                     </option>

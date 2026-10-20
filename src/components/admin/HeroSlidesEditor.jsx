@@ -175,16 +175,18 @@ export default function HeroSlidesEditor() {
     }
   };
 
-  const handleToggleActive = async (slide) => {
+  /** `active` is the value the kit computed from the current row; trust it. */
+  const handleToggleActive = async (slide, active) => {
     if (requestInFlight.current) return;
     requestInFlight.current = true;
+    const nextActive = Boolean(active);
     try {
       await apiUpdateHeroSlide(slide.id, {
         id: slide.id,
-        is_active: slide.is_active === false,
+        is_active: nextActive,
       });
       addToast({
-        title: slide.is_active === false ? "Slide Activated" : "Slide Hidden",
+        title: nextActive ? "Slide Activated" : "Slide Hidden",
         message: `'${slide.title}' updated.`,
         type: "success",
       });
@@ -321,7 +323,7 @@ export default function HeroSlidesEditor() {
                   <ActiveToggle
                     active={slide.is_active !== false}
                     label={slide.title}
-                    onChange={() => handleToggleActive(slide)}
+                    onChange={(active) => handleToggleActive(slide, active)}
                   />
                   <Button
                     type="button"
