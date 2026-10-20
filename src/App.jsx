@@ -18,6 +18,7 @@ import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ContentProvider } from "./context/ContentContext";
 import { CartProvider, useCart } from "./context/CartContext";
 import CartPage from "./components/cart/CartPage";
 
@@ -33,12 +34,12 @@ function AppMain() {
   const { cartCount } = useCart();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
+
   // Real URL Hash-based Routing with Route Parameters (e.g. #/product/:id)
   const getHashRoute = () => {
     const raw = window.location.hash.replace(/^#\/?/, "").trim();
     if (!raw) return { page: "home", id: null, full: "" };
-    
+
     const parts = raw.split("?")[0].split("/");
     const page = (parts[0] || "home").toLowerCase();
     const id = parts[1] || null;
@@ -79,13 +80,25 @@ function AppMain() {
     if (cleanPath === "vendor-dashboard" || cleanPath === "vendor") {
       if (!isLoggedIn) navigateTo("login", "vendor");
       else navigateTo("vendor");
-    } else if (cleanPath === "admin-dashboard" || cleanPath === "admin" || cleanPath === "admin-portal") {
+    } else if (
+      cleanPath === "admin-dashboard" ||
+      cleanPath === "admin" ||
+      cleanPath === "admin-portal"
+    ) {
       if (!isLoggedIn) navigateTo("login", "admin");
       else navigateTo("admin");
-    } else if (cleanPath === "superadmin-dashboard" || cleanPath === "super-admin" || cleanPath === "superadmin") {
+    } else if (
+      cleanPath === "superadmin-dashboard" ||
+      cleanPath === "super-admin" ||
+      cleanPath === "superadmin"
+    ) {
       if (!isLoggedIn) navigateTo("login", "super_admin");
       else navigateTo("super-admin");
-    } else if (cleanPath === "customer-portal" || cleanPath === "account" || cleanPath === "orders") {
+    } else if (
+      cleanPath === "customer-portal" ||
+      cleanPath === "account" ||
+      cleanPath === "orders"
+    ) {
       if (!isLoggedIn) navigateTo("login", "user");
       else navigateTo("account");
     } else if (cleanPath === "products" || cleanPath === "product") {
@@ -111,10 +124,19 @@ function AppMain() {
   const isLoginPage = currentRoute.page === "login";
   const isSignUpPage = currentRoute.page === "signup";
   const isProductPage = currentRoute.page === "product" || currentRoute.page === "products";
-  const isAccountPage = currentRoute.page === "account" || currentRoute.page === "customer-portal" || currentRoute.page === "orders";
+  const isAccountPage =
+    currentRoute.page === "account" ||
+    currentRoute.page === "customer-portal" ||
+    currentRoute.page === "orders";
   const isVendorPage = currentRoute.page === "vendor" || currentRoute.page === "vendor-dashboard";
-  const isAdminPage = currentRoute.page === "admin" || currentRoute.page === "admin-portal" || currentRoute.page === "admin-dashboard";
-  const isSuperAdminPage = currentRoute.page === "super-admin" || currentRoute.page === "superadmin" || currentRoute.page === "superadmin-dashboard";
+  const isAdminPage =
+    currentRoute.page === "admin" ||
+    currentRoute.page === "admin-portal" ||
+    currentRoute.page === "admin-dashboard";
+  const isSuperAdminPage =
+    currentRoute.page === "super-admin" ||
+    currentRoute.page === "superadmin" ||
+    currentRoute.page === "superadmin-dashboard";
   const isCartPage = currentRoute.page === "cart";
 
   return (
@@ -226,30 +248,21 @@ function AppMain() {
       {/* 5. PROTECTED VENDOR HUB */}
       {isVendorPage && (
         <ProtectedRoute allowedRoles={["vendor", "super_admin"]}>
-          <VendorDashboard
-            currentUser={user}
-            onNavigateHome={() => navigateTo("")}
-          />
+          <VendorDashboard currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
       {/* 6. PROTECTED PLATFORM ADMIN CONSOLE */}
       {isAdminPage && (
         <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
-          <AdminPortal
-            currentUser={user}
-            onNavigateHome={() => navigateTo("")}
-          />
+          <AdminPortal currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
       {/* 7. PROTECTED SUPER ADMIN HUB */}
       {isSuperAdminPage && (
         <ProtectedRoute allowedRoles={["super_admin"]}>
-          <SuperAdminDashboard
-            currentUser={user}
-            onNavigateHome={() => navigateTo("")}
-          />
+          <SuperAdminDashboard currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
@@ -285,11 +298,13 @@ function AppMain() {
 export default function App() {
   return (
     <ToastProvider>
-      <AuthProvider>
-        <CartProvider>
-          <AppMain />
-        </CartProvider>
-      </AuthProvider>
+      <ContentProvider>
+        <AuthProvider>
+          <CartProvider>
+            <AppMain />
+          </CartProvider>
+        </AuthProvider>
+      </ContentProvider>
     </ToastProvider>
   );
 }
