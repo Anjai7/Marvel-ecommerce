@@ -507,16 +507,26 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
 
   `COALESCE` is required because `menu_items.order_index` and `menu_items.is_active` are nullable while the `categories` columns are `NOT NULL`.
 
-  Then link them back:
+  Then link them back and set the homepage strip:
 
   ```sql
   UPDATE public.menu_items m SET category_id = c.id
   FROM public.categories c
   WHERE c.id = m.id;
+
+  UPDATE public.categories
+  SET show_in_homepage = (
+    level = 1 AND name IN (
+      'Electronics', 'Fashion', 'Home & Kitchen', 'Beauty',
+      'Sports', 'Toys & Baby', 'Accessories'
+    )
+  );
   ```
 
+  This `UPDATE` is what actually decides the homepage strip — it runs **after** the three inserts and overrides the `(m.level = 1)` value they set. The seven titles are the verified seeded level-1 roots; if a future mega-menu seed renames a root, this statement must change with it, and the §7.4 level-group gate will show the change immediately.
+
   The 6 legacy flat rows are navigation-only: they keep `category_id IS NULL` and are never part of the taxonomy.
-  - `show_in_homepage` is set to `true` for the 7 level-1 rows whose `title` is one of `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories` (verified against `supabase/migrations/20261016000006_dynamic_menus_banners.sql`) — note the seeded root is `Sports`, not "Sports & Fitness". This is a name list, matching the spec, because the titles are known and verified; if a future mega-menu seed renames a root, the statement must change with it, and the §7.4 level-group gate will show the change immediately.
+  - `show_in_homepage` is owned by the `UPDATE public.categories SET show_in_homepage = (level = 1 AND name IN (...))` statement that runs after the three inserts — the `(m.level = 1)` value the inserts write is overridden by it. The 7 names are the verified seeded level-1 titles (`Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories`) — note the seeded root is `Sports`, not "Sports & Fitness". If a future mega-menu seed renames a root, the statement must change with it, and the §7.4 level-group gate will show the change immediately.
   - `image_url` is backfilled from `public.site_categories.image_url` by matching `lower(site_categories.name) = lower(categories.name)`; unmatched rows keep `image_url` NULL and fall back to a per-root image.
   - `products.category_id` backfill, with a deterministic three-key tiebreak (level, then `display_order`, then `id`) so a name that appears twice at the same minimum level — `Ethnic Wear` exists at level 3 under both Men's and Women's Fashion — binds to exactly one row:
     ```sql
