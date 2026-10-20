@@ -39,6 +39,15 @@ describe("menuPathToCategoryPath", () => {
     expect(menuPathToCategoryPath("/category/electronics/mobiles")).toBe("electronics/mobiles");
   });
 
+  it("accepts the hash-route form allowed by the content spec", () => {
+    expect(menuPathToCategoryPath("#/category/electronics/mobiles")).toBe("electronics/mobiles");
+  });
+
+  it("accepts the bare category root without bouncing home", () => {
+    expect(menuPathToCategoryPath("/category")).toBe("");
+    expect(menuPathToCategoryPath("#/category")).toBe("");
+  });
+
   it("ignores paths that are not under /category/", () => {
     expect(menuPathToCategoryPath("/products")).toBeNull();
     expect(menuPathToCategoryPath("/vendor-dashboard")).toBeNull();

@@ -49,7 +49,8 @@ function normalizeToLiveTree(data) {
 }
 
 export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
-  const { menu, loading, error } = useContent();
+  const { menu, loading, errors } = useContent();
+  const error = errors?.menu ?? null;
   const [activeMenu, setActiveMenu] = useState(null);
   const [browseOpen, setBrowseOpen] = useState(false);
 

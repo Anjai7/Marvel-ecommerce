@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useContent } from "../context/ContentContext";
 
 export default function BrowseCategoriesMenu({ onClose }) {
-  const { categoryTree, loading, error } = useContent();
+  const { categoryTree, loading, errors } = useContent();
+  const error = errors?.categoryTree ?? null;
   const [hoveredIdx, setHoveredIdx] = useState(0); // Default to first item for immediate visual richness
 
   const roots = Array.isArray(categoryTree) ? categoryTree : [];

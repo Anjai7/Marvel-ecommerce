@@ -37,13 +37,19 @@ const FETCHERS = [
 const NON_MENU_FETCHERS = FETCHERS.filter((fetcher) => fetcher !== apiFetchMenuItems);
 
 function Probe() {
-  const { hero, banners, categories, categoryTree, footer, menu, loading, error, refresh } =
+  const { hero, banners, categories, categoryTree, footer, menu, loading, error, errors, refresh } =
     useContent();
 
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="error">{error ?? ""}</span>
+      <span data-testid="error-hero">{errors.hero ?? ""}</span>
+      <span data-testid="error-banners">{errors.banners ?? ""}</span>
+      <span data-testid="error-categories">{errors.categories ?? ""}</span>
+      <span data-testid="error-category-tree">{errors.categoryTree ?? ""}</span>
+      <span data-testid="error-footer">{errors.footer ?? ""}</span>
+      <span data-testid="error-menu">{errors.menu ?? ""}</span>
       <span data-testid="hero">{hero.map((slide) => slide.title).join("|")}</span>
       <span data-testid="banners">{banners.map((banner) => banner.title).join("|")}</span>
       <span data-testid="categories">{categories.map((category) => category.name).join("|")}</span>
@@ -170,12 +176,33 @@ describe("ContentProvider", () => {
     await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
 
     expect(screen.getByTestId("error")).toHaveTextContent("Could not load content.");
+    expect(screen.getByTestId("error-hero")).toHaveTextContent("Could not load content.");
+    expect(screen.getByTestId("error-banners")).toHaveTextContent("");
+    expect(screen.getByTestId("error-categories")).toHaveTextContent("");
+    expect(screen.getByTestId("error-category-tree")).toHaveTextContent("");
+    expect(screen.getByTestId("error-footer")).toHaveTextContent("");
+    expect(screen.getByTestId("error-menu")).toHaveTextContent("");
     expect(screen.getByTestId("hero")).toHaveTextContent("");
     expect(screen.getByTestId("banners")).toHaveTextContent("Banner One");
     expect(screen.getByTestId("categories")).toHaveTextContent("Electronics|Mobiles");
     expect(screen.getByTestId("category-tree")).toHaveTextContent("Electronics");
     expect(screen.getByTestId("footer")).toHaveTextContent("Company");
     expect(screen.getByTestId("menu")).toHaveTextContent("Home");
+  });
+
+  it("attributes a menu-only failure to the menu collection", async () => {
+    apiFetchMenuItems.mockRejectedValue(new Error("menu offline"));
+
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+
+    expect(screen.getByTestId("error")).toHaveTextContent("menu offline");
+    expect(screen.getByTestId("error-menu")).toHaveTextContent("menu offline");
+    expect(screen.getByTestId("error-hero")).toHaveTextContent("");
+    expect(screen.getByTestId("error-footer")).toHaveTextContent("");
+    expect(screen.getByTestId("hero")).toHaveTextContent("Hero One");
+    expect(screen.getByTestId("footer")).toHaveTextContent("Company");
   });
 
   it("does not throw when every fetch rejects", async () => {
@@ -220,7 +247,23 @@ describe("ContentProvider", () => {
     });
   });
 
-  it("removes the update listener on unmount", async () => {
+  it("refreshes when the marvel_menu_updated window event fires", async () => {
+    renderProvider();
+
+    await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
+
+    act(() => {
+      window.dispatchEvent(new Event("marvel_menu_updated"));
+    });
+
+    await waitFor(() => {
+      for (const fetcher of FETCHERS) {
+        expect(fetcher).toHaveBeenCalledTimes(2);
+      }
+    });
+  });
+
+  it("removes both update listeners on unmount", async () => {
     const { unmount } = renderProvider();
 
     await waitFor(() => expect(screen.getByTestId("loading")).toHaveTextContent("false"));
@@ -229,6 +272,7 @@ describe("ContentProvider", () => {
 
     act(() => {
       window.dispatchEvent(new Event("marvel_content_updated"));
+      window.dispatchEvent(new Event("marvel_menu_updated"));
     });
 
     for (const fetcher of FETCHERS) {

@@ -130,7 +130,15 @@ const CATEGORIES = [
     slug: "mobiles",
     parent_id: "c1",
     display_order: 0,
-    show_in_homepage: false,
+    show_in_homepage: true,
+  },
+  {
+    id: "c5",
+    name: "Smartphones",
+    slug: "smartphones",
+    parent_id: "c3",
+    display_order: 0,
+    show_in_homepage: true,
   },
 ];
 
@@ -140,7 +148,14 @@ const CATEGORY_TREE = [
     name: "Electronics",
     slug: "electronics",
     icon: "📱",
-    children: [{ id: "c3", name: "Mobiles", slug: "mobiles", children: [] }],
+    children: [
+      {
+        id: "c3",
+        name: "Mobiles",
+        slug: "mobiles",
+        children: [{ id: "c5", name: "Smartphones", slug: "smartphones", children: [] }],
+      },
+    ],
   },
   { id: "c4", name: "Fashion", slug: "fashion", children: [] },
 ];
@@ -186,6 +201,15 @@ const MENU = [
   },
 ];
 
+const NO_ERRORS = {
+  hero: null,
+  banners: null,
+  categories: null,
+  categoryTree: null,
+  footer: null,
+  menu: null,
+};
+
 const contentValue = (overrides = {}) => ({
   hero: HERO,
   banners: BANNERS,
@@ -195,6 +219,7 @@ const contentValue = (overrides = {}) => ({
   menu: MENU,
   loading: false,
   error: null,
+  errors: { ...NO_ERRORS },
   refresh: vi.fn(),
   ...overrides,
 });
@@ -224,12 +249,23 @@ describe("storefront surfaces read the content context", () => {
     render(<CategorySlider />);
 
     expect(screen.getByText("Electronics")).toBeVisible();
+    expect(screen.getByText("Mobiles")).toBeVisible();
+    expect(screen.getByText("Smartphones")).toBeVisible();
     expect(screen.queryByText("Hidden Category")).toBeNull();
-    expect(screen.queryByText("Mobiles")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /Electronics/ }));
-
     expect(window.location.hash).toBe("#/category/electronics");
+  });
+
+  it("joins level-2 and level-3 ancestors from the tree so the click cannot collapse to a slug", async () => {
+    const user = userEvent.setup();
+    render(<CategorySlider />);
+
+    await user.click(screen.getByRole("button", { name: /Mobiles/ }));
+    expect(window.location.hash).toBe("#/category/electronics/mobiles");
+
+    await user.click(screen.getByRole("button", { name: /Smartphones/ }));
+    expect(window.location.hash).toBe("#/category/electronics/mobiles/smartphones");
   });
 
   it("renders one large and two small home_banner_layout banners", () => {
@@ -247,6 +283,22 @@ describe("storefront surfaces read the content context", () => {
 
     expect(screen.getByText("Large Banner")).toBeVisible();
     expect(screen.queryByText("Small One")).toBeNull();
+  });
+
+  it("renders a banner with the database-default standard variant in a small slot", () => {
+    const standard = {
+      id: "b-standard",
+      placement: "home_banner_layout",
+      variant: "standard",
+      title: "Standard Banner",
+      display_order: 1,
+    };
+    content.value = contentValue({ banners: [BANNERS[0], standard] });
+    const { container } = render(<BannerLayout />);
+
+    expect(screen.getByText("Standard Banner")).toBeVisible();
+    expect(container.querySelector("#banner-home")).toHaveTextContent("Large Banner");
+    expect(container.querySelector("#banner-sm-0")).toHaveTextContent("Standard Banner");
   });
 
   it("renders promo banners with their gallery and a countdown computed from ends_at", () => {
@@ -340,6 +392,14 @@ describe("storefront surfaces show an explicit state when the context fails", ()
       footer: { sections: [], links: [] },
       menu: [],
       error: "Could not load content.",
+      errors: {
+        hero: "Could not load content.",
+        banners: "Could not load content.",
+        categories: "Could not load content.",
+        categoryTree: "Could not load content.",
+        footer: "Could not load content.",
+        menu: "Could not load content.",
+      },
     });
 
   beforeEach(() => {
@@ -388,6 +448,47 @@ describe("storefront surfaces show an explicit state when the context fails", ()
   });
 });
 
+describe("a failed collection only affects its own surfaces", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    content.value = contentValue();
+  });
+
+  it("renders the hero when only the menu fetch failed", () => {
+    content.value = contentValue({
+      menu: [],
+      errors: { ...NO_ERRORS, menu: "menu offline" },
+    });
+    render(<HeroBanner />);
+
+    expect(screen.getByRole("heading", { name: "Live Hero Title" })).toBeVisible();
+    expect(screen.queryByText(/Live hero content is unavailable/)).toBeNull();
+  });
+
+  it("renders the footer when only the hero fetch failed", () => {
+    content.value = contentValue({
+      hero: [],
+      errors: { ...NO_ERRORS, hero: "hero offline" },
+    });
+    render(<Footer />);
+
+    expect(screen.getByText("Track My Order")).toBeVisible();
+    expect(screen.queryByText("Footer links are temporarily unavailable.")).toBeNull();
+  });
+
+  it("does not show the fallback hero slide while the context is still loading", () => {
+    content.value = contentValue({ hero: [], loading: true });
+    const { rerender } = render(<HeroBanner />);
+
+    expect(screen.queryByRole("heading", { name: "Upgrade Your Everyday" })).toBeNull();
+
+    content.value = contentValue({ hero: [], loading: false });
+    rerender(<HeroBanner />);
+
+    expect(screen.getByRole("heading", { name: "Upgrade Your Everyday" })).toBeVisible();
+  });
+});
+
 describe("storefront surfaces show explicit empty states", () => {
   beforeEach(() => {
     content.value = contentValue({
@@ -412,5 +513,18 @@ describe("storefront surfaces show explicit empty states", () => {
     expect(screen.getAllByText("No categories to show yet.")).toHaveLength(2);
     expect(screen.getByText("No promotions to show yet.")).toBeVisible();
     expect(screen.getByText("No footer links configured yet.")).toBeVisible();
+  });
+
+  it("shows empty copy for the promo carousel and both navigation surfaces", () => {
+    render(
+      <>
+        <PromoBannerCarousel />
+        <HoverNav />
+        <DynamicMenu />
+      </>
+    );
+
+    expect(screen.getByText("No promotional offers to show yet.")).toBeVisible();
+    expect(screen.getAllByText("No navigation items configured yet.")).toHaveLength(2);
   });
 });

@@ -48,7 +48,8 @@ const SocialLinkedin = () => (
 const PAYMENTS = ["VISA", "Mastercard", "RuPay", "UPI", "PayTM", "NetBanking"];
 
 export default function Footer() {
-  const { footer, loading, error } = useContent();
+  const { footer, loading, errors } = useContent();
+  const error = errors?.footer ?? null;
 
   const sections = Array.isArray(footer?.sections) ? footer.sections : [];
   const flatLinks = Array.isArray(footer?.links) ? footer.links : [];

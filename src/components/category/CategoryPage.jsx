@@ -189,7 +189,7 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
   const { category, ancestors, children } = resolution;
 
   return (
-    <div className="category-page" id="category-page">
+    <div id="category-page">
       <div className="pvp-breadcrumb-wrap">
         <div className="container">
           <nav className="pvp-breadcrumb" aria-label="Breadcrumb">
@@ -228,7 +228,6 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
               <button
                 key={child.id ?? child.slug}
                 type="button"
-                className="category-chip"
                 onClick={() => openChild(child)}
                 style={{
                   padding: "8px 14px",

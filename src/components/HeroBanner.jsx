@@ -32,7 +32,8 @@ const FALLBACK_SLIDE = {
 };
 
 export default function HeroBanner({ onNavigate }) {
-  const { hero, error } = useContent();
+  const { hero, loading, errors } = useContent();
+  const heroError = errors?.hero ?? null;
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(
     () =>
@@ -44,15 +45,22 @@ export default function HeroBanner({ onNavigate }) {
     .filter((slide) => slide && slide.is_active !== false && slide.title)
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
     .map(toRenderSlide);
-  const slides = liveSlides.length > 0 ? liveSlides : [FALLBACK_SLIDE];
+  // The static slide is a rescue, not a placeholder: it appears only when the
+  // hero fetch failed or the load settled with nothing, never while loading.
+  const settled = !loading;
+  const showFallback = heroError !== null || (settled && liveSlides.length === 0);
+  const slides = liveSlides.length > 0 ? liveSlides : showFallback ? [FALLBACK_SLIDE] : [];
 
   useEffect(() => {
     setCurrent((c) => (c >= slides.length ? 0 : c));
   }, [slides.length]);
 
-  const next = useCallback(() => setCurrent((c) => (c + 1) % slides.length), [slides.length]);
+  const next = useCallback(
+    () => setCurrent((c) => (slides.length > 0 ? (c + 1) % slides.length : 0)),
+    [slides.length]
+  );
   const prev = useCallback(
-    () => setCurrent((c) => (c - 1 + slides.length) % slides.length),
+    () => setCurrent((c) => (slides.length > 0 ? (c - 1 + slides.length) % slides.length : 0)),
     [slides.length]
   );
 
@@ -105,7 +113,7 @@ export default function HeroBanner({ onNavigate }) {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {error && (
+      {heroError && (
         <div
           role="status"
           style={{

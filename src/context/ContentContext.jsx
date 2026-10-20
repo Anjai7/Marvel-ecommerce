@@ -21,6 +21,14 @@ const ContentContext = createContext(null);
 
 const EMPTY_FOOTER = { sections: [], links: [] };
 
+/** Fixed order so the global `error` is deterministic. */
+const COLLECTION_KEYS = ["hero", "banners", "categories", "categoryTree", "footer", "menu"];
+
+const emptyErrors = () => COLLECTION_KEYS.reduce((errors, key) => ({ ...errors, [key]: null }), {});
+
+/** The first collection error, in `COLLECTION_KEYS` order. */
+const firstError = (errors) => COLLECTION_KEYS.map((key) => errors?.[key]).find(Boolean) ?? null;
+
 const INITIAL_STATE = {
   hero: [],
   banners: [],
@@ -30,6 +38,7 @@ const INITIAL_STATE = {
   menu: [],
   loading: true,
   error: null,
+  errors: emptyErrors(),
 };
 
 const asList = (value) => (Array.isArray(value) ? value : []);
@@ -79,28 +88,31 @@ export function ContentProvider({ children }) {
     // A late response after unmount (or after a newer refresh) is discarded.
     if (!aliveRef.current || request !== requestRef.current) return;
 
-    const failure = [hero, banners, categories, categoryTree, footer, menu].find(
-      (result) => result.error
+    const results = { hero, banners, categories, categoryTree, footer, menu };
+    const errors = COLLECTION_KEYS.reduce(
+      (acc, key) => ({ ...acc, [key]: results[key].error ? messageOf(results[key].error) : null }),
+      {}
     );
 
-    setState((previous) => ({
-      hero: hero.error ? [] : asList(hero.value?.slides),
-      banners: banners.error ? [] : asList(banners.value?.banners),
-      categories: categories.error ? [] : asList(categories.value?.categories),
-      categoryTree: categoryTree.error ? [] : asList(categoryTree.value?.categories),
-      footer: footer.error
-        ? EMPTY_FOOTER
-        : { sections: asList(footer.value?.sections), links: asList(footer.value?.links) },
-      // A menu-only refresh that started later owns the menu value.
-      menu:
-        menuRequest === menuRequestRef.current
-          ? menu.error
-            ? []
-            : asList(menu.value)
-          : previous.menu,
-      loading: false,
-      error: failure ? messageOf(failure.error) : null,
-    }));
+    setState((previous) => {
+      // A menu-only refresh that started later owns both the value and its error.
+      const menuFresh = menuRequest === menuRequestRef.current;
+      const nextErrors = { ...errors, menu: menuFresh ? errors.menu : previous.errors.menu };
+
+      return {
+        hero: hero.error ? [] : asList(hero.value?.slides),
+        banners: banners.error ? [] : asList(banners.value?.banners),
+        categories: categories.error ? [] : asList(categories.value?.categories),
+        categoryTree: categoryTree.error ? [] : asList(categoryTree.value?.categories),
+        footer: footer.error
+          ? EMPTY_FOOTER
+          : { sections: asList(footer.value?.sections), links: asList(footer.value?.links) },
+        menu: menuFresh ? (menu.error ? [] : asList(menu.value)) : previous.menu,
+        loading: false,
+        error: firstError(nextErrors),
+        errors: nextErrors,
+      };
+    });
   }, []);
 
   /** Role changes only affect the role-scoped menu, so nothing else reloads. */
@@ -110,11 +122,19 @@ export function ContentProvider({ children }) {
 
     if (!aliveRef.current || menuRequest !== menuRequestRef.current) return;
 
-    setState((previous) => ({
-      ...previous,
-      menu: result.error ? [] : asList(result.value),
-      error: result.error ? messageOf(result.error) : previous.error,
-    }));
+    setState((previous) => {
+      const nextErrors = {
+        ...previous.errors,
+        menu: result.error ? messageOf(result.error) : null,
+      };
+
+      return {
+        ...previous,
+        menu: result.error ? [] : asList(result.value),
+        error: firstError(nextErrors),
+        errors: nextErrors,
+      };
+    });
   }, []);
 
   useEffect(() => {
@@ -133,13 +153,19 @@ export function ContentProvider({ children }) {
     refreshMenu(role);
   }, [role, refreshMenu]);
 
-  // Admin editors dispatch this after a successful write.
+  // Any admin editor's write triggers a refresh. Editors currently dispatch
+  // either event, so both are wired (belt and braces, not a single point of
+  // failure); Task 17 will make the menu editor dispatch both.
   useEffect(() => {
-    const handleContentUpdated = () => {
+    const handleUpdated = () => {
       load();
     };
-    window.addEventListener("marvel_content_updated", handleContentUpdated);
-    return () => window.removeEventListener("marvel_content_updated", handleContentUpdated);
+    window.addEventListener("marvel_content_updated", handleUpdated);
+    window.addEventListener("marvel_menu_updated", handleUpdated);
+    return () => {
+      window.removeEventListener("marvel_content_updated", handleUpdated);
+      window.removeEventListener("marvel_menu_updated", handleUpdated);
+    };
   }, [load]);
 
   const value = useMemo(() => ({ ...state, refresh: load }), [state, load]);

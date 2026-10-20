@@ -24,7 +24,8 @@ function countdownOf(endsAt, now) {
 }
 
 export default function PromoBannerCarousel() {
-  const { banners, loading, error } = useContent();
+  const { banners, loading, errors } = useContent();
+  const error = errors?.banners ?? null;
   const [current, setCurrent] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [paused, setPaused] = useState(

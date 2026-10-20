@@ -11,7 +11,8 @@ import {
 import { X, Package, ShoppingCart, Heart, MapPin, ChevronRight } from "lucide-react";
 
 export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
-  const { categoryTree, loading, error } = useContent();
+  const { categoryTree, loading, errors } = useContent();
+  const error = errors?.categoryTree ?? null;
 
   if (!isOpen) return null;
 

@@ -3,27 +3,26 @@ import { useContent } from "../context/ContentContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 
-/** Join a flat category's parent chain into its full ancestor path. */
-function pathOf(category, byId) {
-  const segments = [];
-  const seen = new Set();
-  let cursor = category;
+/** Find a category's full ancestor path by walking the nested tree. */
+function pathInTree(nodes, id, trail = []) {
+  for (const node of Array.isArray(nodes) ? nodes : []) {
+    if (!node) continue;
+    const segments = [...trail, node.slug].filter(Boolean);
+    if (node.id === id) return segments.join("/");
 
-  while (cursor && !seen.has(cursor.id)) {
-    seen.add(cursor.id);
-    segments.unshift(cursor.slug);
-    cursor = cursor.parent_id != null ? byId.get(cursor.parent_id) : null;
+    const found = pathInTree(node.children, id, segments);
+    if (found) return found;
   }
-
-  return segments.filter(Boolean).join("/");
+  return null;
 }
 
 export default function CategorySlider({ onNavigate }) {
-  const { categories, loading, error } = useContent();
+  const { categories, categoryTree, loading, errors } = useContent();
+  const error = errors?.categories ?? null;
   const ref = useRef(null);
   const [activeCat, setActiveCat] = useState(null);
 
-  const byId = new Map((Array.isArray(categories) ? categories : []).map((c) => [c.id, c]));
+  const tree = Array.isArray(categoryTree) ? categoryTree : [];
   const cats = (Array.isArray(categories) ? categories : [])
     .filter((category) => category && category.name && category.show_in_homepage === true)
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
@@ -31,7 +30,9 @@ export default function CategorySlider({ onNavigate }) {
       id: category.id,
       name: category.name,
       image: category.image_url || "",
-      path: pathOf(category, byId),
+      // The nested tree carries the ancestry; a flat active-only list can miss
+      // a parent and collapse the path to a bare, ambiguous slug.
+      path: pathInTree(tree, category.id) ?? (category.parent_id == null ? category.slug : null),
     }));
 
   const scroll = (dir) => {

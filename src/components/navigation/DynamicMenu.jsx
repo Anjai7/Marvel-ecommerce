@@ -239,7 +239,8 @@ export function LiveMegaMenu({ root, alignRight, onNavigate }) {
 }
 
 export default function DynamicMenu({ onNavigate, activePath = "/" }) {
-  const { menu, loading, error } = useContent();
+  const { menu, loading, errors } = useContent();
+  const error = errors?.menu ?? null;
   const [activeMenu, setActiveMenu] = useState(null);
   const navTimer = useRef(null);
 

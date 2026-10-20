@@ -53,13 +53,15 @@ function BannerCard({ banner, variant, id }) {
 }
 
 export default function BannerLayout() {
-  const { banners, loading, error } = useContent();
+  const { banners, loading, errors } = useContent();
+  const error = errors?.banners ?? null;
 
   const layout = (Array.isArray(banners) ? banners : [])
     .filter((banner) => banner && banner.placement === "home_banner_layout")
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
   const large = layout.find((banner) => banner.variant === "large") ?? null;
-  const smalls = layout.filter((banner) => banner.variant === "small").slice(0, 2);
+  // Spec §3.4: any variant other than `large` renders in a small slot.
+  const smalls = layout.filter((banner) => banner.variant !== "large").slice(0, 2);
 
   const notice = error
     ? "Promotions are temporarily unavailable."

@@ -60,9 +60,14 @@ export function getHashRoute() {
 /**
  * `menu_items.path` already is the full category path, so the nav mapping is a
  * string strip — the menu path and the category path are the same string.
+ * Hash-form values (`#/category/x`, allowed by §4.1) normalize the same way.
  */
 export function menuPathToCategoryPath(path) {
-  const clean = String(path ?? "").replace(/^\/+/, "");
+  const clean = String(path ?? "")
+    .trim()
+    .replace(/^#/, "")
+    .replace(/^\/+/, "");
+  if (clean === "category") return "";
   if (!clean.startsWith("category/")) return null;
   return clean.slice("category/".length);
 }
@@ -103,7 +108,7 @@ function AppMain() {
   };
 
   const handleDynamicMenuClick = (path) => {
-    const cleanPath = path.replace(/^\//, "");
+    const cleanPath = path.replace(/^#/, "").replace(/^\//, "");
     const categoryPath = menuPathToCategoryPath(path);
     if (cleanPath === "vendor-dashboard" || cleanPath === "vendor") {
       if (!isLoggedIn) navigateTo("login", "vendor");
@@ -208,7 +213,7 @@ function AppMain() {
       {/* 1. CUSTOMER STOREFRONT */}
       {isStorefront && (
         <>
-          <HeroBanner />
+          <HeroBanner onNavigate={handleDynamicMenuClick} />
           <CategorySlider />
           <BannerLayout />
           <TrendingProducts
