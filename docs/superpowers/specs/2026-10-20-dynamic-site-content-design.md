@@ -1315,20 +1315,26 @@ After applying migrations and running both seeds:
 
 | Query                                                                                                                                   | Expected                       |
 | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `SELECT level, count(*) FROM categories GROUP BY level ORDER BY level;`                                                                 | three rows: 7 / ~30 / ~140     |
+| `SELECT level, count(*) FROM categories GROUP BY level ORDER BY level;`                                                                 | three rows: 7 / 31 / 149       |
 | `SELECT count(*) FROM menu_items WHERE (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%') AND category_id IS NULL;` | 0 (taxonomy rows only)         |
 | `SELECT count(*) FROM menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;`                                                  | 6 — the legacy navigation rows |
-| `SELECT count(*) FROM categories WHERE name IN ('Mobiles','Laptops','Headphones','Watches','Bags','Cameras','Gaming');`                 | 7                              |
+| `SELECT count(*) FROM categories WHERE name IN ('Mobiles','Laptops','Headphones','Watches','Bags','Cameras','Gaming');`                 | 8 (`Watches` ×2)               |
 | `SELECT count(*) FROM products WHERE category_id IS NOT NULL;`                                                                          | ≥ 5                            |
 | `SELECT count(*) FROM promo_banners;`                                                                                                   | 9                              |
 | `SELECT count(*) FROM footer_sections;`                                                                                                 | 5                              |
 | `SELECT count(*) FROM footer_links;`                                                                                                    | 34                             |
-| `SELECT count(*) FROM products;`                                                                                                        | ≥ 3 × 7 + 30 = 51              |
+| `SELECT count(*) FROM products;`                                                                                                        | ≥ 3 × 7 + 31 = 52              |
 
 The `category_id IS NULL` result is 0 **for taxonomy rows only**. The six legacy flat
 `menu_items` rows are navigation-only and are expected to keep `category_id IS NULL`; a
 total of 6 under that weaker query is correct, and a taxonomy-row count above 0 means the
 link-back update missed a row.
+
+The name query returns 8, not 7: `Watches` is a title that occurs twice in the seeded tree
+(level 2 at `/category/accessories/watches`, level 3 at
+`/category/fashion/accessories/watches`), so it contributes two rows while the other six
+names contribute one each. It is kept in the list deliberately — a count of 7 would mean one
+of the two `Watches` rows is missing.
 
 Run both seeds a second time: every count must be identical. A count that grows means the
 upsert key is wrong.
@@ -1428,11 +1434,12 @@ or `{anon,authenticated}` role on a `FOR ALL` policy is the defect this gate exi
 policies and the pre-existing `Public read active hero slides` policy (`FOR SELECT`,
 `roles = {public}`, from `20261016000006:72-74`) are correct and are not defects.
 
-3. Apply 000008 → verify the §7.4 counts (three level groups, 7 / ~30 / ~140), verify the
+3. Apply 000008 → verify the §7.4 counts (three level groups, 7 / 31 / 149), verify the
    `menu_items.category_id IS NULL` count is 0 **for the taxonomy rows only** (the six
    legacy navigation rows are expected to stay NULL, so the unscoped query returns 6), and
    verify that the 7 migrated legacy names (`Mobiles`, `Laptops`, `Headphones`, `Watches`,
-   `Bags`, `Cameras`, `Gaming`) are present in `categories`.
+   `Bags`, `Cameras`, `Gaming`) are present in `categories` — 8 rows, because `Watches`
+   matches both its level-2 and level-3 category.
 4. Run `npm run seed:content`, `npm run seed:products`, then re-run both (idempotency gate).
 5. Deploy the code that serves `/api/categories` and the content routes **with** the
    temporary `GET /api/content/categories` alias. Only then apply 000009. Dropping
