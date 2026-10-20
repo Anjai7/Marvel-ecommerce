@@ -3,52 +3,43 @@ import { supabase } from "../db.js";
 import { verifyToken, requireRole } from "../middleware/auth.js";
 
 /**
- * Generic CRUD router factory for content tables.
+ * Generic CRUD router factory for content tables. Everything content-specific
+ * arrives through the config object:
  *
- * Everything content-specific arrives through the config object, so a new
- * content type needs a config and nothing else:
+ *   { table, fields, orderColumn, validate, resourceKey,
+ *     toPayload, listKey, readGuard, writeGuard, includeInactiveParam }
  *
- *   createCrudRouter({
- *     table, fields, orderColumn, validate, toPayload, resourceKey,
- *     listKey = resourceKey,
- *     readGuard = [],                                  // public reads
- *     writeGuard = [verifyToken, requireRole([...])],  // admin writes
- *     includeInactiveParam = "includeInactive",
- *   })
- *
- * The request body is validated before toPayload runs. Validators are strict
- * about integer-shaped strings ("1.5", "01", "1e3"), and coercing first would
- * silently accept what they are meant to reject.
+ * `toPayload` is optional; it defaults to the body-present keys. The write set
+ * is exactly what it returns, filtered to `fields`, with undefined dropped, so
+ * a config that renames or derives a column owns that consequence while an
+ * omitted field is never nulled. The body is always validated before toPayload
+ * runs: strict integer strings ("1.5", "01", "1e3") must not be coerced first.
  */
 
 const ADMIN_ROLES = ["admin", "super_admin"];
 const INACTIVE_PARAM = "includeInactive";
 const REORDER_INCOMPLETE = "Reorder must include every item in the scope.";
 
-/** Copy only the listed fields that the source actually carries (undefined is not written). */
-function pickFields(source, fields, onlyKeys = null) {
-  const allowed = onlyKeys ? new Set(onlyKeys) : null;
-  const picked = {};
-  for (const field of fields) {
-    if (allowed && !allowed.has(field)) continue;
-    if (!Object.prototype.hasOwnProperty.call(source, field)) continue;
-    if (source[field] === undefined) continue;
-    picked[field] = source[field];
-  }
-  return picked;
+/** Copy the listed fields the source carries; undefined is never written. */
+const pickFields = (source, fields) =>
+  Object.fromEntries(
+    fields
+      .filter((field) => Object.hasOwn(source, field) && source[field] !== undefined)
+      .map((field) => [field, source[field]])
+  );
+
+/** Default payload builder: only the keys the client actually sent. */
+function defaultToPayload(body) {
+  return body && typeof body === "object" ? { ...body } : {};
 }
 
 /** True when the query asks for inactive rows; "0"/"false"/"off" mean no. */
 function includesInactive(req, param) {
-  if (!Object.prototype.hasOwnProperty.call(req.query, param)) return false;
-  const value = String(req.query[param]).toLowerCase();
-  return value !== "0" && value !== "false" && value !== "off";
+  if (!Object.hasOwn(req.query, param)) return false;
+  return !["0", "false", "off"].includes(String(req.query[param]).toLowerCase());
 }
 
-/**
- * Run a middleware chain inside an async handler. Resolves true when every
- * guard called next(), false when one of them answered the request.
- */
+/** Run a middleware chain; true when every guard calls next(), false when one answers. */
 function runGuards(guards, req, res) {
   return new Promise((resolve) => {
     let index = 0;
@@ -66,6 +57,9 @@ function runGuards(guards, req, res) {
 
       try {
         guard(req, res, next);
+        // A guard that answers instead of calling next() (verifyToken's 401,
+        // requireRole's 403) leaves the chain parked; settle it here.
+        if (res.headersSent || res.writableEnded) resolve(false);
       } catch (thrown) {
         res.status(500).json({ error: thrown.message || "Authorization check failed." });
         resolve(false);
@@ -76,18 +70,24 @@ function runGuards(guards, req, res) {
   });
 }
 
-/**
- * Renumber a complete reorder payload to 0..n-1 in array order. Every id in the
- * scope must appear in `orders`; submitted display_order values are ignored.
- */
+/** Renumber a reorder payload to 0..n-1; its id set must equal the scope exactly. */
 export function applyReorder(existingIds = [], orders = []) {
-  const requested = Array.isArray(orders) ? orders : [];
-  const requestedIds = new Set(requested.map((order) => order?.id));
-  if (existingIds.some((id) => !requestedIds.has(id))) {
+  if (!Array.isArray(orders)) return { error: REORDER_INCOMPLETE };
+
+  const scope = new Set(existingIds);
+  const requestedIds = orders.map((order) =>
+    order && typeof order === "object" ? order.id : undefined
+  );
+  const hasMalformedId = requestedIds.some((id) => typeof id !== "string" || id === "");
+  const hasRepeatedId = new Set(requestedIds).size !== requestedIds.length;
+  const hasIdOutsideScope = requestedIds.some((id) => !scope.has(id));
+
+  if (hasMalformedId || hasRepeatedId || hasIdOutsideScope || requestedIds.length !== scope.size) {
     return { error: REORDER_INCOMPLETE };
   }
+
   return {
-    renumbered: requested.map((order, index) => ({ id: order.id, display_order: index })),
+    renumbered: orders.map((order, index) => ({ id: order.id, display_order: index })),
   };
 }
 
@@ -105,23 +105,23 @@ export function createCrudRouter(config = {}) {
     listKey = resourceKey,
   } = config;
 
+  const buildPayload = typeof toPayload === "function" ? toPayload : defaultToPayload;
+
   if (
     typeof table !== "string" ||
     !Array.isArray(fields) ||
     typeof orderColumn !== "string" ||
     typeof validate !== "function" ||
-    typeof toPayload !== "function" ||
     typeof resourceKey !== "string"
   ) {
-    throw new TypeError(
-      "createCrudRouter requires table, fields, orderColumn, validate, toPayload and resourceKey."
-    );
+    throw new TypeError("createCrudRouter: missing required configuration.");
   }
 
   const adminGuard = [verifyToken, requireRole(ADMIN_ROLES)];
   const savedMessage = `${resourceKey} saved successfully.`;
   const deleteMessage = `${resourceKey} deleted successfully.`;
   const notFoundMessage = `${resourceKey} not found.`;
+  const loadMessage = `Failed to load ${resourceKey}.`;
 
   const router = Router();
 
@@ -139,13 +139,11 @@ export function createCrudRouter(config = {}) {
         .order("created_at", { ascending: true });
 
       if (error) {
-        console.warn(`Supabase ${table} list warning:`, error.message);
-        return res.json({ [listKey]: [] });
+        return res.status(500).json({ error: error.message || loadMessage });
       }
       return res.json({ [listKey]: data || [] });
     } catch (thrown) {
-      console.warn(`Supabase ${table} list exception:`, thrown.message);
-      return res.json({ [listKey]: [] });
+      return res.status(500).json({ error: thrown.message || loadMessage });
     }
   });
 
@@ -159,12 +157,12 @@ export function createCrudRouter(config = {}) {
         .maybeSingle();
 
       if (error) {
-        return res.status(500).json({ error: error.message || `Failed to load ${resourceKey}.` });
+        return res.status(500).json({ error: error.message || loadMessage });
       }
       if (!data) return res.status(404).json({ error: notFoundMessage });
       return res.json({ [resourceKey]: data });
     } catch (thrown) {
-      return res.status(500).json({ error: thrown.message || `Failed to load ${resourceKey}.` });
+      return res.status(500).json({ error: thrown.message || loadMessage });
     }
   });
 
@@ -177,7 +175,7 @@ export function createCrudRouter(config = {}) {
         return res.status(400).json({ error: validationError });
       }
 
-      const row = pickFields(toPayload(body), fields);
+      const row = pickFields(buildPayload(body), fields);
       if (body.id !== undefined && body.id !== null) row.id = body.id;
 
       const { data, error } = await supabase.from(table).upsert(row).select();
@@ -202,13 +200,11 @@ export function createCrudRouter(config = {}) {
       const id = req.params.id;
       const existing = await supabase.from(table).select("*").eq("id", id).maybeSingle();
       if (existing.error) {
-        return res
-          .status(500)
-          .json({ error: existing.error.message || `Failed to load ${resourceKey}.` });
+        return res.status(500).json({ error: existing.error.message || loadMessage });
       }
       if (!existing.data) return res.status(404).json({ error: notFoundMessage });
 
-      const patch = pickFields(toPayload(body), fields, Object.keys(body));
+      const patch = pickFields(buildPayload(body), fields);
       if (Object.keys(patch).length === 0) {
         return res.json({ message: savedMessage, [resourceKey]: existing.data });
       }
@@ -229,9 +225,7 @@ export function createCrudRouter(config = {}) {
       const id = req.params.id;
       const existing = await supabase.from(table).select("id").eq("id", id).maybeSingle();
       if (existing.error) {
-        return res
-          .status(500)
-          .json({ error: existing.error.message || `Failed to load ${resourceKey}.` });
+        return res.status(500).json({ error: existing.error.message || loadMessage });
       }
       if (!existing.data) return res.status(404).json({ error: notFoundMessage });
 

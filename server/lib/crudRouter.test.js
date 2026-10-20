@@ -88,13 +88,6 @@ function defaultConfig(overrides = {}) {
     table: "widgets",
     fields: ["title", "sort_order", "is_active"],
     orderColumn: "sort_order",
-    // Greedy on purpose: it fills fields the caller omitted, so a PATCH test
-    // proves the factory filters the payload down to the keys actually sent.
-    toPayload: (body) => ({
-      title: body.title,
-      sort_order: body.sort_order === undefined ? 0 : Number(body.sort_order),
-      is_active: body.is_active === undefined ? true : body.is_active,
-    }),
     validate: (body, ctx = {}) => {
       if (ctx.partial === true && body.title === undefined) return null;
       return typeof body.title === "string" && body.title.trim() !== ""
@@ -197,7 +190,7 @@ describe("createCrudRouter — POST", () => {
   );
 
   it("returns 201 with the persisted row and omits id when the body has none", async () => {
-    const stored = { id: "generated-uuid", title: "Deal", sort_order: 2, is_active: true };
+    const stored = { id: "generated-uuid", title: "Deal", sort_order: 2 };
     const calls = makeDb({ upsert: () => ({ data: [stored], error: null }) });
     const app = buildApp();
 
@@ -214,12 +207,13 @@ describe("createCrudRouter — POST", () => {
       expect(body.widget).toEqual(stored);
     });
 
-    expect(calls.upsert).toEqual([{ title: "Deal", sort_order: 2, is_active: true }]);
+    // The default payload builder writes only body-present keys.
+    expect(calls.upsert).toEqual([{ title: "Deal", sort_order: 2 }]);
     expect(calls.tables).toEqual(["widgets"]);
   });
 
   it("includes id in the upsert when the body supplies one", async () => {
-    const stored = { id: "fixed-id", title: "Deal", sort_order: 0, is_active: true };
+    const stored = { id: "fixed-id", title: "Deal" };
     const calls = makeDb({ upsert: () => ({ data: [stored], error: null }) });
     const app = buildApp();
 
@@ -232,7 +226,7 @@ describe("createCrudRouter — POST", () => {
       expect(res.status).toBe(201);
     });
 
-    expect(calls.upsert[0]).toMatchObject({ id: "fixed-id", title: "Deal" });
+    expect(calls.upsert[0]).toEqual({ id: "fixed-id", title: "Deal" });
   });
 
   it("surfaces a database write error as 500", async () => {
@@ -268,7 +262,7 @@ describe("createCrudRouter — POST", () => {
 });
 
 describe("createCrudRouter — PATCH", () => {
-  it("writes only the keys the client sent, even when toPayload fills others", async () => {
+  it("writes only the keys the client sent (default payload builder)", async () => {
     const calls = makeDb({
       maybeSingle: () => ({
         data: { id: "w1", title: "Old", sort_order: 5, is_active: true },
@@ -315,6 +309,162 @@ describe("createCrudRouter — PATCH", () => {
     });
 
     expect(calls.update).toEqual([]);
+  });
+
+  it("returns 400 on a partial validation failure and never touches the database", async () => {
+    makeDb();
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ title: "   " }),
+      });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Widget title is required." });
+    });
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits an empty writable patch with 200 and the existing row", async () => {
+    const existing = { id: "w1", title: "Old", sort_order: 5, is_active: true };
+    const calls = makeDb({ maybeSingle: () => ({ data: existing, error: null }) });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ metadata: "ignored" }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.message).toEqual(expect.any(String));
+      expect(body.widget).toEqual(existing);
+    });
+
+    expect(calls.update).toEqual([]);
+  });
+
+  it("surfaces a database update error as 500", async () => {
+    makeDb({
+      maybeSingle: () => ({ data: { id: "w1", title: "Old" }, error: null }),
+      update: () => ({ data: null, error: { message: "db update boom" } }),
+    });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ title: "New" }),
+      });
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatch(/db update boom/);
+    });
+  });
+});
+
+describe("createCrudRouter — write set is the payload builder's output", () => {
+  it("writes a column renamed by toPayload even though the client sent another key", async () => {
+    const calls = makeDb({
+      maybeSingle: () => ({ data: { id: "w1", title: "Old" }, error: null }),
+      update: () => ({ data: [{ id: "w1", title: "Renamed" }], error: null }),
+    });
+    const app = buildApp({
+      fields: ["title"],
+      validate: (body, ctx = {}) => {
+        if (ctx.partial === true && body.name === undefined) return null;
+        return typeof body.name === "string" && body.name.trim() !== ""
+          ? null
+          : "Name is required.";
+      },
+      toPayload: (body) => ({ title: body.name }),
+    });
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ name: "Renamed" }),
+      });
+      expect(res.status).toBe(200);
+      expect((await res.json()).widget.title).toBe("Renamed");
+    });
+
+    expect(calls.update).toEqual([{ title: "Renamed" }]);
+  });
+
+  it("writes a field toPayload derives from a key the client sent", async () => {
+    const calls = makeDb({
+      maybeSingle: () => ({
+        data: { id: "w1", title: "Cat", parent_id: "p1", level: 1 },
+        error: null,
+      }),
+      update: () => ({
+        data: [{ id: "w1", title: "Cat", parent_id: "p2", level: 2 }],
+        error: null,
+      }),
+    });
+    const app = buildApp({
+      fields: ["title", "parent_id", "level"],
+      validate: (body, ctx = {}) => {
+        if (ctx.partial === true && body.parent_id === undefined) return null;
+        return typeof body.parent_id === "string" ? null : "parent_id is required.";
+      },
+      toPayload: (body) => ({
+        title: body.title,
+        parent_id: body.parent_id,
+        level: body.parent_id === undefined ? body.level : 2,
+      }),
+    });
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ parent_id: "p2" }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.widget.parent_id).toBe("p2");
+      expect(body.widget.level).toBe(2);
+    });
+
+    expect(calls.update).toEqual([{ parent_id: "p2", level: 2 }]);
+  });
+
+  it("drops undefined values so an absent field never overwrites a stored value", async () => {
+    const calls = makeDb({
+      maybeSingle: () => ({
+        data: { id: "w1", title: "Old", sort_order: 5, is_active: true },
+        error: null,
+      }),
+      update: () => ({
+        data: [{ id: "w1", title: "New", sort_order: 5, is_active: true }],
+        error: null,
+      }),
+    });
+    const app = buildApp({
+      toPayload: (body) => ({
+        title: body.title,
+        sort_order: body.sort_order,
+        is_active: body.is_active,
+      }),
+    });
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "PATCH",
+        headers: adminHeaders(),
+        body: JSON.stringify({ title: "New" }),
+      });
+      expect(res.status).toBe(200);
+    });
+
+    expect(calls.update).toEqual([{ title: "New" }]);
   });
 });
 
@@ -397,6 +547,32 @@ describe("createCrudRouter — GET", () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
+  it("surfaces a list read database error as 500", async () => {
+    makeDb({ select: () => ({ data: null, error: { message: "db list boom" } }) });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets`);
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatch(/db list boom/);
+    });
+  });
+
+  it("surfaces a thrown list read as 500", async () => {
+    makeDb({
+      select: () => {
+        throw new Error("connection reset");
+      },
+    });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets`);
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatch(/connection reset/);
+    });
+  });
+
   it("returns a single row under resourceKey", async () => {
     const row = { id: "w1", title: "One" };
     makeDb({ maybeSingle: () => ({ data: row, error: null }) });
@@ -417,6 +593,17 @@ describe("createCrudRouter — GET", () => {
       const res = await fetch(`${base}/api/widgets/missing`);
       expect(res.status).toBe(404);
       expect((await res.json()).error).toEqual(expect.any(String));
+    });
+  });
+
+  it("surfaces a single row read error as 500", async () => {
+    makeDb({ maybeSingle: () => ({ data: null, error: { message: "single read boom" } }) });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`);
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatch(/single read boom/);
     });
   });
 });
@@ -456,9 +643,28 @@ describe("createCrudRouter — DELETE", () => {
 
     expect(calls.delete).toBe(0);
   });
+
+  it("surfaces a database delete error as 500", async () => {
+    makeDb({
+      maybeSingle: () => ({ data: { id: "w1" }, error: null }),
+      delete: () => ({ data: null, error: { message: "db delete boom" } }),
+    });
+    const app = buildApp();
+
+    await withServer(app, async (base) => {
+      const res = await fetch(`${base}/api/widgets/w1`, {
+        method: "DELETE",
+        headers: adminHeaders(),
+      });
+      expect(res.status).toBe(500);
+      expect((await res.json()).error).toMatch(/db delete boom/);
+    });
+  });
 });
 
 describe("applyReorder", () => {
+  const SCOPE_ERROR = "Reorder must include every item in the scope.";
+
   it("renumbers a complete ordered list to display_order 0..n-1 in array order", () => {
     const result = applyReorder(
       ["a", "b", "c"],
@@ -477,6 +683,24 @@ describe("applyReorder", () => {
   it("rejects a partial list", () => {
     const result = applyReorder(["a", "b", "c"], [{ id: "a" }, { id: "b" }]);
 
-    expect(result).toEqual({ error: "Reorder must include every item in the scope." });
+    expect(result).toEqual({ error: SCOPE_ERROR });
+  });
+
+  it("rejects an id outside the scope", () => {
+    const result = applyReorder(["a", "b"], [{ id: "a" }, { id: "b" }, { id: "c" }]);
+
+    expect(result).toEqual({ error: SCOPE_ERROR });
+  });
+
+  it("rejects a repeated id", () => {
+    const result = applyReorder(["a", "b"], [{ id: "a" }, { id: "a" }, { id: "b" }]);
+
+    expect(result).toEqual({ error: SCOPE_ERROR });
+  });
+
+  it("rejects an entry with no id", () => {
+    const result = applyReorder(["a", "b"], [{ id: "a" }, { display_order: 1 }]);
+
+    expect(result).toEqual({ error: SCOPE_ERROR });
   });
 });
