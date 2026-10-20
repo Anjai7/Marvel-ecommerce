@@ -508,7 +508,7 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
   ```
 
   (Level 1 → 1 segment, level 2 → 2 segments, level 3 → 3 segments; `split_part(..., '/', 3)` returns the last segment for all three.)
-  - `show_in_homepage` is set to `true` only for the level-1 rows whose `title` is one of `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports & Fitness`, `Toys & Baby`, `Accessories`.
+  - `show_in_homepage` is set to `true` for **all 7 level-1 rows**. The seeded level-1 titles are exactly `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories` (verified against `supabase/migrations/20261016000006_dynamic_menus_banners.sql`) — note the seeded root is `Sports`, not "Sports & Fitness". Set it with a `CASE` on `level = 1` rather than a name list, so a future seed-title change cannot silently leave the homepage with zero tiles.
   - `image_url` is backfilled from `public.site_categories.image_url` by matching `lower(site_categories.name) = lower(categories.name)`; unmatched rows keep `image_url` NULL and fall back to a per-root image.
   - `products.category_id` backfill: `UPDATE public.products p SET category_id = c.id FROM public.categories c WHERE lower(c.name) = lower(p.category) AND c.level = (SELECT MIN(level) FROM public.categories c2 WHERE lower(c2.name) = lower(p.category))`. Rows that match nothing are left with `category_id IS NULL` and keep their `category` text; the seed script in Task 5 rewrites them onto real categories.
   - `site_categories` is **not** dropped in this migration. The storefront still calls `GET /api/content/categories` until Task 13, and the new `/api/categories` route does not exist until Task 6 — dropping the table here would break the running app mid-plan. The table is dropped in Task 6, after the replacement API is in place, and Task 6 keeps a temporary alias route so the storefront keeps working until Task 13. The drop ships as a **second** paste bundle (`docs/sql/apply-02-drop-site-categories.sql`) that the human applies only after Task 6's code is deployed.
@@ -537,7 +537,19 @@ The `categories` seed must be **three separate `INSERT` statements, one per leve
 
 - [ ] **Step 4: Verify the slug expression derives the right slug at each level**
 
-The slug expression must be `regexp_replace(split_part(regexp_replace(path, '^/category/', ''), '/', 3), '[^a-zA-Z0-9-]+', '-', 'g')` — for `/category/electronics` → `electronics`, for `/category/electronics/mobiles` → `mobiles`, for `/category/electronics/mobiles/smartphones` → `smartphones`. Trace all three by hand and confirm the three insert statements in the bundle match.
+The slug expression must take the **last** path segment. The correct Postgres expression is:
+
+```sql
+regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g')
+```
+
+Trace all three levels by hand and confirm the three insert statements in the bundle match:
+
+- `/category/electronics` → `electronics`
+- `/category/electronics/mobiles` → `mobiles`
+- `/category/electronics/mobiles/smartphones` → `smartphones`
+
+**Do not use `split_part`.** `split_part(x, '/', 3)` returns the third field, which is the empty string for a one-segment path and the empty string for a two-segment path — so it yields `''` for every level-1 and level-2 row. (`split_part(m.path, '/', 4)` has the same defect, and worse: it returns `''` for level 2.) The `^.*/` form strips everything up to and including the last slash, so it is correct for one, two and three segments alike.
 
 - [ ] **Step 5: Write the verification checklist for the human partner**
 
@@ -666,9 +678,12 @@ git commit -m "feat(seed): populate taxonomy, banners, footer and products"
   | GET    | `/api/categories/:id`        | public | `{ category: {...} }`                                                                                                                         |
   | POST   | `/api/categories`            | admin  | `201 { message, category }`                                                                                                                   |
   | PATCH  | `/api/categories/:id`        | admin  | `200 { message, category }` — partial                                                                                                         |
+  | PATCH  | `/api/categories/reorder`    | admin  | `200 { message }` — body `{ orders: [{id, display_order}] }`, renumbers one sibling group                                                     |
   | DELETE | `/api/categories/:id`        | admin  | `200 { message }` — cascades to descendants via the FK                                                                                        |
 
   `:slug` matching in `GET /slug/:slug` resolves **one** category, preferring the shallowest match; ambiguity is resolved by lowest `level`, then lowest `display_order`. Document this in the response as `category.ambiguous` = `true` when more than one row shares the slug.
+
+  **`/reorder` must be registered before `/:id`**, or Express captures the literal string `reorder` as an id. The admin tree editor calls it, so it is part of the editor contract, not an optional extra.
 
 - [ ] **Step 1: Write the failing test** `server/routes/categories.test.js`. Mock `../db.js` (do **not** hit the real project). Cover:
   - `GET /api/categories` returns `{ categories: [...] }` and filters `is_active = true`.
@@ -687,7 +702,7 @@ Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `server/routes/categories.js`**
 
-Use `createCrudRouter` for the CRUD set, with `fields: ["name","slug","parent_id","level","description","icon","image_url","banner_image_url","display_order","is_active","show_in_nav","show_in_homepage"]`, `orderColumn: "display_order"`, `resourceKey: "category"`, and a `toPayload` that coerces `display_order`/`level` to integers and derives `level` from `parent_id` when the caller omits it (parent level + 1). Wrap the CRUD router in an `express.Router()` that also defines `GET /tree` **before** `GET /:id` so `tree` is not captured as an id. `GET /slug/:slug` queries by `slug` (all levels), picks the lowest `level` match, then loads ancestors by walking `parent_id` and descendants by selecting rows whose `parent_id` is in the descendant set (repeat to a fixed depth of 3).
+Use `createCrudRouter` for the CRUD set, with `fields: ["name","slug","parent_id","level","description","icon","image_url","banner_image_url","display_order","is_active","show_in_nav","show_in_homepage"]`, `orderColumn: "display_order"`, `resourceKey: "category"`, and a `toPayload` that coerces `display_order`/`level` to integers and derives `level` from `parent_id` when the caller omits it (parent level + 1). Wrap the CRUD router in an `express.Router()` that also defines `GET /tree` **before** `GET /:id` so `tree` is not captured as an id, and `PATCH /reorder` **before** `PATCH /:id` so `reorder` is not captured as an id. `GET /slug/:slug` queries by `slug` (all levels), picks the lowest `level` match, then loads ancestors by walking `parent_id` and descendants by selecting rows whose `parent_id` is in the descendant set (repeat to a fixed depth of 3).
 
 - [ ] **Step 4: Mount the router and add the backwards-compatible alias**
 
@@ -765,8 +780,13 @@ git commit -m "feat(api): category taxonomy tree, slug lookup and CRUD"
   | POST/PATCH/DELETE | `/api/content/footer/sections[/:id]`   | admin  | `{ message, section }`                                                                                                                                                                                                                   |
   | POST/PATCH/DELETE | `/api/content/footer/links[/:id]`      | admin  | `{ message, link }`                                                                                                                                                                                                                      |
   | PATCH             | `/api/content/footer/sections/reorder` | admin  | body `{ orders: [{id, display_order}] }`                                                                                                                                                                                                 |
+  | PATCH             | `/api/content/footer/links/reorder`    | admin  | body `{ orders: [{id, display_order}] }`, scope = one `section_id`                                                                                                                                                                       |
 
-  Reorder semantics (identical for hero, banners, footer sections): the body must contain the **complete** ordered list of ids for the affected scope. The server renumbers `display_order` to `0..n-1` in the given order and returns `200 { message }`. A body missing ids currently present in the scope is rejected with `400 { error: "Reorder must include every item in the scope." }`.
+  Reorder semantics (identical for hero, banners, footer sections, footer links): the body must contain the **complete** ordered list of ids for the affected scope. The server renumbers `display_order` to `0..n-1` in the given order and returns `200 { message }`. A body missing ids currently present in the scope is rejected with `400 { error: "Reorder must include every item in the scope." }`.
+
+  **Ordering-column reconciliation (binding, see spec §3.6).** The request vocabulary is always `display_order`, and the **array order is authoritative** — the server renumbers from the array positions and ignores the submitted numbers. But two pre-existing tables keep their existing `order_index` column and must **not** get a `display_order` column: `hero_slides` and `menu_items`. For those two, the renumbered values are persisted to `order_index`, because that is what `buildMenuTree`, `GET /api/menu` and `GET /api/content/hero` already sort by. So the hero CRUD router sets `orderColumn: "order_index"`, and the banner, section, link and category routers set `orderColumn: "display_order"`. List and single-item responses return the raw row, so hero and menu rows carry `order_index` while the four new tables' rows carry `display_order`.
+
+  Register every `/reorder` route **before** the matching `/:id` route, or Express captures the literal string `reorder` as an id.
 
 - [ ] **Step 1: Extend the failing test** `server/routes/content.test.js` with cases for:
   - `GET /api/content/hero?includeInactive=1` with an admin token does **not** filter `is_active = true`; without the token it returns `401`.
@@ -785,7 +805,7 @@ Expected: FAIL — the new routes are not registered.
 
 - [ ] **Step 3: Rewrite `server/routes/content.js`**
 
-Keep `GET /api/content/hero` and `POST /api/content/hero` responding with the **same key names** the storefront already uses (`slides`) — configure the factory with `resourceKey: "slide", listKey: "slides"`. Add the missing routes. Move the validators to `server/lib/validation.js` (Task 1) and import them. Build the hero router with `createCrudRouter` using `resourceKey: "slide", listKey: "slides"`. For banners use `resourceKey: "banner", listKey: "banners"`, `fields: ["placement","variant","badge","title","subtitle","highlight","description","cta_text","cta_path","image_url","bg_image_url","fallback_image_url","bg_gradient","emoji","code","accent","bg_color","gallery","display_order","is_active","starts_at","ends_at"]`. For the footer, build two CRUD routers and mount them at `/sections` and `/links`, then a custom `GET /` that fetches sections and links and nests them. Implement the reorder handlers with the shared `applyReorder` helper from `server/lib/crudRouter.js` (Task 2), which renumbers a complete ordered list and rejects a partial list with `400`.
+Keep `GET /api/content/hero` and `POST /api/content/hero` responding with the **same key names** the storefront already uses (`slides`) — configure the factory with `resourceKey: "slide", listKey: "slides"`. Add the missing routes. Move the validators to `server/lib/validation.js` (Task 1) and import them. Build the hero router with `createCrudRouter` using `resourceKey: "slide", listKey: "slides"` and `orderColumn: "order_index"` — `hero_slides` keeps its existing `order_index` column and must **not** gain a `display_order` column. For banners use `resourceKey: "banner", listKey: "banners"`, `fields: ["placement","variant","badge","title","subtitle","highlight","description","cta_text","cta_path","image_url","bg_image_url","fallback_image_url","bg_gradient","emoji","code","accent","bg_color","gallery","display_order","is_active","starts_at","ends_at"]`. For the footer, build two CRUD routers and mount them at `/sections` and `/links`, then a custom `GET /` that fetches sections and links and nests them. Implement the reorder handlers with the shared `applyReorder` helper from `server/lib/crudRouter.js` (Task 2), which renumbers a complete ordered list and rejects a partial list with `400`. The four reorder routes are `PATCH /api/content/hero/reorder`, `PATCH /api/content/banners/reorder`, `PATCH /api/content/footer/sections/reorder` and `PATCH /api/content/footer/links/reorder` — the links scope is the set of links sharing the `section_id` of the ids in the body. Register each `/reorder` route **before** the matching `/:id` route.
 
 - [ ] **Step 4: Mount the new routers**
 
@@ -826,6 +846,8 @@ git commit -m "feat(api): partial updates, reorder and includeInactive for site 
   | PATCH  | `/api/menu/:id`     | admin  | `200 { message, item }` — partial                                                                                                                                                    |
   | DELETE | `/api/menu/:id`     | admin  | `200 { message }`                                                                                                                                                                    |
   | PATCH  | `/api/menu/reorder` | admin  | body `{ orders: [{id, display_order, parent_id, level}] }` — renumbers siblings                                                                                                      |
+
+  **Ordering-column reconciliation (binding, see spec §3.6).** `menu_items` keeps its existing `order_index` column — do **not** add `display_order` to it and do **not** rename `order_index`. The request body key is `display_order` and the array order is authoritative, but the renumbered values are persisted to `order_index`, because that is what `buildMenuTree` and `GET /api/menu` already sort by. The menu CRUD router therefore sets `orderColumn: "order_index"`. List and single-item responses return the raw row, so menu rows carry `order_index`.
 
   The `POST /api/menu` handler must **also accept `PUT` on the same path** so the existing admin call `PUT /api/menu/:id` (`src/components/admin/MenuListEditor.jsx:56`) stops 404-ing — but Task 17 replaces that editor, so `PUT` support is optional. Prefer implementing `PATCH /api/menu/:id` and updating the editor.
 
