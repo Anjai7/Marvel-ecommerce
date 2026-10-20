@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button, Input, useToast, Dialog, DialogContent, DialogHeader, DialogTitle, ImageUploadDropzone } from "../ui";
 import CategoryPicker from "../admin/CategoryPicker";
+import { apiFetchCategoryTree } from "../../api/contentApi";
 import {
   apiFetchProducts,
   apiCreateProduct,
@@ -29,6 +30,35 @@ import {
   apiUpdateOrderStatus
 } from "../../api/backendApi";
 
+/** Depth-first lookup of one node in a category tree. */
+function findCategoryNode(nodes, id) {
+  for (const node of Array.isArray(nodes) ? nodes : []) {
+    if (node.id === id) return node;
+    const found = findCategoryNode(node.children || [], id);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * The selected category plus every descendant id, mirroring the server's
+ * `.in("category_id", ids)` expansion. Returns null when the tree is not loaded
+ * or the id is absent, so the caller can fall back to an exact match.
+ */
+function collectCategoryIds(nodes, id) {
+  const root = findCategoryNode(nodes, id);
+  if (!root) return null;
+
+  const ids = new Set();
+  const stack = [root];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    ids.add(node.id);
+    stack.push(...(node.children || []));
+  }
+  return ids;
+}
+
 export default function VendorDashboard({ currentUser, onNavigateHome }) {
   const [activeTab, setActiveTab] = useState("overview"); // overview, products, orders, settings
   const [products, setProducts] = useState([]);
@@ -36,6 +66,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState({ id: null, name: null });
+  const [categoryTree, setCategoryTree] = useState([]);
 
   // Product Modal State
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -80,6 +111,23 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
   useEffect(() => {
     loadVendorData();
   }, [currentUser]);
+
+  // The picker fetches the same tree; the filter needs it too so selecting a
+  // parent also matches products bound to its descendants (server parity).
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchCategoryTree()
+      .then((result) => {
+        if (cancelled) return;
+        setCategoryTree(Array.isArray(result) ? result : result?.categories || []);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryTree([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Calculate Metrics
   const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
@@ -191,10 +239,16 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
     }
   };
 
+  const categoryFilterIds = categoryFilter.id
+    ? collectCategoryIds(categoryTree, categoryFilter.id)
+    : null;
+
   const filteredProducts = products.filter(p => {
     const matchesCategory =
       !categoryFilter.id ||
-      p.category_id === categoryFilter.id ||
+      (categoryFilterIds
+        ? categoryFilterIds.has(p.category_id)
+        : p.category_id === categoryFilter.id) ||
       (!p.category_id && p.category === categoryFilter.name);
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
@@ -421,6 +475,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                 />
                 <CategoryPicker
                   value={categoryFilter.id}
+                  label={categoryFilter.name}
                   onChange={(id, name) => setCategoryFilter({ id, name })}
                   emptyLabel="All Categories"
                   style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, width: 220 }}
@@ -633,6 +688,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 4 }}>Category</label>
                   <CategoryPicker
                     value={productForm.category_id}
+                    label={productForm.category}
                     onChange={(id, name) =>
                       setProductForm({
                         ...productForm,

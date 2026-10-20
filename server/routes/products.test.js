@@ -247,6 +247,70 @@ describe("products API category binding", () => {
     expect(calls.in).toEqual([]);
   });
 
+  it("GET /api/products?category=All disables the free-text filter", async () => {
+    const calls = makeDb({ select: () => ({ data: [product()], error: null }) });
+
+    const res = await get("/api/products?category=All");
+
+    expect(res.status).toBe(200);
+    expect(calls.ilike).toEqual([]);
+    expect(calls.tables).toEqual(["products"]);
+  });
+
+  it("GET /api/products lets the taxonomy parameter win over free text", async () => {
+    const calls = makeDb({
+      select: (state) =>
+        state.table === "categories"
+          ? { data: allCategories, error: null }
+          : { data: [product()], error: null },
+    });
+
+    const res = await get(`/api/products?categoryId=${mobiles.id}&category=Electronics`);
+
+    expect(res.status).toBe(200);
+    expect(calls.in).toEqual([["category_id", [mobiles.id, smartphones.id]]]);
+    expect(calls.ilike).toEqual([]);
+  });
+
+  it("GET /api/products?categoryPath returns a level-3 product under its level-1 ancestor", async () => {
+    const deepProduct = product({ id: "prod-deep", category_id: smartphones.id });
+    const calls = makeDb({
+      select: (state) =>
+        state.table === "categories"
+          ? { data: allCategories, error: null }
+          : { data: [deepProduct], error: null },
+    });
+
+    const res = await get("/api/products?categoryPath=electronics");
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.map((row) => row.id)).toEqual(["prod-deep"]);
+    expect(body[0].category_id).toBe(smartphones.id);
+    expect(calls.in[0][1]).toContain(smartphones.id);
+  });
+
+  it("GET /api/products/:id maps a database error to a fixed 500", async () => {
+    makeDb({ maybeSingle: () => ({ data: null, error: { message: "db read boom" } }) });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await get("/api/products/prod-1");
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Could not load product.");
+    expect(body.error).not.toContain("db read boom");
+  });
+
+  it("GET /api/products/:id is 404 only when the row is missing", async () => {
+    makeDb({ maybeSingle: () => ({ data: null, error: null }) });
+
+    const res = await get("/api/products/ghost");
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Product not found." });
+  });
+
   it("GET /api/products with no category parameter never queries categories", async () => {
     const calls = makeDb({ select: () => ({ data: [product()], error: null }) });
 

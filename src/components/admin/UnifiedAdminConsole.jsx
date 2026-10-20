@@ -1916,6 +1916,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         <label className="form-label">Category</label>
                         <CategoryPicker
                           value={productForm.category_id}
+                          label={productForm.category}
                           onChange={(id, name) =>
                             setProductForm((prev) => ({
                               ...prev,

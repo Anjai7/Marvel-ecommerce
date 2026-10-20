@@ -2,7 +2,6 @@ import express from "express";
 import { supabase } from "../db.js";
 import { createCrudRouter, applyReorder } from "../lib/crudRouter.js";
 import {
-  adminChain,
   adminGuards,
   includesInactive,
   inactiveRefused,
@@ -16,6 +15,7 @@ const router = express.Router();
 
 const READ_ERROR = "Could not load content.";
 const SAVE_ERROR = "Failed to save menu item.";
+const SAVE_MESSAGE = "Menu item saved successfully.";
 const DELETE_ERROR = "Failed to delete menu item.";
 const REORDER_ERROR = "Reorder must include every item in the scope.";
 const REORDER_FAILED = "Failed to reorder menu items.";
@@ -73,8 +73,9 @@ export function validateHierarchy({ level = 1, parent_id = null }, parent) {
 
 function filterByRole(rows, role) {
   return rows.filter((item) => {
+    if (!role || role === "super_admin") return true;
     if (!item.roles_allowed || item.roles_allowed.length === 0) return true;
-    return item.roles_allowed.includes(role) || role === "super_admin";
+    return item.roles_allowed.includes(role);
   });
 }
 
@@ -199,12 +200,15 @@ router.get("/", async (req, res) => {
     }
 
     const rows = data ?? [];
+    // An admin asking for inactive rows is editing the menu: the role filter
+    // must not then hide rows their own role would not see on the storefront.
+    const treeRole = withInactive ? undefined : role;
     if (req.query.flat === "1") {
       const visible = withInactive ? rows : rows.filter((row) => row.is_active !== false);
-      return res.json(filterByRole(visible, role));
+      return res.json(filterByRole(visible, treeRole));
     }
 
-    return res.json(buildMenuTree(rows, { role, includeInactive: withInactive }));
+    return res.json(buildMenuTree(rows, { role: treeRole, includeInactive: withInactive }));
   } catch (thrown) {
     console.error("Supabase menu list exception:", thrown.message);
     return res.status(500).json({ error: READ_ERROR });
@@ -227,7 +231,9 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
   }
 
   try {
-    const { data, error } = await supabase.from("menu_items").select("id, parent_id, level");
+    const { data, error } = await supabase
+      .from("menu_items")
+      .select("id, parent_id, level, order_index");
     if (error) {
       console.error("Supabase menu reorder read error:", error.message);
       return res.status(500).json({ error: READ_ERROR });
@@ -294,16 +300,48 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
 
     // Array order is authoritative: the renumbered values go to order_index,
     // the column buildMenuTree and GET /api/menu already sort by (§3.6).
+    const writes = new Map();
     for (const entry of renumbered) {
       const original = orderById.get(entry.id);
       const patch = { order_index: entry.display_order };
       if (original.parent_id !== undefined) patch.parent_id = original.parent_id;
       if (original.level !== undefined) patch.level = original.level;
+      writes.set(entry.id, patch);
+    }
 
+    // A moved row joins a different sibling group, so that group is renumbered
+    // too: existing siblings keep their order and the movers are appended. Two
+    // siblings must never end up sharing an order_index.
+    const movedTo = new Map();
+    for (const order of orders) {
+      if (order.parent_id === undefined) continue;
+      const destination = order.parent_id ?? null;
+      if (destination === parentId) continue;
+      const movedIds = movedTo.get(destination) ?? [];
+      movedIds.push(order.id);
+      movedTo.set(destination, movedIds);
+    }
+
+    const orderValue = (row) =>
+      Number.isFinite(Number(row.order_index)) ? Number(row.order_index) : 0;
+    for (const [destination, movedIds] of movedTo) {
+      const siblings = rows
+        .filter((row) => (row.parent_id ?? null) === destination && !movedIds.includes(row.id))
+        .sort(
+          (left, right) =>
+            orderValue(left) - orderValue(right) || String(left.id).localeCompare(String(right.id))
+        );
+
+      [...siblings.map((row) => row.id), ...movedIds].forEach((id, index) => {
+        writes.set(id, { ...(writes.get(id) ?? {}), order_index: index });
+      });
+    }
+
+    for (const [id, patch] of writes) {
       const { error: updateError } = await supabase
         .from("menu_items")
         .update(patch)
-        .eq("id", entry.id);
+        .eq("id", id);
       if (updateError) {
         console.error("Supabase menu reorder update error:", updateError.message);
         return res.status(500).json({ error: REORDER_FAILED });
@@ -328,13 +366,28 @@ router.post("/", ...adminOnly, async (req, res) => {
     return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
   }
 
-  const level = body.level ?? 1;
+  const wantsUpdate = body.id !== undefined && body.id !== null;
 
   try {
-    const { parent, error: parentError } = await loadParent(level, body.parent_id);
+    // A POST carrying an id updates that row. Without this read the payload
+    // below was a full-row overwrite: any omitted field (order_index, badge,
+    // section, promo_*, category_id) was reset to its default.
+    const existingResult = wantsUpdate
+      ? await supabase.from("menu_items").select("*").eq("id", body.id).maybeSingle()
+      : { data: null, error: null };
+    if (existingResult.error) {
+      console.error("Supabase menu update read error:", existingResult.error.message);
+      return res.status(500).json({ error: SAVE_ERROR });
+    }
+    const existing = existingResult.data ?? null;
+
+    const level = body.level ?? existing?.level ?? 1;
+    const parentId = body.parent_id !== undefined ? body.parent_id : (existing?.parent_id ?? null);
+
+    const { parent, error: parentError } = await loadParent(level, parentId);
     if (parentError) return res.status(500).json({ error: SAVE_ERROR });
 
-    const hierarchyError = validateHierarchy({ level, parent_id: body.parent_id ?? null }, parent);
+    const hierarchyError = validateHierarchy({ level, parent_id: parentId }, parent);
     if (hierarchyError) return res.status(400).json({ error: hierarchyError });
 
     if (Object.hasOwn(body, "category_id") && body.category_id != null) {
@@ -343,27 +396,46 @@ router.post("/", ...adminOnly, async (req, res) => {
       if (!category) return res.status(400).json({ error: CATEGORY_NOT_FOUND });
     }
 
-    const payload = {
-      title: body.title,
-      path: body.path,
-      icon: body.icon || "Layers",
-      badge: body.badge ?? null,
-      badge_variant: body.badge_variant || "accent",
-      parent_id: body.parent_id ?? null,
-      level,
-      section: body.section ?? null,
-      section_icon: body.section_icon ?? null,
-      promo_title: body.promo_title ?? null,
-      promo_subtitle: body.promo_subtitle ?? null,
-      promo_image_url: body.promo_image_url ?? null,
-      promo_cta_text: body.promo_cta_text ?? null,
-      promo_cta_path: body.promo_cta_path ?? null,
-      roles_allowed: body.roles_allowed ?? DEFAULT_ROLES,
-      order_index: body.order_index ?? 0,
-      is_active: body.is_active ?? true,
-    };
-    if (Object.hasOwn(body, "category_id")) payload.category_id = body.category_id;
-    if (body.id !== undefined && body.id !== null) payload.id = body.id;
+    let payload;
+    if (existing) {
+      // Update: start from the stored row and overlay only body-present fields.
+      payload = {};
+      for (const field of FIELDS) {
+        if (existing[field] !== undefined) payload[field] = existing[field];
+      }
+      for (const field of FIELDS) {
+        if (Object.hasOwn(body, field) && body[field] !== undefined) {
+          payload[field] = body[field];
+        }
+      }
+      payload.title = body.title;
+      payload.path = body.path;
+      payload.level = level;
+      payload.parent_id = parentId;
+    } else {
+      // Create: the documented defaults apply.
+      payload = {
+        title: body.title,
+        path: body.path,
+        icon: body.icon || "Layers",
+        badge: body.badge ?? null,
+        badge_variant: body.badge_variant || "accent",
+        parent_id: parentId,
+        level,
+        section: body.section ?? null,
+        section_icon: body.section_icon ?? null,
+        promo_title: body.promo_title ?? null,
+        promo_subtitle: body.promo_subtitle ?? null,
+        promo_image_url: body.promo_image_url ?? null,
+        promo_cta_text: body.promo_cta_text ?? null,
+        promo_cta_path: body.promo_cta_path ?? null,
+        roles_allowed: body.roles_allowed ?? DEFAULT_ROLES,
+        order_index: body.order_index ?? 0,
+        is_active: body.is_active ?? true,
+      };
+      if (Object.hasOwn(body, "category_id")) payload.category_id = body.category_id;
+    }
+    if (wantsUpdate) payload.id = body.id;
 
     // Unlike the old handler, a Supabase error is never swallowed: a failed
     // write is a 500, not a 200 carrying the in-memory fallback.
@@ -374,7 +446,7 @@ router.post("/", ...adminOnly, async (req, res) => {
       return res.status(500).json({ error: SAVE_ERROR });
     }
 
-    return res.json({ message: "Menu item saved successfully.", item: data ?? null });
+    return res.json({ message: SAVE_MESSAGE, item: data ?? null });
   } catch (thrown) {
     console.error("Supabase menu save exception:", thrown.message);
     return res.status(500).json({ error: SAVE_ERROR });
@@ -409,13 +481,46 @@ const crud = createCrudRouter({
   listKey: "items",
 });
 
-// PATCH /:id only: guard, resolve the hierarchy/category, then the factory.
-router.use((req, res, next) => {
-  if (req.method !== "PATCH") return next();
-  return adminChain(req, res, (error) => {
-    if (error) return next(error);
-    return prepareMenuPatch(req, res, next);
-  });
+// PATCH /:id is menu-local, like DELETE: the frozen CRUD factory echoes raw
+// Supabase messages, and this task's contract is a fixed, non-disclosing error.
+// It keeps the factory's contract: partial write, 404 for a missing row, an
+// empty-patch short-circuit, and `{ message, item }`.
+router.patch("/:id", ...adminOnly, prepareMenuPatch, async (req, res) => {
+  try {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const validationError = validateMenuRow(body, { partial: true });
+    if (typeof validationError === "string") {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const id = req.params.id;
+    const existing = await supabase.from("menu_items").select("*").eq("id", id).maybeSingle();
+    if (existing.error) {
+      console.error("Supabase menu patch read error:", existing.error.message);
+      return res.status(500).json({ error: SAVE_ERROR });
+    }
+    if (!existing.data) return res.status(404).json({ error: NOT_FOUND });
+
+    const patch = toPayload(body);
+    if (Object.keys(patch).length === 0) {
+      return res.json({ message: SAVE_MESSAGE, item: existing.data });
+    }
+
+    const { data, error } = await supabase
+      .from("menu_items")
+      .update(patch)
+      .eq("id", id)
+      .select();
+    if (error) {
+      console.error("Supabase menu patch update error:", error.message);
+      return res.status(500).json({ error: SAVE_ERROR });
+    }
+
+    return res.json({ message: SAVE_MESSAGE, item: data?.[0] ?? existing.data });
+  } catch (thrown) {
+    console.error("Supabase menu patch exception:", thrown.message);
+    return res.status(500).json({ error: SAVE_ERROR });
+  }
 });
 
 router.use(crud);

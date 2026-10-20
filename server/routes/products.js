@@ -209,15 +209,24 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from("products").select("*").eq("id", id).single();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.error("Supabase product read error:", error.message);
+      return res.status(500).json({ error: "Could not load product." });
+    }
+    if (!data) {
       return res.status(404).json({ error: "Product not found." });
     }
 
     res.json(formatProduct(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Products GET by id route error:", err);
+    res.status(500).json({ error: "Could not load product." });
   }
 });
 
@@ -361,12 +370,14 @@ router.patch("/:id/moderation", async (req, res) => {
       .single();
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("Supabase moderation update error:", error.message);
+      return res.status(500).json({ error: "Failed to save product." });
     }
 
     res.json({ message: "Moderation status updated", product: formatProduct(data) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Products moderation route error:", err);
+    res.status(500).json({ error: "Failed to save product." });
   }
 });
 
@@ -377,12 +388,14 @@ router.delete("/:id", async (req, res) => {
     const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {
-      return res.status(500).json({ error: error.message });
+      console.error("Supabase delete product error:", error.message);
+      return res.status(500).json({ error: "Failed to delete product." });
     }
 
     res.json({ message: "Product deleted from database successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Products DELETE route error:", err);
+    res.status(500).json({ error: "Failed to delete product." });
   }
 });
 

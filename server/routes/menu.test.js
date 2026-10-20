@@ -231,6 +231,18 @@ describe("menu API", () => {
     expect(calls.update).toEqual([]);
   });
 
+  it("PATCH /api/menu/:id rejects an unknown category_id before writing", async () => {
+    const calls = makeDb({ maybeSingle: () => ({ data: null, error: null }) });
+
+    const res = await send("PATCH", `/api/menu/${root.id}`, {
+      category_id: "ghost-category",
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Category not found." });
+    expect(calls.update).toEqual([]);
+  });
+
   it("PATCH /api/menu/reorder renumbers the sibling group to 0..n-1 on order_index", async () => {
     const siblings = [
       { id: "menu-a", parent_id: "parent-1", level: 2 },
@@ -307,8 +319,8 @@ describe("menu API", () => {
 
   it("PATCH /api/menu/reorder rejects a repeated id", async () => {
     const rows = [
-      { id: "menu-a", parent_id: "parent-1", level: 2 },
-      { id: "menu-b", parent_id: "parent-1", level: 2 },
+      { id: "menu-a", parent_id: "parent-1", level: 2, order_index: 0 },
+      { id: "menu-b", parent_id: "parent-1", level: 2, order_index: 1 },
     ];
     const calls = makeDb({
       select: () => ({ data: rows, error: null }),
@@ -320,6 +332,72 @@ describe("menu API", () => {
     });
 
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Reorder must include every item in the scope.",
+    });
+    expect(calls.update).toEqual([]);
+  });
+
+  it("PATCH /api/menu/reorder rejects an entry with no id", async () => {
+    const calls = makeDb();
+
+    const res = await send("PATCH", "/api/menu/reorder", {
+      orders: [{ display_order: 0 }],
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Reorder must include every item in the scope.",
+    });
+    expect(calls.update).toEqual([]);
+  });
+
+  it("PATCH /api/menu/reorder renumbers the destination group after a move", async () => {
+    const rows = [
+      { id: "parent-1", parent_id: null, level: 1, order_index: 0 },
+      { id: "parent-2", parent_id: null, level: 1, order_index: 1 },
+      { id: "menu-a", parent_id: "parent-1", level: 2, order_index: 0 },
+      { id: "menu-b", parent_id: "parent-1", level: 2, order_index: 1 },
+      { id: "menu-x", parent_id: "parent-2", level: 2, order_index: 0 },
+      { id: "menu-y", parent_id: "parent-2", level: 2, order_index: 1 },
+    ];
+    const calls = makeDb({
+      select: () => ({ data: rows, error: null }),
+      update: () => ({ data: null, error: null }),
+    });
+
+    const res = await send("PATCH", "/api/menu/reorder", {
+      orders: [{ id: "menu-a", parent_id: "parent-2" }, { id: "menu-b" }],
+    });
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).message).toEqual(expect.any(String));
+
+    const writeIds = calls.eq.filter(([column]) => column === "id").map(([, id]) => id);
+    const orderById = new Map(writeIds.map((id, index) => [id, calls.update[index].order_index]));
+    expect(orderById.get("menu-x")).toBe(0);
+    expect(orderById.get("menu-y")).toBe(1);
+    expect(orderById.get("menu-a")).toBe(2);
+    expect(orderById.get("menu-b")).toBe(1);
+
+    const destinationOrders = ["menu-x", "menu-y", "menu-a"].map((id) => orderById.get(id));
+    expect(new Set(destinationOrders).size).toBe(destinationOrders.length);
+    const moved = calls.update[writeIds.indexOf("menu-a")];
+    expect(moved.parent_id).toBe("parent-2");
+  });
+
+  it("PATCH /api/menu/:id maps a database error to a fixed message", async () => {
+    const calls = makeDb({
+      maybeSingle: () => ({ data: null, error: { message: "db patch boom" } }),
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await send("PATCH", `/api/menu/${root.id}`, { title: "New" });
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Failed to save menu item.");
+    expect(body.error).not.toContain("db patch boom");
     expect(calls.update).toEqual([]);
   });
 
@@ -351,6 +429,43 @@ describe("menu API", () => {
       roles_allowed: ALL_ROLES,
     });
     expect(calls.upsert[0]).not.toHaveProperty("display_order");
+  });
+
+  it("POST /api/menu merges an update with the stored row", async () => {
+    const stored = {
+      ...root,
+      order_index: 5,
+      badge: "Sale",
+      section: "featured",
+      promo_title: "Stored promo",
+    };
+    const calls = makeDb({
+      maybeSingle: (state) =>
+        state.table === "menu_items" && state.columns === "*"
+          ? { data: stored, error: null }
+          : { data: null, error: null },
+      single: (state) =>
+        state.op === "upsert"
+          ? { data: { ...stored, title: "T2", path: "/p2" }, error: null }
+          : { data: null, error: null },
+    });
+
+    const res = await send("POST", "/api/menu", {
+      id: stored.id,
+      title: "T2",
+      path: "/p2",
+    });
+
+    expect(res.status).toBe(200);
+    expect(calls.upsert[0]).toMatchObject({
+      id: stored.id,
+      title: "T2",
+      path: "/p2",
+      order_index: 5,
+      badge: "Sale",
+      section: "featured",
+      promo_title: "Stored promo",
+    });
   });
 
   it("POST /api/menu surfaces a Supabase error as 500 instead of a silent 200", async () => {
@@ -429,6 +544,26 @@ describe("menu API", () => {
       const body = await res.json();
       expect(body.map((node) => node.id)).toContain(inactive.id);
       expect(calls.eq.map(([column]) => column)).not.toContain("is_active");
+    });
+
+    it("with an admin token ignores the role filter for an editor request", async () => {
+      const adminOnlyRow = {
+        id: "menu-admin-only",
+        title: "Admin Panel",
+        path: "/admin",
+        level: 1,
+        parent_id: null,
+        order_index: 0,
+        is_active: true,
+        roles_allowed: ["admin", "super_admin"],
+      };
+      makeDb({ select: () => ({ data: [adminOnlyRow], error: null }) });
+
+      const res = await get("/api/menu?includeInactive=1&role=user", adminHeaders);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.map((node) => node.id)).toContain(adminOnlyRow.id);
     });
   });
 
