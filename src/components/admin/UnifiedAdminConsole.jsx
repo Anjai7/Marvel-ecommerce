@@ -43,6 +43,7 @@ import {
   Boxes,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
+import CategoryPicker from "./CategoryPicker";
 import {
   apiFetchProducts,
   apiFetchOrders,
@@ -121,6 +122,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     price: "",
     original_price: "",
     category: "Electronics",
+    category_id: null,
     stock: "15",
     image_url: "",
     description: "",
@@ -232,6 +234,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       price: "",
       original_price: "",
       category: "Electronics",
+      category_id: null,
       stock: "15",
       image_url: "",
       description: "",
@@ -269,6 +272,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           ? String(prod.original_price)
           : "",
       category: prod.category || "Electronics",
+      category_id: prod.category_id ?? null,
       stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "15",
       image_url: prod.image_url || prod.image || "",
       description: prod.description || "",
@@ -295,6 +299,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           ? parseFloat(productForm.original_price)
           : undefined,
         category: productForm.category,
+        category_id: productForm.category_id ?? null,
         stock: parseInt(productForm.stock, 10) || 0,
         image_url: productForm.image_url.trim(),
         description: productForm.description.trim(),
@@ -1909,28 +1914,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       </div>
                       <div className="form-group">
                         <label className="form-label">Category</label>
-                        <select
-                          value={productForm.category}
-                          onChange={(e) =>
-                            setProductForm((prev) => ({ ...prev, category: e.target.value }))
+                        <CategoryPicker
+                          value={productForm.category_id}
+                          onChange={(id, name) =>
+                            setProductForm((prev) => ({
+                              ...prev,
+                              category_id: id,
+                              category: name ?? prev.category,
+                            }))
                           }
-                          className="form-select-field"
-                        >
-                          {[
-                            "Electronics",
-                            "Fashion",
-                            "Home",
-                            "Beauty",
-                            "Wearables",
-                            "Sports",
-                            "Grocery",
-                            "Toys",
-                          ].map((c) => (
-                            <option key={c} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
                     </div>
                     <div className="form-group-row">

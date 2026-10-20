@@ -19,6 +19,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Button, Input, useToast, Dialog, DialogContent, DialogHeader, DialogTitle, ImageUploadDropzone } from "../ui";
+import CategoryPicker from "../admin/CategoryPicker";
 import {
   apiFetchProducts,
   apiCreateProduct,
@@ -34,7 +35,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState({ id: null, name: null });
 
   // Product Modal State
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -44,6 +45,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
     price: "",
     original_price: "",
     category: "Electronics",
+    category_id: null,
     stock: "15",
     image_url: "",
     description: ""
@@ -91,6 +93,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
       price: "",
       original_price: "",
       category: "Electronics",
+      category_id: null,
       stock: "15",
       image_url: "",
       description: ""
@@ -105,6 +108,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
       price: prod.price.toString(),
       original_price: prod.original_price?.toString() || "",
       category: prod.category,
+      category_id: prod.category_id ?? null,
       stock: prod.stock.toString(),
       image_url: prod.image_url || "",
       description: prod.description || ""
@@ -121,6 +125,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
           price: parseFloat(productForm.price),
           original_price: productForm.original_price ? parseFloat(productForm.original_price) : undefined,
           category: productForm.category,
+          category_id: productForm.category_id ?? null,
           stock: parseInt(productForm.stock, 10),
           image_url: productForm.image_url,
           description: productForm.description
@@ -133,6 +138,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
           price: parseFloat(productForm.price),
           original_price: productForm.original_price ? parseFloat(productForm.original_price) : undefined,
           category: productForm.category,
+          category_id: productForm.category_id ?? null,
           stock: parseInt(productForm.stock, 10),
           image_url: productForm.image_url,
           description: productForm.description,
@@ -186,7 +192,10 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesCategory = categoryFilter === "All" || p.category === categoryFilter;
+    const matchesCategory =
+      !categoryFilter.id ||
+      p.category_id === categoryFilter.id ||
+      (!p.category_id && p.category === categoryFilter.name);
     const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -410,16 +419,12 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   leftIcon={<Search size={16} />}
                 />
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
-                >
-                  <option value="All">All Categories</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Wearables">Wearables</option>
-                  <option value="Accessories">Accessories</option>
-                </select>
+                <CategoryPicker
+                  value={categoryFilter.id}
+                  onChange={(id, name) => setCategoryFilter({ id, name })}
+                  emptyLabel="All Categories"
+                  style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13, width: 220 }}
+                />
               </div>
 
               <Button variant="primary" style={{ background: "#7c3aed" }} onClick={handleOpenAddProduct}>
@@ -626,16 +631,17 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 4 }}>Category</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
+                  <CategoryPicker
+                    value={productForm.category_id}
+                    onChange={(id, name) =>
+                      setProductForm({
+                        ...productForm,
+                        category_id: id,
+                        category: name ?? productForm.category
+                      })
+                    }
                     style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14 }}
-                  >
-                    <option value="Electronics">Electronics</option>
-                    <option value="Wearables">Wearables</option>
-                    <option value="Accessories">Accessories</option>
-                    <option value="Fashion">Fashion</option>
-                  </select>
+                  />
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 4 }}>Stock Quantity</label>
