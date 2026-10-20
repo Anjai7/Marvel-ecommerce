@@ -483,15 +483,29 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
 
   Seed migration `20261020000008_seed_categories.sql` — the `categories` tree is generated from `menu_items` so the two can never drift:
 
+  The seed runs as **three separate inserts, one per level** (level 1, then 2, then 3), because a single `INSERT … SELECT` gives no row-ordering guarantee and the self-referencing `parent_id` FK is immediate, not deferred. Each insert selects only the mega-menu rows — the ones with the fixed `d1c…` / `d2c…` / `d3c…` ids — and computes the slug by taking the **last** path segment:
+
   ```sql
+  -- level 1
   INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
   SELECT m.id, m.title,
-         regexp_replace(split_part(m.path, '/', 4), '[^a-zA-Z0-9-]+', '-', 'g'),
-         m.parent_id, m.level, m.order_index, m.is_active, true, (m.level = 1)
+         lower(regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g')),
+         m.parent_id, m.level, COALESCE(m.order_index, 0), COALESCE(m.is_active, true), true, (m.level = 1)
   FROM public.menu_items m
-  WHERE m.level BETWEEN 1 AND 3
+  WHERE m.level = 1 AND m.id::text LIKE 'd1c%'
   ON CONFLICT DO NOTHING;
+
+  -- level 2  (same shape, WHERE m.level = 2 AND m.id::text LIKE 'd2c%')
+  -- level 3  (same shape, WHERE m.level = 3 AND m.id::text LIKE 'd3c%')
   ```
+
+  **`split_part` must not be used.** `split_part(x, '/', n)` returns the _n_-th field, so it is the empty string for any path with fewer than _n_ segments — `split_part(m.path, '/', 4)` yields `''` for levels 1 and 2, and `split_part(stripped, '/', 3)` yields `''` for levels 1 and 2 as well. The `^.*/` form strips everything up to and including the last slash, so it is correct for one, two and three segments alike:
+
+  - `/category/electronics` → `electronics`
+  - `/category/electronics/mobiles` → `mobiles`
+  - `/category/electronics/mobiles/smartphones` → `smartphones`
+
+  `COALESCE` is required because `menu_items.order_index` and `menu_items.is_active` are nullable while the `categories` columns are `NOT NULL`.
 
   Then link them back:
 
@@ -501,14 +515,8 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
   WHERE c.id = m.id;
   ```
 
-  `split_part(path,'/',4)` is the last segment of `/category/a/b/c`; for a level-1 path `/category/electronics` it yields `electronics` (the empty 4th segment) — so the slug expression must instead be `regexp_replace(m.path, '^/category/', '')` split on the final `/`:
-
-  ```sql
-  regexp_replace(split_part(regexp_replace(m.path, '^/category/', ''), '/', 3), '[^a-zA-Z0-9-]+', '-', 'g')
-  ```
-
-  (Level 1 → 1 segment, level 2 → 2 segments, level 3 → 3 segments; `split_part(..., '/', 3)` returns the last segment for all three.)
-  - `show_in_homepage` is set to `true` for **all 7 level-1 rows**. The seeded level-1 titles are exactly `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories` (verified against `supabase/migrations/20261016000006_dynamic_menus_banners.sql`) — note the seeded root is `Sports`, not "Sports & Fitness". Set it with a `CASE` on `level = 1` rather than a name list, so a future seed-title change cannot silently leave the homepage with zero tiles.
+  The 6 legacy flat rows are navigation-only: they keep `category_id IS NULL` and are never part of the taxonomy.
+  - `show_in_homepage` is set to `true` for the 7 level-1 rows whose `title` is one of `Electronics`, `Fashion`, `Home & Kitchen`, `Beauty`, `Sports`, `Toys & Baby`, `Accessories` (verified against `supabase/migrations/20261016000006_dynamic_menus_banners.sql`) — note the seeded root is `Sports`, not "Sports & Fitness". This is a name list, matching the spec, because the titles are known and verified; if a future mega-menu seed renames a root, the statement must change with it, and the §7.4 level-group gate will show the change immediately.
   - `image_url` is backfilled from `public.site_categories.image_url` by matching `lower(site_categories.name) = lower(categories.name)`; unmatched rows keep `image_url` NULL and fall back to a per-root image.
   - `products.category_id` backfill, with a deterministic three-key tiebreak (level, then `display_order`, then `id`) so a name that appears twice at the same minimum level — `Ethnic Wear` exists at level 3 under both Men's and Women's Fashion — binds to exactly one row:
     ```sql
