@@ -1,9 +1,22 @@
 import { useState, useRef } from "react";
-import { UploadCloud, Image as ImageIcon, X, CheckCircle2, Loader2, Link as LinkIcon } from "lucide-react";
+import {
+  UploadCloud,
+  Image as ImageIcon,
+  X,
+  CheckCircle2,
+  Loader2,
+  Link as LinkIcon,
+} from "lucide-react";
 import { apiUploadImage } from "../../api/backendApi";
 import { Button, Input } from "./index";
 
-export default function ImageUploadDropzone({ value, onChange, folder = "marvel_products" }) {
+export default function ImageUploadDropzone({
+  value,
+  onChange,
+  folder = "marvel_products",
+  upload = apiUploadImage,
+  onError,
+}) {
   const [mode, setMode] = useState("file"); // "file" | "url"
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -22,14 +35,19 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
     setUploading(true);
 
     try {
-      const res = await apiUploadImage(file, folder);
+      const res = await upload(file, folder);
       if (res.url) {
         setPreview(res.url);
         onChange(res.url);
       }
     } catch (err) {
-      console.error("Upload failed:", err);
-      alert(err.message || "Failed to upload to Cloudinary.");
+      const message = err?.message || "Failed to upload to Cloudinary.";
+      if (onError) {
+        onError(message);
+      } else {
+        console.error("Upload failed:", err);
+        alert(message);
+      }
       setPreview(value || "");
     } finally {
       setUploading(false);
@@ -68,7 +86,7 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
               fontSize: 11,
               fontWeight: mode === "file" ? 700 : 500,
               color: mode === "file" ? "#0f172a" : "#64748b",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             Upload File
@@ -84,7 +102,7 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
               fontSize: 11,
               fontWeight: mode === "url" ? 700 : 500,
               color: mode === "url" ? "#0f172a" : "#64748b",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             Paste URL
@@ -106,18 +124,20 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
       ) : (
         <div>
           {preview ? (
-            <div style={{
-              position: "relative",
-              width: "100%",
-              height: 160,
-              borderRadius: 12,
-              overflow: "hidden",
-              border: "1px solid #cbd5e1",
-              background: "#0f172a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
+            <div
+              style={{
+                position: "relative",
+                width: "100%",
+                height: 160,
+                borderRadius: 12,
+                overflow: "hidden",
+                border: "1px solid #cbd5e1",
+                background: "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <img
                 src={preview}
                 alt="Product preview"
@@ -125,17 +145,19 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
               />
 
               {uploading && (
-                <div style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.6)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  gap: 8
-                }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(0,0,0,0.6)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    gap: 8,
+                  }}
+                >
                   <Loader2 size={24} className="animate-spin" />
                   <span style={{ fontSize: 12, fontWeight: 600 }}>Uploading to Cloudinary...</span>
                 </div>
@@ -158,7 +180,7 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    cursor: "pointer"
+                    cursor: "pointer",
                   }}
                   title="Remove image"
                 >
@@ -168,7 +190,10 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
             </div>
           ) : (
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
@@ -179,7 +204,7 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
                 padding: "24px 16px",
                 textAlign: "center",
                 cursor: "pointer",
-                transition: "all 0.15s ease"
+                transition: "all 0.15s ease",
               }}
             >
               <input
@@ -189,17 +214,19 @@ export default function ImageUploadDropzone({ value, onChange, folder = "marvel_
                 onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
                 style={{ display: "none" }}
               />
-              <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: "50%",
-                background: "#ede9fe",
-                color: "#7c3aed",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 8
-              }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  background: "#ede9fe",
+                  color: "#7c3aed",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 8,
+                }}
+              >
                 <UploadCloud size={22} />
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
