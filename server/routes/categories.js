@@ -1,11 +1,17 @@
 import express from "express";
 import { supabase } from "../db.js";
 import { createCrudRouter, applyReorder } from "../lib/crudRouter.js";
-import { verifyToken, requireRole } from "../middleware/auth.js";
+import {
+  adminChain,
+  adminGuards,
+  includesInactive,
+  inactiveRefused,
+  isValidOrderValue,
+  ORDER_INTEGER_MESSAGE,
+} from "../lib/guards.js";
 import { validateCategory, validateDepth } from "../lib/validation.js";
 
-const ADMIN_ROLES = ["admin", "super_admin"];
-const adminOnly = [verifyToken, requireRole(ADMIN_ROLES)];
+const adminOnly = adminGuards;
 
 const FIELDS = [
   "name",
@@ -24,7 +30,7 @@ const FIELDS = [
 
 const READ_ERROR = "Could not load content.";
 const REORDER_ERROR = "Reorder must include every item in the scope.";
-const NOT_FOUND = "Category not found.";
+const NOT_FOUND = "category not found.";
 
 /**
  * The parent's level, resolved from the database before the factory builds the
@@ -32,30 +38,6 @@ const NOT_FOUND = "Category not found.";
  * it is not a writable column.
  */
 const DERIVED_PARENT_LEVEL = Symbol("derivedParentLevel");
-
-/** Run verifyToken then requireRole; a guard that answers parks the chain. */
-function adminChain(req, res, next) {
-  verifyToken(req, res, (error) => {
-    if (error) return next(error);
-    return requireRole(ADMIN_ROLES)(req, res, next);
-  });
-}
-
-/** True when the request asks for inactive rows and carries an admin token. */
-function includesInactive(req, res) {
-  if (!Object.hasOwn(req.query, "includeInactive")) return false;
-  if (["0", "false", "off"].includes(String(req.query.includeInactive).toLowerCase())) {
-    return false;
-  }
-
-  let allowed = false;
-  adminChain(req, res, () => {
-    allowed = true;
-  });
-  // A guard that answered instead of calling next() has already sent the
-  // 401/403; `allowed` stays false and the caller skips the query.
-  return allowed && !res.headersSent;
-}
 
 function siblingOrder(a, b) {
   const order = (a.display_order ?? 0) - (b.display_order ?? 0);
@@ -65,8 +47,8 @@ function siblingOrder(a, b) {
 
 /** All rows for a tree/lookup read, or null when a response was already sent. */
 async function loadRows(req, res) {
-  const withInactive = includesInactive(req, res);
-  if (Object.hasOwn(req.query, "includeInactive") && !withInactive && res.headersSent) return null;
+  const withInactive = await includesInactive(req, res);
+  if (!withInactive && inactiveRefused(req, res)) return null;
 
   let query = supabase.from("categories").select("*");
   if (!withInactive) query = query.eq("is_active", true);
@@ -201,6 +183,10 @@ function validateCategoryRow(body = {}, opts = {}) {
   const error = validateCategory(body, opts);
   if (error) return error;
 
+  if (Object.hasOwn(body, "display_order") && !isValidOrderValue(body.display_order)) {
+    return ORDER_INTEGER_MESSAGE;
+  }
+
   const parentLevel = body[DERIVED_PARENT_LEVEL];
   if (parentLevel === undefined) return null;
 
@@ -327,6 +313,8 @@ router.patch("/reorder", ...adminOnly, async (req, res) => {
     );
     if (reorderError) return res.status(400).json({ error: reorderError });
 
+    // One UPDATE per row: non-atomic by design for this slice. A failure midway
+    // leaves a partial ordering until the next complete reorder call.
     for (const entry of renumbered) {
       const { error: updateError } = await supabase
         .from("categories")

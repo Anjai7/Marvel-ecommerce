@@ -196,7 +196,7 @@ describe("categories API", () => {
     mockFrom.mockReset();
   });
 
-  const get = (path) => fetch(`${base}${path}`);
+  const get = (path, headers) => fetch(`${base}${path}`, { headers });
   const send = (method, path, body, headers = adminHeaders) =>
     fetch(`${base}${path}`, {
       method,
@@ -494,6 +494,102 @@ describe("categories API", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).message).toEqual(expect.any(String));
     expect(calls.delete).toBe(1);
+  });
+
+  it("GET /api/categories/slug/:slug on an unknown slug is 404 with the shared spelling", async () => {
+    makeDb({ select: () => ({ data: allCategories, error: null }) });
+
+    const res = await get("/api/categories/slug/ghost");
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "category not found." });
+  });
+
+  describe("includeInactive on the hand-rolled list routes", () => {
+    const listPaths = [
+      "/api/categories/tree",
+      "/api/categories/path?path=electronics",
+      "/api/categories/slug/electronics",
+    ];
+    const withInactive = (path) => `${path}${path.includes("?") ? "&" : "?"}includeInactive=1`;
+
+    it.each(listPaths)(
+      "%s?includeInactive=1 without a token is 401 and does not query",
+      async (path) => {
+        makeDb();
+
+        const res = await get(withInactive(path));
+
+        expect(res.status).toBe(401);
+        expect(mockFrom).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(listPaths)(
+      "%s?includeInactive=1 with a user token is 403 and does not query",
+      async (path) => {
+        makeDb();
+
+        const res = await get(withInactive(path), userHeaders);
+
+        expect(res.status).toBe(403);
+        expect(mockFrom).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(listPaths)(
+      "%s?includeInactive=1 with an admin token includes inactive rows",
+      async (path) => {
+        const calls = makeDb({
+          select: () => ({ data: [electronics, { ...fashion, is_active: false }], error: null }),
+        });
+
+        const res = await get(withInactive(path), adminHeaders);
+
+        expect(res.status).toBe(200);
+        expect(calls.eq.map(([column]) => column)).not.toContain("is_active");
+      }
+    );
+  });
+
+  it("POST /api/categories rejects a null display_order instead of coercing it to 0", async () => {
+    const calls = makeDb();
+
+    const res = await send("POST", "/api/categories", {
+      name: "X",
+      slug: "x",
+      display_order: null,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+    expect(calls.upsert).toEqual([]);
+  });
+
+  it("POST /api/categories rejects a non-integer display_order before the database", async () => {
+    const calls = makeDb();
+
+    const res = await send("POST", "/api/categories", {
+      name: "X",
+      slug: "x",
+      display_order: "01",
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(calls.upsert).toEqual([]);
+  });
+
+  it("PATCH /api/categories/:id rejects a non-integer display_order", async () => {
+    const calls = makeDb();
+
+    const res = await send("PATCH", `/api/categories/${mobiles.id}`, { display_order: "1.5" });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(calls.update).toEqual([]);
   });
 
   const writeRoutes = [

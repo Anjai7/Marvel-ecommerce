@@ -368,6 +368,64 @@ describe("content API", () => {
       expect(await res.json()).toEqual({ banners: [] });
     });
 
+    it("GET /api/content/banners?includeInactive=1 without a token is 401 and does not query", async () => {
+      makeDb();
+
+      const res = await get("/api/content/banners?includeInactive=1");
+
+      expect(res.status).toBe(401);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("GET /api/content/banners?includeInactive=1 with a user token is 403 and does not query", async () => {
+      makeDb();
+
+      const res = await get("/api/content/banners?includeInactive=1", userHeaders);
+
+      expect(res.status).toBe(403);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("GET /api/content/banners?includeInactive=1 with an admin token includes inactive rows", async () => {
+      const calls = makeDb({
+        select: () => ({ data: [bannerOne, { ...bannerTwo, is_active: false }], error: null }),
+      });
+
+      const res = await get("/api/content/banners?includeInactive=1", adminHeaders);
+
+      expect(res.status).toBe(200);
+      expect((await res.json()).banners).toHaveLength(2);
+      expect(calls.eq.map(([column]) => column)).not.toContain("is_active");
+    });
+
+    it("POST /api/content/banners rejects a null display_order", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/banners", {
+        title: "Sale",
+        placement: "home_promo_carousel",
+        display_order: null,
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("POST /api/content/banners rejects a non-integer display_order", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/banners", {
+        title: "Sale",
+        placement: "home_promo_carousel",
+        display_order: "1e3",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
     it("POST /api/content/banners without a placement is 400 and never touches the db", async () => {
       makeDb();
 
@@ -497,6 +555,68 @@ describe("content API", () => {
       expect(await res.json()).toEqual({ error: "Could not load content." });
     });
 
+    it("GET /api/content/footer?includeInactive=1 without a token is 401 and does not query", async () => {
+      makeDb();
+
+      const res = await get("/api/content/footer?includeInactive=1");
+
+      expect(res.status).toBe(401);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("GET /api/content/footer?includeInactive=1 with a user token is 403 and does not query", async () => {
+      makeDb();
+
+      const res = await get("/api/content/footer?includeInactive=1", userHeaders);
+
+      expect(res.status).toBe(403);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("GET /api/content/footer?includeInactive=1 with an admin token includes inactive rows", async () => {
+      const calls = footerDb({
+        select: (state, table) => {
+          if (table === "footer_sections") {
+            return { data: [supportSection, { ...popularSection, is_active: false }], error: null };
+          }
+          return { data: footerLinks, error: null };
+        },
+      });
+
+      const res = await get("/api/content/footer?includeInactive=1", adminHeaders);
+
+      expect(res.status).toBe(200);
+      expect(calls.eq.map(([column]) => column)).not.toContain("is_active");
+    });
+
+    it("POST /api/content/footer/sections rejects a non-integer display_order", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/footer/sections", {
+        heading: "Support",
+        display_order: "01",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("POST /api/content/footer/links rejects a non-integer display_order", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/footer/links", {
+        section_id: "s1",
+        label: "Help",
+        href: "/help",
+        display_order: "1.5",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
     it("POST /api/content/footer/sections rejects an invalid section_type", async () => {
       makeDb();
 
@@ -614,8 +734,155 @@ describe("content API", () => {
     });
   });
 
+  describe("temporary category alias", () => {
+    const aliasRow = {
+      id: "c1",
+      name: "Electronics",
+      slug: "electronics",
+      level: 1,
+      parent_id: null,
+      display_order: 0,
+      is_active: true,
+      image_url: null,
+    };
+
+    it("GET /api/content/categories returns the new table's rows as { categories }", async () => {
+      const calls = makeDb({ select: () => ({ data: [aliasRow], error: null }) });
+
+      const res = await get("/api/content/categories");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ categories: [aliasRow] });
+      expect(calls.tables).toEqual(["categories"]);
+      expect(calls.eq).toContainEqual(["is_active", true]);
+      expect(calls.order).toEqual([["display_order", undefined]]);
+    });
+
+    it("POST /api/content/categories maps the old editor's fields onto categories", async () => {
+      const calls = makeDb({
+        upsert: (state) => ({ data: [{ id: "c-new", ...state.row }], error: null }),
+      });
+
+      const res = await send("POST", "/api/content/categories", {
+        name: "Men's Fashion",
+        image_url: "https://cdn.example.com/men.jpg",
+        path: "/products",
+        order_index: 3,
+        is_active: true,
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.message).toEqual(expect.any(String));
+      expect(body.category).toMatchObject({ id: "c-new", slug: "men-s-fashion" });
+      expect(calls.upsert).toEqual([
+        {
+          name: "Men's Fashion",
+          slug: "men-s-fashion",
+          image_url: "https://cdn.example.com/men.jpg",
+          is_active: true,
+          display_order: 3,
+          level: 1,
+          parent_id: null,
+        },
+      ]);
+      expect(calls.tables).toEqual(["categories"]);
+    });
+
+    it("POST /api/content/categories defaults a create to level 1 with no parent", async () => {
+      const calls = makeDb({ upsert: (state) => ({ data: [state.row], error: null }) });
+
+      const res = await send("POST", "/api/content/categories", { name: "Fashion" });
+
+      expect(res.status).toBe(201);
+      expect(calls.upsert).toEqual([
+        {
+          name: "Fashion",
+          slug: "fashion",
+          image_url: null,
+          is_active: true,
+          display_order: 0,
+          level: 1,
+          parent_id: null,
+        },
+      ]);
+    });
+
+    it("POST /api/content/categories keeps an edited child's hierarchy", async () => {
+      const calls = makeDb({ upsert: (state) => ({ data: [state.row], error: null }) });
+
+      const res = await send("POST", "/api/content/categories", {
+        id: "c2",
+        name: "Phones",
+        level: 2,
+        parent_id: "c1",
+        order_index: 4,
+      });
+
+      expect(res.status).toBe(201);
+      expect(calls.upsert).toEqual([
+        {
+          id: "c2",
+          name: "Phones",
+          slug: "phones",
+          image_url: null,
+          is_active: true,
+          display_order: 4,
+          level: 2,
+          parent_id: "c1",
+        },
+      ]);
+    });
+
+    it("POST /api/content/categories without a name is 400 and never touches the db", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/categories", { order_index: 1 });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "Category name is required." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("POST /api/content/categories rejects a non-integer order_index", async () => {
+      makeDb();
+
+      const res = await send("POST", "/api/content/categories", {
+        name: "Phones",
+        order_index: "01",
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "order_index must be an integer." });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("DELETE /api/content/categories/:id deletes from categories and returns 200 { message }", async () => {
+      const calls = makeDb({ delete: () => ({ data: null, error: null }) });
+
+      const res = await send("DELETE", "/api/content/categories/c1");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ message: "category deleted successfully." });
+      expect(calls.tables).toEqual(["categories"]);
+      expect(calls.eq).toContainEqual(["id", "c1"]);
+      expect(calls.delete).toBe(1);
+    });
+
+    it("DELETE /api/content/categories/:id surfaces a delete error as 500", async () => {
+      makeDb({ delete: () => ({ data: null, error: { message: "fk boom" } }) });
+
+      const res = await send("DELETE", "/api/content/categories/c1");
+
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({ error: "fk boom" });
+    });
+  });
+
   describe("write authorization", () => {
     const writeRoutes = [
+      ["POST", "/api/content/categories", { name: "X" }],
+      ["DELETE", "/api/content/categories/c1", undefined],
       ["POST", "/api/content/hero", { title: "X" }],
       ["PATCH", "/api/content/hero/h1", { title: "X" }],
       ["PATCH", "/api/content/hero/reorder", { orders: [] }],

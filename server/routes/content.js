@@ -1,16 +1,23 @@
 import express from "express";
 import { supabase } from "../db.js";
 import { createCrudRouter, applyReorder } from "../lib/crudRouter.js";
-import { verifyToken, requireRole } from "../middleware/auth.js";
+import {
+  adminGuards,
+  includesInactive,
+  inactiveRefused,
+  isValidOrderValue,
+  ORDER_INTEGER_MESSAGE,
+} from "../lib/guards.js";
 import {
   validateHeroSlide,
   validateBanner,
   validateFooterSection,
   validateFooterLink,
+  validateCategory,
+  slugify,
 } from "../lib/validation.js";
 
-const ADMIN_ROLES = ["admin", "super_admin"];
-const adminOnly = [verifyToken, requireRole(ADMIN_ROLES)];
+const adminOnly = adminGuards;
 
 const READ_ERROR = "Could not load content.";
 const REORDER_ERROR = "Reorder must include every item in the scope.";
@@ -65,36 +72,13 @@ const LINK_FIELDS = ["section_id", "label", "href", "display_order", "is_active"
 
 const SECTION_TYPES = ["links", "tags"];
 
-/** Run verifyToken then requireRole; a guard that answers parks the chain. */
-function adminChain(req, res, next) {
-  verifyToken(req, res, (error) => {
-    if (error) return next(error);
-    return requireRole(ADMIN_ROLES)(req, res, next);
-  });
-}
-
-/** True when the request asks for inactive rows and carries an admin token. */
-function includesInactive(req, res) {
-  if (!Object.hasOwn(req.query, "includeInactive")) return false;
-  if (["0", "false", "off"].includes(String(req.query.includeInactive).toLowerCase())) {
-    return false;
-  }
-
-  let allowed = false;
-  adminChain(req, res, () => {
-    allowed = true;
-  });
-  // A guard that answered instead of calling next() has already sent the
-  // 401/403; `allowed` stays false and the caller skips the query.
-  return allowed && !res.headersSent;
-}
-
-/** True when the request asked for inactive rows but the guard refused it. */
-function inactiveRefused(req, res) {
-  return Object.hasOwn(req.query, "includeInactive") && res.headersSent;
-}
-
 const isHttpsImage = (value) => typeof value === "string" && value.trim().startsWith("https://");
+
+/** A present `display_order` must be a strict integer; the column is NOT NULL. */
+function displayOrderError(body) {
+  if (!Object.hasOwn(body, "display_order")) return null;
+  return isValidOrderValue(body.display_order) ? null : ORDER_INTEGER_MESSAGE;
+}
 
 /** Banner validation plus the `gallery` array the shared validator leaves alone. */
 function validateBannerRow(body = {}, opts = {}) {
@@ -106,7 +90,7 @@ function validateBannerRow(body = {}, opts = {}) {
       return GALLERY_ERROR;
     }
   }
-  return null;
+  return displayOrderError(body);
 }
 
 /** Footer section validation plus the DB CHECK the shared validator omits. */
@@ -117,7 +101,7 @@ function validateFooterSectionRow(body = {}, opts = {}) {
   if (body.section_type !== undefined && !SECTION_TYPES.includes(body.section_type)) {
     return SECTION_TYPE_ERROR;
   }
-  return null;
+  return displayOrderError(body);
 }
 
 /** Footer link validation plus the NOT NULL section_id the DB would reject. */
@@ -131,7 +115,7 @@ function validateFooterLinkRow(body = {}, opts = {}) {
       return SECTION_ID_ERROR;
     }
   }
-  return null;
+  return displayOrderError(body);
 }
 
 const sortByOrder = (a, b) => {
@@ -186,6 +170,8 @@ function makeReorderHandler({ table, orderColumn, label, scopeColumn = null }) {
       if (reorderError) return res.status(400).json({ error: reorderError });
 
       for (const entry of renumbered) {
+        // One UPDATE per row: non-atomic by design for this slice. A failure
+        // midway leaves a partial ordering until the next complete reorder.
         const { error: updateError } = await supabase
           .from(table)
           .update({ [orderColumn]: entry.display_order })
@@ -206,8 +192,8 @@ function makeReorderHandler({ table, orderColumn, label, scopeColumn = null }) {
 
 /** Public banner list; `?placement=` narrows it, `?includeInactive=1` needs an admin. */
 async function listBanners(req, res) {
-  const withInactive = includesInactive(req, res);
-  if (inactiveRefused(req, res) && !withInactive) return undefined;
+  const withInactive = await includesInactive(req, res);
+  if (!withInactive && inactiveRefused(req, res)) return undefined;
 
   let query = supabase.from("promo_banners").select("*");
   if (typeof req.query.placement === "string" && req.query.placement !== "") {
@@ -232,8 +218,8 @@ async function listBanners(req, res) {
 
 /** Footer list: flat links plus each section's own nested links. */
 async function listFooter(req, res) {
-  const withInactive = includesInactive(req, res);
-  if (inactiveRefused(req, res) && !withInactive) return undefined;
+  const withInactive = await includesInactive(req, res);
+  if (!withInactive && inactiveRefused(req, res)) return undefined;
 
   try {
     let sectionsQuery = supabase.from("footer_sections").select("*");
@@ -319,7 +305,13 @@ contentRouter.patch(
 );
 contentRouter.use("/hero", heroCrud);
 
-// TEMPORARY (removed in Task 13): the storefront still calls the old path.
+// ---------------------------------------------------------------------------
+// TEMPORARY category alias (removed in Task 15, when CategoriesTreeEditor
+// replaces the old SiteCategoriesEditor). Until then the running storefront
+// calls GET here and the old admin editor calls POST and DELETE here. All three
+// read and write the new `categories` table; none of them touches the dropped
+// `site_categories` table.
+// ---------------------------------------------------------------------------
 contentRouter.get("/categories", async (req, res) => {
   const { data, error } = await supabase
     .from("categories")
@@ -328,6 +320,63 @@ contentRouter.get("/categories", async (req, res) => {
     .order("display_order");
   if (error) return res.status(500).json({ error: error.message });
   res.json({ categories: data ?? [] });
+});
+
+contentRouter.post("/categories", ...adminOnly, async (req, res) => {
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const slug = body.slug ?? slugify(body.name);
+
+  const validationError = validateCategory({ ...body, slug });
+  if (validationError) return res.status(400).json({ error: validationError });
+
+  // The old editor speaks `order_index`; the new table speaks `display_order`.
+  // A spread row from GET already carries `display_order`, which wins so that a
+  // visibility toggle does not reset the position to 0.
+  const hasOrder = Object.hasOwn(body, "display_order") || Object.hasOwn(body, "order_index");
+  const orderValue = Object.hasOwn(body, "display_order") ? body.display_order : body.order_index;
+  if (hasOrder && !isValidOrderValue(orderValue)) {
+    return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
+  }
+
+  const payload = {
+    name: body.name,
+    slug,
+    image_url: body.image_url ?? null,
+    is_active: body.is_active ?? true,
+    display_order: orderValue === undefined ? 0 : Number(orderValue),
+  };
+
+  if (body.id !== undefined && body.id !== null) {
+    // An edit: keep the row's hierarchy unless the body explicitly moves it,
+    // otherwise renaming a child through the flat old editor would flatten it.
+    payload.id = body.id;
+    if (Number.isInteger(body.level)) payload.level = body.level;
+    if (body.parent_id !== undefined) payload.parent_id = body.parent_id;
+  } else {
+    payload.level = 1;
+    payload.parent_id = null;
+  }
+
+  try {
+    const { data, error } = await supabase.from("categories").upsert(payload).select();
+    if (error) return res.status(500).json({ error: error.message || "Failed to save category." });
+    return res
+      .status(201)
+      .json({ message: "category saved successfully.", category: data?.[0] ?? null });
+  } catch (thrown) {
+    return res.status(500).json({ error: thrown.message || "Failed to save category." });
+  }
+});
+
+contentRouter.delete("/categories/:id", ...adminOnly, async (req, res) => {
+  try {
+    const { error } = await supabase.from("categories").delete().eq("id", req.params.id);
+    if (error)
+      return res.status(500).json({ error: error.message || "Failed to delete category." });
+    return res.json({ message: "category deleted successfully." });
+  } catch (thrown) {
+    return res.status(500).json({ error: thrown.message || "Failed to delete category." });
+  }
 });
 
 export const bannerRoutes = express.Router();
