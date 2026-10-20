@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Set the test secret before auth.js/app.js are imported; .env is never relied on.
 vi.hoisted(() => {
@@ -22,6 +22,7 @@ import app from "../app.js";
 
 const RESET_REQUEST_MESSAGE = "If this email is registered, a reset link has been sent.";
 const INVALID_TOKEN_MESSAGE = "Invalid or expired reset token.";
+const originalNodeEnv = process.env.NODE_ENV;
 
 let server;
 let base;
@@ -115,10 +116,18 @@ beforeEach(() => {
   installDb();
   mockUpdateUserById.mockReset();
   mockUpdateUserById.mockResolvedValue({ data: { id: "user-1" }, error: null });
+  delete process.env.EXPOSE_RESET_TOKEN;
+});
+
+afterEach(() => {
+  delete process.env.EXPOSE_RESET_TOKEN;
+  process.env.NODE_ENV = originalNodeEnv;
+  vi.restoreAllMocks();
 });
 
 describe("POST /api/auth/request-reset", () => {
   it("answers identically for a known email and an unknown email, without leaking the userId", async () => {
+    delete process.env.EXPOSE_RESET_TOKEN;
     dbOptions.profile = { id: "user-1" };
     const known = await post("/request-reset", { email: "Known@Example.com" });
     const knownInsert = dbOptions.log.inserts[0];
@@ -131,6 +140,7 @@ describe("POST /api/auth/request-reset", () => {
     expect(unknown.status).toBe(200);
     expect(known.body).toEqual({ message: RESET_REQUEST_MESSAGE });
     expect(unknown.body).toEqual(known.body);
+    expect(Object.keys(known.body)).toEqual(["message"]);
     expect(known.body.userId).toBeUndefined();
     expect(known.body.email).toBeUndefined();
 
@@ -141,6 +151,57 @@ describe("POST /api/auth/request-reset", () => {
     expect(ttl).toBeGreaterThan(29 * 60 * 1000);
     expect(ttl).toBeLessThanOrEqual(30 * 60 * 1000);
     expect(dbOptions.log.inserts).toHaveLength(0);
+  });
+
+  it("includes resetToken only when EXPOSE_RESET_TOKEN is true", async () => {
+    process.env.EXPOSE_RESET_TOKEN = "true";
+    dbOptions.profile = { id: "user-1" };
+
+    const known = await post("/request-reset", { email: "known@example.com" });
+    const insert = dbOptions.log.inserts[0];
+
+    dbOptions.log.inserts.length = 0;
+    dbOptions.profile = null;
+    const unknown = await post("/request-reset", { email: "nobody@example.com" });
+
+    expect(known.status).toBe(200);
+    expect(known.body.message).toBe(RESET_REQUEST_MESSAGE);
+    expect(known.body.resetToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(known.body.resetToken).toBe(insert.row.token);
+    expect(known.body.userId).toBeUndefined();
+    expect(known.body.email).toBeUndefined();
+
+    // Same shape for an unknown email: no enumeration signal. The token is
+    // random and was never persisted, so it cannot reset anything.
+    expect(Object.keys(unknown.body).sort()).toEqual(["message", "resetToken"]);
+    expect(unknown.body.message).toBe(RESET_REQUEST_MESSAGE);
+    expect(unknown.body.resetToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(dbOptions.log.inserts).toHaveLength(0);
+  });
+
+  it("logs the token outside production", async () => {
+    process.env.NODE_ENV = "test";
+    dbOptions.profile = { id: "user-1" };
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await post("/request-reset", { email: "known@example.com" });
+    const token = dbOptions.log.inserts[0].row.token;
+
+    expect(log.mock.calls.some((args) => args.join(" ").includes(token))).toBe(true);
+  });
+
+  it("never logs the token in production", async () => {
+    process.env.NODE_ENV = "production";
+    dbOptions.profile = { id: "user-1" };
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await post("/request-reset", { email: "known@example.com" });
+    const token = dbOptions.log.inserts[0].row.token;
+    const logged = log.mock.calls.map((args) => args.join(" ")).join("\n");
+
+    expect(logged).not.toContain(token);
+    expect(logged).toMatch(/requested/i);
+    expect(logged).toContain("known@example.com");
   });
 
   it("requires an email", async () => {

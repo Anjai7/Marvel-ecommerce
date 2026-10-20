@@ -159,15 +159,20 @@ const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 // POST /api/auth/request-reset (Password reset request)
 // Always answers with the same body so the response never reveals whether the
-// email belongs to an account.
+// email belongs to an account. The reset token is only echoed back when
+// EXPOSE_RESET_TOKEN=true, an explicit local-development opt-in, because this
+// codebase has no mailer yet.
 router.post("/request-reset", async (req, res) => {
   const { email } = req.body || {};
   if (!email || typeof email !== "string") {
     return res.status(400).json({ error: "Email is required." });
   }
 
+  const cleanEmail = email.trim().toLowerCase();
+  const isProduction = process.env.NODE_ENV === "production";
+  let resetToken = null;
+
   try {
-    const cleanEmail = email.trim().toLowerCase();
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
@@ -185,6 +190,11 @@ router.post("/request-reset", async (req, res) => {
 
       if (insertError) {
         console.error("Password reset token insert failed:", insertError.message);
+      } else {
+        resetToken = token;
+        if (!isProduction) {
+          console.log(`[auth] Password reset token for ${cleanEmail}: ${token}`);
+        }
       }
     }
   } catch (err) {
@@ -192,7 +202,19 @@ router.post("/request-reset", async (req, res) => {
     console.error("Password reset request error:", err);
   }
 
-  res.json({ message: RESET_REQUEST_MESSAGE });
+  if (isProduction) {
+    // The reset link is not delivered yet; record the request, never the token.
+    console.log(`[auth] Password reset requested for ${cleanEmail}.`);
+  }
+
+  const body = { message: RESET_REQUEST_MESSAGE };
+  if (process.env.EXPOSE_RESET_TOKEN === "true") {
+    // For an unknown address the token is random and never stored, so the
+    // response shape cannot be used to enumerate accounts.
+    body.resetToken = resetToken || crypto.randomBytes(32).toString("hex");
+  }
+
+  res.json(body);
 });
 
 // POST /api/auth/reset-password (Set new password with a single-use token)

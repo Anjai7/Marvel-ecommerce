@@ -248,8 +248,8 @@ export async function apiDeleteUser(userId) {
   return data;
 }
 
-export async function apiForgotPassword(email) {
-  const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+export async function apiRequestPasswordReset(email) {
+  const res = await fetch(`${API_BASE_URL}/auth/request-reset`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -260,11 +260,11 @@ export async function apiForgotPassword(email) {
   return data;
 }
 
-export async function apiResetPassword(email, newPassword) {
+export async function apiResetPassword(token, newPassword) {
   const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, newPassword }),
+    body: JSON.stringify({ token, newPassword }),
   });
 
   const data = await res.json();
