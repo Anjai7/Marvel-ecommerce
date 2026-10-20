@@ -340,8 +340,9 @@ Expected: FAIL — `assertJwtSecret` is not exported / the raw token is accepted
   - `server/middleware/auth.js:6` — replace the hardcoded fallback. Keep a development fallback **only** when `process.env.NODE_ENV !== "production"`, and in that case `console.warn` loudly once. Export `assertJwtSecret()` that throws `new Error("JWT_SECRET is required")` when the value is missing or shorter than 32 characters. Call it at the top of `server/app.js` (Task 3 Step 4).
   - `server/middleware/auth.js:19` — require the `Authorization` header to start with `Bearer `; strip it and reject anything else with `401 { error: "Invalid authorization header." }`.
   - `server/routes/upload.js:22` — add `verifyToken, requireRole(["admin","super_admin","vendor"])` to the route. Keep the existing 10 MB limit and the `image/` prefix check.
-  - `server/routes/auth.js:151-180` — replace `forgot-password` with `request-reset`: create a `password_reset_tokens` row (see Step 4) and return **only** `{ message: "If this email is registered, a reset link has been sent." }` — never a `userId`, never a different message for unknown emails.
+  - `server/routes/auth.js:151-180` — replace `forgot-password` with `request-reset`: create a `password_reset_tokens` row (see Step 4) and return **only** `{ message: "If this email is registered, a reset link has been sent." }` — never a `userId`, never a different message for unknown emails. The response carries an extra `resetToken` field **only when `process.env.EXPOSE_RESET_TOKEN === "true"`** (an explicit opt-in for local development, because this codebase has no mailer). Without the opt-in the response is exactly the generic message and nothing else, and the token is written to the server log **only** outside production. A production mailer is an explicit follow-up — until one exists the reset flow is unavailable in production rather than exploitable.
   - `server/routes/auth.js:183-223` — `reset-password` now takes `{ token, newPassword }`. Look up the token, reject if unknown, expired (`expires_at < now()`), or already used (`used_at` set). On success set `used_at`, update the password, and invalidate every other token for that user. A missing/invalid token returns `400 { error: "Invalid or expired reset token." }`. The minimum length of 6 characters is kept.
+  - **The client must follow.** `src/api/backendApi.js:251-273` currently calls the removed `POST /api/auth/forgot-password` and sends `{ email, newPassword }` to `reset-password`; `src/components/auth/LoginPage.jsx:87,100` drives a 3-step wizard from those two calls. Replace them with `apiRequestPasswordReset(email)` → `POST /api/auth/request-reset` and `apiResetPassword(token, newPassword)` → `POST /api/auth/reset-password`, and rework the wizard's step 2 to collect a **reset token** and a new password. The wizard must not be left pointing at a removed endpoint.
 - [ ] **Step 4: Add the schema for reset tokens and the app-level guards**
   - New file `supabase/migrations/20261020000006_password_reset_tokens.sql`:
     ```sql
@@ -366,7 +367,7 @@ Expected: FAIL — `assertJwtSecret` is not exported / the raw token is accepted
       res.status(err.status || 500).json({ error: err.message || "Internal server error." });
     });
     ```
-  - `.env.example` — add `ALLOWED_ORIGINS=http://localhost:5173` and a comment that `JWT_SECRET` must be at least 32 characters.
+  - `.env.example` — add `ALLOWED_ORIGINS=http://localhost:5173` and `EXPOSE_RESET_TOKEN=false` (a deliberate opt-in that makes the reset token visible in the `request-reset` response so the local flow is completable), and a comment that `JWT_SECRET` must be at least 32 characters.
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `npx vitest run server/middleware/auth.test.js server/routes/auth.test.js`
