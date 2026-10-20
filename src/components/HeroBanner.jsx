@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { heroSlides } from "../data";
-import { apiFetchHeroSlides } from "../api/backendApi";
+import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
@@ -14,17 +13,26 @@ function toRenderSlide(row) {
     btnPath: row.btn_path || "/products",
     bgImage: row.bg_image_url || "",
     image: row.bg_image_url || row.product_image_url || "",
-    pngImage: row.product_image_url || "",
-    fallbackPng: row.fallback_image_url || "",
     bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
-    tag: row.tag || "",
     price: row.price_text || "",
-    ribbonText: row.ribbon_text || "",
   };
 }
 
-export default function HeroBanner() {
-  const [liveSlides, setLiveSlides] = useState([]);
+/** The only static fallback kept on the storefront: the homepage is never blank. */
+const FALLBACK_SLIDE = {
+  badge: "⚡ SMART TECH SALE",
+  title: "Upgrade Your Everyday",
+  subtitle: "Next-gen gadgets at prices that don't break the bank. Up to 50% OFF.",
+  btn: "Shop Now",
+  btnPath: "/products",
+  bgImage: "",
+  image: "",
+  bg: "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+  price: "",
+};
+
+export default function HeroBanner({ onNavigate }) {
+  const { hero, error } = useContent();
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(
     () =>
@@ -32,29 +40,11 @@ export default function HeroBanner() {
   );
   const [touchStart, setTouchStart] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    apiFetchHeroSlides()
-      .then((rows) => {
-        if (cancelled) return;
-        const list = (Array.isArray(rows) ? rows : [])
-          .filter((s) => s && s.is_active !== false)
-          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-          .map(toRenderSlide)
-          .filter((s) => s.title);
-        setLiveSlides(list);
-      })
-      .catch((error) => {
-        // Fall back to static heroSlides below, but leave a trace for outages.
-        console.error("Failed to load hero slides; using static fallback.", error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Live slides win when non-empty; otherwise static fallback (never blank).
-  const slides = liveSlides.length > 0 ? liveSlides : heroSlides;
+  const liveSlides = (Array.isArray(hero) ? hero : [])
+    .filter((slide) => slide && slide.is_active !== false && slide.title)
+    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+    .map(toRenderSlide);
+  const slides = liveSlides.length > 0 ? liveSlides : [FALLBACK_SLIDE];
 
   useEffect(() => {
     setCurrent((c) => (c >= slides.length ? 0 : c));
@@ -91,6 +81,22 @@ export default function HeroBanner() {
     setTouchStart(null);
   };
 
+  /** btn_path is a hash route or an absolute https URL (§4.1). */
+  const followCta = (path) => {
+    if (!path) return;
+    // An external URL never belongs on the in-app router.
+    if (/^https:\/\//.test(path)) {
+      window.location.href = path;
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+    if (path.startsWith("#/")) window.location.hash = path;
+    else if (path.startsWith("/")) window.location.hash = `#${path}`;
+  };
+
   return (
     <div
       className="hero-carousel"
@@ -99,6 +105,27 @@ export default function HeroBanner() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {error && (
+        <div
+          role="status"
+          style={{
+            position: "absolute",
+            top: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 5,
+            padding: "6px 14px",
+            borderRadius: 999,
+            background: "rgba(15, 23, 42, 0.82)",
+            color: "#f8fafc",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          Live hero content is unavailable — showing the default slide.
+        </div>
+      )}
+
       {slides.map((slide, i) => (
         <div key={i} className={`hero-slide ${i === current ? "active" : ""}`}>
           {/* Base Background Gradient */}
@@ -133,6 +160,7 @@ export default function HeroBanner() {
                   className="hero-cta"
                   id={`hero-cta-${i}`}
                   rightIcon={<ArrowRight size={18} />}
+                  onClick={() => followCta(slide.btnPath)}
                 >
                   {slide.btn}
                 </Button>

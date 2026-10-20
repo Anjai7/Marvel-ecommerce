@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
-import { apiFetchHeroSlides, apiSaveHeroSlide, apiDeleteHeroSlide } from "../../api/backendApi";
+import { apiFetchHeroSlides, apiSaveHeroSlide, apiDeleteHeroSlide } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
 
 function blankForm() {
@@ -56,7 +56,7 @@ export default function HeroSlidesEditor() {
     setLoading(true);
     try {
       const data = await apiFetchHeroSlides();
-      const list = Array.isArray(data) ? data : [];
+      const list = Array.isArray(data?.slides) ? [...data.slides] : [];
       list.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
       setSlides(list);
     } catch (err) {
@@ -187,9 +187,7 @@ export default function HeroSlidesEditor() {
                 )}
                 <span className="menu-tree-title">{slide.title}</span>
                 {slide.badge && <span className="role-pill admin">{slide.badge}</span>}
-                <span className="text-muted text-sm menu-tree-path">
-                  #{slide.order_index ?? 0}
-                </span>
+                <span className="text-muted text-sm menu-tree-path">#{slide.order_index ?? 0}</span>
                 <span
                   className={`status-pill ${slide.is_active === false ? "inactive" : "active"}`}
                 >

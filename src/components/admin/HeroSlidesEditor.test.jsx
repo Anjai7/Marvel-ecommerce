@@ -3,19 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import HeroSlidesEditor from "./HeroSlidesEditor";
 import { ToastProvider } from "../ui/Toast";
-import {
-  apiFetchHeroSlides,
-  apiSaveHeroSlide,
-  apiDeleteHeroSlide,
-} from "../../api/backendApi";
+import { apiFetchHeroSlides, apiSaveHeroSlide, apiDeleteHeroSlide } from "../../api/contentApi";
 
-vi.mock("../../api/backendApi", () => ({
+vi.mock("../../api/contentApi", () => ({
   apiFetchHeroSlides: vi.fn(),
   apiSaveHeroSlide: vi.fn(),
   apiDeleteHeroSlide: vi.fn(),
-  apiFetchSiteCategories: vi.fn().mockResolvedValue([]),
-  apiSaveSiteCategory: vi.fn(),
-  apiDeleteSiteCategory: vi.fn(),
 }));
 
 const SLIDES = [
@@ -57,7 +50,7 @@ const SLIDES = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  apiFetchHeroSlides.mockResolvedValue([...SLIDES]);
+  apiFetchHeroSlides.mockResolvedValue({ slides: [...SLIDES] });
   apiSaveHeroSlide.mockResolvedValue({ id: "s1" });
   apiDeleteHeroSlide.mockResolvedValue({ message: "deleted" });
 });

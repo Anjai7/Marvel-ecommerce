@@ -1,6 +1,7 @@
 // Architecture: Frontend (Browser) -> Express Backend (/api/*) -> Database & Cloudinary
 // Transport (token, headers, error mapping) lives in client.js. This module owns
-// the auth, user, product, order and legacy-content endpoints.
+// the auth, user, product, order and upload endpoints; site content lives in
+// contentApi.js.
 import { apiFetch, getStoredToken, setStoredToken } from "./client.js";
 
 export { getStoredToken, setStoredToken };
@@ -166,29 +167,11 @@ export async function apiUpdateOrderStatus(id, statusData) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Legacy site content — hero slides & the temporary category alias           */
-/*                                                                             */
-/* These keep their old exported names and return shapes for the components    */
-/* that still import them; the storefront migrates to contentApi.js. They now  */
-/* resolve arrays instead of swallowing failures: a 5xx throws.                */
+/* Temporary site-category alias — /content/categories                        */
+/*                                                                            */
+/* Only the legacy CategoriesEditor uses these; contentApi.js owns the real   */
+/* /categories routes. This alias and its editor are both removed in Task 15.  */
 /* -------------------------------------------------------------------------- */
-export async function apiFetchHeroSlides() {
-  const data = await apiFetch("/content/hero");
-  return data.slides;
-}
-
-export async function apiSaveHeroSlide(slide) {
-  const payload = {
-    ...slide,
-    order_index: slide.order_index != null ? Number(slide.order_index) : 0,
-  };
-  return apiFetch("/content/hero", { method: "POST", body: payload });
-}
-
-export async function apiDeleteHeroSlide(id) {
-  return apiFetch(`/content/hero/${encodeURIComponent(id)}`, { method: "DELETE" });
-}
-
 export async function apiFetchSiteCategories() {
   const data = await apiFetch("/content/categories");
   return data.categories;

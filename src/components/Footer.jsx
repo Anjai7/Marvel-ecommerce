@@ -1,111 +1,73 @@
-import React, { useState } from "react";
-import { useToast, SimpleTooltip, Input, Button } from "./ui";
-import {
-  Send,
-  ShieldCheck,
-  Truck,
-  RefreshCw,
-  Headset,
-  Lock,
-  Mail,
-  ChevronRight,
-} from "lucide-react";
+import React from "react";
+import { useContent } from "../context/ContentContext";
+import { SimpleTooltip } from "./ui";
+import { ShieldCheck, Truck, RefreshCw, Headset, Lock, ChevronRight } from "lucide-react";
 
 /* ── Inline social SVGs (lucide-react doesn't ship these brand icons) ── */
 const SocialFacebook = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 );
 const SocialTwitter = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/>
+    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
   </svg>
 );
 const SocialInstagram = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
 const SocialYoutube = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/>
-    <polygon fill="white" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/>
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
+    <polygon fill="white" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
   </svg>
 );
 const SocialLinkedin = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-    <rect x="2" y="9" width="4" height="12"/>
-    <circle cx="4" cy="4" r="2"/>
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
+    <circle cx="4" cy="4" r="2" />
   </svg>
 );
 
-const COLS = [
-  {
-    heading: "Customer Support",
-    links: [
-      "Help Center",
-      "Contact Us",
-      "Returns & Refunds",
-      "Shipping Information",
-      "Track Order",
-      "Support Chat",
-    ],
-  },
-  {
-    heading: "Policy & Legal",
-    links: [
-      "Privacy Policy",
-      "Terms of Service",
-      "Return Policy",
-      "Cancellation Policy",
-      "E-Waste Policy",
-      "Security",
-    ],
-  },
-  {
-    heading: "My Account",
-    links: [
-      "My Profile",
-      "Orders & History",
-      "Saved Wishlist",
-      "Manage Addresses",
-      "Marvel Club Points",
-      "Notifications",
-    ],
-  },
-  {
-    heading: "Popular Categories",
-    links: [
-      "Mobiles & Tablets",
-      "Laptops & PCs",
-      "Smartwatches",
-      "Audio & Headphones",
-      "Men's & Women's Fashion",
-      "Home & Kitchen",
-    ],
-  },
-];
-
-const SEARCH_TAGS = [
-  "iPhone 15",
-  "Smart TVs",
-  "Wireless Earbuds",
-  "Running Shoes",
-  "Gaming Laptops",
-  "Air Fryers",
-  "Bluetooth Speakers",
-  "Power Banks",
-  "Smartwatches",
-  "Backpacks",
-];
-
+/* Marketing micro-copy: intentionally kept in code, out of scope for the CMS. */
 const PAYMENTS = ["VISA", "Mastercard", "RuPay", "UPI", "PayTM", "NetBanking"];
 
 export default function Footer() {
+  const { footer, loading, error } = useContent();
+
+  const sections = Array.isArray(footer?.sections) ? footer.sections : [];
+  const flatLinks = Array.isArray(footer?.links) ? footer.links : [];
+  const columns = sections.filter((section) => section.section_type !== "tags");
+  const tagsSection = sections.find((section) => section.section_type === "tags");
+
+  const linksOf = (section) =>
+    Array.isArray(section.links)
+      ? section.links
+      : flatLinks.filter((link) => link.section_id === section.id);
+
+  const notice = error
+    ? "Footer links are temporarily unavailable."
+    : loading && sections.length === 0
+      ? "Loading footer links…"
+      : sections.length === 0
+        ? "No footer links configured yet."
+        : null;
+
   return (
     <footer className="footer" id="main-footer">
       {/* ── Value Proposition Bar ── */}
@@ -162,7 +124,8 @@ export default function Footer() {
               <img src="/header.png" alt="MARVEL MARKET Logo" className="footer-logo-img" />
             </a>
             <p className="footer-brand-desc">
-              Your ultimate online shopping destination for top electronics, fashion, home essentials, and lifestyle products with unbeatable deals and fast doorstep delivery.
+              Your ultimate online shopping destination for top electronics, fashion, home
+              essentials, and lifestyle products with unbeatable deals and fast doorstep delivery.
             </p>
 
             {/* Social Links */}
@@ -197,34 +160,42 @@ export default function Footer() {
           </div>
 
           {/* Nav Columns */}
-          {COLS.map((col) => (
-            <div className="footer-col" key={col.heading}>
-              <h4 className="footer-col-title">{col.heading}</h4>
-              <ul className="footer-col-list">
-                {col.links.map((link) => (
-                  <li key={link} className="footer-link-item">
-                    <a href="#" className="footer-link">
-                      <ChevronRight size={12} className="footer-link-arrow" />
-                      <span>{link}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
+          {notice ? (
+            <div className="footer-col">
+              <p style={{ fontSize: 13, color: "var(--gray-400)" }}>{notice}</p>
             </div>
-          ))}
+          ) : (
+            columns.map((col) => (
+              <div className="footer-col" key={col.id ?? col.heading}>
+                <h4 className="footer-col-title">{col.heading}</h4>
+                <ul className="footer-col-list">
+                  {linksOf(col).map((link) => (
+                    <li key={link.id ?? link.label} className="footer-link-item">
+                      <a href={link.href || "#"} className="footer-link">
+                        <ChevronRight size={12} className="footer-link-arrow" />
+                        <span>{link.label}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
         </div>
 
         {/* ── Popular Search Tags Bar ── */}
-        <div className="footer-tags-bar">
-          <span className="tags-title">Popular Searches:</span>
-          <div className="tags-list">
-            {SEARCH_TAGS.map((tag) => (
-              <a key={tag} href="#" className="search-tag-chip">
-                {tag}
-              </a>
-            ))}
+        {!notice && tagsSection && linksOf(tagsSection).length > 0 && (
+          <div className="footer-tags-bar">
+            <span className="tags-title">{tagsSection.heading}:</span>
+            <div className="tags-list">
+              {linksOf(tagsSection).map((tag) => (
+                <a key={tag.id ?? tag.label} href={tag.href || "#"} className="search-tag-chip">
+                  {tag.label}
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── Bottom Copyright & Payments Bar ── */}
         <div className="footer-bottom">
@@ -250,4 +221,3 @@ export default function Footer() {
     </footer>
   );
 }
-

@@ -1,10 +1,28 @@
-import { useState } from "react";
-import { verticalCategories } from "../data";
-import { Button, Avatar, AvatarFallback, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui";
-import { X, User, Package, ShoppingCart, Heart, MapPin, ChevronRight } from "lucide-react";
+import { useContent } from "../context/ContentContext";
+import {
+  Button,
+  Avatar,
+  AvatarFallback,
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "./ui";
+import { X, Package, ShoppingCart, Heart, MapPin, ChevronRight } from "lucide-react";
 
 export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
+  const { categoryTree, loading, error } = useContent();
+
   if (!isOpen) return null;
+
+  const roots = Array.isArray(categoryTree) ? categoryTree : [];
+  const notice = loading
+    ? "Loading categories…"
+    : error
+      ? "Categories are temporarily unavailable."
+      : roots.length === 0
+        ? "No categories to show yet."
+        : null;
 
   return (
     <>
@@ -13,7 +31,12 @@ export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
         {/* Header */}
         <div className="mobile-drawer-header">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/header.png" alt="Marvel Logo" className="logo-img" style={{ height: "44px", objectFit: "contain" }} />
+            <img
+              src="/header.png"
+              alt="Marvel Logo"
+              className="logo-img"
+              style={{ height: "44px", objectFit: "contain" }}
+            />
           </div>
           <button
             className="mobile-close"
@@ -91,25 +114,33 @@ export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
             Shop by Category
           </div>
           <Accordion type="single" collapsible style={{ padding: "0 12px" }}>
-            {verticalCategories.map((cat) => (
-              <AccordionItem key={cat.name} value={cat.name}>
-                <AccordionTrigger style={{ padding: "12px 8px", fontSize: 13.5 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>{cat.icon}</span>
-                    <span>{cat.name}</span>
-                  </span>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="mobile-subitems">
-                    {cat.subs.map((sub) => (
-                      <div key={sub} className="mobile-subitem" style={{ padding: "6px 12px", fontSize: 13, color: "var(--gray-600)" }}>
-                        {sub}
-                      </div>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
+            {notice ? (
+              <p style={{ padding: "8px", fontSize: 13, color: "var(--gray-500)" }}>{notice}</p>
+            ) : (
+              roots.map((cat) => (
+                <AccordionItem key={cat.id ?? cat.name} value={cat.name}>
+                  <AccordionTrigger style={{ padding: "12px 8px", fontSize: 13.5 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>{cat.icon || "•"}</span>
+                      <span>{cat.name}</span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="mobile-subitems">
+                      {(cat.children || []).map((sub) => (
+                        <div
+                          key={sub.id ?? sub.name}
+                          className="mobile-subitem"
+                          style={{ padding: "6px 12px", fontSize: 13, color: "var(--gray-600)" }}
+                        >
+                          {sub.name}
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))
+            )}
           </Accordion>
         </div>
       </div>

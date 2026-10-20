@@ -14,10 +14,11 @@ import {
   Package,
   Users,
   ChevronDown,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
-import { apiFetchMenuItems } from "../../api/contentApi";
-import { navCategories, megaMenuData } from "../../data";
-import { MegaMenu, MegaMenuFeaturedCard, Badge } from "../ui";
+import { useContent } from "../../context/ContentContext";
+import { Badge, Button, Card, CardContent } from "../ui";
 
 // Icon mapping helper — unknown icon names fall back to Layers.
 const ICON_MAP = {
@@ -99,6 +100,51 @@ function SectionIcon({ value }) {
     );
   }
   return <span className="mega-menu-section-icon">{value}</span>;
+}
+
+/** Promo card for a menu root's `promo_*` columns. */
+function MegaMenuFeaturedCard({
+  title,
+  subtitle,
+  badge = "Featured",
+  image,
+  cta = "Shop Now",
+  onSelect,
+}) {
+  return (
+    <Card className="mega-menu-featured-card">
+      {image && (
+        <div className="mega-menu-featured-image-wrapper">
+          <img src={image} alt={title} className="mega-menu-featured-image" />
+          {badge && (
+            <Badge
+              variant="accent"
+              size="sm"
+              className="mega-menu-featured-badge"
+              icon={<Sparkles size={11} />}
+            >
+              {badge}
+            </Badge>
+          )}
+        </div>
+      )}
+      <CardContent className="mega-menu-featured-content">
+        {title && <h5 className="mega-menu-featured-title">{title}</h5>}
+        {subtitle && <p className="mega-menu-featured-subtitle">{subtitle}</p>}
+        {cta && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mega-menu-featured-btn"
+            rightIcon={<ArrowRight size={14} />}
+            onClick={onSelect}
+          >
+            {cta}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 /**
@@ -192,37 +238,17 @@ export function LiveMegaMenu({ root, alignRight, onNavigate }) {
   );
 }
 
-export default function DynamicMenu({ userRole = "user", onNavigate, activePath = "/" }) {
-  const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function DynamicMenu({ onNavigate, activePath = "/" }) {
+  const { menu, loading, error } = useContent();
   const [activeMenu, setActiveMenu] = useState(null);
   const navTimer = useRef(null);
 
-  const loadMenu = async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const items = await apiFetchMenuItems(userRole);
-      setMenuItems(normalizeToTree(items));
-    } catch (e) {
-      console.error("Error loading dynamic menu:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMenu();
-
-    // Listen for custom dynamic menu updates (broadcasted from Super Admin dynamic menu editor!)
-    // Event-triggered refreshes are silent background updates (no "Loading..." flash).
-    const handleMenuUpdate = () => loadMenu(true);
-    window.addEventListener("marvel_menu_updated", handleMenuUpdate);
-    return () => {
-      window.removeEventListener("marvel_menu_updated", handleMenuUpdate);
+  useEffect(
+    () => () => {
       if (navTimer.current) clearTimeout(navTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole]);
+    },
+    []
+  );
 
   const openMenu = (name) => {
     if (navTimer.current) clearTimeout(navTimer.current);
@@ -273,13 +299,16 @@ export default function DynamicMenu({ userRole = "user", onNavigate, activePath 
     </span>
   );
 
-  // Live tree present → dynamic hover mega-menu. Empty/failed fetch →
-  // static megaMenuData grouped render (HoverNav.jsx itself untouched).
-  const useLive = menuItems.length > 0;
-  const liveRoots = menuItems;
-  const staticCats = navCategories.filter((c) => c.name !== "All Categories");
-  const barItems = useLive ? liveRoots : staticCats;
+  const menuItems = normalizeToTree(menu);
+  const barItems = menuItems;
   const half = Math.floor(barItems.length / 2);
+  const notice = loading
+    ? "Loading Dynamic Menu..."
+    : error
+      ? "Navigation is temporarily unavailable."
+      : barItems.length === 0
+        ? "No navigation items configured yet."
+        : null;
 
   return (
     <nav
@@ -292,62 +321,36 @@ export default function DynamicMenu({ userRole = "user", onNavigate, activePath 
     >
       <div className="container hover-nav-inner">
         <div className="hover-nav-scroll-track">
-          {loading ? (
+          {notice ? (
             <div style={{ fontSize: 13, color: "var(--gray-500)", padding: "8px 12px" }}>
-              Loading Dynamic Menu...
+              {notice}
             </div>
           ) : (
-            barItems.map((entry, idx) => {
+            barItems.map((root, idx) => {
               const alignRight = idx >= half;
-              if (useLive) {
-                const root = entry;
-                const IconComp = ICON_MAP[root.icon] || Layers;
-                const children = (root.children || []).filter(isVisible);
-                const hasDropdown = children.length > 0;
-                const isActive = activePath === root.path;
-                return (
-                  <div
-                    key={root.id}
-                    className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-                    onMouseEnter={() => hasDropdown && openMenu(root.title)}
-                    onMouseLeave={hasDropdown ? scheduleClose : undefined}
-                    onFocus={() => hasDropdown && openMenu(root.title)}
-                    onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget)) scheduleClose();
-                    }}
-                  >
-                    {renderLevelItem(root.title, {
-                      hasDropdown,
-                      icon: IconComp,
-                      isActive,
-                      targetPath: root.path || "/",
-                    })}
-                    {hasDropdown && activeMenu === root.title && (
-                      <LiveMegaMenu root={root} alignRight={alignRight} onNavigate={onNavigate} />
-                    )}
-                  </div>
-                );
-              }
-              const cat = entry;
+              const IconComp = ICON_MAP[root.icon] || Layers;
+              const children = (root.children || []).filter(isVisible);
+              const hasDropdown = children.length > 0;
+              const isActive = activePath === root.path;
               return (
                 <div
-                  key={cat.name}
+                  key={root.id}
                   className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-                  onMouseEnter={() => cat.hasDropdown && openMenu(cat.name)}
-                  onMouseLeave={cat.hasDropdown ? scheduleClose : undefined}
-                  onFocus={() => cat.hasDropdown && openMenu(cat.name)}
+                  onMouseEnter={() => hasDropdown && openMenu(root.title)}
+                  onMouseLeave={hasDropdown ? scheduleClose : undefined}
+                  onFocus={() => hasDropdown && openMenu(root.title)}
                   onBlur={(e) => {
                     if (!e.currentTarget.contains(e.relatedTarget)) scheduleClose();
                   }}
                 >
-                  {renderLevelItem(cat.name, {
-                    hasDropdown: cat.hasDropdown,
-                    icon: null,
-                    isActive: false,
-                    targetPath: "/",
+                  {renderLevelItem(root.title, {
+                    hasDropdown,
+                    icon: IconComp,
+                    isActive,
+                    targetPath: root.path || "/",
                   })}
-                  {activeMenu === cat.name && megaMenuData[cat.name] && (
-                    <MegaMenu data={megaMenuData[cat.name]} alignRight={alignRight} />
+                  {hasDropdown && activeMenu === root.title && (
+                    <LiveMegaMenu root={root} alignRight={alignRight} onNavigate={onNavigate} />
                   )}
                 </div>
               );

@@ -1,70 +1,98 @@
-import { bannerLayoutData } from "../data";
+import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
+/** cta_path is a hash route or an absolute https URL (§4.1). */
+function followCta(path) {
+  if (!path) return;
+  if (/^https:\/\//.test(path)) window.location.href = path;
+  else if (path.startsWith("#/")) window.location.hash = path;
+  else if (path.startsWith("/")) window.location.hash = `#${path}`;
+}
+
+function imageOf(banner) {
+  return banner.image_url || banner.bg_image_url || "";
+}
+
+function BannerCard({ banner, variant, id }) {
+  const large = variant === "large";
+  return (
+    <motion.div
+      className={`banner-card ${large ? "banner-card-lg" : "banner-card-sm"}`}
+      id={id}
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.2 }}
+    >
+      {imageOf(banner) && <img src={imageOf(banner)} alt={banner.title} loading="lazy" />}
+      <div className="banner-overlay" />
+      <div className="banner-content">
+        {large && banner.badge && (
+          <Badge variant="accent" size="sm" style={{ marginBottom: 6 }}>
+            {banner.badge}
+          </Badge>
+        )}
+        <h3 style={large ? undefined : { fontSize: 16 }}>{banner.title}</h3>
+        {banner.subtitle && <p>{banner.subtitle}</p>}
+        <Button
+          variant={large ? "accent" : "outline"}
+          size={large ? "md" : "sm"}
+          className="banner-btn"
+          id={`${id}-btn`}
+          style={
+            large ? undefined : { background: "rgba(255,255,255,0.9)", color: "var(--gray-900)" }
+          }
+          rightIcon={<ArrowRight size={large ? 16 : 14} />}
+          onClick={() => followCta(banner.cta_path)}
+        >
+          {banner.cta_text || "Shop Now"}
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function BannerLayout() {
-  const { large, small1, small2 } = bannerLayoutData;
+  const { banners, loading, error } = useContent();
+
+  const layout = (Array.isArray(banners) ? banners : [])
+    .filter((banner) => banner && banner.placement === "home_banner_layout")
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const large = layout.find((banner) => banner.variant === "large") ?? null;
+  const smalls = layout.filter((banner) => banner.variant === "small").slice(0, 2);
+
+  const notice = error
+    ? "Promotions are temporarily unavailable."
+    : loading
+      ? "Loading promotions…"
+      : layout.length === 0
+        ? "No promotions to show yet."
+        : null;
+
   return (
     <div className="container" style={{ margin: "20px auto" }}>
-      <div className="banner-layout">
-        {/* Large left */}
-        <motion.div
-          className="banner-card banner-card-lg"
-          id="banner-home"
-          whileHover={{ scale: 1.01 }}
-          transition={{ duration: 0.2 }}
-        >
-          <img src={large.image} alt={large.title} loading="lazy" />
-          <div className="banner-overlay" />
-          <div className="banner-content">
-            <Badge variant="accent" size="sm" style={{ marginBottom: 6 }}>
-              Featured Showcase
-            </Badge>
-            <h3>{large.title}</h3>
-            <p>{large.subtitle}</p>
-            <Button
-              variant="accent"
-              size="md"
-              className="banner-btn"
-              id="banner-home-btn"
-              rightIcon={<ArrowRight size={16} />}
-            >
-              {large.btn}
-            </Button>
-          </div>
-        </motion.div>
+      {notice ? (
+        <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>{notice}</p>
+      ) : (
+        <div className="banner-layout">
+          {/* Large left */}
+          {large && <BannerCard banner={large} variant="large" id="banner-home" />}
 
-        {/* Two stacked right */}
-        <div className="banner-right">
-          {[small1, small2].map((b, i) => (
-            <motion.div
-              className="banner-card banner-card-sm"
-              key={i}
-              id={`banner-sm-${i}`}
-              whileHover={{ scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-            >
-              <img src={b.image} alt={b.title} loading="lazy" />
-              <div className="banner-overlay" />
-              <div className="banner-content">
-                <h3 style={{ fontSize: 16 }}>{b.title}</h3>
-                <p>{b.subtitle}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="banner-btn"
-                  id={`banner-sm-${i}-btn`}
-                  style={{ background: "rgba(255,255,255,0.9)", color: "var(--gray-900)" }}
-                  rightIcon={<ArrowRight size={14} />}
-                >
-                  {b.btn}
-                </Button>
-              </div>
-            </motion.div>
-          ))}
+          {/* Two stacked right */}
+          {smalls.length > 0 && (
+            <div className="banner-right">
+              {smalls.map((banner, i) => (
+                <BannerCard
+                  key={banner.id ?? i}
+                  banner={banner}
+                  variant="small"
+                  id={`banner-sm-${i}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

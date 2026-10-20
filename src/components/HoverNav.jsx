@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { navCategories, megaMenuData } from "../data";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
-import { MegaMenu } from "./ui";
 import { LiveMegaMenu } from "./navigation/DynamicMenu";
-import { apiFetchMenuItems } from "../api/contentApi";
+import { useContent } from "../context/ContentContext";
 import {
   Menu,
   ChevronDown,
@@ -51,28 +49,11 @@ function normalizeToLiveTree(data) {
 }
 
 export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
+  const { menu, loading, error } = useContent();
   const [activeMenu, setActiveMenu] = useState(null);
   const [browseOpen, setBrowseOpen] = useState(false);
-  // Live admin tree. Empty (initial, failed, or no rows) means the static
-  // megaMenuData render below is used unchanged — the nav is never blank.
-  const [liveRoots, setLiveRoots] = useState([]);
 
-  const loadLive = useCallback(async () => {
-    try {
-      const items = await apiFetchMenuItems(userRole);
-      setLiveRoots(normalizeToLiveTree(items).filter((n) => n && n.is_active !== false));
-    } catch {
-      setLiveRoots([]);
-    }
-  }, [userRole]);
-
-  useEffect(() => {
-    loadLive();
-    // Silent background refresh on menu edits (same event as DynamicMenu).
-    const handleMenuUpdate = () => loadLive();
-    window.addEventListener("marvel_menu_updated", handleMenuUpdate);
-    return () => window.removeEventListener("marvel_menu_updated", handleMenuUpdate);
-  }, [loadLive]);
+  const roots = normalizeToLiveTree(menu).filter((node) => node && node.is_active !== false);
 
   const navTimer = useRef(null);
   const browseTimer = useRef(null);
@@ -141,15 +122,17 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
     };
   }, []);
 
-  const filteredNavCategories = navCategories.filter((c) => c.name !== "All Categories");
-  // Live admin tree present → render live columns/sections via LiveMegaMenu.
-  // Otherwise the static megaMenuData render below is used unchanged.
-  const useLive = liveRoots.length > 0;
-  const liveCount = liveRoots.length;
-
   const handleLiveNavigate = (path) => {
     if (onDynamicNavigate) onDynamicNavigate(path);
   };
+
+  const notice = loading
+    ? "Loading navigation…"
+    : error
+      ? "Navigation is temporarily unavailable."
+      : roots.length === 0
+        ? "No navigation items configured yet."
+        : null;
 
   return (
     <nav className="hover-nav">
@@ -201,122 +184,78 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
 
         {/* Scrollable Track for Nav Categories & Role Portals */}
         <div className="hover-nav-scroll-track" ref={scrollRef}>
-          {useLive &&
-            liveRoots.map((root, idx) => {
-              const alignRight = idx >= Math.floor(liveCount / 2);
-              const liveChildren = (Array.isArray(root.children) ? root.children : []).filter(
-                (c) => c && c.is_active !== false
-              );
-              const hasLiveDropdown = liveChildren.length > 0;
+          {notice && (
+            <span style={{ fontSize: 13, color: "var(--gray-500)", padding: "8px 12px" }}>
+              {notice}
+            </span>
+          )}
 
-              return (
-                <div
-                  key={root.id}
-                  className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-                  onMouseEnter={() => hasLiveDropdown && navEnter(root.title)}
-                  onMouseLeave={hasLiveDropdown ? navLeave : undefined}
-                  onFocus={() => hasLiveDropdown && navEnter(root.title)}
-                  onBlur={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget)) {
-                      navLeave();
+          {roots.map((root, idx) => {
+            const alignRight = idx >= Math.floor(roots.length / 2);
+            const liveChildren = (Array.isArray(root.children) ? root.children : []).filter(
+              (c) => c && c.is_active !== false
+            );
+            const hasLiveDropdown = liveChildren.length > 0;
+
+            return (
+              <div
+                key={root.id}
+                className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
+                onMouseEnter={() => hasLiveDropdown && navEnter(root.title)}
+                onMouseLeave={hasLiveDropdown ? navLeave : undefined}
+                onFocus={() => hasLiveDropdown && navEnter(root.title)}
+                onBlur={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                    navLeave();
+                  }
+                }}
+              >
+                <span
+                  tabIndex={hasLiveDropdown ? 0 : undefined}
+                  className={`hover-nav-item ${activeMenu === root.title ? "active" : ""}`}
+                  id={`nav-${root.title.toLowerCase().replace(/[^a-z]/g, "-")}`}
+                  onClick={() => {
+                    if (hasLiveDropdown) {
+                      setActiveMenu((prev) => (prev === root.title ? null : root.title));
+                    } else {
+                      handleLiveNavigate(root.path || "/");
                     }
                   }}
-                >
-                  <span
-                    tabIndex={hasLiveDropdown ? 0 : undefined}
-                    className={`hover-nav-item ${activeMenu === root.title ? "active" : ""}`}
-                    id={`nav-${root.title.toLowerCase().replace(/[^a-z]/g, "-")}`}
-                    onClick={() => {
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
                       if (hasLiveDropdown) {
                         setActiveMenu((prev) => (prev === root.title ? null : root.title));
                       } else {
                         handleLiveNavigate(root.path || "/");
                       }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        if (hasLiveDropdown) {
-                          setActiveMenu((prev) => (prev === root.title ? null : root.title));
-                        } else {
-                          handleLiveNavigate(root.path || "/");
-                        }
-                      }
-                      if (e.key === "Escape") setActiveMenu(null);
-                    }}
-                  >
-                    {root.title}
-                    {hasLiveDropdown && (
-                      <ChevronDown
-                        size={14}
-                        className="nav-arrow"
-                        style={{
-                          transition: "transform 0.2s ease",
-                          transform: activeMenu === root.title ? "rotate(180deg)" : "none",
-                        }}
-                      />
-                    )}
-                  </span>
-
-                  {activeMenu === root.title && hasLiveDropdown && (
-                    <LiveMegaMenu
-                      root={root}
-                      alignRight={alignRight}
-                      onNavigate={handleLiveNavigate}
-                    />
-                  )}
-                </div>
-              );
-            })}
-
-          {!useLive &&
-            filteredNavCategories.map((cat, idx) => {
-              const alignRight = idx >= Math.floor(filteredNavCategories.length / 2);
-
-              return (
-                <div
-                  key={cat.name}
-                  className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
-                  onMouseEnter={() => cat.hasDropdown && navEnter(cat.name)}
-                  onMouseLeave={cat.hasDropdown ? navLeave : undefined}
-                  onFocus={() => cat.hasDropdown && navEnter(cat.name)}
-                  onBlur={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget)) {
-                      navLeave();
                     }
+                    if (e.key === "Escape") setActiveMenu(null);
                   }}
                 >
-                  <span
-                    tabIndex={cat.hasDropdown ? 0 : undefined}
-                    className={`hover-nav-item ${activeMenu === cat.name ? "active" : ""}`}
-                    id={`nav-${cat.name.toLowerCase().replace(/[^a-z]/g, "-")}`}
-                    onKeyDown={(e) => {
-                      if (cat.hasDropdown && (e.key === "Enter" || e.key === " ")) {
-                        e.preventDefault();
-                        setActiveMenu((prev) => (prev === cat.name ? null : cat.name));
-                      }
-                      if (e.key === "Escape") setActiveMenu(null);
-                    }}
-                  >
-                    {cat.name}
-                    {cat.hasDropdown && (
-                      <ChevronDown
-                        size={14}
-                        className="nav-arrow"
-                        style={{
-                          transition: "transform 0.2s ease",
-                          transform: activeMenu === cat.name ? "rotate(180deg)" : "none",
-                        }}
-                      />
-                    )}
-                  </span>
-
-                  {activeMenu === cat.name && megaMenuData[cat.name] && (
-                    <MegaMenu data={megaMenuData[cat.name]} alignRight={alignRight} />
+                  {root.title}
+                  {hasLiveDropdown && (
+                    <ChevronDown
+                      size={14}
+                      className="nav-arrow"
+                      style={{
+                        transition: "transform 0.2s ease",
+                        transform: activeMenu === root.title ? "rotate(180deg)" : "none",
+                      }}
+                    />
                   )}
-                </div>
-              );
-            })}
+                </span>
+
+                {activeMenu === root.title && hasLiveDropdown && (
+                  <LiveMegaMenu
+                    root={root}
+                    alignRight={alignRight}
+                    onNavigate={handleLiveNavigate}
+                  />
+                )}
+              </div>
+            );
+          })}
 
           {/* Dynamic Role Navigation Portals */}
           {(userRole === "vendor" || userRole === "admin" || userRole === "super_admin") && (
