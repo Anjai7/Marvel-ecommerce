@@ -92,16 +92,16 @@ deferrals, not work items.
 
 ### 3.1 Entity overview
 
-| Table                    | Status                      | Purpose                                                                     | Public read      |
-| ------------------------ | --------------------------- | --------------------------------------------------------------------------- | ---------------- |
-| `categories`             | new                         | 3-level taxonomy; `parent_id` self-FK                                       | active rows only |
-| `promo_banners`          | new                         | banner layout, promo carousel and promo strip rows                          | active rows only |
-| `footer_sections`        | new                         | footer columns and the popular-search block                                 | active rows only |
-| `footer_links`           | new                         | links and tags that belong to a footer section                              | active rows only |
-| `products.category_id`   | new column                  | binds a product to a taxonomy leaf                                          | n/a              |
-| `menu_items.category_id` | new column                  | binds a nav leaf to a taxonomy node                                         | n/a              |
-| `hero_slides`            | existing                    | hero carousel rows; gains an `updated_at` trigger and a service-role policy | active rows only |
-| `site_categories`        | dropped in `20261020000009` | the 10 legacy homepage circles, copied into `categories` first              | n/a              |
+| Table                    | Status                      | Purpose                                                                                                   | Public read      |
+| ------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------- |
+| `categories`             | new                         | 3-level taxonomy; `parent_id` self-FK                                                                     | active rows only |
+| `promo_banners`          | new                         | banner layout, promo carousel and promo strip rows                                                        | active rows only |
+| `footer_sections`        | new                         | footer columns and the popular-search block                                                               | active rows only |
+| `footer_links`           | new                         | links and tags that belong to a footer section                                                            | active rows only |
+| `products.category_id`   | new column                  | binds a product to a taxonomy leaf                                                                        | n/a              |
+| `menu_items.category_id` | new column                  | binds a nav leaf to a taxonomy node                                                                       | n/a              |
+| `hero_slides`            | existing                    | hero carousel rows; gains an `updated_at` trigger and a service-role policy                               | active rows only |
+| `site_categories`        | dropped in `20261020000009` | the 10 legacy homepage circles; the 7 whose names match a taxonomy row are copied into `categories` first | n/a              |
 
 All new columns are snake_case in the database and in JSON. There is no camelCase
 transform layer anywhere in the stack.
@@ -140,12 +140,20 @@ CREATE INDEX IF NOT EXISTS categories_active_order ON public.categories (is_acti
   level-3 row's parent must be level 2. Depth is capped at 3; a 4th level is rejected with
   `400` (section 4.8).
 - `slug` is unique **per parent**: roots are globally unique, children are unique among
-  their siblings. Two different parents may both have a child slug `accessories`.
-- `slug` is lowercase letters, numbers and hyphens only. The client auto-derives it from
-  `name` with `slugify`; the admin may override it.
-- The category path is `/category/<root slug>/<child slug>/<leaf slug>`, rebuilt by walking
-  ancestors. `categories.slug` is the last segment only. Deleting `site_categories` does not
-  change any existing menu path.
+  their siblings. Two different parents may both have a child slug `accessories`, and a
+  child slug may equal a root slug. A bare slug is therefore **not** an identifier.
+- `slug` is lowercase letters, numbers and hyphens only (`^[a-z0-9]+(-[a-z0-9]+)*$`).
+- **The full path is the identity.** The category path is
+  `/category/<root slug>/<child slug>/<leaf slug>`, rebuilt by walking ancestors, and two
+  categories can only share a path if they are the same row. `categories.slug` is the last
+  path segment only. Every lookup that has to name one category uses the whole path, never
+  the bare slug (section 4.2).
+- **Slug versus name.** The slug _is_ the URL path segment and is independent of the display
+  name: the seed keeps the segment that already exists in `menu_items.path`
+  (`men-s-fashion`, not `mens-fashion`), while `slugify` produces only the _suggested
+  default_ filled into the form for a newly created row. Changing a category's `slug`
+  changes its path and therefore its URL and its menu path; changing its `name` does not
+  change either. Deleting `site_categories` does not change any existing menu path.
 - `show_in_nav` controls whether the category appears in nav surfaces built from the
   taxonomy; `show_in_homepage` controls the homepage category strip.
 - `is_active = false` hides the row from the storefront but keeps it in the admin list.
@@ -400,29 +408,45 @@ order_index)` and `hero_slides (is_active, order_index)` are reused unchanged.
 
 ### 4.2 Categories — `/api/categories`
 
-| Method | Path                         | Auth   | Response                                                                                                                                      |
-| ------ | ---------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/categories`            | public | `{ categories: [...] }` — flat list, `is_active = true` unless `?includeInactive=1` + admin                                                   |
-| GET    | `/api/categories/tree`       | public | `{ categories: [...] }` — nested `children` arrays, each node `{ ...row, children: [...] }`, roots first, siblings ordered by `display_order` |
-| GET    | `/api/categories/slug/:slug` | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — `ancestors` root→parent, `descendants` all levels below                         |
-| GET    | `/api/categories/:id`        | public | `{ category: {...} }`                                                                                                                         |
-| POST   | `/api/categories`            | admin  | `201 { message, category }`                                                                                                                   |
-| PATCH  | `/api/categories/:id`        | admin  | `200 { message, category }` — partial                                                                                                         |
-| DELETE | `/api/categories/:id`        | admin  | `200 { message }` — cascades to descendants via the FK                                                                                        |
-| PATCH  | `/api/categories/reorder`    | admin  | `200 { message }` — body `{ orders: [{id, display_order}] }`, renumbers one sibling group                                                     |
+| Method | Path                         | Auth   | Response                                                                                                                                                                                                   |
+| ------ | ---------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/categories`            | public | `{ categories: [...] }` — flat list, `is_active = true` unless `?includeInactive=1` + admin                                                                                                                |
+| GET    | `/api/categories/tree`       | public | `{ categories: [...] }` — nested `children` arrays, each node `{ ...row, children: [...] }`, roots first, siblings ordered by `display_order`                                                              |
+| GET    | `/api/categories/path`       | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — **exact** match on the full ancestor path (`?path=electronics/mobiles/smartphones`); `404 { error }` when no row has exactly that path       |
+| GET    | `/api/categories/slug/:slug` | public | `{ category: {...}, ancestors: [...], descendants: [...] }` — bare-slug convenience lookup, shallowest match, `category.ambiguous = true` when several rows share the slug. **Not used by the storefront** |
+| GET    | `/api/categories/:id`        | public | `{ category: {...} }`                                                                                                                                                                                      |
+| POST   | `/api/categories`            | admin  | `201 { message, category }`                                                                                                                                                                                |
+| PATCH  | `/api/categories/:id`        | admin  | `200 { message, category }` — partial                                                                                                                                                                      |
+| DELETE | `/api/categories/:id`        | admin  | `200 { message }` — cascades to descendants via the FK                                                                                                                                                     |
+| PATCH  | `/api/categories/reorder`    | admin  | `200 { message }` — body `{ orders: [{id, display_order}] }`, renumbers one sibling group                                                                                                                  |
 
-`GET /tree` and `GET /slug/:slug` must be registered before `GET /:id` so `tree` and `slug`
-are not captured as ids; the same applies to `PATCH /reorder` before `PATCH /:id`. The editor
-contract (a sibling reorder call from the admin tree editor) requires the `/reorder` route;
-its scope is the sibling group identified by the parent of the ids in the body, and a body
-mixing parents is rejected with `400`.
+`GET /tree`, `GET /path` and `GET /slug/:slug` must be registered before `GET /:id` so
+`tree`, `path` and `slug` are not captured as ids; the same applies to `PATCH /reorder`
+before `PATCH /:id`. The editor contract (a sibling reorder call from the admin tree editor)
+requires the `/reorder` route; its scope is the sibling group identified by the parent of
+the ids in the body, and a body mixing parents is rejected with `400`.
 
-**`GET /slug/:slug` resolution.** Query every row with that `slug` (any level). Pick exactly
-one: lowest `level`, then lowest `display_order`. Load `ancestors` by walking `parent_id`
-upward (returned root→parent) and `descendants` by selecting rows whose `parent_id` is in
-the already-collected set, repeated to a fixed depth of 3. If more than one row shares the
-slug, set `category.ambiguous = true` on the returned category; the field is absent or
-`false` otherwise.
+**`GET /path?path=<segments>` — the canonical lookup.** The query value is the path after
+`/category/`, with no leading or trailing slash: `electronics/mobiles/smartphones`. Resolve
+it **exactly**, one segment at a time: take the level-1 row whose `slug` equals segment 1,
+then the child of that row whose `slug` equals segment 2, then the child of _that_ row whose
+`slug` equals segment 3. The path resolves only when every segment matched at the expected
+depth, so `electronics/mobiles/smartphones` names exactly one category and `accessories`
+resolves to the root `Accessories` while `electronics/accessories` resolves to the
+Electronics child of the same name. Unknown depth, an empty segment, a 4th segment, or a
+segment that does not match a child of the previous row all return `404 { error }`. The
+response carries `ancestors` (root→parent), `descendants` (all levels below), and
+`category.ambiguous` is never set — an exact path cannot be ambiguous.
+
+**`GET /slug/:slug` — convenience only.** Query every row with that `slug` (any level). Pick
+exactly one: lowest `level`, then lowest `display_order`. Load `ancestors` by walking
+`parent_id` upward (returned root→parent) and `descendants` by selecting rows whose
+`parent_id` is in the already-collected set, repeated to a fixed depth of 3. If more than one
+row shares the slug, set `category.ambiguous = true` on the returned category; the field is
+absent or `false` otherwise. This route exists for diagnostics and for code that already has
+a slug and no path; because `Accessories` exists three times and `Watches` twice, the result
+depends on the ordering rule rather than on the caller's intent. The storefront therefore
+routes on the full path (§5.5) and never calls this route.
 
 **Create body.**
 
@@ -471,7 +495,8 @@ banner_image_url, display_order, is_active, show_in_nav, show_in_homepage`.
 }
 ```
 
-**Slug response example.**
+**Path / slug response example.** Both `GET /path` and `GET /slug/:slug` return this shape
+(`GET /path` is the exact walk; `GET /slug/:slug` adds `ambiguous` only when needed):
 
 ```json
 {
@@ -600,7 +625,10 @@ Section writable fields: `heading, section_type, column_index, display_order, is
 Link writable fields: `section_id, label, href, display_order, is_active`. `section_id`,
 `label` and `href` required; `href` must be an https URL or a site-relative path.
 The link reorder scope is the set of links sharing the `section_id` of the ids in the body;
-the section reorder scope is every section.
+the section reorder scope is every section. `PATCH /api/content/footer/links/reorder` is an
+addition to the plan's Task 7 route table: the footer editor's per-section up/down control
+needs it, and without it every link would have to be re-POSTed to change one position. It
+takes the same `{ orders: [...] }` body and follows the same complete-scope rule as §4.1.
 
 ### 4.6 Menu — `/api/menu`
 
@@ -635,19 +663,27 @@ Rules:
 
 ### 4.7 Products bound to the taxonomy
 
-| Call                                          | Behaviour                                                                                                                                                                                            |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/products?category=<slug>`           | Resolve the slug against `categories` (lowest `level`, then lowest `display_order`), expand to that category plus all descendants, and filter `products.category_id` with `.in("category_id", ids)`. |
-| `GET /api/products?category=<unknown>`        | `200` with an empty array **and** the response header `X-Category-Not-Found: true`, so the client can distinguish "empty category" from "no such category".                                          |
-| `GET /api/products?categoryId=<uuid>`         | Filter by the exact id, no descendant expansion.                                                                                                                                                     |
-| `GET /api/products` (no category param)       | No query against `categories` is issued.                                                                                                                                                             |
-| `POST /api/products`, `PUT /api/products/:id` | Accept an optional `category_id`. If it is supplied and `category` text is absent, set `category` to the category's `name`. If the id does not exist → `400 { error: "Category not found." }`.       |
-| `GET /api/products?search=<term>`             | Escape `,` `.` `(` `)` to spaces before interpolating into the PostgREST `.or(...)` expression.                                                                                                      |
+| Call                                            | Behaviour                                                                                                                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/products?categoryPath=<a/b/c>`        | Resolve the path exactly as `GET /api/categories/path` does, expand to that category plus all descendants, and filter `products.category_id` with `.in("category_id", ids)`.                   |
+| `GET /api/products?categoryPath=<unknown path>` | `200` with an empty array **and** the response header `X-Category-Not-Found: true`, so the client can distinguish "empty category" from "no such category".                                    |
+| `GET /api/products?categoryId=<uuid>`           | Resolve the id and expand to that category plus all descendants, exactly like `categoryPath`; the two parameters are alternative spellings of the same taxonomy filter.                        |
+| `GET /api/products?category=<free text>`        | Unchanged legacy behaviour: `ilike("category", <free text>)` against the display label. It is **not** a taxonomy filter and never resolves through `categories`.                               |
+| `GET /api/products` (no category param)         | No query against `categories` is issued.                                                                                                                                                       |
+| `POST /api/products`, `PUT /api/products/:id`   | Accept an optional `category_id`. If it is supplied and `category` text is absent, set `category` to the category's `name`. If the id does not exist → `400 { error: "Category not found." }`. |
+| `GET /api/products?search=<term>`               | Escape `,` `.` `(` `)` to spaces before interpolating into the PostgREST `.or(...)` expression.                                                                                                |
 
-The legacy `ilike("category", ...)` path is kept only when the value matches no category
-slug **and** no existing `products.category` value, which preserves the behaviour of
-vendors that still write free text. The client can also resolve a category locally from
-`GET /api/categories/slug/:slug`, which already returns `descendants`.
+**There is no bare-slug taxonomy filter.** An earlier draft resolved `?category=<slug>`
+against `categories` with "lowest `level`, then lowest `display_order`", which silently sent
+`electronics/accessories` to the root `Accessories` page and `fashion/accessories/watches` to
+the `accessories/watches` page. Taxonomy filtering is now named twice on purpose —
+`categoryPath` (what the storefront sends) and `categoryId` (what the admin and vendor forms
+send) — and both resolve to one id and expand descendants. `?category=<text>` stays only
+because the vendor dashboard still writes free-text categories; it keeps its existing
+`ilike` semantics and must not be used for taxonomy navigation.
+
+The client also resolves the path locally against `useContent().categoryTree` before calling
+the API (§5.5), so a tree hit needs no round trip.
 
 ### 4.8 Validation rules and exact error strings
 
@@ -655,28 +691,28 @@ Validators are pure functions in `server/lib/validation.js`. Each returns `null`
 message; the route returns `400 { error: message }`. With `{ partial: true }` required-field
 checks are skipped and only present fields are validated.
 
-| Validator               | Rule                                                                                        | Error string                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `isHttpsOrRelative`     | `null`/`""` allowed; otherwise must start with `/` or `https://`                            | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
-| `validateHeroSlide`     | `title` required                                                                            | `Hero slide title is required.`                                                                                                                                                |
-| `validateHeroSlide`     | `order_index` integer                                                                       | `order_index must be an integer.`                                                                                                                                              |
-| `validateCategory`      | `name` required                                                                             | `Category name is required.`                                                                                                                                                   |
-| `validateCategory`      | `slug` matches `^[a-z0-9]+(-[a-z0-9]+)*$`                                                   | `slug must be lowercase letters, numbers and hyphens only.`                                                                                                                    |
-| `validateCategory`      | `level` integer 1–3                                                                         | `Category level must be an integer between 1 and 3.`                                                                                                                           |
-| `validateDepth`         | level > 1 without parent                                                                    | `parent_id is required for categories below level 1.`                                                                                                                          |
-| `validateDepth`         | level 1 with parent                                                                         | `Level 1 categories must not have a parent_id.`                                                                                                                                |
-| `validateDepth`         | parent level ≠ `level - 1`                                                                  | `Parent category must be at level 2 for a level 3 category.` / `Parent category must be at level 1 for a level 2 category.`                                                    |
-| `validateDepth`         | parent id not found                                                                         | `Parent category not found.`                                                                                                                                                   |
-| `validateBanner`        | `title` required                                                                            | 400 naming the missing field                                                                                                                                                   |
-| `validateBanner`        | `placement` required and one of three                                                       | `Banner placement is required.` (missing) / 400 naming the allowed values (invalid)                                                                                            |
-| `validateBanner`        | `cta_path`, `image_url`, `bg_image_url`, `fallback_image_url` https-or-relative             | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
-| `validateBanner`        | `starts_at`/`ends_at` ISO-8601; `ends_at > starts_at`                                       | 400 naming the field                                                                                                                                                           |
-| `validateFooterSection` | `heading` required                                                                          | `Footer section heading is required.`                                                                                                                                          |
-| `validateFooterLink`    | `label` required                                                                            | 400 naming the field                                                                                                                                                           |
-| `validateFooterLink`    | `href` required, https-or-relative                                                          | `Footer link href is required.`                                                                                                                                                |
-| menu                    | `title` and `path` required                                                                 | `Menu item title and path are required.`                                                                                                                                       |
-| menu                    | level 1–3, parent level exactly `level - 1`                                                 | `Menu level must be an integer between 1 and 3.` / `Parent level must be 1 for a level 2 item.` / `Parent level must be 2 for a level 3 item.` / `Parent menu item not found.` |
-| `slugify`               | lowercase, strip everything except `[a-z0-9]`, collapse separator runs to one `-`, trim `-` | pure function, no error                                                                                                                                                        |
+| Validator               | Rule                                                                                                                     | Error string                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `isHttpsOrRelative`     | `null`/`""` allowed; otherwise must start with `/` or `https://`                                                         | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
+| `validateHeroSlide`     | `title` required                                                                                                         | `Hero slide title is required.`                                                                                                                                                |
+| `validateHeroSlide`     | `order_index` integer                                                                                                    | `order_index must be an integer.`                                                                                                                                              |
+| `validateCategory`      | `name` required                                                                                                          | `Category name is required.`                                                                                                                                                   |
+| `validateCategory`      | `slug` matches `^[a-z0-9]+(-[a-z0-9]+)*$`                                                                                | `slug must be lowercase letters, numbers and hyphens only.`                                                                                                                    |
+| `validateCategory`      | `level` integer 1–3                                                                                                      | `Category level must be an integer between 1 and 3.`                                                                                                                           |
+| `validateDepth`         | level > 1 without parent                                                                                                 | `parent_id is required for categories below level 1.`                                                                                                                          |
+| `validateDepth`         | level 1 with parent                                                                                                      | `Level 1 categories must not have a parent_id.`                                                                                                                                |
+| `validateDepth`         | parent level ≠ `level - 1`                                                                                               | `Parent category must be at level 2 for a level 3 category.` / `Parent category must be at level 1 for a level 2 category.`                                                    |
+| `validateDepth`         | parent id not found                                                                                                      | `Parent category not found.`                                                                                                                                                   |
+| `validateBanner`        | `title` required                                                                                                         | 400 naming the missing field                                                                                                                                                   |
+| `validateBanner`        | `placement` required and one of three                                                                                    | `Banner placement is required.` (missing) / 400 naming the allowed values (invalid)                                                                                            |
+| `validateBanner`        | `cta_path`, `image_url`, `bg_image_url`, `fallback_image_url` https-or-relative                                          | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
+| `validateBanner`        | `starts_at`/`ends_at` ISO-8601; `ends_at > starts_at`                                                                    | 400 naming the field                                                                                                                                                           |
+| `validateFooterSection` | `heading` required                                                                                                       | `Footer section heading is required.`                                                                                                                                          |
+| `validateFooterLink`    | `label` required                                                                                                         | 400 naming the field                                                                                                                                                           |
+| `validateFooterLink`    | `href` required, https-or-relative                                                                                       | `Footer link href is required.`                                                                                                                                                |
+| menu                    | `title` and `path` required                                                                                              | `Menu item title and path are required.`                                                                                                                                       |
+| menu                    | level 1–3, parent level exactly `level - 1`                                                                              | `Menu level must be an integer between 1 and 3.` / `Parent level must be 1 for a level 2 item.` / `Parent level must be 2 for a level 3 item.` / `Parent menu item not found.` |
+| `slugify`               | lowercase, then replace every run of characters outside `[a-z0-9]` with a single `-`, then trim leading and trailing `-` | pure function, no error                                                                                                                                                        |
 
 `slugify` reference cases: `"Men's Fashion"` → `mens-fashion`; `"Home & Kitchen"` →
 `home-kitchen`; `"TVs"` → `tvs`.
@@ -753,6 +789,7 @@ apiReorderHeroSlides(orders: { id: string; display_order: number }[]): Promise<{
 apiFetchCategories(opts?: { includeInactive?: boolean }): Promise<{ categories: Category[] }>
 apiFetchCategoryTree(opts?: { includeInactive?: boolean }): Promise<{ categories: CategoryNode[] }>
 apiFetchCategoryBySlug(slug: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
+apiFetchCategoryByPath(path: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
 apiSaveCategory(c: object): Promise<{ category: Category }>
 apiUpdateCategory(id: string, patch: object): Promise<{ category: Category }>
 apiDeleteCategory(id: string): Promise<{ message: string }>
@@ -788,7 +825,9 @@ Each function maps one-to-one onto the routes in §4: `apiFetch*` → `GET <base
 `DELETE <base>/:id`, `apiReorder*` → `PATCH <base>/reorder`. The bases are `/categories`,
 `/content/hero`, `/content/banners`, `/content/footer/sections`, `/content/footer/links`
 and `/menu`. Query strings are built with `URLSearchParams` (`includeInactive=1`,
-`placement`, `role`).
+`placement`, `role`, `path`). The two category exceptions are
+`apiFetchCategoryBySlug` → `GET /categories/slug/:slug` and `apiFetchCategoryByPath` →
+`GET /categories/path?path=<segments>`.
 
 ### 5.3 `src/context/ContentContext.jsx`
 
@@ -831,7 +870,7 @@ export function useContent(): {
 | Component                | Reads                                                 | Behaviour                                                                                                                                                                        |
 | ------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `HeroBanner`             | `hero`                                                | Renders slides in order; CTA navigates to `btn_path` (currently mapped but unused). Empty → one inline emergency slide defined in the component (the only static fallback kept). |
-| `CategorySlider`         | `categories` filtered to `show_in_homepage === true`  | Click navigates to `#/category/<slug>`. Categories without the flag are excluded.                                                                                                |
+| `CategorySlider`         | `categories` filtered to `show_in_homepage === true`  | Click navigates to `#/category/<full ancestor path>` (the root's slug; a root has a one-segment path). Categories without the flag are excluded.                                 |
 | `BannerLayout`           | `banners` where `placement === "home_banner_layout"`  | Sorts by `display_order`; `variant === "large"` fills the large slot, `small` the two small slots; fewer than 3 banners renders only what exists.                                |
 | `PromoBannerCarousel`    | `banners` where `placement === "home_promo_carousel"` | Renders `gallery` images; countdown computed from `ends_at` when present, otherwise the existing literal.                                                                        |
 | `Footer`                 | `footer.sections` + nested `links`                    | Renders columns and the `section_type === "tags"` block. Value-prop bar, social block, payment chips and copyright stay in code.                                                 |
@@ -846,30 +885,57 @@ failed. No component outside `HeroBanner` keeps a static content fallback.
 
 ### 5.5 Category routing and `CategoryPage`
 
-- Hash route `#/category/:slug`. `getHashRoute` recognises a first segment of `category` and
-  passes the **second** segment as the slug. The current silent bounce of `category/*` to
-  the homepage is removed.
-- `handleDynamicMenuClick` maps any `category/...` path to `#/category/<last segment>`
-  because the API resolves by slug. If a parent path matches no category, it falls back to
-  the nearest matching ancestor; if none matches, the category page shows its "unknown
-  category" empty state instead of bouncing home.
-- `CategoryPage` props: `{ slug }`. It resolves the category from `categoryTree` when
-  possible and otherwise via `apiFetchCategoryBySlug`, fetches products with
-  `{ category: slug }`, and renders:
-  - breadcrumb `Home / <ancestor names> / <category name>`,
+- Hash route `#/category/electronics/mobiles/smartphones`: the route carries the **whole
+  ancestor path**, not a slug. `getHashRoute` recognises a first segment of `category`, then
+  takes everything after it — `parts.slice(1).join("/")`, URL-decoded — as `path`, and
+  strips a leading or trailing `/`. For `#/category/electronics/mobiles/smartphones` it
+  returns `{ page: "category", path: "electronics/mobiles/smartphones" }` alongside the
+  existing `id` and `full` fields, which keep serving `product/:id`. It must not stop at
+  `parts[1]`. The current silent bounce of `category/*` to the homepage is removed.
+- `handleDynamicMenuClick` maps a nav path to the route by string equality: `menu_items.path`
+  is already the full path (`/category/electronics/mobiles/smartphones`), so strip the
+  leading `/category/` and append the remainder to `#/category/`. The menu path and the
+  category path are the same string, so there is nothing to resolve and nothing to drift.
+  Paths that are not under `/category/` keep their existing handling in that function.
+- **Local resolution.** `CategoryPage` resolves the path against
+  `useContent().categoryTree` by computing each node's ancestor-joined path (root slug, then
+  `parentPath + "/" + slug`) and matching exactly. A tree hit needs no request. On a miss it
+  calls `apiFetchCategoryByPath(path)`; a `404` puts the page in its unknown-category state
+  instead of bouncing home. A bare slug is never used for resolution; `Accessories` exists
+  three times, so a last-segment lookup cannot name the category the visitor clicked.
+- `CategoryPage` props: `{ path }`. It fetches products with `{ categoryPath: path }`
+  (§4.7), so the product set is the resolved category plus its descendants, and renders:
+  - breadcrumb `Home / <ancestor names> / <category name>` built from the resolved
+    `ancestors`,
   - category name and description,
-  - subcategory chips from `descendants` at `category.level + 1`, each navigating to
-    `#/category/<child-slug>`,
+  - subcategory chips from the resolved node's direct `children` (equivalently
+    `descendants` at `category.level + 1`), each navigating to
+    `#/category/<path>/<child slug>` — the full path, not the child slug alone,
   - a `ProductCard` grid.
 - Loading, empty ("No products in this category yet."), unknown-category and error states
   are distinct and visible.
 
 ### 5.6 Removal of the old content layer
 
-After the surfaces migrate, `src/data.js` and the ten components that exist only to render
-its static content are deleted, and `src/api/backendApi.js` shrinks to the auth, product,
-cart and upload helpers still in use. No file under `src/` may import `data.js` at the end
-of the feature.
+After the surfaces migrate, `src/data.js` and the **nine** storefront components that exist
+only to render its static content are deleted. The exact list, so the count is checkable:
+
+1. `src/components/Navbar.jsx`
+2. `src/components/Sidebar.jsx`
+3. `src/components/CategoryScroll.jsx`
+4. `src/components/VerticalCategoryMenu.jsx`
+5. `src/components/PromoBanners.jsx`
+6. `src/components/FeatureBanners.jsx`
+7. `src/components/SaleBanner.jsx`
+8. `src/components/ProductSection.jsx`
+9. `src/components/ui/MegaMenu.jsx`
+
+Nine components plus `src/data.js` is ten deleted files on the storefront side. The four
+admin-side deletions (`admin/MenuListEditor.jsx`, `admin/CategoriesEditor.jsx`,
+`admin/AdminDashboard.jsx`, `admin/charts/SalesGrowthCard.jsx`) are covered in §6.3, and
+`src/api/backendApi.js` shrinks to the auth, product, cart and upload helpers still in use.
+No file under `src/` may import `data.js` at the end of the feature; each deletion is
+preceded by a grep for its importers so the build cannot break on a dangling import.
 
 ## 6. Admin UX
 
@@ -891,7 +957,17 @@ controls are implemented.
 
 The four editors that carry this feature are `CategoriesTreeEditor`, `BannersEditor`,
 `FooterEditor` and `HeroSlidesEditor`. `MenuTreeEditor` already exists; it is fixed and
-mounted in the same slice because the menu is now bound to the taxonomy.
+mounted in the same slice because the menu is now bound to the taxonomy. Their files:
+
+| Piece                  | File                                            | Status                                                    |
+| ---------------------- | ----------------------------------------------- | --------------------------------------------------------- |
+| `CategoriesTreeEditor` | `src/components/admin/CategoriesTreeEditor.jsx` | new, replaces `src/components/admin/CategoriesEditor.jsx` |
+| `BannersEditor`        | `src/components/admin/BannersEditor.jsx`        | new                                                       |
+| `FooterEditor`         | `src/components/admin/FooterEditor.jsx`         | new                                                       |
+| `HeroSlidesEditor`     | `src/components/admin/HeroSlidesEditor.jsx`     | existing, refactored                                      |
+| `MenuTreeEditor`       | `src/components/admin/MenuTreeEditor.jsx`       | existing, fixed and mounted                               |
+| Editor kit (shared)    | `src/components/admin/ContentEditorKit.jsx`     | new (§6.1)                                                |
+| `CategoryPicker`       | `src/components/admin/CategoryPicker.jsx`       | new, used by the admin and vendor product forms (§2.1)    |
 
 **`CategoriesTreeEditor`** (replaces `CategoriesEditor`)
 
@@ -899,18 +975,21 @@ mounted in the same slice because the menu is now bound to the taxonomy.
   `is_active: false` rows are rendered.
 - Every node shows Add subcategory (disabled at level 3), Edit, Delete, up/down within its
   sibling group.
-- Form fields: `name` (required), `slug` (auto-derived from `name` via `slugify` until the
-  admin edits it, then left alone), `parent_id` (select of valid parents: none for level 1,
-  level-1 rows for level 2, level-2 rows for level 3), `icon`, `image_url` (ImageField),
-  `banner_image_url` (ImageField), `description`, `display_order` (OrderControls),
-  `is_active` (ActiveToggle), `show_in_nav`, `show_in_homepage`.
+- Form fields: `name` (required), `slug` (a new row's field is prefilled with
+  `slugify(name)` and stops following `name` as soon as the admin edits the slug; an existing
+  row keeps its stored slug until the admin changes it), `parent_id` (select of valid parents:
+  none for level 1, level-1 rows for level 2, level-2 rows for level 3), `icon`, `image_url`
+  (ImageField), `banner_image_url` (ImageField), `description`, `display_order`
+  (OrderControls), `is_active` (ActiveToggle), `show_in_nav`, `show_in_homepage`.
 - `level` is derived from the selected parent (`parent.level + 1`, else 1).
 - Editing sends `apiUpdateCategory(id, patch)` with only changed fields; creating sends
   `apiSaveCategory` with the full form payload. The payload always includes every field the
   form owns, so no field (for example `show_in_homepage`) is silently dropped.
 - Reorder sends the complete ordered sibling list to `apiReorderCategories`.
-- Changing a saved category's `slug` shows an inline warning that existing links to the old
-  path will stop resolving (no redirect map in this slice).
+- Changing a saved category's `slug` shows an inline warning that its path — and every
+  descendant's path, which contains that segment — changes with it, so existing links to the
+  old URL stop resolving (no redirect map in this slice). Changing only the `name` does not
+  change any path.
 - Delete is behind a `ConfirmDialog` that states how many descendants will also be deleted.
 - A failed save shows a toast and leaves the form open; the form closes only after success.
 - On success: toast, refetch, `window.dispatchEvent(new Event("marvel_content_updated"))`.
@@ -991,29 +1070,99 @@ The `categories` rows are generated from `menu_items` so the two trees cannot dr
 category id **is** the menu item id, which makes the linkage (`menu_items.category_id`)
 exact and lets the seed be a no-op on re-run.
 
+**Only the mega-menu rows are taxonomy.** `menu_items` also holds the six flat navigation
+rows seeded by `20260822000000_init_schema.sql:143-151` — `Home & Shop` (`/`),
+`Electronics & Tech` (`/category/electronics`), `Fashion & Lifestyle`
+(`/category/fashion`), `Vendor Portal`, `Admin Panel` and `Super Admin System`. They are
+level 1 with `parent_id IS NULL` and random ids. They are **navigation-only rows with no
+category**: they keep `category_id IS NULL`, they are not part of the taxonomy, and they
+must never be copied into `categories`. Selecting them would (a) collide with
+`categories_slug_root_unique` on `electronics`, making the surviving row heap-order
+dependent and either aborting the insert on the `parent_id` FK or silently dropping the real
+roots, (b) create a level-1 category with an empty slug from the `/` path, violating the
+slug rule and the `^[a-z0-9]+(-[a-z0-9]+)*$` validator, and (c) turn the three dashboard
+entries into categories.
+
+The mega-menu migration gives every taxonomy row a fixed id whose first three characters
+encode its depth — `d1c…` (level 1), `d2c…` (level 2), `d3c…` (level 3), e.g.
+`d1c00000-0000-4000-8000-000000000001`. The prefix is the discriminator: inserting level by
+level also guarantees that a level-2 row's parent exists before the FK is checked.
+
 ```sql
+-- 1. Level-1 roots. Level-2 rows reference these ids.
 INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
 SELECT m.id, m.title,
-       regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g'),
-       m.parent_id, m.level, m.order_index, m.is_active, true, (m.level = 1)
+       lower(regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g')),
+       NULL, 1, COALESCE(m.order_index, 0), COALESCE(m.is_active, true), true, true
 FROM public.menu_items m
-WHERE m.level BETWEEN 1 AND 3
+WHERE m.id::text LIKE 'd1c%' AND m.level = 1
+ON CONFLICT DO NOTHING;
+
+-- 2. Level-2 subcategories.
+INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
+SELECT m.id, m.title,
+       lower(regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g')),
+       m.parent_id, 2, COALESCE(m.order_index, 0), COALESCE(m.is_active, true), true, false
+FROM public.menu_items m
+WHERE m.id::text LIKE 'd2c%' AND m.level = 2
+ON CONFLICT DO NOTHING;
+
+-- 3. Level-3 leaves.
+INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
+SELECT m.id, m.title,
+       lower(regexp_replace(regexp_replace(m.path, '^.*/', ''), '[^a-zA-Z0-9-]+', '-', 'g')),
+       m.parent_id, 3, COALESCE(m.order_index, 0), COALESCE(m.is_active, true), true, false
+FROM public.menu_items m
+WHERE m.id::text LIKE 'd3c%' AND m.level = 3
 ON CONFLICT DO NOTHING;
 ```
 
+`COALESCE` is required: `menu_items.order_index` and `menu_items.is_active` are nullable
+(`20260822000000:41,43`), while `categories.display_order` and `categories.is_active` are
+`NOT NULL`. The `lower(...)` keeps the stored slug inside the lowercase slug rule even though
+the path segment may contain capitals.
+
 The slug is the **last** path segment: strip everything up to and including the final `/`,
-then replace every run of non-alphanumerics with a single hyphen. That is correct for every
-level:
+lowercase it, then replace every run of characters outside `[a-zA-Z0-9-]` with a single
+hyphen. That is correct for every level:
 
 - level 1 `/category/electronics` → `electronics`
 - level 2 `/category/electronics/mobiles` → `mobiles`
 - level 3 `/category/electronics/mobiles/smartphones` → `smartphones`
+- `Men's Fashion`'s segment `/category/fashion/men-s-fashion` → `men-s-fashion` (the slug is
+  the existing path segment, not a re-slugified name — §3.2)
 
 A fixed `split_part(m.path, '/', 4)` is **not** usable: splitting `/category/a/b/c` on `/`
 gives parts `''`, `category`, `a`, `b`, `c`, so part 4 is the empty string for a level-1
 path and the _parent_ (`b`) for a level-3 path. The same defect applies to
 `split_part(..., '/', 3)` on the `/category/`-stripped path, which is empty for level 1 and
 level 2. The regexp form above has no fixed-index assumption.
+
+**Count guard.** A corrupted tree must abort the migration, never apply partially:
+
+```sql
+DO $$
+DECLARE
+  root_count INT;
+  orphan_count INT;
+BEGIN
+  SELECT count(*) INTO root_count
+  FROM public.categories
+  WHERE level = 1 AND id::text LIKE 'd1c%';
+
+  SELECT count(*) INTO orphan_count
+  FROM public.categories
+  WHERE level > 1 AND parent_id IS NULL;
+
+  IF root_count <> 7 OR orphan_count <> 0 THEN
+    RAISE EXCEPTION 'categories seed guard: expected 7 level-1 roots and 0 parentless rows below level 1, found % roots and % orphans', root_count, orphan_count;
+  END IF;
+END $$;
+```
+
+The guard runs after the three inserts and before the backfills. `RAISE EXCEPTION` with two
+`%` placeholders is valid PL/pgSQL; the message quotes both the actual and the expected
+counts, so a failed apply names the defect instead of leaving a half-built tree.
 
 Then link the rows back and backfill the display data:
 
@@ -1036,13 +1185,16 @@ FROM public.site_categories s
 WHERE lower(s.name) = lower(c.name)
   AND c.image_url IS NULL;
 
-UPDATE public.products p SET category_id = c.id
+UPDATE public.products p
+SET category_id = c.id
 FROM public.categories c
-WHERE lower(c.name) = lower(p.category)
-  AND c.level = (
-    SELECT MIN(level) FROM public.categories c2
-    WHERE lower(c2.name) = lower(p.category)
-  );
+WHERE c.id = (
+  SELECT c2.id
+  FROM public.categories c2
+  WHERE lower(c2.name) = lower(p.category)
+  ORDER BY c2.level ASC, c2.display_order ASC, c2.id ASC
+  LIMIT 1
+);
 ```
 
 Notes:
@@ -1050,12 +1202,20 @@ Notes:
 - The seven level-1 roots are the homepage strip. The approved wording named
   "Sports & Fitness"; the seeded root's title is "Sports", so the statement above uses the
   title that exists. If the seed title changes, this statement must change with it.
-- `image_url` matching is by case-insensitive name, because the 10 legacy
-  `site_categories` rows ("Mobiles", "Laptops", "TVs", "Headphones", "Watches", "Shoes",
-  "Bags", "Perfumes", "Cameras", "Gaming") are level-2/3 names in the taxonomy. Unmatched
-  rows keep `image_url = NULL` and fall back to a per-root image in the UI.
-- `products.category_id` matches the **shallowest** category with that name, so an ambiguous
-  label such as `Accessories` (root, under Electronics, under Fashion) resolves to the root.
+- The `menu_items.category_id` link covers only the taxonomy rows, because only those have
+  a `categories` row with the same id; the six legacy rows keep `category_id IS NULL` by
+  construction.
+- `image_url` matching is by case-insensitive name. Of the 10 legacy `site_categories` rows,
+  only 7 have a matching menu title and are therefore migrated into `categories`:
+  "Mobiles", "Laptops", "Headphones", "Watches", "Bags", "Cameras" and "Gaming". "TVs",
+  "Shoes" and "Perfumes" exist only as homepage category-slider circles in `site_categories`
+  and `src/data.js`; they match no category row, so their images are simply not used and the
+  UI falls back to a per-root image. Unmatched categories keep `image_url = NULL`.
+- `products.category_id` binds to exactly one row, ordered by lowest `level`, then lowest
+  `display_order`, then `id`. That resolves `Accessories` (root, under Electronics, under
+  Fashion) to the root, and separates same-level twins such as `Ethnic Wear` (men's leaf at
+  `display_order` 5, women's leaf at 4 → the women's leaf). The `id` term is the final
+  tiebreak, so two rows sharing level _and_ order cannot make the update non-deterministic.
   Products that match nothing keep `category_id = NULL` and their `category` text; the
   product seed (§7.3) rewrites them onto real categories.
 - `site_categories` is **not** dropped here. The storefront still reads it through the old
@@ -1066,11 +1226,11 @@ Notes:
 Idempotent and non-destructive: `upsert(rows, { onConflict: "id" })` with fixed literal
 UUIDs, never `delete`. Running it twice must not change any row count.
 
-| Builder                        | Output                                                                                                                                                                                                                                                                     |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `buildCategorySeeds(menuRows)` | 3-level category rows with `id` = the menu row's `id`, `slug` = last path segment, `parent_id` = the parent menu row's id, `level` preserved. Because the ids match migration 8, this is a no-op on an already-seeded database and a repair path if a category is missing. |
-| `buildBannerSeeds()`           | 9 banners: 1 `home_banner_layout` with `variant: "large"`, 2 with `variant: "small"`, 3 `home_promo_carousel`, 3 `promo_strip`.                                                                                                                                            |
-| `buildFooterSeeds()`           | 5 sections with 6, 6, 6, 6 and 10 links (34 total).                                                                                                                                                                                                                        |
+| Builder                        | Output                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `buildCategorySeeds(menuRows)` | 3-level category rows with `id` = the menu row's `id`, `slug` = the last path segment, `parent_id` = the parent menu row's id, `level` preserved. It writes exactly `id, name, slug, parent_id, level, display_order, is_active, show_in_nav`. It does **not** write `show_in_homepage` — that column is owned by the migration-8 rule, which the seed must not clear — and it does not write `description`, `icon`, `image_url` or `banner_image_url`, which are admin-owned. Because the ids match migration 8, this is a no-op on an already-seeded database and a repair path if a category is missing. |
+| `buildBannerSeeds()`           | 9 banners: 1 `home_banner_layout` with `variant: "large"`, 2 with `variant: "small"`, 3 `home_promo_carousel`, 3 `promo_strip`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `buildFooterSeeds()`           | 5 sections with 6, 6, 6, 6 and 10 links (34 total).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 Banner titles, in order: `"Make Your Home Beautiful"`, `"Style That Speaks"`,
 `"Beauty for You"` (`home_banner_layout`); `"End of Season Sale"`,
@@ -1100,7 +1260,7 @@ per row — so a re-run targets the same rows and a reviewer can recognise a see
 Category seeds use the menu item ids instead (§7.1), which is why they never create a
 second tree.
 
-### 7.3 Products across the whole taxonomy (`server/seed_dynamic_products.js`)
+### 7.3 Products across the whole taxonomy (`server/seed_dynamic_products.js`, `npm run seed:products`)
 
 Rewrite, non-destructive:
 
@@ -1120,23 +1280,31 @@ Rewrite, non-destructive:
 - Never insert orders.
 
 Ambiguity rule for a display label (`resolveProductCategory`): return **exactly one** id —
-lowest `level`, then lowest `display_order` — and `null` when nothing matches. It must hold
-for `Accessories`, `Audio` and `Watches`, each of which exists more than once in the tree.
+lowest `level`, then lowest `display_order`, then `id` — and `null` when nothing matches. It
+must hold for every name that occurs more than once in the seeded tree: `Accessories` (×3),
+and `Ethnic Wear`, `Baby Clothes`, `Watches`, `Sunglasses` and `Jewelry` (×2 each). `Audio`
+is a single level-2 node and is not an ambiguity case.
 
 ### 7.4 Verification
 
 After applying migrations and running both seeds:
 
-| Query                                                                                                                                            | Expected                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
-| `SELECT level, count(*) FROM categories GROUP BY level ORDER BY level;`                                                                          | three rows: 7 / ~30 / ~140 |
-| `SELECT count(*) FROM menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;`                                                           | 0                          |
-| `SELECT count(*) FROM categories WHERE name IN ('Mobiles','Laptops','TVs','Headphones','Watches','Shoes','Bags','Perfumes','Cameras','Gaming');` | 10                         |
-| `SELECT count(*) FROM products WHERE category_id IS NOT NULL;`                                                                                   | ≥ 5                        |
-| `SELECT count(*) FROM promo_banners;`                                                                                                            | 9                          |
-| `SELECT count(*) FROM footer_sections;`                                                                                                          | 5                          |
-| `SELECT count(*) FROM footer_links;`                                                                                                             | 34                         |
-| `SELECT count(*) FROM products;`                                                                                                                 | ≥ 3 × 7 + 30 = 51          |
+| Query                                                                                                                                   | Expected                       |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `SELECT level, count(*) FROM categories GROUP BY level ORDER BY level;`                                                                 | three rows: 7 / ~30 / ~140     |
+| `SELECT count(*) FROM menu_items WHERE (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%') AND category_id IS NULL;` | 0 (taxonomy rows only)         |
+| `SELECT count(*) FROM menu_items WHERE level BETWEEN 1 AND 3 AND category_id IS NULL;`                                                  | 6 — the legacy navigation rows |
+| `SELECT count(*) FROM categories WHERE name IN ('Mobiles','Laptops','Headphones','Watches','Bags','Cameras','Gaming');`                 | 7                              |
+| `SELECT count(*) FROM products WHERE category_id IS NOT NULL;`                                                                          | ≥ 5                            |
+| `SELECT count(*) FROM promo_banners;`                                                                                                   | 9                              |
+| `SELECT count(*) FROM footer_sections;`                                                                                                 | 5                              |
+| `SELECT count(*) FROM footer_links;`                                                                                                    | 34                             |
+| `SELECT count(*) FROM products;`                                                                                                        | ≥ 3 × 7 + 30 = 51              |
+
+The `category_id IS NULL` result is 0 **for taxonomy rows only**. The six legacy flat
+`menu_items` rows are navigation-only and are expected to keep `category_id IS NULL`; a
+total of 6 under that weaker query is correct, and a taxonomy-row count above 0 means the
+link-back update missed a row.
 
 Run both seeds a second time: every count must be identical. A count that grows means the
 upsert key is wrong.
@@ -1230,18 +1398,23 @@ WHERE schemaname = 'public'
   AND tablename IN ('categories','promo_banners','footer_sections','footer_links','hero_slides');
 ```
 
-Expected: every `FOR ALL` policy shows `roles = {service_role}`. Any `{public}` or
-`{anon,authenticated}` row is a defect; fix the policy before proceeding.
+Expected: for every row with `cmd = 'ALL'`, `roles` is exactly `{service_role}`. A `{public}`
+or `{anon,authenticated}` role on a `FOR ALL` policy is the defect this gate exists to catch.
+`FOR SELECT` rows are expected to be public: the four new tables' `Public read active …`
+policies and the pre-existing `Public read active hero slides` policy (`FOR SELECT`,
+`roles = {public}`, from `20261016000006:72-74`) are correct and are not defects.
 
-3. Apply 000008 → verify the §7.4 counts (three level groups, 7 / ~30 / ~140), the
-   `menu_items.category_id IS NULL` count is 0, and `categories` still contains the 10
-   legacy names.
+3. Apply 000008 → verify the §7.4 counts (three level groups, 7 / ~30 / ~140), verify the
+   `menu_items.category_id IS NULL` count is 0 **for the taxonomy rows only** (the six
+   legacy navigation rows are expected to stay NULL, so the unscoped query returns 6), and
+   verify that the 7 migrated legacy names (`Mobiles`, `Laptops`, `Headphones`, `Watches`,
+   `Bags`, `Cameras`, `Gaming`) are present in `categories`.
 4. Run `npm run seed:content`, `npm run seed:products`, then re-run both (idempotency gate).
 5. Deploy the code that serves `/api/categories` and the content routes **with** the
    temporary `GET /api/content/categories` alias. Only then apply 000009. Dropping
    `site_categories` before the alias exists breaks the running storefront.
-6. Apply 000009 → `SELECT to_regclass('public.site_categories');` is `NULL` and the 10
-   legacy names are still present in `categories`.
+6. Apply 000009 → `SELECT to_regclass('public.site_categories');` is `NULL` and the 7
+   migrated legacy names are still present in `categories`.
 7. Regenerate `supabase/schema.sql`; run `npm run check` and `npm run test:e2e`.
 
 ### 9.3 Rollback
@@ -1264,8 +1437,16 @@ ALTER TABLE public.products DROP COLUMN IF EXISTS category_id;
 ALTER TABLE public.menu_items DROP COLUMN IF EXISTS category_id;
 DROP TABLE IF EXISTS public.categories;
 DROP TABLE IF EXISTS public.password_reset_tokens;
+-- hero_slides survives, and its trigger still depends on the function.
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.hero_slides;
 DROP FUNCTION IF EXISTS public.set_updated_at();
 ```
+
+The trigger drop is not optional. `hero_slides` survives step 3 and keeps
+`trg_set_updated_at` (§3.8), and PostgreSQL refuses to drop a function that a trigger
+depends on — without the `DROP TRIGGER` the script aborts on its last statement, leaving the
+database half-rolled-back. Dropping the trigger first (or `DROP FUNCTION … CASCADE`) is
+equivalent; this spec uses the explicit trigger drop.
 
 4. Regenerate `supabase/schema.sql` from the rolled-back database.
 
@@ -1280,20 +1461,20 @@ by then, so the storefront must be on `/api/categories`.
 
 ## 10. Risks
 
-| #   | Risk                                                                                                                                       | Impact                                                           | Mitigation                                                                                                                                                                               |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Two pre-existing tables order by `order_index`, while the route contract says `display_order`                                              | Reorder silently writes a column nobody reads                    | §3.6 reconciliation is binding: reorder bodies use `display_order`, the server writes `order_index` for `hero_slides` and `menu_items`; no new `display_order` columns.                  |
-| 2   | The trees are only synchronised at seed time: a menu leaf added later can point at no category, and a category can exist with no nav entry | Nav and taxonomy drift; a category page is reachable only by URL | The menu editor derives `path` from the chosen `category_id`, the admin guide says create the category first, and `categories` — not `menu_items` — is authoritative for category pages. |
-| 3   | Ambiguous names (`Accessories`, `Audio`, `Watches`) resolve differently in different code paths                                            | A product lands in the wrong subtree                             | One rule everywhere: lowest `level`, then lowest `display_order`, exactly one id (`resolveProductCategory`, `GET /slug/:slug`, product filter). Seeded ambiguity is pinned by tests.     |
-| 4   | Dropping `site_categories` while old code still reads it                                                                                   | Blank homepage categories mid-rollout                            | Migration order in §9.2 plus the temporary alias; the drop ships only after the replacement API is live.                                                                                 |
-| 5   | Partial `PATCH` implemented as a full replace                                                                                              | Silent data loss on every banner/slide edit                      | The factory filters the patch to keys present in the body; tests assert the exact `.update()` payload.                                                                                   |
-| 6   | Seed scripts run against the live project and delete rows                                                                                  | Catalog wiped                                                    | The destructive `delete().neq(...)` is removed; both seeds upsert by deterministic id; idempotency is a gate (§7.4).                                                                     |
-| 7   | One failed content fetch blanks the whole storefront                                                                                       | Homepage looks broken                                            | `ContentContext` isolates each fetch, exposes `error`, and every surface renders an explicit error/empty state.                                                                          |
-| 8   | `JWT_SECRET` becomes mandatory                                                                                                             | API fails to boot where the variable is unset                    | Deliberate fail-fast outside development; `.env.example` and the README document the requirement before deploy.                                                                          |
-| 9   | `ContentContext` is a single load, so another admin's edit is invisible until refresh                                                      | Stale storefront                                                 | `marvel_content_updated` event + `refresh()`; the admin console refreshes after every write.                                                                                             |
-| 10  | Deleting `data.js` and ten components in one step                                                                                          | Missed import breaks the build                                   | The deletion task greps for every importer first and ends with `npm run check`.                                                                                                          |
-| 11  | Category slug renames break bookmarked URLs and menu paths                                                                                 | 404s on old links                                                | The editor shows an inline warning when a slug changes; no redirect map in this slice (follow-up 11).                                                                                    |
-| 12  | Migration 7 is large (four tables, policies, triggers)                                                                                     | Partial apply leaves RLS off                                     | Re-runnable statements, policy verification query as a gate, apply to staging first.                                                                                                     |
+| #   | Risk                                                                                                                                       | Impact                                                              | Mitigation                                                                                                                                                                                                                                                                                                                                                                                              |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Two pre-existing tables order by `order_index`, while the route contract says `display_order`                                              | Reorder silently writes a column nobody reads                       | §3.6 reconciliation is binding: reorder bodies use `display_order`, the server writes `order_index` for `hero_slides` and `menu_items`; no new `display_order` columns.                                                                                                                                                                                                                                 |
+| 2   | The trees are only synchronised at seed time: a menu leaf added later can point at no category, and a category can exist with no nav entry | Nav and taxonomy drift; a category page is reachable only by URL    | The menu editor derives `path` from the chosen `category_id`, the admin guide says create the category first, and `categories` — not `menu_items` — is authoritative for category pages.                                                                                                                                                                                                                |
+| 3   | A bare slug is ambiguous (`accessories` ×3, `watches` ×2), so a last-segment lookup can pick a different category than the visitor clicked | The wrong category page opens and the wrong product set is returned | **The path is the identity.** Routes, nav mapping, category pages and product filters all use the full ancestor path and resolve exactly (`GET /api/categories/path`, `?categoryPath=`). The bare-slug route is kept but unused by the storefront. `resolveProductCategory` keeps lowest `level`, then `display_order`, then `id` for the one place where only a display label exists. Pinned by tests. |
+| 4   | Dropping `site_categories` while old code still reads it                                                                                   | Blank homepage categories mid-rollout                               | Migration order in §9.2 plus the temporary alias; the drop ships only after the replacement API is live.                                                                                                                                                                                                                                                                                                |
+| 5   | Partial `PATCH` implemented as a full replace                                                                                              | Silent data loss on every banner/slide edit                         | The factory filters the patch to keys present in the body; tests assert the exact `.update()` payload.                                                                                                                                                                                                                                                                                                  |
+| 6   | Seed scripts run against the live project and delete rows                                                                                  | Catalog wiped                                                       | The destructive `delete().neq(...)` is removed; both seeds upsert by deterministic id; idempotency is a gate (§7.4).                                                                                                                                                                                                                                                                                    |
+| 7   | One failed content fetch blanks the whole storefront                                                                                       | Homepage looks broken                                               | `ContentContext` isolates each fetch, exposes `error`, and every surface renders an explicit error/empty state.                                                                                                                                                                                                                                                                                         |
+| 8   | `JWT_SECRET` becomes mandatory                                                                                                             | API fails to boot where the variable is unset                       | Deliberate fail-fast outside development; `.env.example` and the README document the requirement before deploy.                                                                                                                                                                                                                                                                                         |
+| 9   | `ContentContext` is a single load, so another admin's edit is invisible until refresh                                                      | Stale storefront                                                    | `marvel_content_updated` event + `refresh()`; the admin console refreshes after every write.                                                                                                                                                                                                                                                                                                            |
+| 10  | Deleting `data.js` and the nine storefront components in one step                                                                          | Missed import breaks the build                                      | The deletion task greps for every importer first and ends with `npm run check`.                                                                                                                                                                                                                                                                                                                         |
+| 11  | Category slug renames break bookmarked URLs and menu paths                                                                                 | 404s on old links                                                   | The editor shows an inline warning when a slug changes; no redirect map in this slice (follow-up 11).                                                                                                                                                                                                                                                                                                   |
+| 12  | Migration 7 is large (four tables, policies, triggers)                                                                                     | Partial apply leaves RLS off                                        | Re-runnable statements, policy verification query as a gate, apply to staging first.                                                                                                                                                                                                                                                                                                                    |
 
 ## 11. Out-of-Scope Follow-ups
 
