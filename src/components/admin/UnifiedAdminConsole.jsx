@@ -83,7 +83,7 @@ import CustomerRepeatChart from "./charts/CustomerRepeatChart";
 import SalesGrowthCard from "./charts/SalesGrowthCard";
 import MenuListEditor from "./MenuListEditor";
 import HeroSlidesEditor from "./HeroSlidesEditor";
-import CategoriesEditor from "./CategoriesEditor";
+import CategoriesTreeEditor from "./CategoriesTreeEditor";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
@@ -1131,7 +1131,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 className={`sidebar-submenu-btn ${activeTab === "categories" ? "active" : ""}`}
               >
                 <Star size={14} />
-                <span>Categories</span>
+                <span>Categories &amp; Subcategories</span>
               </button>
             </div>
           )}
@@ -2328,7 +2328,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {activeTab === "hero" && canManageSiteContent && <HeroSlidesEditor />}
 
         {/* TAB 8: SITE CONTENT > CATEGORIES (Task 5) */}
-        {activeTab === "categories" && canManageSiteContent && <CategoriesEditor />}
+        {activeTab === "categories" && canManageSiteContent && <CategoriesTreeEditor />}
       </main>
 
       {/* ==================================================== */}

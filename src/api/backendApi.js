@@ -165,26 +165,3 @@ export async function apiUpdateOrderStatus(id, statusData) {
   });
   return data.order;
 }
-
-/* -------------------------------------------------------------------------- */
-/* Temporary site-category alias — /content/categories                        */
-/*                                                                            */
-/* Only the legacy CategoriesEditor uses these; contentApi.js owns the real   */
-/* /categories routes. This alias and its editor are both removed in Task 15.  */
-/* -------------------------------------------------------------------------- */
-export async function apiFetchSiteCategories() {
-  const data = await apiFetch("/content/categories");
-  return data.categories;
-}
-
-export async function apiSaveSiteCategory(category) {
-  const payload = {
-    ...category,
-    order_index: category.order_index != null ? Number(category.order_index) : 0,
-  };
-  return apiFetch("/content/categories", { method: "POST", body: payload });
-}
-
-export async function apiDeleteSiteCategory(id) {
-  return apiFetch(`/content/categories/${encodeURIComponent(id)}`, { method: "DELETE" });
-}
