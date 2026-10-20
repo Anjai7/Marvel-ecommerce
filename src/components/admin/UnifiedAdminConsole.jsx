@@ -80,10 +80,11 @@ import BestSellersChart from "./charts/BestSellersChart";
 import OrdersPlusRevenueChart from "./charts/OrdersPlusRevenueChart";
 import InventoryChart from "./charts/InventoryChart";
 import CustomerRepeatChart from "./charts/CustomerRepeatChart";
-import SalesGrowthCard from "./charts/SalesGrowthCard";
-import MenuListEditor from "./MenuListEditor";
+import MenuTreeEditor from "./MenuTreeEditor";
 import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
+import BannersEditor from "./BannersEditor";
+import FooterEditor from "./FooterEditor";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
@@ -771,6 +772,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     menus: "Site Content — Menus",
     hero: "Site Content — Hero",
     categories: "Site Content — Categories",
+    banners: "Site Content — Banners",
+    footer: "Site Content — Footer",
   };
 
   return (
@@ -1082,7 +1085,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 setActiveTab("menus");
                 toggleMenu("siteContent");
               }}
-              className={`sidebar-tab-button ${["menus", "hero", "categories"].includes(activeTab) ? "active" : ""}`}
+              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
               <div className="tab-icon-box">
@@ -1095,7 +1098,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
                 <ChevronDown size={15} />
               </span>
-              {["menus", "hero", "categories"].includes(activeTab) && (
+              {["menus", "hero", "categories", "banners", "footer"].includes(activeTab) && (
                 <div className="active-glow-indicator"></div>
               )}
             </button>
@@ -1132,6 +1135,26 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               >
                 <Star size={14} />
                 <span>Categories &amp; Subcategories</span>
+              </button>
+              <button
+                id="admin-tab-site-content-banners"
+                onClick={() => {
+                  setActiveTab("banners");
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "banners" ? "active" : ""}`}
+              >
+                <Boxes size={14} />
+                <span>Banners</span>
+              </button>
+              <button
+                id="admin-tab-site-content-footer"
+                onClick={() => {
+                  setActiveTab("footer");
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "footer" ? "active" : ""}`}
+              >
+                <ClipboardList size={14} />
+                <span>Footer</span>
               </button>
             </div>
           )}
@@ -2318,10 +2341,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         )}
 
         {/* ================================================== */}
-        {/* TAB 6: SITE CONTENT > MENUS (Task 4; Task 5 adds Hero/Categories views here) */}
+        {/* TAB 6: SITE CONTENT > MENUS */}
         {/* ================================================== */}
         {activeTab === "menus" && canManageSiteContent && (
-          <MenuListEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
+          <MenuTreeEditor role={isSuperAdmin ? "super_admin" : currentRole || "admin"} />
         )}
 
         {/* TAB 7: SITE CONTENT > HERO (Task 5) */}
@@ -2329,6 +2352,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
         {/* TAB 8: SITE CONTENT > CATEGORIES (Task 5) */}
         {activeTab === "categories" && canManageSiteContent && <CategoriesTreeEditor />}
+
+        {/* TAB 9: SITE CONTENT > BANNERS (Task 16) */}
+        {activeTab === "banners" && canManageSiteContent && <BannersEditor />}
+
+        {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
+        {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
       </main>
 
       {/* ==================================================== */}

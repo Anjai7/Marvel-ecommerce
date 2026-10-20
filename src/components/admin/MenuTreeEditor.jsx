@@ -1,19 +1,25 @@
-import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Plus, Edit2, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Edit2, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
-  apiFetchMenuItems,
-  apiSaveMenuItem,
   apiDeleteMenuItem,
+  apiFetchCategoryTree,
+  apiFetchMenuItems,
   apiReorderMenuItems,
+  apiSaveMenuItem,
+  apiUpdateMenuItem,
 } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
+import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 
+const MENU_EVENT = "marvel_menu_updated";
+const CONTENT_EVENT = "marvel_content_updated";
 const ALL_ROLES = ["user", "vendor", "admin", "super_admin"];
 
-function stripChildren(item) {
-  const { children: _children, ...rest } = item;
-  return rest;
+function sortNodes(nodes = []) {
+  return [...nodes]
+    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+    .map((node) => ({ ...node, children: sortNodes(node.children ?? []) }));
 }
 
 /**
@@ -25,7 +31,7 @@ function normalizeToTree(data) {
   const list = Array.isArray(data) ? data : Array.isArray(data?.menu) ? data.menu : [];
   if (list.length === 0) return [];
   if (list.some((item) => Array.isArray(item?.children))) {
-    return [...list].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    return sortNodes(list);
   }
   const byId = new Map();
   for (const row of list) {
@@ -40,11 +46,6 @@ function normalizeToTree(data) {
       byId.get(parentId).children.push(node);
     }
   }
-  const sortNodes = (nodes) => {
-    nodes.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
-    nodes.forEach((n) => sortNodes(n.children));
-    return nodes;
-  };
   return sortNodes(roots);
 }
 
@@ -56,34 +57,136 @@ function collectIds(nodes, acc = {}) {
   return acc;
 }
 
-function findParent(nodes, id, parent = null) {
+function findNode(nodes = [], id) {
   for (const node of nodes) {
-    if (node.id === id) return parent;
-    const found = findParent(node.children || [], id, node);
+    if (node.id === id) return node;
+    const found = findNode(node.children ?? [], id);
     if (found) return found;
   }
   return null;
 }
 
-function blankForm(parent) {
+function findParent(nodes = [], id, parent = null) {
+  for (const node of nodes) {
+    if (node.id === id) return parent;
+    const found = findParent(node.children ?? [], id, node);
+    if (found) return found;
+  }
+  return null;
+}
+
+/** The complete sibling group for a parent — hidden rows included. */
+function siblingsFor(nodes = [], parentId) {
+  if (parentId == null) return nodes;
+  return findNode(nodes, parentId)?.children ?? [];
+}
+
+function countDescendants(node) {
+  return (node?.children ?? []).reduce((total, child) => total + 1 + countDescendants(child), 0);
+}
+
+/** Level-2 and level-3 categories, with their full category path. */
+function categoryChoices(nodes = [], ancestors = [], acc = []) {
+  for (const node of nodes) {
+    const chain = [...ancestors, node];
+    const level = Number(node.level ?? chain.length);
+    if (level >= 2 && level <= 3) {
+      acc.push({
+        id: node.id,
+        label: chain.map((entry) => entry.name).join(" / "),
+        path: `/category/${chain.map((entry) => entry.slug).join("/")}`,
+      });
+    }
+    categoryChoices(node.children ?? [], chain, acc);
+  }
+  return acc;
+}
+
+function toPayload(form) {
+  return {
+    title: (form.title ?? "").trim(),
+    path: (form.path ?? "").trim(),
+    icon: (form.icon ?? "").trim() || "Layers",
+    badge: (form.badge ?? "").trim() || null,
+    // Never drop the stored variant: the server would fall back to "accent".
+    badge_variant: form.badgeVariant || "accent",
+    roles_allowed: (form.rolesAllowed ?? "")
+      .split(",")
+      .map((role) => role.trim())
+      .filter(Boolean),
+    order_index: Number(form.orderIndex ?? 0),
+    level: Number(form.level ?? 1),
+    parent_id: form.parentId ?? null,
+    section: (form.section ?? "").trim() || null,
+    section_icon: (form.sectionIcon ?? "").trim() || null,
+    promo_title: (form.promoTitle ?? "").trim() || null,
+    promo_subtitle: (form.promoSubtitle ?? "").trim() || null,
+    promo_image_url: (form.promoImageUrl ?? "").trim() || null,
+    promo_cta_text: (form.promoCtaText ?? "").trim() || null,
+    promo_cta_path: (form.promoCtaPath ?? "").trim() || null,
+    is_active: Boolean(form.isActive),
+    category_id: form.categoryId || null,
+  };
+}
+
+/** The stored value of a payload field, normalized the same way a save is. */
+function storedValue(node, key) {
+  switch (key) {
+    case "parent_id":
+      return node.parent_id ?? null;
+    case "category_id":
+      return node.category_id ?? null;
+    case "level":
+      return Number(node.level ?? 1);
+    case "order_index":
+      return Number(node.order_index ?? 0);
+    case "is_active":
+      return node.is_active !== false;
+    case "roles_allowed":
+      return Array.isArray(node.roles_allowed) ? node.roles_allowed : [];
+    case "icon":
+      return node.icon || "Layers";
+    case "badge_variant":
+      return node.badge_variant || "accent";
+    default:
+      return node[key] || null;
+  }
+}
+
+function comparable(value) {
+  return Array.isArray(value) ? JSON.stringify(value) : value;
+}
+
+/** PATCH body: the id plus only the fields the admin actually changed. */
+function changedFields(node, payload) {
+  const patch = { id: node.id };
+  for (const [key, value] of Object.entries(payload)) {
+    if (comparable(storedValue(node, key)) !== comparable(value)) patch[key] = value;
+  }
+  return patch;
+}
+
+function newForm(parent, order) {
   return {
     id: null,
     title: "",
     path: "/",
     icon: "Layers",
     badge: "",
-    badge_variant: "accent",
-    roles_allowed: ALL_ROLES.join(", "),
-    order_index: "0",
+    badgeVariant: "accent",
+    rolesAllowed: ALL_ROLES.join(", "),
+    orderIndex: order,
+    level: parent ? Number(parent.level ?? 1) + 1 : 1,
+    parentId: parent?.id ?? null,
+    categoryId: "",
     section: "",
-    section_icon: "",
-    promo_title: "",
-    promo_subtitle: "",
-    promo_image_url: "",
-    promo_cta_text: "",
-    promo_cta_path: "",
-    parent_id: parent?.id ?? null,
-    level: String(parent ? Number(parent.level ?? 1) + 1 : 1),
+    sectionIcon: "",
+    promoTitle: "",
+    promoSubtitle: "",
+    promoImageUrl: "",
+    promoCtaText: "",
+    promoCtaPath: "",
+    isActive: true,
   };
 }
 
@@ -94,37 +197,56 @@ function editForm(item, parentId) {
     path: item.path || "/",
     icon: item.icon || "Layers",
     badge: item.badge || "",
-    badge_variant: item.badge_variant || "accent",
-    roles_allowed: Array.isArray(item.roles_allowed) ? item.roles_allowed.join(", ") : "",
-    order_index: item.order_index ?? "0",
+    badgeVariant: item.badge_variant || "accent",
+    rolesAllowed: Array.isArray(item.roles_allowed) ? item.roles_allowed.join(", ") : "",
+    orderIndex: Number(item.order_index ?? 0),
+    level: Number(item.level ?? (parentId ? 2 : 1)),
+    parentId: item.parent_id ?? parentId ?? null,
+    categoryId: item.category_id ?? "",
     section: item.section || "",
-    section_icon: item.section_icon || "",
-    promo_title: item.promo_title || "",
-    promo_subtitle: item.promo_subtitle || "",
-    promo_image_url: item.promo_image_url || "",
-    promo_cta_text: item.promo_cta_text || "",
-    promo_cta_path: item.promo_cta_path || "",
-    parent_id: item.parent_id ?? parentId ?? null,
-    level: String(item.level ?? (parentId ? 2 : 1)),
+    sectionIcon: item.section_icon || "",
+    promoTitle: item.promo_title || "",
+    promoSubtitle: item.promo_subtitle || "",
+    promoImageUrl: item.promo_image_url || "",
+    promoCtaText: item.promo_cta_text || "",
+    promoCtaPath: item.promo_cta_path || "",
+    isActive: item.is_active !== false,
   };
 }
 
 export default function MenuTreeEditor({ role = "admin" }) {
   const { addToast } = useToast();
   const [tree, setTree] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState({});
+  const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(null);
+  const [formError, setFormError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  // Synchronous guard: state updates are too late to stop a double-click that
+  // lands in the same tick, so every write checks this ref first.
+  const requestInFlight = useRef(false);
+  const busy = saving || deleting || reordering;
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetchMenuItems(role);
+      // Reorder scope is every row sharing parent_id, hidden and role-filtered
+      // rows included, so the editor must fetch the whole unfiltered tree.
+      const data = await apiFetchMenuItems(role, { includeInactive: true });
       const normalized = normalizeToTree(data);
       setTree(normalized);
-      setExpanded(collectIds(normalized));
+      setCollapsed((previous) => {
+        const next = {};
+        for (const id of Object.keys(collectIds(normalized))) {
+          // Keep an explicit collapse, but never collapse a node by default.
+          if (previous[id]) next[id] = true;
+        }
+        return next;
+      });
     } catch (err) {
       addToast({ title: "Menu Load Failed", message: err.message, type: "error" });
     } finally {
@@ -132,141 +254,158 @@ export default function MenuTreeEditor({ role = "admin" }) {
     }
   }, [role, addToast]);
 
+  const loadCategories = useCallback(async () => {
+    try {
+      const data = await apiFetchCategoryTree({ includeInactive: true });
+      setCategories(categoryChoices(data?.categories ?? []));
+    } catch (err) {
+      // The menu is still editable without the optional category link.
+      addToast({ title: "Categories Load Failed", message: err.message, type: "error" });
+    }
+  }, [addToast]);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadCategories();
+  }, [load, loadCategories]);
 
-  const broadcastUpdate = () => {
-    window.dispatchEvent(new Event("marvel_menu_updated"));
+  const broadcast = () => {
+    window.dispatchEvent(new Event(MENU_EVENT));
+    window.dispatchEvent(new Event(CONTENT_EVENT));
   };
 
-  const toggleExpanded = (id) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
+  const openCreate = (parent = null) => {
+    setFormError("");
+    setEditing(newForm(parent, siblingsFor(tree, parent?.id ?? null).length));
   };
 
-  const handleToggleActive = async (item) => {
-    try {
-      await apiSaveMenuItem({
-        ...stripChildren(item),
-        is_active: !item.is_active,
-        level: Number(item.level ?? 1),
-        order_index: Number(item.order_index ?? 0),
-      });
-      addToast({
-        title: item.is_active ? "Menu Item Hidden" : "Menu Item Activated",
-        message: `'${item.title}' updated.`,
-        type: "success",
-      });
-      broadcastUpdate();
-      await load();
-    } catch (err) {
-      addToast({ title: "Update Failed", message: err.message, type: "error" });
-    }
+  const openEdit = (item) => {
+    setFormError("");
+    setEditing(editForm(item, findParent(tree, item.id)?.id ?? null));
   };
 
-  const handleMove = async (item, direction) => {
+  const setField = (field, value) =>
+    setEditing((previous) => (previous ? { ...previous, [field]: value } : previous));
+
+  const handleCategoryChange = (value) =>
+    setEditing((previous) => {
+      if (!previous) return previous;
+      const categoryId = value || "";
+      const choice = categories.find((option) => option.id === categoryId);
+      return {
+        ...previous,
+        categoryId,
+        path: choice ? choice.path : previous.path,
+      };
+    });
+
+  const handleMove = async (item, from, to) => {
+    if (requestInFlight.current) return;
     const parent = findParent(tree, item.id);
-    const siblings = parent ? parent.children || [] : tree;
-    const idx = siblings.findIndex((s) => s.id === item.id);
-    const neighborIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (idx < 0 || neighborIdx < 0 || neighborIdx >= siblings.length) return;
+    const siblings = siblingsFor(tree, parent?.id ?? null);
+    if (from === to || from < 0 || to < 0 || from >= siblings.length || to >= siblings.length) {
+      return;
+    }
+
     const reordered = [...siblings];
-    [reordered[idx], reordered[neighborIdx]] = [reordered[neighborIdx], reordered[idx]];
-    const depthLevel = parent ? Number(parent.level ?? 1) + 1 : 1;
-    // Levels are sent as NUMBERS — the server enforces strict integer checks.
-    const orders = reordered.map((sibling, i) => ({
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    const parentId = parent?.id ?? null;
+    // The API rejects a partial scope, so every sibling is sent renumbered.
+    const orders = reordered.map((sibling, index) => ({
       id: sibling.id,
-      order_index: Number(i),
-      level: Number(sibling.level ?? depthLevel),
+      display_order: index,
+      parent_id: sibling.parent_id ?? parentId,
+      level: Number(sibling.level ?? (parent ? Number(parent.level ?? 1) + 1 : 1)),
     }));
+
+    requestInFlight.current = true;
+    setReordering(true);
     try {
       await apiReorderMenuItems(orders);
-      addToast({
-        title: "Menu Reordered",
-        message: `'${item.title}' moved ${direction}.`,
-        type: "success",
-      });
-      broadcastUpdate();
+      addToast({ title: "Menu Reordered", message: `'${item.title}' moved.`, type: "success" });
+      broadcast();
       await load();
     } catch (err) {
       addToast({ title: "Reorder Failed", message: err.message, type: "error" });
+    } finally {
+      requestInFlight.current = false;
+      setReordering(false);
     }
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!editing || !editing.title.trim() || !editing.path.trim()) {
-      addToast({
-        title: "Missing Information",
-        message: "Title and path are required.",
-        type: "error",
-      });
-      return;
-    }
+  const handleSave = async (event) => {
+    event.preventDefault();
+    if (!editing || requestInFlight.current) return;
+
+    requestInFlight.current = true;
     setSaving(true);
+    setFormError("");
     try {
-      const payload = {
-        ...(editing.id ? { id: editing.id } : {}),
-        title: editing.title.trim(),
-        path: editing.path.trim(),
-        icon: editing.icon || "Layers",
-        badge: editing.badge || null,
-        badge_variant: editing.badge_variant || "accent",
-        roles_allowed: editing.roles_allowed
-          .split(",")
-          .map((r) => r.trim())
-          .filter(Boolean),
-        // Levels are sent as NUMBERS — the server enforces strict integer checks.
-        order_index: Number(editing.order_index ?? 0),
-        level: Number(editing.level ?? 1),
-        parent_id: editing.parent_id ?? null,
-        section: editing.section || null,
-        section_icon: editing.section_icon || null,
-        promo_title: editing.promo_title || null,
-        promo_subtitle: editing.promo_subtitle || null,
-        promo_image_url: editing.promo_image_url || null,
-        promo_cta_text: editing.promo_cta_text || null,
-        promo_cta_path: editing.promo_cta_path || null,
-      };
-      await apiSaveMenuItem(payload);
+      const payload = toPayload(editing);
+      if (!payload.title || !payload.path) {
+        const message = "Menu item title and path are required.";
+        setFormError(message);
+        addToast({ title: "Missing Information", message, type: "error" });
+        return;
+      }
+
+      if (editing.id) {
+        const stored = findNode(tree, editing.id);
+        await apiUpdateMenuItem(
+          editing.id,
+          stored ? changedFields(stored, payload) : { id: editing.id, ...payload }
+        );
+      } else {
+        await apiSaveMenuItem(payload);
+      }
+      const savedId = editing.id;
       setEditing(null);
-      addToast({ title: "Menu Saved", message: `'${payload.title}' saved.`, type: "success" });
-      broadcastUpdate();
+      addToast({
+        title: savedId ? "Menu Item Updated" : "Menu Item Saved",
+        message: `'${payload.title}' saved.`,
+        type: "success",
+      });
+      broadcast();
       await load();
     } catch (err) {
-      addToast({ title: "Save Failed", message: err.message, type: "error" });
+      // Keep the form open: the admin's input must survive a failed write.
+      const message = err?.message || "Could not save the menu item.";
+      setFormError(message);
+      addToast({ title: "Save Failed", message, type: "error" });
     } finally {
+      requestInFlight.current = false;
       setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || requestInFlight.current) return;
+    const target = deleteTarget;
+    requestInFlight.current = true;
+    setDeleting(true);
     try {
-      await apiDeleteMenuItem(deleteTarget.id);
+      await apiDeleteMenuItem(target.id);
       setDeleteTarget(null);
-      addToast({
-        title: "Menu Deleted",
-        message: `Removed '${deleteTarget.title}'.`,
-        type: "info",
-      });
-      broadcastUpdate();
+      addToast({ title: "Menu Item Deleted", message: `Removed '${target.title}'.`, type: "info" });
+      broadcast();
       await load();
     } catch (err) {
       addToast({ title: "Delete Failed", message: err.message, type: "error" });
+    } finally {
+      requestInFlight.current = false;
+      setDeleting(false);
     }
   };
 
-  const setFormField = (field, value) => {
-    setEditing((prev) => (prev ? { ...prev, [field]: value } : prev));
-  };
+  const menuCategoryChoices = categories;
 
   const renderNode = (item, depth) => {
-    const children = Array.isArray(item.children) ? item.children : [];
-    const isOpen = expanded[item.id] !== false;
+    const children = item.children ?? [];
     const parent = findParent(tree, item.id);
-    const siblings = parent ? parent.children || [] : tree;
-    const idx = siblings.findIndex((s) => s.id === item.id);
+    const siblings = siblingsFor(tree, parent?.id ?? null);
+    const index = siblings.findIndex((sibling) => sibling.id === item.id);
+    const isOpen = !collapsed[item.id];
 
     return (
       <div key={item.id} className="menu-tree-node" data-level={depth}>
@@ -274,9 +413,12 @@ export default function MenuTreeEditor({ role = "admin" }) {
           {children.length > 0 ? (
             <button
               type="button"
-              aria-label={isOpen ? `Collapse ${item.title}` : `Expand ${item.title}`}
-              onClick={() => toggleExpanded(item.id)}
               className="menu-tree-toggle"
+              aria-label={`${isOpen ? "Collapse" : "Expand"} ${item.title}`}
+              aria-expanded={isOpen}
+              onClick={() =>
+                setCollapsed((previous) => ({ ...previous, [item.id]: !previous[item.id] }))
+              }
             >
               {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
             </button>
@@ -291,52 +433,43 @@ export default function MenuTreeEditor({ role = "admin" }) {
             {item.is_active === false ? "Hidden" : "Active"}
           </span>
           <div className="menu-tree-actions">
-            <button
+            <OrderControls
+              index={index}
+              total={siblings.length}
+              label={item.title}
+              disabled={busy}
+              onMove={(from, to) => handleMove(item, from, to)}
+            />
+            <Button
               type="button"
-              aria-label={`Move ${item.title} up`}
-              disabled={idx <= 0}
-              onClick={() => handleMove(item, "up")}
+              variant="ghost"
+              size="icon"
+              aria-label={`Add child to ${item.title}`}
+              disabled={Number(item.level ?? depth) >= 3 || busy}
+              onClick={() => openCreate(item)}
             >
-              <ChevronUp size={15} />
-            </button>
-            <button
+              <Plus size={15} />
+            </Button>
+            <Button
               type="button"
-              aria-label={`Move ${item.title} down`}
-              disabled={idx < 0 || idx >= siblings.length - 1}
-              onClick={() => handleMove(item, "down")}
-            >
-              <ChevronDown size={15} />
-            </button>
-            <button
-              type="button"
-              aria-label={`${item.is_active === false ? "Activate" : "Deactivate"} ${item.title}`}
-              onClick={() => handleToggleActive(item)}
-            >
-              {item.is_active === false ? "Show" : "Hide"}
-            </button>
-            {depth < 3 && (
-              <button
-                type="button"
-                aria-label={`Add child to ${item.title}`}
-                onClick={() => setEditing(blankForm(item))}
-              >
-                <Plus size={15} />
-              </button>
-            )}
-            <button
-              type="button"
+              variant="ghost"
+              size="icon"
               aria-label={`Edit ${item.title}`}
-              onClick={() => setEditing(editForm(item, parent?.id ?? null))}
+              disabled={busy}
+              onClick={() => openEdit(item)}
             >
               <Edit2 size={15} />
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label={`Delete ${item.title}`}
+              disabled={busy}
               onClick={() => setDeleteTarget(item)}
             >
               <Trash2 size={15} />
-            </button>
+            </Button>
           </div>
         </div>
         {children.length > 0 && isOpen && (
@@ -348,6 +481,14 @@ export default function MenuTreeEditor({ role = "admin" }) {
     );
   };
 
+  const descendants = countDescendants(deleteTarget ? findNode(tree, deleteTarget.id) : null);
+  const deleteName = deleteTarget?.title ?? "this item";
+  // The cascade count is the headline: menu_items.parent_id is ON DELETE CASCADE.
+  const deleteTitle =
+    descendants > 0
+      ? `Delete '${deleteName}' and ${descendants} ${descendants === 1 ? "child item" : "child items"}?`
+      : `Delete '${deleteName}'?`;
+
   return (
     <div className="dashboard-tab-view animate-fade-in">
       <div className="chart-card-header">
@@ -357,7 +498,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
             Three-level menu tree — expand, reorder, edit, or add items
           </p>
         </div>
-        <Button onClick={() => setEditing(blankForm(null))} className="quick-add-user-btn">
+        <Button onClick={() => openCreate(null)} className="quick-add-user-btn">
           <Plus size={16} />
           <span>Add Top-Level Item</span>
         </Button>
@@ -376,13 +517,17 @@ export default function MenuTreeEditor({ role = "admin" }) {
           <div
             className="modal-content-container animate-scale-up"
             role="dialog"
+            aria-modal="true"
             aria-label="Menu item editor"
           >
             <div className="modal-header">
               <div>
                 <h3 className="modal-title">{editing.id ? "Edit Menu Item" : "Add Menu Item"}</h3>
                 <p className="modal-subtitle">
-                  Level {editing.level} — fields save to the menu API
+                  Level {editing.level} —{" "}
+                  {editing.level === 1
+                    ? "a top-level item has no parent"
+                    : "a child of the selected parent"}
                 </p>
               </div>
               <button
@@ -394,6 +539,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <X size={18} />
               </button>
             </div>
+
             <form onSubmit={handleSave} className="modal-form">
               <div className="form-group-row">
                 <div className="form-group">
@@ -404,7 +550,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     id="menu-title"
                     type="text"
                     value={editing.title}
-                    onChange={(e) => setFormField("title", e.target.value)}
+                    onChange={(event) => setField("title", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -415,10 +561,33 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     id="menu-path"
                     type="text"
                     value={editing.path}
-                    onChange={(e) => setFormField("path", e.target.value)}
+                    onChange={(event) => setField("path", event.target.value)}
                   />
                 </div>
               </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="menu-category">
+                  Category
+                </label>
+                <select
+                  id="menu-category"
+                  className="form-select-field"
+                  value={editing.categoryId ?? ""}
+                  onChange={(event) => handleCategoryChange(event.target.value)}
+                >
+                  <option value="">No category link</option>
+                  {menuCategoryChoices.map((choice) => (
+                    <option key={choice.id} value={choice.id}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+                <output className="form-hint" style={{ display: "block" }}>
+                  Choosing a category rewrites the path to its full ancestor path.
+                </output>
+              </div>
+
               <div className="form-group-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="menu-icon">
@@ -428,7 +597,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     id="menu-icon"
                     type="text"
                     value={editing.icon}
-                    onChange={(e) => setFormField("icon", e.target.value)}
+                    onChange={(event) => setField("icon", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -438,11 +607,12 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   <Input
                     id="menu-order"
                     type="number"
-                    value={editing.order_index}
-                    onChange={(e) => setFormField("order_index", e.target.value)}
+                    value={editing.orderIndex}
+                    onChange={(event) => setField("orderIndex", event.target.value)}
                   />
                 </div>
               </div>
+
               <div className="form-group-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="menu-badge">
@@ -452,7 +622,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     id="menu-badge"
                     type="text"
                     value={editing.badge}
-                    onChange={(e) => setFormField("badge", e.target.value)}
+                    onChange={(event) => setField("badge", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -462,11 +632,12 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   <Input
                     id="menu-badge-variant"
                     type="text"
-                    value={editing.badge_variant}
-                    onChange={(e) => setFormField("badge_variant", e.target.value)}
+                    value={editing.badgeVariant}
+                    onChange={(event) => setField("badgeVariant", event.target.value)}
                   />
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label" htmlFor="menu-roles">
                   Roles allowed (comma-separated)
@@ -474,10 +645,11 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <Input
                   id="menu-roles"
                   type="text"
-                  value={editing.roles_allowed}
-                  onChange={(e) => setFormField("roles_allowed", e.target.value)}
+                  value={editing.rolesAllowed}
+                  onChange={(event) => setField("rolesAllowed", event.target.value)}
                 />
               </div>
+
               <div className="form-group-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="menu-section">
@@ -487,7 +659,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     id="menu-section"
                     type="text"
                     value={editing.section}
-                    onChange={(e) => setFormField("section", e.target.value)}
+                    onChange={(event) => setField("section", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -497,11 +669,12 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   <Input
                     id="menu-section-icon"
                     type="text"
-                    value={editing.section_icon}
-                    onChange={(e) => setFormField("section_icon", e.target.value)}
+                    value={editing.sectionIcon}
+                    onChange={(event) => setField("sectionIcon", event.target.value)}
                   />
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label" htmlFor="menu-promo-title">
                   Promo title
@@ -509,10 +682,11 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <Input
                   id="menu-promo-title"
                   type="text"
-                  value={editing.promo_title}
-                  onChange={(e) => setFormField("promo_title", e.target.value)}
+                  value={editing.promoTitle}
+                  onChange={(event) => setField("promoTitle", event.target.value)}
                 />
               </div>
+
               <div className="form-group">
                 <label className="form-label" htmlFor="menu-promo-subtitle">
                   Promo subtitle
@@ -520,10 +694,11 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <Input
                   id="menu-promo-subtitle"
                   type="text"
-                  value={editing.promo_subtitle}
-                  onChange={(e) => setFormField("promo_subtitle", e.target.value)}
+                  value={editing.promoSubtitle}
+                  onChange={(event) => setField("promoSubtitle", event.target.value)}
                 />
               </div>
+
               <div className="form-group">
                 <label className="form-label" htmlFor="menu-promo-image">
                   Promo image URL
@@ -531,10 +706,11 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <Input
                   id="menu-promo-image"
                   type="text"
-                  value={editing.promo_image_url}
-                  onChange={(e) => setFormField("promo_image_url", e.target.value)}
+                  value={editing.promoImageUrl}
+                  onChange={(event) => setField("promoImageUrl", event.target.value)}
                 />
               </div>
+
               <div className="form-group-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="menu-promo-cta-text">
@@ -543,8 +719,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   <Input
                     id="menu-promo-cta-text"
                     type="text"
-                    value={editing.promo_cta_text}
-                    onChange={(e) => setFormField("promo_cta_text", e.target.value)}
+                    value={editing.promoCtaText}
+                    onChange={(event) => setField("promoCtaText", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
@@ -554,11 +730,27 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   <Input
                     id="menu-promo-cta-path"
                     type="text"
-                    value={editing.promo_cta_path}
-                    onChange={(e) => setFormField("promo_cta_path", e.target.value)}
+                    value={editing.promoCtaPath}
+                    onChange={(event) => setField("promoCtaPath", event.target.value)}
                   />
                 </div>
               </div>
+
+              <div className="form-group">
+                <span className="form-label">Active</span>
+                <ActiveToggle
+                  active={editing.isActive}
+                  label={editing.title || "this menu item"}
+                  onChange={(active) => setField("isActive", active)}
+                />
+              </div>
+
+              {formError && (
+                <p role="alert" className="form-error">
+                  {formError}
+                </p>
+              )}
+
               <div className="modal-actions-footer">
                 <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                   Cancel
@@ -574,8 +766,14 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title={`Delete '${deleteTarget?.title || "menu item"}'?`}
-        message="This will remove the menu item and its children from the storefront navigation."
+        title={deleteTitle}
+        message={
+          descendants > 0
+            ? "The entire subtree — every child item, hidden ones included — is deleted with it. This cannot be undone."
+            : "This menu item has no children. This cannot be undone."
+        }
+        destructive
+        pending={deleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />
