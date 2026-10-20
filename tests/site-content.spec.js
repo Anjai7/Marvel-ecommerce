@@ -38,11 +38,12 @@ test("dynamic hero renders live slides when the content API returns data", async
   await expect(page.locator(".hero-dots")).toBeVisible();
 });
 
-test("storefront falls back to static hero and categories when content APIs fail", async ({
+test("the hero keeps its inline fallback and the category strip reports the outage", async ({
   page,
 }) => {
-  // Live DB has no migration applied (tables missing) -> fetches return []
-  // or 500. The storefront must still render static fallback content.
+  // The static content layer was removed: the hero is the only surface that
+  // still carries a hardcoded fallback, so the homepage is never blank. Every
+  // other surface must show an explicit state instead of a stale list.
   await page.route("**/api/content/hero", (route) =>
     route.fulfill({
       status: 500,
@@ -50,7 +51,14 @@ test("storefront falls back to static hero and categories when content APIs fail
       body: JSON.stringify({ error: "relation does not exist" }),
     })
   );
-  await page.route("**/api/content/categories", (route) =>
+  await page.route("**/api/categories/tree**", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "relation does not exist" }),
+    })
+  );
+  await page.route("**/api/categories**", (route) =>
     route.fulfill({
       status: 500,
       contentType: "application/json",
@@ -64,10 +72,12 @@ test("storefront falls back to static hero and categories when content APIs fail
   await expect(page.locator(".hero-carousel")).toBeVisible();
   await expect(page.locator(".hero-slide .hero-title").first()).toContainText("Upgrade Your");
   await expect(page.locator(".cat-slider")).toBeVisible();
-  await expect(page.locator(".cat-slider .cat-label").first()).toContainText("Mobiles");
+  await expect(page.locator(".cat-slider")).toContainText(
+    "Categories are temporarily unavailable."
+  );
 });
 
-test("dynamic menu falls back to static mega-menu when the menu API fails", async ({ page }) => {
+test("the navigation reports the outage instead of showing a stale menu", async ({ page }) => {
   await page.route("**/api/menu**", (route) =>
     route.fulfill({
       status: 500,
@@ -82,10 +92,9 @@ test("dynamic menu falls back to static mega-menu when the menu API fails", asyn
 
   const nav = page.locator("nav.dynamic-menu");
   await expect(nav).toBeVisible();
-  await expect(nav.getByText("Electronics", { exact: true }).first()).toBeVisible();
-
-  await nav.getByText("Electronics", { exact: true }).first().hover();
-  await expect(page.locator(".mega-menu").first()).toBeVisible();
+  await expect(nav).toContainText("Navigation is temporarily unavailable.");
+  // The static mega-menu is gone, so no hardcoded category may appear.
+  await expect(nav.getByText("Electronics", { exact: true })).toHaveCount(0);
 });
 
 const LIVE_MENU_TREE = [

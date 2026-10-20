@@ -24,8 +24,13 @@ test.describe("admin console", () => {
   test("sales report shows real-data sections", async ({ page }) => {
     await page.locator("#admin-tab-dashboard-sales").click();
     await expect(page.getByText("Today Orders")).toBeVisible();
-    await expect(page.getByText("Orders Pipeline")).toBeVisible();
-    await expect(page.getByText("Repeat Customers")).toBeVisible();
+    // "Repeat Customers" is rendered twice (a desktop and a mobile variant of
+    // the report card), so the locator must not be strict.
+    await expect(page.getByText("Repeat Customers").first()).toBeVisible();
+    // "Orders Pipeline" is the content heading of the Orders tab, not a
+    // section of the sales report, so it is asserted after opening that tab.
+    await page.locator("#admin-tab-orders").click();
+    await expect(page.getByText("Orders Pipeline", { exact: true })).toBeVisible();
   });
 
   test("products view offers an add-product flow", async ({ page }) => {

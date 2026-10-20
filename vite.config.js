@@ -39,4 +39,18 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
+  // `vite preview` serves the built bundle. The e2e suite runs against it
+  // instead of the dev server: the dev server transforms ~3000 modules on the
+  // first request, and a parallel Playwright run against it times out
+  // intermittently. The built app is deterministic.
+  preview: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
 }));
