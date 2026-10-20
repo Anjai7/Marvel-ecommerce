@@ -4,8 +4,6 @@
 // contentApi.js.
 import { apiFetch, getStoredToken, setStoredToken } from "./client.js";
 
-export { getStoredToken, setStoredToken };
-
 export function clearStoredToken() {
   setStoredToken(null);
 }

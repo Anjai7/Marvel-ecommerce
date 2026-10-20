@@ -8,7 +8,7 @@ import { verifyToken, requireRole } from "../middleware/auth.js";
  * at least one shared implementation of the admin and `?includeInactive=` rules.
  */
 
-export const ADMIN_ROLES = ["admin", "super_admin"];
+const ADMIN_ROLES = ["admin", "super_admin"];
 export const adminGuards = [verifyToken, requireRole(ADMIN_ROLES)];
 
 const INACTIVE_FALSE = ["0", "false", "off"];
@@ -46,7 +46,7 @@ export function adminChain(req, res, next) {
  * without an error. A guard that answers (401/403) resolves false; a guard that
  * errors resolves false and answers 500 — failure is always closed, never open.
  */
-export function runGuards(guards, req, res) {
+function runGuards(guards, req, res) {
   return new Promise((resolve) => {
     let index = 0;
 
