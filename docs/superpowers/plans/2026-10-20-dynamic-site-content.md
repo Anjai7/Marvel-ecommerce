@@ -641,10 +641,13 @@ WHERE (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%')
   AND category_id IS NULL;
 -- Expected: 6 (the legacy flat rows: Home & Shop, Electronics & Tech, Fashion & Lifestyle, Vendor Portal, Admin Panel, Super Admin System)
 SELECT count(*) FROM public.menu_items WHERE category_id IS NULL;
--- Expected: NULL
+-- Expected: still present — apply-01 does NOT drop it. The drop is apply-02, which the human
+-- applies only after the Task 6 code is deployed.
 SELECT to_regclass('public.site_categories');
--- Expected: 7 — only names that are also menu_items titles are migrated. TVs, Shoes and Perfumes exist
--- only in the old site_categories seed, so they are NOT in the taxonomy and their images fall back.
+-- Expected: 8 — only names that are also menu_items titles are migrated. TVs, Shoes and Perfumes
+-- exist only in the old site_categories seed, so they are NOT in the taxonomy and their images
+-- fall back. `Watches` is a category title TWICE (level 2 /category/accessories/watches and
+-- level 3 /category/fashion/accessories/watches), so it contributes 2 rows: 6 + 2 = 8.
 SELECT count(*) FROM public.categories WHERE name IN ('Mobiles','Laptops','Headphones','Watches','Bags','Cameras','Gaming');
 -- Expected: every FOR ALL policy scoped to service_role
 SELECT tablename, policyname, roles, cmd FROM pg_policies

@@ -1249,8 +1249,11 @@ Notes:
   only 7 have a matching menu title and are therefore migrated into `categories`:
   "Mobiles", "Laptops", "Headphones", "Watches", "Bags", "Cameras" and "Gaming". "TVs",
   "Shoes" and "Perfumes" exist only as homepage category-slider circles in `site_categories`
-  and `src/data.js`; they match no category row, so their images are simply not used and the
-  UI falls back to a per-root image. Unmatched categories keep `image_url = NULL`.
+  and `src/data.js`; they match no category row, so their images are simply not used. **Every
+  category left with a `NULL` `image_url` after this backfill is given a deterministic fallback
+  Unsplash URL by the same migration**, so no category tile is ever broken and the admin editor
+  always shows a real image. The UI additionally falls back to a per-root image for rows created
+  after the migration.
 - `products.category_id` binds to exactly one row, ordered by lowest `level`, then lowest
   `display_order`, then `id`. That resolves `Accessories` (root, under Electronics, under
   Fashion) to the root, and separates same-level twins such as `Ethnic Wear` (men's leaf at
