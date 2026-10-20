@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { afterEach, vi } from "vitest";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import { ToastProvider } from "../ui/Toast";
 import {
@@ -99,6 +99,22 @@ const renderEditor = () =>
     </ToastProvider>
   );
 
+const CONTENT_EVENT = "marvel_content_updated";
+let removeContentListener = () => {};
+
+/** Attach a listener that is always removed after the test, pass or fail. */
+const captureContentUpdates = () => {
+  const listener = vi.fn();
+  window.addEventListener(CONTENT_EVENT, listener);
+  removeContentListener = () => window.removeEventListener(CONTENT_EVENT, listener);
+  return listener;
+};
+
+afterEach(() => {
+  removeContentListener();
+  removeContentListener = () => {};
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   apiFetchCategoryTree.mockResolvedValue(TREE);
@@ -141,8 +157,7 @@ describe("CategoriesTreeEditor", () => {
 
   it("creates with the full payload: typed values, derived level and every owned field", async () => {
     const user = userEvent.setup();
-    const broadcast = vi.fn();
-    window.addEventListener("marvel_content_updated", broadcast);
+    const broadcast = captureContentUpdates();
     renderEditor();
 
     await screen.findByText("Electronics");
@@ -179,7 +194,6 @@ describe("CategoriesTreeEditor", () => {
       ].sort()
     );
     expect(broadcast).toHaveBeenCalled();
-    window.removeEventListener("marvel_content_updated", broadcast);
   });
 
   it("edits through apiUpdateCategory with only the changed fields", async () => {
@@ -280,21 +294,24 @@ describe("CategoriesTreeEditor", () => {
     expect(await screen.findByText("Accessories")).toBeVisible();
   });
 
-  it("deletes only after confirmation, stating the descendant count", async () => {
+  it("deletes only after confirmation, stating the descendant count in the title", async () => {
     const user = userEvent.setup();
     renderEditor();
 
     await screen.findByText("Electronics");
     await user.click(screen.getByRole("button", { name: "Delete Electronics" }));
 
-    const title = await screen.findByText("Delete 'Electronics'?");
+    // Mobiles, Laptops and Smartphones cascade with the parent, so the count is
+    // the headline rather than a trailing sentence in the body.
+    const title = await screen.findByText("Delete 'Electronics' and 3 subcategories?");
     expect(title).toBeVisible();
-    // Mobiles, Laptops and Smartphones cascade with the parent.
-    expect(screen.getByText(/3 subcategories/)).toBeVisible();
+    expect(screen.getByText(/every subcategory/i)).toBeVisible();
     expect(apiDeleteCategory).not.toHaveBeenCalled();
 
     const dialog = screen.getByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    const confirm = within(dialog).getByRole("button", { name: "Delete" });
+    expect(confirm).toHaveClass("chart-pill-btn-danger");
+    await user.click(confirm);
 
     await waitFor(() => expect(apiDeleteCategory).toHaveBeenCalledWith("c1"));
   });
@@ -329,8 +346,8 @@ describe("CategoriesTreeEditor", () => {
     expect(screen.queryByText("Clearance")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Delete Electronics" }));
-    // The cascade deletes hidden rows too, so the warning must count them.
-    expect(await screen.findByText(/1 subcategory will also be deleted/)).toBeVisible();
+    // The cascade deletes hidden rows too, so the headline must count them.
+    expect(await screen.findByText("Delete 'Electronics' and 1 subcategory?")).toBeVisible();
   });
 
   it("reorders one sibling group and sends the complete ordered list", async () => {
@@ -365,5 +382,119 @@ describe("CategoriesTreeEditor", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Slug already exists.");
     // A failed write must not be followed by a reload that hides the form.
     expect(apiFetchCategoryTree).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears an image then saves with image_url: null and no escaping exception", async () => {
+    const user = userEvent.setup();
+    apiFetchCategoryTree.mockResolvedValueOnce({
+      categories: [
+        {
+          ...base,
+          id: "c1",
+          name: "Electronics",
+          slug: "electronics",
+          level: 1,
+          image_url: "https://cdn.example.com/electronics.png",
+          banner_image_url: "https://cdn.example.com/electronics-banner.png",
+        },
+      ],
+    });
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    await user.click(screen.getByRole("button", { name: "Edit Electronics" }));
+    // ImageField reports null, which previously crashed toPayload() before the
+    // try block and left the form silently stuck.
+    await user.click(screen.getByRole("button", { name: "Clear Category image" }));
+    await user.click(screen.getByRole("button", { name: "Clear Banner image" }));
+    await user.click(screen.getByRole("button", { name: "Save Category" }));
+
+    await waitFor(() => expect(apiUpdateCategory).toHaveBeenCalledTimes(1));
+    expect(apiUpdateCategory).toHaveBeenCalledWith("c1", {
+      id: "c1",
+      image_url: null,
+      banner_image_url: null,
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Category editor" })).not.toBeInTheDocument()
+    );
+  });
+
+  it("sends an emptied slug as typed so the server can reject it", async () => {
+    const user = userEvent.setup();
+    apiUpdateCategory.mockRejectedValue(
+      new Error("Slug is required and must use lowercase letters, numbers and hyphens.")
+    );
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    await user.click(screen.getByRole("button", { name: "Edit Electronics" }));
+    await user.clear(screen.getByLabelText("Slug *"));
+    await user.click(screen.getByRole("button", { name: "Save Category" }));
+
+    await waitFor(() => expect(apiUpdateCategory).toHaveBeenCalledTimes(1));
+    // No silent slugify fallback: the empty value reaches the transport.
+    expect(apiUpdateCategory).toHaveBeenCalledWith("c1", { id: "c1", slug: "" });
+    const dialog = screen.getByRole("dialog", { name: "Category editor" });
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(/slug is required/i);
+  });
+
+  it("does not dispatch marvel_content_updated when a save fails", async () => {
+    const user = userEvent.setup();
+    const broadcast = captureContentUpdates();
+    apiSaveCategory.mockRejectedValue(new Error("Slug already exists."));
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    await user.click(screen.getByRole("button", { name: "Add subcategory to Electronics" }));
+    await user.type(screen.getByLabelText("Name *"), "Tablets");
+    await user.click(screen.getByRole("button", { name: "Save Category" }));
+
+    expect(await screen.findByText("Save Failed")).toBeVisible();
+    expect(broadcast).not.toHaveBeenCalled();
+  });
+
+  it("fires a single delete request when Delete is double-clicked", async () => {
+    const user = userEvent.setup();
+    let resolveDelete;
+    apiDeleteCategory.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDelete = resolve;
+        })
+    );
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    await user.click(screen.getByRole("button", { name: "Delete Electronics" }));
+    const dialog = screen.getByRole("alertdialog");
+    const confirm = within(dialog).getByRole("button", { name: "Delete" });
+
+    await user.dblClick(confirm);
+    expect(apiDeleteCategory).toHaveBeenCalledTimes(1);
+
+    resolveDelete({ message: "deleted" });
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+  });
+
+  it("fires a single reorder request when a move button is double-clicked", async () => {
+    const user = userEvent.setup();
+    let resolveReorder;
+    apiReorderCategories.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveReorder = resolve;
+        })
+    );
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    const moveDown = screen.getByRole("button", { name: "Move down Electronics" });
+
+    await user.dblClick(moveDown);
+    expect(apiReorderCategories).toHaveBeenCalledTimes(1);
+
+    resolveReorder({ message: "reordered" });
+    await waitFor(() => expect(screen.getByText("Categories Reordered")).toBeVisible());
   });
 });

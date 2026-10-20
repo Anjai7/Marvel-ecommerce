@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Edit2, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
@@ -58,14 +58,18 @@ function visibleNodes(nodes = [], showHidden) {
 /** The single source of truth for what a save writes: every field the form owns. */
 function toPayload(form) {
   return {
-    name: form.name.trim(),
-    slug: form.slug.trim() || slugify(form.name),
+    name: (form.name ?? "").trim(),
+    // Send the slug exactly as the admin typed it — an empty value must reach
+    // the server so its "slug is required" validation can surface instead of
+    // being silently papered over with a derived one.
+    slug: form.slug ?? "",
     parent_id: form.parentId || null,
     level: Number(form.level),
-    icon: form.icon.trim() || null,
-    image_url: form.imageUrl.trim() || null,
-    banner_image_url: form.bannerImageUrl.trim() || null,
-    description: form.description.trim() || null,
+    icon: (form.icon ?? "").trim() || null,
+    // ImageField's Clear button reports null, so trim behind a null guard.
+    image_url: (form.imageUrl ?? "").trim() || null,
+    banner_image_url: (form.bannerImageUrl ?? "").trim() || null,
+    description: (form.description ?? "").trim() || null,
     display_order: Number(form.displayOrder ?? 0),
     is_active: Boolean(form.isActive),
     show_in_nav: Boolean(form.showInNav),
@@ -152,6 +156,12 @@ export default function CategoriesTreeEditor() {
   const [formError, setFormError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  // Synchronous guard: state updates are too late to stop a double-click that
+  // lands in the same tick, so every write checks this ref first.
+  const requestInFlight = useRef(false);
+  const busy = saving || deleting || reordering;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -213,22 +223,25 @@ export default function CategoriesTreeEditor() {
 
   const handleSave = async (event) => {
     event.preventDefault();
-    if (!editing) return;
+    if (!editing || requestInFlight.current) return;
 
-    const payload = toPayload(editing);
-    if (!payload.name) {
-      setFormError("Category name is required.");
-      addToast({
-        title: "Missing Information",
-        message: "Category name is required.",
-        type: "error",
-      });
-      return;
-    }
-
+    requestInFlight.current = true;
     setSaving(true);
     setFormError("");
     try {
+      // Payload construction belongs inside the try: a malformed value must
+      // surface as the normal error toast, never escape the submit handler.
+      const payload = toPayload(editing);
+      if (!payload.name) {
+        setFormError("Category name is required.");
+        addToast({
+          title: "Missing Information",
+          message: "Category name is required.",
+          type: "error",
+        });
+        return;
+      }
+
       if (editing.id) {
         const stored = findNode(tree, editing.id);
         await apiUpdateCategory(editing.id, stored ? changedFields(stored, payload) : payload);
@@ -250,11 +263,13 @@ export default function CategoriesTreeEditor() {
       setFormError(message);
       addToast({ title: "Save Failed", message, type: "error" });
     } finally {
+      requestInFlight.current = false;
       setSaving(false);
     }
   };
 
   const handleMove = async (node, from, to) => {
+    if (requestInFlight.current) return;
     const siblings = siblingsFor(tree, node.parent_id ?? null);
     if (from === to || from < 0 || to < 0 || from >= siblings.length || to >= siblings.length) {
       return;
@@ -269,6 +284,8 @@ export default function CategoriesTreeEditor() {
       display_order: index,
     }));
 
+    requestInFlight.current = true;
+    setReordering(true);
     try {
       await apiReorderCategories(orders);
       addToast({
@@ -280,23 +297,32 @@ export default function CategoriesTreeEditor() {
       await load();
     } catch (err) {
       addToast({ title: "Reorder Failed", message: err.message, type: "error" });
+    } finally {
+      requestInFlight.current = false;
+      setReordering(false);
     }
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || requestInFlight.current) return;
+    const target = deleteTarget;
+    requestInFlight.current = true;
+    setDeleting(true);
     try {
-      await apiDeleteCategory(deleteTarget.id);
+      await apiDeleteCategory(target.id);
       setDeleteTarget(null);
       addToast({
         title: "Category Deleted",
-        message: `Removed '${deleteTarget.name}'.`,
+        message: `Removed '${target.name}'.`,
         type: "info",
       });
       broadcast();
       await load();
     } catch (err) {
       addToast({ title: "Delete Failed", message: err.message, type: "error" });
+    } finally {
+      requestInFlight.current = false;
+      setDeleting(false);
     }
   };
 
@@ -342,6 +368,7 @@ export default function CategoriesTreeEditor() {
               index={index}
               total={siblings.length}
               label={node.name}
+              disabled={busy}
               onMove={(from, to) => handleMove(node, from, to)}
             />
             <Button
@@ -368,6 +395,7 @@ export default function CategoriesTreeEditor() {
               variant="ghost"
               size="icon"
               aria-label={`Delete ${node.name}`}
+              disabled={busy}
               onClick={() => setDeleteTarget(node)}
             >
               <Trash2 size={15} />
@@ -400,6 +428,12 @@ export default function CategoriesTreeEditor() {
         )
       : [];
   const descendants = countDescendants(deleteTarget ? findNode(tree, deleteTarget.id) : null);
+  const deleteName = deleteTarget?.name ?? "this category";
+  // The cascade count is the headline, not a footnote — it must not be skimmable.
+  const deleteTitle =
+    descendants > 0
+      ? `Delete '${deleteName}' and ${descendants} ${descendants === 1 ? "subcategory" : "subcategories"}?`
+      : `Delete '${deleteName}'?`;
 
   return (
     <div className="dashboard-tab-view animate-fade-in">
@@ -608,7 +642,7 @@ export default function CategoriesTreeEditor() {
               </label>
 
               {formError && (
-                <p role="alert" className="form-error" style={{ color: "#dc2626", margin: 0 }}>
+                <p role="alert" className="form-error">
                   {formError}
                 </p>
               )}
@@ -628,12 +662,14 @@ export default function CategoriesTreeEditor() {
 
       <ConfirmDialog
         open={Boolean(deleteTarget)}
-        title={`Delete '${deleteTarget?.name ?? "category"}'?`}
+        title={deleteTitle}
         message={
           descendants > 0
-            ? `${descendants} ${descendants === 1 ? "subcategory" : "subcategories"} will also be deleted.`
-            : "This category has no subcategories."
+            ? "The entire subtree — every subcategory, hidden ones included — is deleted with it. This cannot be undone."
+            : "This category has no subcategories. This cannot be undone."
         }
+        destructive
+        pending={deleting}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />

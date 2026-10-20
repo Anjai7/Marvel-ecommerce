@@ -82,7 +82,7 @@ export function ImageField({ label, value, onChange, folder = "marvel_content" }
         </div>
       )}
       {error && (
-        <p role="alert" className="text-sm" style={{ color: "#dc2626", margin: 0 }}>
+        <p role="alert" className="form-error text-sm">
           {error}
         </p>
       )}
@@ -91,7 +91,7 @@ export function ImageField({ label, value, onChange, folder = "marvel_content" }
 }
 
 /** Up/down buttons for one item inside an ordered sibling group. */
-export function OrderControls({ index, total, onMove, label }) {
+export function OrderControls({ index, total, onMove, label, disabled = false }) {
   const suffix = label ? ` ${label}` : "";
   return (
     <span className="order-controls" style={{ display: "inline-flex", gap: 4 }}>
@@ -100,7 +100,7 @@ export function OrderControls({ index, total, onMove, label }) {
         variant="ghost"
         size="icon"
         aria-label={`Move up${suffix}`}
-        disabled={index <= 0}
+        disabled={disabled || index <= 0}
         onClick={() => onMove?.(index, index - 1)}
       >
         <ArrowUp size={16} />
@@ -110,7 +110,7 @@ export function OrderControls({ index, total, onMove, label }) {
         variant="ghost"
         size="icon"
         aria-label={`Move down${suffix}`}
-        disabled={index < 0 || index >= total - 1}
+        disabled={disabled || index < 0 || index >= total - 1}
         onClick={() => onMove?.(index, index + 1)}
       >
         <ArrowDown size={16} />
@@ -193,7 +193,7 @@ export function EditorTable({
                   <ActiveToggle
                     active={row?.is_active !== false}
                     label={rowLabel(row)}
-                    onChange={() => onToggleActive?.(row)}
+                    onChange={(active) => onToggleActive?.(row, active)}
                   />
                   <Button
                     type="button"
@@ -214,6 +214,7 @@ export function EditorTable({
         open={Boolean(deleteTarget)}
         title={`Delete '${deleteTarget ? rowLabel(deleteTarget) : "item"}'?`}
         message="This action cannot be undone."
+        destructive
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {
           const row = deleteTarget;

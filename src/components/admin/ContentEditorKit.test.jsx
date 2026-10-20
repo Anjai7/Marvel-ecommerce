@@ -156,7 +156,7 @@ describe("EditorTable", () => {
     expect(onEdit).toHaveBeenCalledWith(row);
 
     await user.click(screen.getByRole("button", { name: "Deactivate Electronics" }));
-    expect(onToggleActive).toHaveBeenCalledWith(row);
+    expect(onToggleActive).toHaveBeenCalledWith(row, false);
   });
 
   it("deletes only after the confirm dialog is confirmed", async () => {

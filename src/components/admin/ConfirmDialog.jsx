@@ -5,8 +5,20 @@ import { useEffect, useRef } from "react";
  *
  * Reuses the admin console modal styles (`modal-backdrop-overlay` /
  * `modal-content-container`). Focus lands on the Delete button when opened.
+ *
+ * `destructive` gives the confirm button the danger styling, and `pending`
+ * disables both buttons while the request it confirms is in flight.
  */
-export default function ConfirmDialog({ open, title, message, onCancel, onConfirm }) {
+export default function ConfirmDialog({
+  open,
+  title,
+  message,
+  onCancel,
+  onConfirm,
+  destructive = false,
+  pending = false,
+  confirmLabel = "Delete",
+}) {
   const confirmRef = useRef(null);
 
   useEffect(() => {
@@ -18,21 +30,26 @@ export default function ConfirmDialog({ open, title, message, onCancel, onConfir
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
-      if (e.key === "Escape") onCancel?.();
+      if (e.key === "Escape" && !pending) onCancel?.();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel]);
+  }, [open, onCancel, pending]);
 
   if (!open) return null;
 
   return (
-    <div className="modal-backdrop-overlay" role="presentation" onClick={onCancel}>
+    <div
+      className="modal-backdrop-overlay"
+      role="presentation"
+      onClick={pending ? undefined : onCancel}
+    >
       <div
         className="modal-content-container animate-scale-up"
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
+        aria-busy={pending || undefined}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
@@ -42,17 +59,18 @@ export default function ConfirmDialog({ open, title, message, onCancel, onConfir
           </div>
         </div>
         <div className="modal-actions-footer">
-          <button type="button" className="chart-pill-btn" onClick={onCancel}>
+          <button type="button" className="chart-pill-btn" onClick={onCancel} disabled={pending}>
             Cancel
           </button>
           <button
             type="button"
             ref={confirmRef}
             autoFocus
-            className="chart-pill-btn"
+            className={destructive ? "chart-pill-btn chart-pill-btn-danger" : "chart-pill-btn"}
             onClick={onConfirm}
+            disabled={pending}
           >
-            Delete
+            {pending ? "Deleting..." : confirmLabel}
           </button>
         </div>
       </div>

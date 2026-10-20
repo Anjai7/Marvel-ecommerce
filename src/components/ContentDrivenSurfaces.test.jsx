@@ -11,7 +11,7 @@ import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import MobileMenu from "./MobileMenu";
 import DynamicMenu from "./navigation/DynamicMenu";
 import { apiFetchMenuItems } from "../api/contentApi";
-import { apiFetchHeroSlides, apiFetchSiteCategories } from "../api/backendApi";
+import { apiFetchHeroSlides } from "../api/backendApi";
 
 const content = vi.hoisted(() => ({ value: null }));
 
@@ -25,7 +25,6 @@ vi.mock("../api/contentApi", () => ({
 
 vi.mock("../api/backendApi", () => ({
   apiFetchHeroSlides: vi.fn(),
-  apiFetchSiteCategories: vi.fn(),
 }));
 
 const ENDS_AT = new Date(Date.now() + ((2 * 60 + 5) * 60 + 30) * 1000).toISOString();
@@ -378,7 +377,6 @@ describe("storefront surfaces read the content context", () => {
     );
 
     expect(apiFetchHeroSlides).not.toHaveBeenCalled();
-    expect(apiFetchSiteCategories).not.toHaveBeenCalled();
   });
 });
 
