@@ -1,11 +1,43 @@
-# Database handoff — applying the dynamic content schema
+# Database handoff — applying the dynamic site content schema
 
 This is the single page for **you**, the human partner, to apply the database side of the
-dynamic site content feature. Everything here is run by hand: this machine cannot reach the
-database (no Docker, the Supabase project is not linked to the CLI, and there is no access
-token or database password in `.env`).
+dynamic site content feature.
+
+**The schema is already applied** (see "Status" below). The bundles here stay as the
+source of truth and the fallback path: the Supabase project is not linked to the CLI and
+there is no database password in `.env`, so `npm run db:push` cannot be used.
 
 **The order matters.** Applying the wrong bundle first breaks the homepage.
+
+---
+
+## Status — applied 2026-10-20
+
+The five outstanding migrations were applied to project `hyyjkyztxikohdywqagp`:
+
+| Version          | File                                                           |
+| ---------------- | -------------------------------------------------------------- |
+| `20261016000006` | `supabase/migrations/20261016000006_dynamic_menus_banners.sql` |
+| `20261020000006` | `supabase/migrations/20261020000006_password_reset_tokens.sql` |
+| `20261020000007` | `supabase/migrations/20261020000007_content_taxonomy.sql`      |
+| `20261020000008` | `supabase/migrations/20261020000008_seed_categories.sql`       |
+| `20261020000009` | `supabase/migrations/20261020000009_drop_site_categories.sql`  |
+
+`20260822000000`–`20260825000005` were already live before the CLI tracked this project;
+their versions were backfilled into `supabase_migrations.schema_migrations` so the CLI
+does not replay them.
+
+**To apply future migrations**, run:
+
+```bash
+npm run db:apply
+```
+
+That script inspects the database, reconciles the history, applies only what is
+outstanding, and verifies the result. It needs a DDL credential — a
+`SUPABASE_ACCESS_TOKEN` (personal access token) or a `SUPABASE_DB_PASSWORD`. The
+`SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` are data-plane only and
+cannot run DDL.
 
 ---
 
@@ -67,9 +99,24 @@ comment block):
 | 7   | `SELECT tablename, policyname, roles, cmd FROM pg_policies WHERE schemaname = 'public' AND tablename IN ('categories','promo_banners','footer_sections','footer_links','hero_slides');` | every `cmd = 'ALL'` row shows `roles = {service_role}`; the `cmd = 'SELECT'` rows are the public reads                                                                                        |
 | 8   | `SELECT event_object_table, trigger_name FROM information_schema.triggers WHERE trigger_schema = 'public' AND trigger_name = 'trg_set_updated_at';`                                     | **5** rows — one per content table                                                                                                                                                            |
 
-**If the guard inside the migration fires**, it raises with the actual and expected counts
-(`categories seed mismatch: expected 7/31/149, got …`). That means the navigation tree in
-the database is not the one the migration expects — resolve it before continuing.
+**If the guard inside the migration fires**, it has found a broken tree, and its message says
+which check failed:
+
+| Message                                                                   | What it means                                                                                                                      |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `categories seed produced N rows above level 1 with no parent row`        | a row's parent is missing — the paste was interrupted part-way, or a row was deleted by hand. Re-run the bundle; it is idempotent. |
+| `categories seed produced N rows with an empty slug`                      | a row's path had no last segment. Re-run the bundle.                                                                               |
+| `categories seed produced N rows whose level does not match their parent` | the tree's levels and parents disagree. Re-run the bundle.                                                                         |
+
+The guard checks the **tree's own integrity**, not its completeness against `menu_items`:
+deleting a category in the admin panel is a legitimate state and does **not** make the
+bundle abort. On success the migration raises a notice with the level counts
+(`categories tree verified: 7 roots, 31 subcategories, 149 leaves`).
+
+**Re-running bundle 01** is safe for the schema, and it resets two things on the rows the
+migration owns: the seeded `show_in_homepage` flags and the seeded category images. It
+touches nothing else, so a homepage tile you switched off in the admin panel will come
+back on if you re-paste the bundle.
 
 ---
 
@@ -82,6 +129,12 @@ The new API lives at `GET /api/categories` (plus `/api/categories/tree`,
 Until the storefront is fully migrated, the old path `GET /api/content/categories` is kept
 alive by a temporary alias that reads the new `categories` table — so bundle 02 is safe to
 apply once the new code is live.
+
+**That alias no longer exists.** The storefront is fully migrated: it reads
+`/api/categories` and `/api/categories/tree`, the old editor is deleted, and the temporary
+`GET`/`POST`/`DELETE /api/content/categories` routes have been removed from the code. So
+bundle 02 is safe to apply as soon as this branch is deployed — nothing calls the dropped
+table any more.
 
 ---
 

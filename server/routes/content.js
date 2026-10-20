@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { supabase } from "../db.js";
 import { createCrudRouter, applyReorder } from "../lib/crudRouter.js";
 import {
@@ -13,8 +13,6 @@ import {
   validateBanner,
   validateFooterSection,
   validateFooterLink,
-  validateCategory,
-  slugify,
 } from "../lib/validation.js";
 
 const adminOnly = adminGuards;
@@ -23,6 +21,7 @@ const READ_ERROR = "Could not load content.";
 const REORDER_ERROR = "Reorder must include every item in the scope.";
 const GALLERY_ERROR = "gallery entries must be https URLs.";
 const SECTION_TYPE_ERROR = "section_type must be one of: links, tags.";
+const COLUMN_INDEX_ERROR = "column_index must be an integer.";
 const SECTION_ID_ERROR = "section_id is required.";
 
 const HERO_FIELDS = [
@@ -100,6 +99,9 @@ function validateFooterSectionRow(body = {}, opts = {}) {
 
   if (body.section_type !== undefined && !SECTION_TYPES.includes(body.section_type)) {
     return SECTION_TYPE_ERROR;
+  }
+  if (body.column_index !== undefined && !isValidOrderValue(body.column_index)) {
+    return COLUMN_INDEX_ERROR;
   }
   return displayOrderError(body);
 }
@@ -304,167 +306,6 @@ contentRouter.patch(
   makeReorderHandler({ table: "hero_slides", orderColumn: "order_index", label: "Hero slide" })
 );
 contentRouter.use("/hero", heroCrud);
-
-// ---------------------------------------------------------------------------
-// TEMPORARY category alias (removed in Task 15, when CategoriesTreeEditor
-// replaces the old SiteCategoriesEditor). Until then the running storefront
-// calls GET here and the old admin editor calls POST and DELETE here. All three
-// read and write the new `categories` table; none of them touches the dropped
-// `site_categories` table.
-// ---------------------------------------------------------------------------
-
-/** A Postgres unique-constraint violation, however the driver wraps it. */
-function isUniqueViolation(error) {
-  return (
-    error?.code === "23505" ||
-    (typeof error?.message === "string" &&
-      error.message.includes("duplicate key value violates unique constraint"))
-  );
-}
-
-const STORED_INCONSISTENT = "Stored category is inconsistent and cannot be saved.";
-const DUPLICATE_SLUG = "A category with that slug already exists.";
-
-/**
- * Coerce the columns an edit writes back from storage. A legacy row can hold a
- * null level, a stale order value or a non-string parent_id; answer a
- * validation error instead of handing Postgres a value that becomes a 500.
- */
-function storedCategoryFields(row) {
-  const level = Number(row.level);
-  const parentId = row.parent_id ?? null;
-  const displayOrder = row.display_order;
-
-  const levelOk = Number.isInteger(level) && level >= 1 && level <= 3;
-  const parentOk = parentId === null || typeof parentId === "string";
-  const orderOk = typeof displayOrder === "number" && Number.isInteger(displayOrder);
-  const activeOk = typeof row.is_active === "boolean";
-
-  if (!levelOk || !parentOk || !orderOk || !activeOk) return null;
-  return { level, parentId, displayOrder, isActive: row.is_active };
-}
-
-contentRouter.get("/categories", async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .eq("is_active", true)
-      .order("display_order");
-    if (error) return res.status(500).json({ error: READ_ERROR });
-    return res.json({ categories: data ?? [] });
-  } catch (thrown) {
-    console.error("Supabase category alias list exception:", thrown.message);
-    return res.status(500).json({ error: READ_ERROR });
-  }
-});
-
-contentRouter.post("/categories", ...adminOnly, async (req, res) => {
-  const body = req.body && typeof req.body === "object" ? req.body : {};
-  const isEdit = body.id !== undefined && body.id !== null;
-
-  try {
-    // The slug is the public URL segment and is independent of the display
-    // name (spec §3.2), so an edit must reuse the stored slug, level, parent,
-    // order and visibility instead of re-deriving them from the legacy payload.
-    let existing = null;
-    if (isEdit) {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("id, slug, level, parent_id, display_order, is_active")
-        .eq("id", body.id)
-        .maybeSingle();
-      if (error) return res.status(500).json({ error: "Failed to load category." });
-      if (!data) return res.status(404).json({ error: "category not found." });
-      existing = data;
-    }
-
-    const stored = isEdit ? storedCategoryFields(existing) : null;
-    if (isEdit && !stored) return res.status(400).json({ error: STORED_INCONSISTENT });
-
-    const slug = isEdit ? existing.slug : (body.slug ?? slugify(body.name));
-
-    // On an edit the stored level is authoritative, so the legacy payload's
-    // level is neither written nor validated.
-    const validationBody = { ...body, slug };
-    if (isEdit) delete validationBody.level;
-    const validationError = validateCategory(validationBody);
-    if (validationError) return res.status(400).json({ error: validationError });
-
-    // The old editor speaks `order_index`; the new table speaks `display_order`.
-    // A spread row from GET already carries `display_order`, which wins so that a
-    // visibility toggle does not reset the position to 0. An edit that omits both
-    // keeps the stored order instead of resetting it to 0.
-    const hasOrder = Object.hasOwn(body, "display_order") || Object.hasOwn(body, "order_index");
-    const orderValue = Object.hasOwn(body, "display_order") ? body.display_order : body.order_index;
-    if (hasOrder && !isValidOrderValue(orderValue)) {
-      return res.status(400).json({ error: ORDER_INTEGER_MESSAGE });
-    }
-
-    const displayOrder = hasOrder ? Number(orderValue) : isEdit ? stored.displayOrder : 0;
-    const isActive = body.is_active ?? (isEdit ? stored.isActive : true);
-
-    const payload = {
-      name: body.name,
-      slug,
-      image_url: body.image_url ?? null,
-      is_active: isActive,
-      display_order: displayOrder,
-    };
-
-    if (isEdit) {
-      payload.id = body.id;
-      payload.level = stored.level;
-      payload.parent_id = stored.parentId;
-    } else {
-      payload.level = 1;
-      payload.parent_id = null;
-    }
-
-    let result;
-    try {
-      result = await supabase.from("categories").upsert(payload).select();
-    } catch (thrown) {
-      // Some drivers throw constraint violations instead of returning them.
-      if (isUniqueViolation(thrown)) return res.status(400).json({ error: DUPLICATE_SLUG });
-      throw thrown;
-    }
-
-    const { data, error } = result;
-    if (error) {
-      if (isUniqueViolation(error)) return res.status(400).json({ error: DUPLICATE_SLUG });
-      return res.status(500).json({ error: "Failed to save category." });
-    }
-    return res
-      .status(201)
-      .json({ message: "category saved successfully.", category: data?.[0] ?? null });
-  } catch (thrown) {
-    console.error("Supabase category alias save exception:", thrown.message);
-    return res.status(500).json({ error: "Failed to save category." });
-  }
-});
-
-contentRouter.delete("/categories/:id", ...adminOnly, async (req, res) => {
-  try {
-    // `parent_id` is ON DELETE CASCADE, and the legacy editor renders the whole
-    // taxonomy flat, so refuse to delete a row that still has children.
-    const { data: children, error: childrenError } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("parent_id", req.params.id);
-    if (childrenError) return res.status(500).json({ error: "Failed to delete category." });
-    if ((children ?? []).length > 0) {
-      return res.status(400).json({ error: "Cannot delete a category that has subcategories." });
-    }
-
-    const { error } = await supabase.from("categories").delete().eq("id", req.params.id);
-    if (error) return res.status(500).json({ error: "Failed to delete category." });
-    return res.json({ message: "category deleted successfully." });
-  } catch (thrown) {
-    console.error("Supabase category alias delete exception:", thrown.message);
-    return res.status(500).json({ error: "Failed to delete category." });
-  }
-});
 
 export const bannerRoutes = express.Router();
 bannerRoutes.get("/", listBanners);

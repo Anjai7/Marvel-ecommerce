@@ -1,0 +1,383 @@
+/* Admin content editors — Menus tree, page headers, editor form sections.
+ * New classes only; the console shell (sidebar, navbar, modal) stays in
+ * index.css. Imported by the editors that use it. */
+
+/* ── Page header ───────────────────────────────────────── */
+.admin-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.admin-page-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.admin-page-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.28);
+}
+
+.admin-page-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin-page-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 2px 0 0 0;
+}
+
+.admin-page-cta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.28);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-page-cta:hover {
+  box-shadow: 0 10px 24px rgba(59, 130, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ── Content card ───────────────────────────────────────── */
+.admin-content-card {
+  background: #ffffff;
+  border: 1px solid #e6ebf3;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.admin-content-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eef2f7;
+  background: #fbfcfe;
+}
+
+.admin-content-card-title {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin-content-card-meta {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 2px 0 0 0;
+}
+
+.admin-content-card-body {
+  padding: 10px;
+}
+
+/* ── Menu tree ──────────────────────────────────────────── */
+.menu-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-tree-node {
+  min-width: 0;
+}
+
+.menu-tree-children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 2px 16px;
+  padding-left: 16px;
+  border-left: 1px solid #e6ebf3;
+}
+
+.menu-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.menu-tree-row:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.menu-tree-row:focus-within {
+  background: #f8fafc;
+  border-color: #dbe4f0;
+}
+
+.menu-tree-toggle {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.menu-tree-toggle:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.menu-tree-toggle-spacer {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.menu-tree-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.menu-tree-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-tree-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-tree-status {
+  flex-shrink: 0;
+}
+
+.menu-tree-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+
+.menu-tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.menu-tree-row:hover .menu-tree-actions,
+.menu-tree-row:focus-within .menu-tree-actions {
+  opacity: 1;
+}
+
+.menu-tree-actions .ui-btn-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.menu-tree-danger-item,
+.menu-tree-danger-item .ui-dropdown-item-text {
+  color: #dc2626;
+}
+
+.menu-tree-danger-item[data-highlighted] {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ── Menu tree states ───────────────────────────────────── */
+.menu-tree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.menu-tree-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+.menu-tree-empty-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.menu-tree-empty-text {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  max-width: 380px;
+}
+
+.menu-tree-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.menu-tree-skeleton-row {
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e8edf5 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: menuTreeShimmer 1.4s infinite;
+}
+
+.menu-tree-skeleton-row:nth-child(2) {
+  margin-left: 26px;
+}
+
+.menu-tree-skeleton-row:nth-child(3) {
+  margin-left: 52px;
+}
+
+@keyframes menuTreeShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ── Editor modal ───────────────────────────────────────── */
+.modal-content-container.menu-item-editor {
+  max-width: 680px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item-editor .modal-form {
+  overflow-y: auto;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+
+.menu-item-editor .modal-actions-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 2px;
+  padding: 14px 0 4px;
+  background: #ffffff;
+  border-top: 1px solid #eef2f7;
+  box-shadow: 0 -8px 16px -8px rgba(15, 23, 42, 0.14);
+}
+
+/* ── Editor form sections ───────────────────────────────── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.form-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Scoped to the menu editor: `.form-select-field` and `.form-hint` are shared
+   with the Hero, Categories, Banners and Footer editors, which this change
+   must not restyle. */
+.menu-item-editor .form-select-field {
+  width: 100%;
+  cursor: pointer;
+}
+
+.menu-item-editor .form-select-field:disabled {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.menu-item-editor .form-hint {
+  display: block;
+  font-size: 11.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+@media (max-width: 860px) {
+  .menu-tree-path {
+    display: none;
+  }
+}

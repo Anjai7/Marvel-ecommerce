@@ -1,10 +1,11 @@
 -- Apply bundle 02: drop the legacy site_categories table
 --
--- WHEN: only AFTER Task 6's code is deployed. Until Task 13 the storefront still
--- calls the old GET /api/content/categories path; Task 6 keeps that path alive
--- with a temporary alias that reads public.categories, so dropping the old
--- table is safe once that code is live. Applying this before the code ships
--- would 500 the homepage category strip.
+-- WHEN: only AFTER this branch's code is deployed. The storefront reads
+-- GET /api/categories and GET /api/categories/tree; the old
+-- GET /api/content/categories path and its temporary alias have both been
+-- removed from the code, so nothing calls the dropped table any more.
+-- Applying this before the new code ships would 500 the homepage category
+-- strip.
 --
 -- WHERE: the Supabase SQL Editor (or psql) against the project that has already
 -- had apply-01-content-taxonomy.sql applied.

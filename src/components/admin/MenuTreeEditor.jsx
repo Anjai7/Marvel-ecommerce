@@ -1,6 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Edit2, Plus, Trash2, X } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import {
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  Layers,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
+  useToast,
+} from "../ui";
+import "./admin-content.css";
 import {
   apiDeleteMenuItem,
   apiFetchCategoryTree,
@@ -15,6 +35,43 @@ import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 const MENU_EVENT = "marvel_menu_updated";
 const CONTENT_EVENT = "marvel_content_updated";
 const ALL_ROLES = ["user", "vendor", "admin", "super_admin"];
+
+/**
+ * Badge styles the editor offers. These are the values the menu_items column
+ * accepts; each one maps onto a Badge primitive variant for display.
+ */
+const BADGE_VARIANTS = ["accent", "secondary", "success", "neutral"];
+
+const BADGE_RENDER_VARIANT = {
+  accent: "accent",
+  secondary: "secondary",
+  success: "success",
+  neutral: "outline",
+};
+
+/**
+ * Fallback styling for rows that carry a badge but no usable variant — the
+ * column is not in every deployed schema yet. The badge text carries the
+ * intent, so it decides the colour. Display only: nothing here is saved.
+ */
+const BADGE_TEXT_VARIANTS = [
+  [/\b(hot|flash|trending|limited|deal|deals|sale)\b/i, "destructive"],
+  [/\b(new|just in|fresh)\b/i, "success"],
+  [/\b(seller|vendor|store)\b/i, "accent"],
+  [/\b(root|admin|management|super)\b/i, "default"],
+];
+
+/** Map a stored `badge_variant` onto a Badge primitive variant. */
+function badgeVariantFor(value, text = "") {
+  const key = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (BADGE_RENDER_VARIANT[key]) return BADGE_RENDER_VARIANT[key];
+  for (const [pattern, variant] of BADGE_TEXT_VARIANTS) {
+    if (pattern.test(String(text ?? ""))) return variant;
+  }
+  return "secondary";
+}
 
 function sortNodes(nodes = []) {
   return [...nodes]
@@ -83,6 +140,11 @@ function siblingsFor(nodes = [], parentId) {
 
 function countDescendants(node) {
   return (node?.children ?? []).reduce((total, child) => total + 1 + countDescendants(child), 0);
+}
+
+/** Every node in the tree, at any depth. */
+function countNodes(nodes = []) {
+  return nodes.reduce((total, node) => total + 1 + countNodes(node.children ?? []), 0);
 }
 
 /** Level-2 and level-3 categories, with their full category path. */
@@ -407,7 +469,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
     return (
       <div key={item.id} className="menu-tree-node" data-level={depth}>
-        <div className="menu-tree-row">
+        <div className="menu-tree-row" data-testid={`menu-row-${item.id}`}>
           {children.length > 0 ? (
             <button
               type="button"
@@ -423,12 +485,23 @@ export default function MenuTreeEditor({ role = "admin" }) {
           ) : (
             <span className="menu-tree-toggle-spacer" />
           )}
-          <span className="menu-tree-title">{item.title}</span>
-          {item.badge && <span className="role-pill admin">{item.badge}</span>}
-          <span className="text-muted text-sm menu-tree-path">{item.path}</span>
-          <span className={`status-pill ${item.is_active === false ? "inactive" : "active"}`}>
-            <span className="status-dot"></span>
-            {item.is_active === false ? "Hidden" : "Active"}
+          <span className="menu-tree-label">
+            <span className="menu-tree-title">{item.title}</span>
+            {item.badge && (
+              <Badge variant={badgeVariantFor(item.badge_variant, item.badge)} size="sm">
+                {item.badge}
+              </Badge>
+            )}
+          </span>
+          <span className="menu-tree-path">{item.path}</span>
+          <span className="menu-tree-status">
+            <Badge
+              variant={item.is_active === false ? "secondary" : "success"}
+              size="sm"
+              icon={<span className="menu-tree-status-dot" aria-hidden="true" />}
+            >
+              {item.is_active === false ? "Hidden" : "Active"}
+            </Badge>
           </span>
           <div className="menu-tree-actions">
             <OrderControls
@@ -438,36 +511,44 @@ export default function MenuTreeEditor({ role = "admin" }) {
               disabled={busy}
               onMove={(from, to) => handleMove(item, from, to)}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Add child to ${item.title}`}
-              disabled={Number(item.level ?? depth) >= 3 || busy}
-              onClick={() => openCreate(item)}
-            >
-              <Plus size={15} />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Edit ${item.title}`}
-              disabled={busy}
-              onClick={() => openEdit(item)}
-            >
-              <Edit2 size={15} />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${item.title}`}
-              disabled={busy}
-              onClick={() => setDeleteTarget(item)}
-            >
-              <Trash2 size={15} />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`More actions for ${item.title}`}
+                  disabled={busy}
+                >
+                  <MoreHorizontal size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  icon={<Plus size={14} />}
+                  disabled={Number(item.level ?? depth) >= 3 || busy}
+                  onSelect={() => openCreate(item)}
+                >
+                  Add child to {item.title}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  icon={<Edit2 size={14} />}
+                  disabled={busy}
+                  onSelect={() => openEdit(item)}
+                >
+                  Edit {item.title}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="menu-tree-danger-item"
+                  icon={<Trash2 size={14} />}
+                  disabled={busy}
+                  onSelect={() => setDeleteTarget(item)}
+                >
+                  Delete {item.title}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         {children.length > 0 && isOpen && (
@@ -487,33 +568,93 @@ export default function MenuTreeEditor({ role = "admin" }) {
       ? `Delete '${deleteName}' and ${descendants} ${descendants === 1 ? "child item" : "child items"}?`
       : `Delete '${deleteName}'?`;
 
+  // A stored variant the editor does not offer (legacy or hand-typed rows)
+  // still needs a matching option, otherwise the select renders blank.
+  const storedBadgeVariant = (editing?.badgeVariant ?? "").trim();
+  const badgeVariantOptions = BADGE_VARIANTS.includes(storedBadgeVariant)
+    ? BADGE_VARIANTS
+    : [...BADGE_VARIANTS, storedBadgeVariant].filter(Boolean);
+
+  // The badge_variant column is not in every deployed menu_items schema, and
+  // writing it to a table without it fails the save outright. The API returns
+  // the key on every row when the column exists, so its absence is the signal.
+  // An empty tree proves nothing, so the control stays available there.
+  const badgeVariantSupported =
+    tree.length === 0 || tree.some((node) => Object.hasOwn(node, "badge_variant"));
+
   return (
     <div className="dashboard-tab-view animate-fade-in">
-      <div className="chart-card-header">
-        <div>
-          <h3 className="chart-title">Navigation Menus</h3>
-          <p className="chart-subtitle">
-            Three-level menu tree — expand, reorder, edit, or add items
-          </p>
+      <div className="admin-page-header">
+        <div className="admin-page-heading">
+          <span className="admin-page-icon" aria-hidden="true">
+            <Layers size={20} />
+          </span>
+          <div>
+            <h2 className="admin-page-title">Navigation Menus</h2>
+            <p className="admin-page-subtitle">
+              Three-level menu tree — expand, reorder, edit, or add items
+            </p>
+          </div>
         </div>
-        <Button onClick={() => openCreate(null)} className="quick-add-user-btn">
-          <Plus size={16} />
-          <span>Add Top-Level Item</span>
+        <Button
+          variant="primary"
+          onClick={() => openCreate(null)}
+          className="admin-page-cta"
+          leftIcon={<Plus size={16} />}
+        >
+          Add Top-Level Item
         </Button>
       </div>
 
-      {loading ? (
-        <p className="chart-subtitle">Loading menu tree...</p>
-      ) : tree.length === 0 ? (
-        <p className="chart-subtitle">No menu items yet. Add the first one to get started.</p>
-      ) : (
-        <div className="menu-tree">{tree.map((item) => renderNode(item, 1))}</div>
-      )}
+      <div className="admin-content-card">
+        <div className="admin-content-card-header">
+          <div>
+            <h3 className="admin-content-card-title">Menu structure</h3>
+            {tree.length > 0 && (
+              <p className="admin-content-card-meta">
+                {tree.length} top-level · {countNodes(tree)} total
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="admin-content-card-body">
+          {loading ? (
+            <output
+              className="menu-tree-skeleton"
+              data-testid="menu-tree-skeleton"
+              aria-label="Loading menu items"
+            >
+              <div className="menu-tree-skeleton-row" />
+              <div className="menu-tree-skeleton-row" />
+              <div className="menu-tree-skeleton-row" />
+            </output>
+          ) : tree.length === 0 ? (
+            <div className="menu-tree-empty">
+              <span className="menu-tree-empty-icon" aria-hidden="true">
+                <Layers size={22} />
+              </span>
+              <h4 className="menu-tree-empty-title">No menu items yet</h4>
+              <p className="menu-tree-empty-text">
+                Add your first top-level item to start building the storefront navigation.
+              </p>
+              <Button
+                variant="primary"
+                onClick={() => openCreate(null)}
+                leftIcon={<Plus size={16} />}
+              >
+                Add Top-Level Item
+              </Button>
+            </div>
+          ) : (
+            <div className="menu-tree">{tree.map((item) => renderNode(item, 1))}</div>
+          )}
+        </div>
+      </div>
 
       {editing && (
         <div className="modal-backdrop-overlay">
           <div
-            className="modal-content-container animate-scale-up"
+            className="modal-content-container menu-item-editor animate-scale-up"
             role="dialog"
             aria-modal="true"
             aria-label="Menu item editor"
@@ -539,208 +680,231 @@ export default function MenuTreeEditor({ role = "admin" }) {
             </div>
 
             <form onSubmit={handleSave} className="modal-form">
-              <div className="form-group-row">
+              <div className="form-section">
+                <h4 className="form-section-title">Basics</h4>
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-title">
+                      Title *
+                    </label>
+                    <Input
+                      id="menu-title"
+                      type="text"
+                      value={editing.title}
+                      onChange={(event) => setField("title", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-path">
+                      Path *
+                    </label>
+                    <Input
+                      id="menu-path"
+                      type="text"
+                      value={editing.path}
+                      onChange={(event) => setField("path", event.target.value)}
+                    />
+                  </div>
+                </div>
+
                 <div className="form-group">
-                  <label className="form-label" htmlFor="menu-title">
-                    Title *
+                  <label className="form-label" htmlFor="menu-category">
+                    Category
+                  </label>
+                  <select
+                    id="menu-category"
+                    className="form-select-field"
+                    value={editing.categoryId ?? ""}
+                    onChange={(event) => handleCategoryChange(event.target.value)}
+                  >
+                    <option value="">No category link</option>
+                    {categories.map((choice) => (
+                      <option key={choice.id} value={choice.id}>
+                        {choice.label}
+                      </option>
+                    ))}
+                  </select>
+                  <output className="form-hint">
+                    Choosing a category rewrites the path to its full ancestor path.
+                  </output>
+                </div>
+
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-icon">
+                      Icon
+                    </label>
+                    <Input
+                      id="menu-icon"
+                      type="text"
+                      value={editing.icon}
+                      onChange={(event) => setField("icon", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-order">
+                      Order index
+                    </label>
+                    <Input
+                      id="menu-order"
+                      type="number"
+                      value={editing.orderIndex}
+                      onChange={(event) => setField("orderIndex", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-section">
+                      Section
+                    </label>
+                    <Input
+                      id="menu-section"
+                      type="text"
+                      value={editing.section}
+                      onChange={(event) => setField("section", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-section-icon">
+                      Section icon
+                    </label>
+                    <Input
+                      id="menu-section-icon"
+                      type="text"
+                      value={editing.sectionIcon}
+                      onChange={(event) => setField("sectionIcon", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h4 className="form-section-title">Badge, roles &amp; visibility</h4>
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-badge">
+                      Badge
+                    </label>
+                    <Input
+                      id="menu-badge"
+                      type="text"
+                      value={editing.badge}
+                      onChange={(event) => setField("badge", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-badge-variant">
+                      Badge variant
+                    </label>
+                    <select
+                      id="menu-badge-variant"
+                      className="form-select-field"
+                      value={editing.badgeVariant}
+                      disabled={!badgeVariantSupported}
+                      onChange={(event) => setField("badgeVariant", event.target.value)}
+                    >
+                      {badgeVariantOptions.map((variant) => (
+                        <option key={variant} value={variant}>
+                          {variant}
+                        </option>
+                      ))}
+                    </select>
+                    {!badgeVariantSupported && (
+                      <output className="form-hint">
+                        This menu_items table has no badge_variant column, so a variant cannot be
+                        stored yet.
+                      </output>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="menu-roles">
+                    Roles allowed (comma-separated)
                   </label>
                   <Input
-                    id="menu-title"
+                    id="menu-roles"
                     type="text"
-                    value={editing.title}
-                    onChange={(event) => setField("title", event.target.value)}
+                    value={editing.rolesAllowed}
+                    onChange={(event) => setField("rolesAllowed", event.target.value)}
                   />
                 </div>
+
                 <div className="form-group">
-                  <label className="form-label" htmlFor="menu-path">
-                    Path *
+                  <span className="form-label">Active</span>
+                  <ActiveToggle
+                    active={editing.isActive}
+                    label={editing.title || "this menu item"}
+                    onChange={(active) => setField("isActive", active)}
+                  />
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h4 className="form-section-title">Promo block</h4>
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-promo-title">
+                      Promo title
+                    </label>
+                    <Input
+                      id="menu-promo-title"
+                      type="text"
+                      value={editing.promoTitle}
+                      onChange={(event) => setField("promoTitle", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-promo-subtitle">
+                      Promo subtitle
+                    </label>
+                    <Input
+                      id="menu-promo-subtitle"
+                      type="text"
+                      value={editing.promoSubtitle}
+                      onChange={(event) => setField("promoSubtitle", event.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="menu-promo-image">
+                    Promo image URL
                   </label>
                   <Input
-                    id="menu-path"
+                    id="menu-promo-image"
                     type="text"
-                    value={editing.path}
-                    onChange={(event) => setField("path", event.target.value)}
+                    value={editing.promoImageUrl}
+                    onChange={(event) => setField("promoImageUrl", event.target.value)}
                   />
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label className="form-label" htmlFor="menu-category">
-                  Category
-                </label>
-                <select
-                  id="menu-category"
-                  className="form-select-field"
-                  value={editing.categoryId ?? ""}
-                  onChange={(event) => handleCategoryChange(event.target.value)}
-                >
-                  <option value="">No category link</option>
-                  {categories.map((choice) => (
-                    <option key={choice.id} value={choice.id}>
-                      {choice.label}
-                    </option>
-                  ))}
-                </select>
-                <output className="form-hint" style={{ display: "block" }}>
-                  Choosing a category rewrites the path to its full ancestor path.
-                </output>
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-icon">
-                    Icon
-                  </label>
-                  <Input
-                    id="menu-icon"
-                    type="text"
-                    value={editing.icon}
-                    onChange={(event) => setField("icon", event.target.value)}
-                  />
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-promo-cta-text">
+                      Promo CTA text
+                    </label>
+                    <Input
+                      id="menu-promo-cta-text"
+                      type="text"
+                      value={editing.promoCtaText}
+                      onChange={(event) => setField("promoCtaText", event.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-promo-cta-path">
+                      Promo CTA path
+                    </label>
+                    <Input
+                      id="menu-promo-cta-path"
+                      type="text"
+                      value={editing.promoCtaPath}
+                      onChange={(event) => setField("promoCtaPath", event.target.value)}
+                    />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-order">
-                    Order index
-                  </label>
-                  <Input
-                    id="menu-order"
-                    type="number"
-                    value={editing.orderIndex}
-                    onChange={(event) => setField("orderIndex", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-badge">
-                    Badge
-                  </label>
-                  <Input
-                    id="menu-badge"
-                    type="text"
-                    value={editing.badge}
-                    onChange={(event) => setField("badge", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-badge-variant">
-                    Badge variant
-                  </label>
-                  <Input
-                    id="menu-badge-variant"
-                    type="text"
-                    value={editing.badgeVariant}
-                    onChange={(event) => setField("badgeVariant", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="menu-roles">
-                  Roles allowed (comma-separated)
-                </label>
-                <Input
-                  id="menu-roles"
-                  type="text"
-                  value={editing.rolesAllowed}
-                  onChange={(event) => setField("rolesAllowed", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-section">
-                    Section
-                  </label>
-                  <Input
-                    id="menu-section"
-                    type="text"
-                    value={editing.section}
-                    onChange={(event) => setField("section", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-section-icon">
-                    Section icon
-                  </label>
-                  <Input
-                    id="menu-section-icon"
-                    type="text"
-                    value={editing.sectionIcon}
-                    onChange={(event) => setField("sectionIcon", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="menu-promo-title">
-                  Promo title
-                </label>
-                <Input
-                  id="menu-promo-title"
-                  type="text"
-                  value={editing.promoTitle}
-                  onChange={(event) => setField("promoTitle", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="menu-promo-subtitle">
-                  Promo subtitle
-                </label>
-                <Input
-                  id="menu-promo-subtitle"
-                  type="text"
-                  value={editing.promoSubtitle}
-                  onChange={(event) => setField("promoSubtitle", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="menu-promo-image">
-                  Promo image URL
-                </label>
-                <Input
-                  id="menu-promo-image"
-                  type="text"
-                  value={editing.promoImageUrl}
-                  onChange={(event) => setField("promoImageUrl", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-promo-cta-text">
-                    Promo CTA text
-                  </label>
-                  <Input
-                    id="menu-promo-cta-text"
-                    type="text"
-                    value={editing.promoCtaText}
-                    onChange={(event) => setField("promoCtaText", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-promo-cta-path">
-                    Promo CTA path
-                  </label>
-                  <Input
-                    id="menu-promo-cta-path"
-                    type="text"
-                    value={editing.promoCtaPath}
-                    onChange={(event) => setField("promoCtaPath", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <span className="form-label">Active</span>
-                <ActiveToggle
-                  active={editing.isActive}
-                  label={editing.title || "this menu item"}
-                  onChange={(active) => setField("isActive", active)}
-                />
               </div>
 
               {formError && (

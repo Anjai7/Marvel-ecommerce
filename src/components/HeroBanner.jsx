@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
+import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
 /** Map a DB hero_slides row to the render shape used by the carousel. */
@@ -98,11 +99,10 @@ export default function HeroBanner({ onNavigate }) {
       return;
     }
     if (onNavigate) {
-      onNavigate(path);
+      onNavigate(toAppHref(path));
       return;
     }
-    if (path.startsWith("#/")) window.location.hash = path;
-    else if (path.startsWith("/")) window.location.hash = `#${path}`;
+    window.location.hash = toAppHref(path);
   };
 
   return (

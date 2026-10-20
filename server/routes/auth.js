@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import express from "express";
 import { supabase } from "../db.js";
+import { authClient } from "../supabaseAuthClient.js";
 import { signUserToken, verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -14,8 +15,11 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // 1. Authenticate with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // 1. Authenticate with Supabase Auth.
+    //    `authClient`, not `supabase`: signing in on the shared service-role
+    //    client would swap its Authorization header to the user's token and
+    //    every later write would be filtered by RLS — silently. See db.js.
+    const { data: authData, error: authError } = await authClient.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });

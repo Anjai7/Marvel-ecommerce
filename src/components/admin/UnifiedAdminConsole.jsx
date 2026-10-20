@@ -790,6 +790,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
             <div className="brand-text-container">
               <div className="brand-title-row">
+                <span className="brand-name">MARVEL</span>
                 <span className={`brand-role-tag ${isSuperAdmin ? "super" : "admin"}`}>
                   {isSuperAdmin ? "ROOT" : "ADMIN"}
                 </span>

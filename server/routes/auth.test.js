@@ -6,15 +6,26 @@ vi.hoisted(() => {
   process.env.JWT_SECRET = "unit-test-jwt-secret-0123456789abcdef";
 });
 
-const { mockFrom, mockUpdateUserById } = vi.hoisted(() => ({
+const { mockFrom, mockUpdateUserById, mockSharedSignIn, mockAuthSignIn } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
   mockUpdateUserById: vi.fn(),
+  mockSharedSignIn: vi.fn(),
+  mockAuthSignIn: vi.fn(),
 }));
 
 vi.mock("../db.js", () => ({
   supabase: {
     from: mockFrom,
-    auth: { admin: { updateUserById: mockUpdateUserById } },
+    auth: {
+      admin: { updateUserById: mockUpdateUserById },
+      signInWithPassword: mockSharedSignIn,
+    },
+  },
+}));
+
+vi.mock("../supabaseAuthClient.js", () => ({
+  authClient: {
+    auth: { signInWithPassword: mockAuthSignIn },
   },
 }));
 
@@ -137,6 +148,16 @@ beforeEach(() => {
   installDb();
   mockUpdateUserById.mockReset();
   mockUpdateUserById.mockResolvedValue({ data: { id: "user-1" }, error: null });
+  mockSharedSignIn.mockReset();
+  mockSharedSignIn.mockResolvedValue({
+    data: { user: { id: "user-1", email: "admin@example.com" } },
+    error: null,
+  });
+  mockAuthSignIn.mockReset();
+  mockAuthSignIn.mockResolvedValue({
+    data: { user: { id: "user-1", email: "admin@example.com" } },
+    error: null,
+  });
   delete process.env.EXPOSE_RESET_TOKEN;
 });
 
@@ -144,6 +165,40 @@ afterEach(() => {
   delete process.env.EXPOSE_RESET_TOKEN;
   process.env.NODE_ENV = originalNodeEnv;
   vi.restoreAllMocks();
+});
+
+describe("POST /api/auth/login", () => {
+  it("signs in on a dedicated client so the shared service client keeps the service role", async () => {
+    dbOptions.profile = {
+      id: "user-1",
+      email: "admin@example.com",
+      full_name: "Admin",
+      role: "admin",
+      store_name: null,
+    };
+
+    const res = await post("/login", { email: "admin@example.com", password: "admin123" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Login successful");
+
+    // The shared client is the service-role client every server-side write
+    // goes through. supabase-js swaps its Authorization header to the user's
+    // token when it signs in, and PostgREST reports an RLS-filtered UPDATE as
+    // zero affected rows rather than an error — so a write on that client
+    // would silently vanish. The sign-in must therefore happen elsewhere.
+    expect(mockSharedSignIn).not.toHaveBeenCalled();
+    expect(mockAuthSignIn).toHaveBeenCalledTimes(1);
+  });
+
+  it("still answers 401 for bad credentials without touching the shared client", async () => {
+    mockAuthSignIn.mockResolvedValue({ data: { user: null }, error: { message: "invalid" } });
+
+    const res = await post("/login", { email: "admin@example.com", password: "wrong" });
+
+    expect(res.status).toBe(401);
+    expect(mockSharedSignIn).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/auth/request-reset", () => {

@@ -590,6 +590,8 @@ git commit -m "fix(security): JWT secret required, bearer-only tokens, password 
     The empty-slug check is what catches a stray legacy row (for example `Home & Shop`, whose path `/` yields an empty slug) even if it somehow matched the prefix predicate.
   - `site_categories` is **not** dropped in this migration. The storefront still calls `GET /api/content/categories` until Task 13, and the new `/api/categories` route does not exist until Task 6 — dropping the table here would break the running app mid-plan. The table is dropped in Task 6, after the replacement API is in place, and Task 6 keeps a temporary alias route so the storefront keeps working until Task 13. The drop ships as a **second** paste bundle (`docs/sql/apply-02-drop-site-categories.sql`) that the human applies only after Task 6's code is deployed.
 
+    > **As shipped:** the temporary alias was removed in the final review fix wave, once the storefront was fully migrated and the old flat category editor was deleted. Nothing calls the dropped table any more, so `apply-02` is safe as soon as this branch is deployed. See Ruling R21 in the ledger.
+
 - [ ] **Step 1: Produce the paste-ready SQL bundle and verify its shape statically**
 
 This environment has no Docker, the Supabase project is not linked to the CLI, and `.env` carries no access token or DB password — **the DDL cannot be applied from here.** The human partner applies it (this was their explicit decision).
@@ -809,6 +811,13 @@ router.get("/categories", async (req, res) => {
   res.json({ categories: data ?? [] });
 });
 ```
+
+> **As shipped:** the alias block (and the `POST`/`DELETE` routes that came with it) was
+> **removed** in the final review fix wave, once the storefront was fully migrated and the old
+> flat category editor was deleted. It had become a second, divergent admin write path onto the
+> same table — creating roots only, writing 5 of the 12 writable columns, and refusing to
+> delete a category with children while the real route cascades — and its two write routes were
+> not in the authorization sweep. See Ruling R21 in the ledger.
 
 - [ ] **Step 5: Produce the second paste bundle that drops `site_categories`**
 

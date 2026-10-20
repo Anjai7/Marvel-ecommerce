@@ -6900,8 +6900,9 @@ input:focus:not(:focus-visible) {
   flex-direction: column;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* The sidebar itself must not scroll: the nav list is the only scroll
+     container, otherwise items get sliced mid-row by a nested scroller. */
+  overflow: hidden;
   position: relative;
   z-index: 50;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
@@ -6909,8 +6910,9 @@ input:focus:not(:focus-visible) {
 
 /* Top-Left Logo & Brand Area */
 .sidebar-brand-header {
-  padding: 24px 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .brand-logo-wrapper {
@@ -6920,22 +6922,22 @@ input:focus:not(:focus-visible) {
 }
 
 .brand-logo-img-box {
-  width: 72px;
-  height: 72px;
-  border-radius: 14px;
-  background: #ffffff;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   overflow: hidden;
-  box-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .brand-logo-img {
-  width: 60px;
-  height: 60px;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
   display: block;
 }
@@ -6953,7 +6955,7 @@ input:focus:not(:focus-visible) {
 }
 
 .brand-name {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 900;
   letter-spacing: 1.5px;
   color: #ffffff;
@@ -6990,10 +6992,13 @@ input:focus:not(:focus-visible) {
 .sidebar-navigation {
   padding: 20px 14px;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .nav-section-label {
@@ -7108,6 +7113,7 @@ input:focus:not(:focus-visible) {
   flex-direction: column;
   gap: 12px;
   background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .sidebar-user-card {
@@ -7133,6 +7139,7 @@ input:focus:not(:focus-visible) {
   justify-content: center;
   position: relative;
   flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
 }
 
 .online-indicator {
@@ -7165,7 +7172,7 @@ input:focus:not(:focus-visible) {
 
 .user-display-email {
   font-size: 11px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.72);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

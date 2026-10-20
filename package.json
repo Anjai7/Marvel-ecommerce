@@ -32,8 +32,10 @@
     "audit": "npm audit --audit-level=high",
     "check": "npm run lint && npm run test && npm run build",
     "db:push": "supabase db push",
+    "db:apply": "node scripts/apply-migrations.mjs",
     "seed:content": "node server/seed_content.js",
     "seed:products": "node server/seed_dynamic_products.js",
+    "seed:fill": "node server/seed_catalog_fill.js",
     "prepare": "lefthook install"
   },
   "dependencies": {
@@ -46,7 +48,8 @@
     "@radix-ui/react-slot": "^1.3.3",
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
-    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.5.1",
@@ -80,6 +83,7 @@
     "knip": "6.38.0",
     "lefthook": "2.1.14",
     "oxlint": "1.85.0",
+    "pg": "^8.23.1",
     "prettier": "3.9.9",
     "rollup-plugin-visualizer": "7.1.1",
     "supabase": "^2.115.0",

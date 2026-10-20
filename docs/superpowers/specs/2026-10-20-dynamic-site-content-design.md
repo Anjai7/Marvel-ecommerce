@@ -423,11 +423,16 @@ order_index)` and `hero_slides (is_active, order_index)` are reused unchanged.
   Reorder handlers are registered **before** `/:id` handlers.
 - **Ordering in lists.** `orderColumn` ascending, then `created_at` ascending.
 - **Hash routes in link fields.** This application has no path-based router — it is a hash
-  router (`src/App.jsx`) — so a stored link must be a **hash route** (`#/category/electronics/mobiles`)
+  router (`src/App.jsx`) — so a stored link is a **hash route** (`#/category/electronics/mobiles`)
   or an absolute `https://` URL. A bare path such as `/help` would cause a full page load and a
-  server 404. The footer-link validator therefore accepts a value that is `null`/`""`, starts
-  with `/`, starts with `#/`, or is an `https://` URL. `isHttpsOrRelative` keeps its existing
-  narrower rule for image and asset URLs, and a separate helper covers the link case.
+  server 404. The link validator therefore accepts a value that is `null`/`""`, starts with
+  `/`, starts with `#/`, or is an `https://` URL — and the **client normalises a leading `/`
+  into `#/`** before it navigates, so an admin may store either form. `isHttpsOrRelative`
+  keeps its existing narrower rule for image and asset URLs, and a separate helper
+  (`isHrefOrUrl` on the server, `toAppHref` / `followStoredLink` in
+  `src/components/ui/linkTarget.js` on the client) covers the link case. Every surface that
+  renders or follows a stored link — the footer, the hero, the banner layout and the promo
+  carousel — goes through the one client helper, so there is a single convention.
 
 ### 4.2 Categories — `/api/categories`
 
@@ -729,7 +734,7 @@ checks are skipped and only present fields are validated.
 | `validateDepth`         | parent id not found                                                                                                      | `Parent category not found.`                                                                                                                                                   |
 | `validateBanner`        | `title` required                                                                                                         | 400 naming the missing field                                                                                                                                                   |
 | `validateBanner`        | `placement` required and one of three                                                                                    | `Banner placement is required.` (missing) / 400 naming the allowed values (invalid)                                                                                            |
-| `validateBanner`        | `cta_path`, `image_url`, `bg_image_url`, `fallback_image_url` https-or-relative                                          | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
+| `validateBanner`        | `cta_path` https-or-relative **or a hash route**; `image_url`, `bg_image_url`, `fallback_image_url` https-or-relative    | `Field '<field>' must be an https URL or a relative path.`                                                                                                                     |
 | `validateBanner`        | `starts_at`/`ends_at` ISO-8601; `ends_at > starts_at`                                                                    | 400 naming the field                                                                                                                                                           |
 | `validateFooterSection` | `heading` required                                                                                                       | `Footer section heading is required.`                                                                                                                                          |
 | `validateFooterLink`    | `label` required                                                                                                         | 400 naming the field                                                                                                                                                           |
@@ -751,24 +756,13 @@ catch-all: `/api/auth`, `/api/menu`, `/api/content`, `/api/content/banners`,
 `/api/upload`. The three new mounts are `bannerRoutes`, `footerRoutes` and
 `categoriesRoutes`; the import names and mount order are the only additions.
 
-Until the storefront migrates to `/api/categories` (Task 13 of the plan),
-`server/routes/content.js` keeps this temporary alias so the running app does not break while
-`site_categories` is dropped:
-
-```js
-// TEMPORARY (removed in Task 13): the storefront still calls the old path.
-router.get("/categories", async (req, res) => {
-  const { data, error } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("is_active", true)
-    .order("display_order");
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ categories: data ?? [] });
-});
-```
-
-The alias is deleted in the same task that deletes the last old-path caller.
+The storefront is fully migrated: it reads `/api/categories` and `/api/categories/tree`, and
+the old flat category editor is deleted. The temporary alias and the old
+`GET`/`POST`/`DELETE /api/content/categories` routes have therefore been **removed** from
+`server/routes/content.js`, along with the duplicated write path they carried — an alias
+that created roots only, wrote 5 of the 12 writable columns, and refused to delete a
+category with children while the real route cascades. Nothing calls the dropped
+`site_categories` table any more, so `apply-02` is safe once this branch is deployed.
 
 ## 5. Client Architecture
 
@@ -814,7 +808,7 @@ apiDeleteHeroSlide(id: string): Promise<{ message: string }>
 apiReorderHeroSlides(orders: { id: string; display_order: number }[]): Promise<{ message: string }>
 apiFetchCategories(opts?: { includeInactive?: boolean }): Promise<{ categories: Category[] }>
 apiFetchCategoryTree(opts?: { includeInactive?: boolean }): Promise<{ categories: CategoryNode[] }>
-apiFetchCategoryBySlug(slug: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
+apiFetchCategoryBySlug(slug: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>  // diagnostic only: no app caller uses it
 apiFetchCategoryByPath(path: string): Promise<{ category: Category; ancestors: Category[]; descendants: Category[] }>
 apiSaveCategory(c: object): Promise<{ category: Category }>
 apiUpdateCategory(id: string, patch: object): Promise<{ category: Category }>
@@ -853,7 +847,11 @@ Each function maps one-to-one onto the routes in §4: `apiFetch*` → `GET <base
 and `/menu`. Query strings are built with `URLSearchParams` (`includeInactive=1`,
 `placement`, `role`, `path`). The two category exceptions are
 `apiFetchCategoryBySlug` → `GET /categories/slug/:slug` and `apiFetchCategoryByPath` →
-`GET /categories/path?path=<segments>`.
+`GET /categories/path?path=<segments>`. **The bare-slug lookup is a diagnostic surface
+only**: the storefront resolves the full path, because a slug is unique only within its parent
+and the seeded tree has three categories called `accessories`. No app code calls
+`apiFetchCategoryBySlug`; it is kept so a slug can be resolved by hand when debugging, and it
+is not a missing integration.
 
 ### 5.3 `src/context/ContentContext.jsx`
 
@@ -1166,51 +1164,66 @@ path and the _parent_ (`b`) for a level-3 path. The same defect applies to
 `split_part(..., '/', 3)` on the `/category/`-stripped path, which is empty for level 1 and
 level 2. The regexp form above has no fixed-index assumption.
 
-**Count guard.** A corrupted tree must abort the migration, never apply partially:
+**Integrity guard.** A corrupted tree must abort the migration, never apply partially. The
+guard checks the **tree's own integrity**, not its completeness against `menu_items`: an
+admin deleting a category in the panel is a legitimate state, not seed corruption, and must
+not make the bundle refuse to apply.
 
 ```sql
 DO $$
 DECLARE
-  expected_roots INT; expected_l2 INT; expected_l3 INT;
-  actual_roots INT; actual_l2 INT; actual_l3 INT; orphan_count INT; empty_slug_count INT;
+  roots INT; l2 INT; l3 INT;
+  orphan_count INT; empty_slug_count INT; bad_level_count INT;
 BEGIN
-  SELECT count(*) FILTER (WHERE id::text LIKE 'd1c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd2c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd3c%')
-    INTO expected_roots, expected_l2, expected_l3
-    FROM public.menu_items;
   SELECT count(*) FILTER (WHERE level = 1),
          count(*) FILTER (WHERE level = 2),
          count(*) FILTER (WHERE level = 3)
-    INTO actual_roots, actual_l2, actual_l3
+    INTO roots, l2, l3
     FROM public.categories
    WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
-  SELECT count(*) INTO orphan_count FROM public.categories WHERE level > 1 AND parent_id IS NULL;
-  SELECT count(*) INTO empty_slug_count FROM public.categories WHERE slug IS NULL OR slug = '';
-  IF actual_roots <> expected_roots OR actual_l2 <> expected_l2 OR actual_l3 <> expected_l3 THEN
-    RAISE EXCEPTION 'categories seed mismatch: expected %/%/%, got %/%/%',
-      expected_roots, expected_l2, expected_l3, actual_roots, actual_l2, actual_l3;
-  END IF;
+
+  SELECT count(*) INTO orphan_count
+    FROM public.categories c
+   WHERE c.level > 1
+     AND NOT EXISTS (SELECT 1 FROM public.categories p WHERE p.id = c.parent_id);
+
+  SELECT count(*) INTO empty_slug_count
+    FROM public.categories
+   WHERE slug IS NULL OR slug = '';
+
+  SELECT count(*) INTO bad_level_count
+    FROM public.categories c
+    JOIN public.categories p ON p.id = c.parent_id
+   WHERE c.level <> p.level + 1;
+
   IF orphan_count > 0 THEN
-    RAISE EXCEPTION 'categories seed produced % orphan rows above level 1', orphan_count;
+    RAISE EXCEPTION 'categories seed produced % rows above level 1 with no parent row', orphan_count;
   END IF;
   IF empty_slug_count > 0 THEN
     RAISE EXCEPTION 'categories seed produced % rows with an empty slug', empty_slug_count;
   END IF;
+  IF bad_level_count > 0 THEN
+    RAISE EXCEPTION 'categories seed produced % rows whose level does not match their parent', bad_level_count;
+  END IF;
+
+  RAISE NOTICE 'categories tree verified: % roots, % subcategories, % leaves', roots, l2, l3;
 END $$;
 ```
 
-`expected_*` is read from `menu_items` at apply time, so the guard compares the inserted tree
-against the live seed rather than a hard-coded number and stays correct when the mega-menu
-seed grows. The three checks are independent: the per-level counts catch a dropped,
-duplicated or wrong-depth insert; `orphan_count` catches a row whose parent insert failed
-(the `parent_id` FK is immediate, so this is belt-and-braces); `empty_slug_count` catches a
-row whose path had no last segment (for example `Home & Shop`, whose `/` path yields `''`)
-if such a row ever enters `categories`. `count(*) FILTER (…)` and `SELECT … INTO` with
-several aggregates are valid PL/pgSQL. The guard runs after the three inserts and before the
-backfills, which cannot change `level`, `parent_id` or `slug`; each message reports the
-counts involved (the mismatch message quotes expected and actual per level), so a failed
-apply reports the defect instead of leaving a half-built tree.
+The three checks are independent. `orphan_count` catches a row whose parent insert failed
+(the `parent_id` FK is immediate, so this is belt-and-braces) and also catches a partial
+paste. `empty_slug_count` catches a row whose path had no last segment (for example
+`Home & Shop`, whose `/` path yields `''`) if such a row ever enters `categories`.
+`bad_level_count` catches a row whose level disagrees with its parent's. The level counts are
+**reported**, not compared against `menu_items`, so the guard neither goes stale when the
+mega-menu seed grows nor aborts because an admin deleted a category. `count(*) FILTER (…)`
+and `SELECT … INTO` with several aggregates are valid PL/pgSQL. The guard runs after the
+three inserts and before the backfills, which cannot change `level`, `parent_id` or `slug`.
+
+**Re-running the bundle** is safe for the schema, but it resets two things on the rows the
+migration owns: the seeded `show_in_homepage` flags and the seeded category images. It
+touches nothing else, so a homepage tile an admin switched off will come back on if the
+bundle is re-pasted.
 
 Then link the rows back and backfill the display data:
 
@@ -1242,7 +1255,12 @@ WHERE c.id = (
   WHERE lower(c2.name) = lower(p.category)
   ORDER BY c2.level ASC, c2.display_order ASC, c2.id ASC
   LIMIT 1
-);
+)
+-- Only rows with no binding yet are touched. On the first apply every product
+-- has category_id NULL, so this behaves as described; on a re-run it leaves
+-- the product seed's deliberate per-category bindings alone instead of
+-- collapsing them onto the lowest-level name match.
+AND p.category_id IS NULL;
 ```
 
 Notes:
@@ -1253,6 +1271,10 @@ Notes:
 - The `menu_items.category_id` link covers only the taxonomy rows, because only those have
   a `categories` row with the same id; the six legacy rows keep `category_id IS NULL` by
   construction.
+- **`show_in_homepage` and the image backfill are scoped to the rows the migration owns**
+  (`id::text LIKE 'd1c%' OR 'd2c%' OR 'd3c%'`). Without that scope, re-applying the
+  bundle would turn back on a homepage tile an admin had switched off, and refill an image
+  an admin had deliberately cleared.
 - `image_url` matching is by case-insensitive name. Of the 10 legacy `site_categories` rows,
   only 7 have a matching menu title and are therefore migrated into `categories`:
   "Mobiles", "Laptops", "Headphones", "Watches", "Bags", "Cameras" and "Gaming". "TVs",
@@ -1413,7 +1435,9 @@ upsert key is wrong.
    without a token, `403` with a `user` token, and that no mocked write method was called,
    for: `POST/PATCH/DELETE /api/categories`, all hero writes including reorder, all banner
    writes including reorder, footer section and footer link writes including both reorders,
-   `POST/PATCH/DELETE /api/menu` including reorder, and `POST /api/upload`.
+   `POST/PATCH/DELETE /api/menu` including reorder, and `POST /api/upload`. The list is
+   complete: the temporary `/api/content/categories` alias that once added two more write
+   routes has been removed, so no write route exists outside this table.
 9. **No secret ever reaches the client.** The service key is only read by `server/db.js`;
    the client talks to `/api` and holds only the user's JWT in
    `localStorage["marvel_jwt_token"]`.
@@ -1446,12 +1470,12 @@ value. `.env.example` gains `ALLOWED_ORIGINS=http://localhost:5173` and a commen
 
 ### 9.1 Migration files, in order
 
-| #   | File                                                           | Contents                                                                                                                                                                                                                             | Re-runnable                                        |
-| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| 1   | `supabase/migrations/20261020000006_password_reset_tokens.sql` | `password_reset_tokens` table, RLS enabled, one service-role policy                                                                                                                                                                  | yes (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`)     |
-| 2   | `supabase/migrations/20261020000007_content_taxonomy.sql`      | `categories`; `products.category_id` + index; `menu_items.category_id`; `promo_banners`; `footer_sections`; `footer_links`; all indexes; scoped RLS on the four new tables plus `hero_slides`; `set_updated_at()`; the five triggers | yes (`IF NOT EXISTS`, `DROP … IF EXISTS`)          |
-| 3   | `supabase/migrations/20261020000008_seed_categories.sql`       | seed `categories` from `menu_items`; link `menu_items.category_id`; restrict `show_in_homepage`; backfill `categories.image_url` from `site_categories`; backfill `products.category_id`                                             | yes (`ON CONFLICT DO NOTHING`, idempotent updates) |
-| 4   | `supabase/migrations/20261020000009_drop_site_categories.sql`  | `DROP TABLE IF EXISTS public.site_categories;`                                                                                                                                                                                       | yes, but destructive — see 9.3                     |
+| #   | File                                                           | Contents                                                                                                                                                                                                                             | Re-runnable                                                                                                                                                                                                                         |
+| --- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `supabase/migrations/20261020000006_password_reset_tokens.sql` | `password_reset_tokens` table, RLS enabled, one service-role policy                                                                                                                                                                  | yes (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`)                                                                                                                                                                                      |
+| 2   | `supabase/migrations/20261020000007_content_taxonomy.sql`      | `categories`; `products.category_id` + index; `menu_items.category_id`; `promo_banners`; `footer_sections`; `footer_links`; all indexes; scoped RLS on the four new tables plus `hero_slides`; `set_updated_at()`; the five triggers | yes (`IF NOT EXISTS`, `DROP … IF EXISTS`)                                                                                                                                                                                           |
+| 3   | `supabase/migrations/20261020000008_seed_categories.sql`       | seed `categories` from `menu_items`; link `menu_items.category_id`; restrict `show_in_homepage`; backfill `categories.image_url` from `site_categories`; backfill `products.category_id`                                             | yes for the schema — but a re-run **resets the seeded `show_in_homepage` flags and the seeded images** on the rows it owns, and the integrity guard checks the tree, not its completeness, so an admin's deletion does not abort it |
+| 4   | `supabase/migrations/20261020000009_drop_site_categories.sql`  | `DROP TABLE IF EXISTS public.site_categories;`                                                                                                                                                                                       | yes, but destructive — see 9.3                                                                                                                                                                                                      |
 
 `supabase/schema.sql` is **regenerated** from the database (`supabase db dump --file
 supabase/schema.sql --schema public`) after migration 2 and again after migration 4. It is

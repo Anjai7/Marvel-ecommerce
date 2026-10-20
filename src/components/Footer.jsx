@@ -1,6 +1,7 @@
 import React from "react";
 import { useContent } from "../context/ContentContext";
 import { SimpleTooltip } from "./ui";
+import { toAppHref } from "./ui/linkTarget";
 import { ShieldCheck, Truck, RefreshCw, Headset, Lock, ChevronRight } from "lucide-react";
 
 /* ── Inline social SVGs (lucide-react doesn't ship these brand icons) ── */
@@ -172,7 +173,7 @@ export default function Footer() {
                 <ul className="footer-col-list">
                   {linksOf(col).map((link) => (
                     <li key={link.id ?? link.label} className="footer-link-item">
-                      <a href={link.href || "#"} className="footer-link">
+                      <a href={toAppHref(link.href)} className="footer-link">
                         <ChevronRight size={12} className="footer-link-arrow" />
                         <span>{link.label}</span>
                       </a>
@@ -190,7 +191,7 @@ export default function Footer() {
             <span className="tags-title">{tagsSection.heading}:</span>
             <div className="tags-list">
               {linksOf(tagsSection).map((tag) => (
-                <a key={tag.id ?? tag.label} href={tag.href || "#"} className="search-tag-chip">
+                <a key={tag.id ?? tag.label} href={toAppHref(tag.href)} className="search-tag-chip">
                   {tag.label}
                 </a>
               ))}

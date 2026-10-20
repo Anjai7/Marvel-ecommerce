@@ -1,5 +1,5 @@
--- ====================================================
--- APPLY BUNDLE 01 — CONTENT TAXONOMY, BANNERS AND FOOTER
+﻿-- ====================================================
+-- APPLY BUNDLE 01 â€” CONTENT TAXONOMY, BANNERS AND FOOTER
 --
 -- WHAT: the full contents of
 --   supabase/migrations/20261020000007_content_taxonomy.sql
@@ -24,7 +24,7 @@
 
 
 -- ====================================================
--- PART 1 OF 2 — supabase/migrations/20261020000007_content_taxonomy.sql
+-- PART 1 OF 2 â€” supabase/migrations/20261020000007_content_taxonomy.sql
 -- ====================================================
 
 -- ====================================================
@@ -33,7 +33,7 @@
 -- scoped RLS policies and the updated_at trigger.
 -- No DROP TABLE / TRUNCATE / DELETE statements in this file.
 --
--- Contents (spec §3, §9.1):
+-- Contents (spec Â§3, Â§9.1):
 --   1. categories                (3-level taxonomy, self FK)
 --   2. products.category_id      (+ index)
 --   3. menu_items.category_id
@@ -47,7 +47,7 @@
 -- is dropped before it is created.
 -- ====================================================
 
--- ─── 1. categories (single source of truth for the taxonomy) ───
+-- â”€â”€â”€ 1. categories (single source of truth for the taxonomy) â”€â”€â”€
 -- `level` is stored, not derived: 1 = category, 2 = subcategory, 3 = leaf.
 -- `slug` is only the LAST path segment; the full path is rebuilt by walking
 -- parent_id, so a bare slug is deliberately not an identifier.
@@ -80,7 +80,7 @@ CREATE INDEX IF NOT EXISTS categories_parent_order
 CREATE INDEX IF NOT EXISTS categories_active_order
     ON public.categories (is_active, display_order);
 
--- ─── 2. products.category_id ───
+-- â”€â”€â”€ 2. products.category_id â”€â”€â”€
 -- `products.category` stays: it is the NOT NULL free-text display label that
 -- the product cards and the legacy ?category= filter read. `category_id` is
 -- the binding used for taxonomy filtering and for the category relationship.
@@ -91,14 +91,14 @@ ALTER TABLE public.products
 CREATE INDEX IF NOT EXISTS products_category_id_idx
     ON public.products (category_id);
 
--- ─── 3. menu_items.category_id ───
+-- â”€â”€â”€ 3. menu_items.category_id â”€â”€â”€
 -- A menu row may point at a taxonomy row. The mega-menu rows point at the
 -- category with the same id; the six legacy flat navigation rows keep NULL.
 
 ALTER TABLE public.menu_items
     ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
 
--- ─── 4. promo_banners ───
+-- â”€â”€â”€ 4. promo_banners â”€â”€â”€
 -- `placement` is the surface selector and never changes meaning. Fields a
 -- placement does not use are stored anyway and ignored by the storefront.
 -- `display_order` is scoped per placement (one reorder scope per surface).
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS public.promo_banners (
 CREATE INDEX IF NOT EXISTS promo_banners_placement_order
     ON public.promo_banners (placement, display_order);
 
--- ─── 5. footer_sections ───
+-- â”€â”€â”€ 5. footer_sections â”€â”€â”€
 -- `section_type = 'links'` is a column of anchors; 'tags' is the
 -- popular-search chip block. `column_index` picks the visual column and is
 -- independent of `display_order`.
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS public.footer_sections (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
--- ─── 6. footer_links ───
+-- â”€â”€â”€ 6. footer_links â”€â”€â”€
 -- Deleting a section cascades to its links.
 
 CREATE TABLE IF NOT EXISTS public.footer_links (
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS public.footer_links (
 CREATE INDEX IF NOT EXISTS footer_links_section_order
     ON public.footer_links (section_id, display_order);
 
--- ─── 7. Row Level Security ───
+-- â”€â”€â”€ 7. Row Level Security â”€â”€â”€
 -- Public (anon + authenticated) may SELECT active rows only.
 -- Writes are scoped to service_role, which is the only role the Express
 -- server uses. Never add an unscoped `FOR ALL USING (true)` here: that is the
@@ -207,12 +207,12 @@ CREATE POLICY "Service role full access on footer_links" ON public.footer_links
 
 -- hero_slides already exists (20261016000006) with its public-read policy.
 -- It gains the same scoped service-role policy so the generic CRUD factory can
--- write it, and so the §9.2 gate shows {service_role} on every FOR ALL policy.
+-- write it, and so the Â§9.2 gate shows {service_role} on every FOR ALL policy.
 DROP POLICY IF EXISTS "Service role full access on hero_slides" ON public.hero_slides;
 CREATE POLICY "Service role full access on hero_slides" ON public.hero_slides
     FOR ALL TO service_role USING (true);
 
--- ─── 8. updated_at trigger ───
+-- â”€â”€â”€ 8. updated_at trigger â”€â”€â”€
 -- One function, attached to every content table. The trigger overwrites any
 -- client-supplied updated_at; the API never writes that column.
 -- DROP TRIGGER before CREATE TRIGGER keeps this file re-runnable.
@@ -242,7 +242,7 @@ DROP TRIGGER IF EXISTS trg_set_updated_at ON public.footer_links;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.footer_links
     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
--- hero_slides keeps no display_order column (§3.6): it still orders by
+-- hero_slides keeps no display_order column (Â§3.6): it still orders by
 -- order_index, so only the trigger and the policy change here.
 DROP TRIGGER IF EXISTS trg_set_updated_at ON public.hero_slides;
 CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.hero_slides
@@ -250,7 +250,7 @@ CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.hero_slides
 
 
 -- ====================================================
--- PART 2 OF 2 — supabase/migrations/20261020000008_seed_categories.sql
+-- PART 2 OF 2 â€” supabase/migrations/20261020000008_seed_categories.sql
 -- ====================================================
 
 -- ====================================================
@@ -284,7 +284,7 @@ CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.hero_slides
 --   /category/electronics/mobiles/smartphones           -> smartphones
 -- ====================================================
 
--- ─── 1. Level-1 roots ───
+-- â”€â”€â”€ 1. Level-1 roots â”€â”€â”€
 -- COALESCE is required: menu_items.order_index and menu_items.is_active are
 -- nullable while categories.display_order and categories.is_active are NOT NULL.
 
@@ -302,7 +302,7 @@ FROM public.menu_items m
 WHERE m.id::text LIKE 'd1c%' AND m.level = 1
 ON CONFLICT DO NOTHING;
 
--- ─── 2. Level-2 subcategories (parents are the level-1 rows above) ───
+-- â”€â”€â”€ 2. Level-2 subcategories (parents are the level-1 rows above) â”€â”€â”€
 
 INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
 SELECT m.id,
@@ -318,7 +318,7 @@ FROM public.menu_items m
 WHERE m.id::text LIKE 'd2c%' AND m.level = 2
 ON CONFLICT DO NOTHING;
 
--- ─── 3. Level-3 leaves (parents are the level-2 rows above) ───
+-- â”€â”€â”€ 3. Level-3 leaves (parents are the level-2 rows above) â”€â”€â”€
 
 INSERT INTO public.categories (id, name, slug, parent_id, level, display_order, is_active, show_in_nav, show_in_homepage)
 SELECT m.id,
@@ -334,7 +334,7 @@ FROM public.menu_items m
 WHERE m.id::text LIKE 'd3c%' AND m.level = 3
 ON CONFLICT DO NOTHING;
 
--- ─── 4. Count guard ───
+-- â”€â”€â”€ 4. Count guard â”€â”€â”€
 -- Abort instead of applying a corrupted tree. The expected counts are read
 -- from the LIVE menu_items seed, not hard-coded, so the guard stays correct
 -- when the mega-menu seed grows. The three checks are independent:
@@ -344,47 +344,51 @@ ON CONFLICT DO NOTHING;
 
 DO $$
 DECLARE
-  expected_roots INT; expected_l2 INT; expected_l3 INT;
-  actual_roots INT; actual_l2 INT; actual_l3 INT; orphan_count INT; empty_slug_count INT;
+  roots INT; l2 INT; l3 INT;
+  orphan_count INT; empty_slug_count INT; bad_level_count INT;
 BEGIN
-  SELECT count(*) FILTER (WHERE id::text LIKE 'd1c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd2c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd3c%')
-    INTO expected_roots, expected_l2, expected_l3
-    FROM public.menu_items;
-
+  -- The counts are reported, not compared against menu_items: an admin may have
+  -- deleted a category, and that is a legitimate state, not seed corruption.
   SELECT count(*) FILTER (WHERE level = 1),
          count(*) FILTER (WHERE level = 2),
          count(*) FILTER (WHERE level = 3)
-    INTO actual_roots, actual_l2, actual_l3
+    INTO roots, l2, l3
     FROM public.categories
    WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
 
+  -- A row above level 1 whose parent is missing: the tree cannot be walked.
   SELECT count(*) INTO orphan_count
-    FROM public.categories
-   WHERE level > 1 AND parent_id IS NULL;
+    FROM public.categories c
+   WHERE c.level > 1
+     AND NOT EXISTS (SELECT 1 FROM public.categories p WHERE p.id = c.parent_id);
 
+  -- A row whose path had no last segment.
   SELECT count(*) INTO empty_slug_count
     FROM public.categories
    WHERE slug IS NULL OR slug = '';
 
-  IF actual_roots <> expected_roots
-     OR actual_l2 <> expected_l2
-     OR actual_l3 <> expected_l3 THEN
-    RAISE EXCEPTION 'categories seed mismatch: expected %/%/%, got %/%/%',
-      expected_roots, expected_l2, expected_l3, actual_roots, actual_l2, actual_l3;
-  END IF;
+  -- A row whose level does not match its parent's level plus one.
+  SELECT count(*) INTO bad_level_count
+    FROM public.categories c
+    JOIN public.categories p ON p.id = c.parent_id
+   WHERE c.level <> p.level + 1;
 
   IF orphan_count > 0 THEN
-    RAISE EXCEPTION 'categories seed produced % orphan rows above level 1', orphan_count;
+    RAISE EXCEPTION 'categories seed produced % rows above level 1 with no parent row', orphan_count;
   END IF;
 
   IF empty_slug_count > 0 THEN
     RAISE EXCEPTION 'categories seed produced % rows with an empty slug', empty_slug_count;
   END IF;
+
+  IF bad_level_count > 0 THEN
+    RAISE EXCEPTION 'categories seed produced % rows whose level does not match their parent', bad_level_count;
+  END IF;
+
+  RAISE NOTICE 'categories tree verified: % roots, % subcategories, % leaves', roots, l2, l3;
 END $$;
 
--- ─── 5. Link the menu rows back to their category ───
+-- â”€â”€â”€ 5. Link the menu rows back to their category â”€â”€â”€
 -- Exact by id: only taxonomy rows have a category with the same id, so the six
 -- legacy flat rows keep category_id IS NULL by construction.
 
@@ -393,7 +397,7 @@ SET category_id = c.id
 FROM public.categories c
 WHERE c.id = m.id;
 
--- ─── 6. The homepage category strip ───
+-- â”€â”€â”€ 6. The homepage category strip â”€â”€â”€
 -- This UPDATE owns show_in_homepage and overrides the value the three inserts
 -- wrote. The seven names are the verified seeded level-1 roots; note that the
 -- seeded root is `Sports`, not "Sports & Fitness". Renaming a root in the
@@ -405,16 +409,19 @@ SET show_in_homepage = (
     'Electronics', 'Fashion', 'Home & Kitchen', 'Beauty',
     'Sports', 'Toys & Baby', 'Accessories'
   )
-);
+)
+-- Scoped to the rows this migration owns. Without this, re-applying the bundle
+-- would turn back on a homepage tile an admin had deliberately switched off.
+WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
 
--- ─── 7. Copy the legacy category imagery by name ───
+-- â”€â”€â”€ 7. Copy the legacy category imagery by name â”€â”€â”€
 -- Case-insensitive exact name match. Only 7 of the 10 legacy site_categories
 -- names exist in the taxonomy (Mobiles, Laptops, Headphones, Watches, Bags,
 -- Cameras, Gaming); TVs, Shoes and Perfumes match nothing.
 --
 -- Guarded on the table existing: apply-02 drops site_categories, and this file
 -- must stay re-runnable after that drop. On a fresh database the table exists
--- and the backfill runs exactly as spec §7.1 describes.
+-- and the backfill runs exactly as spec Â§7.1 describes.
 
 DO $$
 BEGIN
@@ -423,11 +430,14 @@ BEGIN
     SET image_url = s.image_url
     FROM public.site_categories s
     WHERE lower(s.name) = lower(c.name)
-      AND c.image_url IS NULL;
+      AND c.image_url IS NULL
+      -- Scoped to the rows this migration owns, so re-applying the bundle does
+      -- not refill an image an admin deliberately cleared.
+      AND (c.id::text LIKE 'd1c%' OR c.id::text LIKE 'd2c%' OR c.id::text LIKE 'd3c%');
   END IF;
 END $$;
 
--- ─── 8. Deterministic image fallbacks ───
+-- â”€â”€â”€ 8. Deterministic image fallbacks â”€â”€â”€
 -- Whatever the name match above did not fill gets a per-root Unsplash image,
 -- so no category tile renders broken. These are the same URLs already used by
 -- the static storefront assets, which keeps them known-good.
@@ -458,16 +468,20 @@ FROM category_tree t
 JOIN public.categories root ON root.id = t.root_id
 JOIN root_fallbacks f ON f.root_slug = root.slug
 WHERE c.id = t.category_id
-  AND c.image_url IS NULL;
+  AND c.image_url IS NULL
+  -- Scoped to the rows this migration owns, so re-applying the bundle does
+  -- not refill an image an admin deliberately cleared.
+  AND (c.id::text LIKE 'd1c%' OR c.id::text LIKE 'd2c%' OR c.id::text LIKE 'd3c%');
 
 -- Anything still NULL (for example a root created by an admin under a slug the
 -- mapping above does not know) gets the neutral product fallback rather than a
 -- broken tile.
 UPDATE public.categories
 SET image_url = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&q=80'
-WHERE image_url IS NULL;
+WHERE image_url IS NULL
+  AND (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%');
 
--- ─── 9. Bind existing products to the taxonomy ───
+-- â”€â”€â”€ 9. Bind existing products to the taxonomy â”€â”€â”€
 -- `products.category` is a free-text display label, so the match is by name.
 -- The three-key tiebreak (level, then display_order, then id) makes an
 -- ambiguous name bind to exactly one row: `Ethnic Wear` exists at level 3
@@ -475,7 +489,7 @@ WHERE image_url IS NULL;
 -- `LIMIT 1` in the subquery guarantees a single id per product.
 --
 -- Only rows with no binding yet are touched. On the first apply every product
--- has category_id NULL, so this behaves exactly as spec §7.1 describes; on a
+-- has category_id NULL, so this behaves exactly as spec Â§7.1 describes; on a
 -- re-run it leaves the product seed's deliberate per-category bindings alone
 -- instead of collapsing them onto the lowest-level name match.
 
@@ -493,7 +507,7 @@ WHERE p.category_id IS NULL
 
 
 -- ====================================================
--- VERIFICATION — run these after the script succeeds.
+-- VERIFICATION â€” run these after the script succeeds.
 -- Expected results are written next to each query.
 -- ====================================================
 
@@ -507,7 +521,7 @@ WHERE (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%')
 
 -- 3. Expected 6: the legacy flat navigation rows (Home & Shop, Electronics &
 --    Tech, Fashion & Lifestyle, Vendor Portal, Admin Panel, Super Admin System)
---    keep category_id IS NULL by design — they are not taxonomy.
+--    keep category_id IS NULL by design â€” they are not taxonomy.
 SELECT count(*) FROM public.menu_items WHERE category_id IS NULL;
 
 -- 4. Expected public.site_categories (NOT NULL): this bundle does not drop the

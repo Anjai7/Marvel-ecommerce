@@ -240,7 +240,8 @@ describe("storefront surfaces read the content context", () => {
 
     await user.click(screen.getByRole("button", { name: /Shop the sale/ }));
 
-    expect(onNavigate).toHaveBeenCalledWith("/category/electronics");
+    // A stored link is a hash route; a bare path is normalised into one (§4.1).
+    expect(onNavigate).toHaveBeenCalledWith("#/category/electronics");
   });
 
   it("renders only homepage categories and navigates to the full category path", async () => {
@@ -327,6 +328,28 @@ describe("storefront surfaces read the content context", () => {
 
     expect(screen.queryByText("Customer Support")).toBeNull();
     expect(screen.queryByText("Popular Searches:")).toBeNull();
+  });
+
+  it("normalises a stored footer link into a hash route", () => {
+    // A bare path is not a route in this hash-routed app: it would cause a full
+    // page load and a 404, so the Footer renders it as `#/…`.
+    content.value = contentValue({
+      footer: {
+        sections: [
+          {
+            id: "s1",
+            heading: "Shop With Us",
+            links: [{ id: "l1", label: "Track My Order", href: "/help" }],
+          },
+        ],
+        links: [],
+      },
+    });
+
+    render(<Footer />);
+
+    const link = screen.getByText("Track My Order").closest("a");
+    expect(link).toHaveAttribute("href", "#/help");
   });
 
   it("keeps the value props, social block, payment chips and copyright in code", () => {

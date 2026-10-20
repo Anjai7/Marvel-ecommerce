@@ -57,6 +57,22 @@ function validateUrlFields(body, fields) {
   return null;
 }
 
+/**
+ * Link fields — the destinations a shopper can click. They accept the same
+ * forms as `isHrefOrUrl`: a hash route, a site-relative path, or an
+ * absolute https:// URL. The client normalises a bare path into a hash route
+ * before it navigates, so an admin may store either form.
+ */
+function validateLinkFields(body, fields) {
+  for (const field of fields) {
+    const value = body[field];
+    if (value != null && value !== "" && !isHrefOrUrl(value)) {
+      return urlFieldMessage(field);
+    }
+  }
+  return null;
+}
+
 function isIsoTimestamp(value) {
   return (
     typeof value === "string" && ISO_8601_PATTERN.test(value) && !Number.isNaN(Date.parse(value))
@@ -105,12 +121,10 @@ export function validateHeroSlide(body = {}, opts = {}) {
   const orderError = validateOrderIndex(body);
   if (orderError) return orderError;
 
-  return validateUrlFields(body, [
-    "bg_image_url",
-    "product_image_url",
-    "fallback_image_url",
-    "btn_path",
-  ]);
+  return (
+    validateUrlFields(body, ["bg_image_url", "product_image_url", "fallback_image_url"]) ||
+    validateLinkFields(body, ["btn_path"])
+  );
 }
 
 export function validateCategory(body = {}, opts = {}) {
@@ -151,13 +165,13 @@ export function validateBanner(body = {}, opts = {}) {
     }
   }
 
-  const urlError = validateUrlFields(body, [
-    "cta_path",
-    "image_url",
-    "bg_image_url",
-    "fallback_image_url",
-  ]);
+  const urlError = validateUrlFields(body, ["image_url", "bg_image_url", "fallback_image_url"]);
   if (urlError) return urlError;
+
+  // cta_path is a destination a shopper clicks, so it accepts a hash route
+  // exactly like the storefront renders one.
+  const linkError = validateLinkFields(body, ["cta_path"]);
+  if (linkError) return linkError;
 
   for (const field of ["starts_at", "ends_at"]) {
     if (body[field] != null && body[field] !== "" && !isIsoTimestamp(body[field])) {

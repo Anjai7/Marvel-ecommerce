@@ -89,44 +89,48 @@ ON CONFLICT DO NOTHING;
 
 DO $$
 DECLARE
-  expected_roots INT; expected_l2 INT; expected_l3 INT;
-  actual_roots INT; actual_l2 INT; actual_l3 INT; orphan_count INT; empty_slug_count INT;
+  roots INT; l2 INT; l3 INT;
+  orphan_count INT; empty_slug_count INT; bad_level_count INT;
 BEGIN
-  SELECT count(*) FILTER (WHERE id::text LIKE 'd1c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd2c%'),
-         count(*) FILTER (WHERE id::text LIKE 'd3c%')
-    INTO expected_roots, expected_l2, expected_l3
-    FROM public.menu_items;
-
+  -- The counts are reported, not compared against menu_items: an admin may have
+  -- deleted a category, and that is a legitimate state, not seed corruption.
   SELECT count(*) FILTER (WHERE level = 1),
          count(*) FILTER (WHERE level = 2),
          count(*) FILTER (WHERE level = 3)
-    INTO actual_roots, actual_l2, actual_l3
+    INTO roots, l2, l3
     FROM public.categories
    WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
 
+  -- A row above level 1 whose parent is missing: the tree cannot be walked.
   SELECT count(*) INTO orphan_count
-    FROM public.categories
-   WHERE level > 1 AND parent_id IS NULL;
+    FROM public.categories c
+   WHERE c.level > 1
+     AND NOT EXISTS (SELECT 1 FROM public.categories p WHERE p.id = c.parent_id);
 
+  -- A row whose path had no last segment.
   SELECT count(*) INTO empty_slug_count
     FROM public.categories
    WHERE slug IS NULL OR slug = '';
 
-  IF actual_roots <> expected_roots
-     OR actual_l2 <> expected_l2
-     OR actual_l3 <> expected_l3 THEN
-    RAISE EXCEPTION 'categories seed mismatch: expected %/%/%, got %/%/%',
-      expected_roots, expected_l2, expected_l3, actual_roots, actual_l2, actual_l3;
-  END IF;
+  -- A row whose level does not match its parent's level plus one.
+  SELECT count(*) INTO bad_level_count
+    FROM public.categories c
+    JOIN public.categories p ON p.id = c.parent_id
+   WHERE c.level <> p.level + 1;
 
   IF orphan_count > 0 THEN
-    RAISE EXCEPTION 'categories seed produced % orphan rows above level 1', orphan_count;
+    RAISE EXCEPTION 'categories seed produced % rows above level 1 with no parent row', orphan_count;
   END IF;
 
   IF empty_slug_count > 0 THEN
     RAISE EXCEPTION 'categories seed produced % rows with an empty slug', empty_slug_count;
   END IF;
+
+  IF bad_level_count > 0 THEN
+    RAISE EXCEPTION 'categories seed produced % rows whose level does not match their parent', bad_level_count;
+  END IF;
+
+  RAISE NOTICE 'categories tree verified: % roots, % subcategories, % leaves', roots, l2, l3;
 END $$;
 
 -- ─── 5. Link the menu rows back to their category ───
@@ -150,7 +154,10 @@ SET show_in_homepage = (
     'Electronics', 'Fashion', 'Home & Kitchen', 'Beauty',
     'Sports', 'Toys & Baby', 'Accessories'
   )
-);
+)
+-- Scoped to the rows this migration owns. Without this, re-applying the bundle
+-- would turn back on a homepage tile an admin had deliberately switched off.
+WHERE id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%';
 
 -- ─── 7. Copy the legacy category imagery by name ───
 -- Case-insensitive exact name match. Only 7 of the 10 legacy site_categories
@@ -168,7 +175,10 @@ BEGIN
     SET image_url = s.image_url
     FROM public.site_categories s
     WHERE lower(s.name) = lower(c.name)
-      AND c.image_url IS NULL;
+      AND c.image_url IS NULL
+      -- Scoped to the rows this migration owns, so re-applying the bundle does
+      -- not refill an image an admin deliberately cleared.
+      AND (c.id::text LIKE 'd1c%' OR c.id::text LIKE 'd2c%' OR c.id::text LIKE 'd3c%');
   END IF;
 END $$;
 
@@ -203,14 +213,18 @@ FROM category_tree t
 JOIN public.categories root ON root.id = t.root_id
 JOIN root_fallbacks f ON f.root_slug = root.slug
 WHERE c.id = t.category_id
-  AND c.image_url IS NULL;
+  AND c.image_url IS NULL
+  -- Scoped to the rows this migration owns, so re-applying the bundle does
+  -- not refill an image an admin deliberately cleared.
+  AND (c.id::text LIKE 'd1c%' OR c.id::text LIKE 'd2c%' OR c.id::text LIKE 'd3c%');
 
 -- Anything still NULL (for example a root created by an admin under a slug the
 -- mapping above does not know) gets the neutral product fallback rather than a
 -- broken tile.
 UPDATE public.categories
 SET image_url = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&q=80'
-WHERE image_url IS NULL;
+WHERE image_url IS NULL
+  AND (id::text LIKE 'd1c%' OR id::text LIKE 'd2c%' OR id::text LIKE 'd3c%');
 
 -- ─── 9. Bind existing products to the taxonomy ───
 -- `products.category` is a free-text display label, so the match is by name.
