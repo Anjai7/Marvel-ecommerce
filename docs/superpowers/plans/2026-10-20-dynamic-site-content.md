@@ -283,7 +283,13 @@ Expected: FAIL — `Cannot find module '../server/lib/crudRouter'`.
 
 - [ ] **Step 3: Implement `server/lib/crudRouter.js`**
 
-`import { Router } from "express";` and `import { verifyToken, requireRole } from "../middleware/auth.js";`. Build the router with the six handlers described above. Use `supabase.from(config.table)` for every call. For `POST`, build the row via `config.toPayload(body)` filtered to `config.fields`, and when `body.id` is absent omit `id` so Supabase generates the default UUID; when present include it so the upsert updates. For `PATCH`, build the patch via `config.toPayload(body)` filtered to `config.fields` **and** to the keys actually present in `body` — never include a key the caller omitted. For the `includeInactive` branch, apply the `readGuard` role check by calling `requireRole(["admin","super_admin"])(req, res, next)` and bailing out when it responds.
+`import { Router } from "express";` and `import { verifyToken, requireRole } from "../middleware/auth.js";`. Build the router with the five handlers described above. Use `supabase.from(config.table)` for every call.
+
+`config.toPayload` is **optional**: when a config omits it, the factory uses a default that returns only the **body-present** keys intersected with `config.fields` — so "a PATCH never nulls an omitted field" holds for every content type that does not override it. For `POST`, build the row the same way; when `body.id` is absent omit `id` so Supabase generates the default UUID, and when present include it so the upsert updates. For `PATCH`, the write set is `config.toPayload(body)` filtered to `config.fields`, with `undefined` values dropped — **not** intersected with the body's key set, so a `toPayload` that renames a body key or derives a field the client did not send still has that column written. A client-sent key must never be silently dropped.
+
+For the `includeInactive` branch, apply the admin role check and bail out when it responds — checking `res.headersSent || res.writableEnded` so the guard's promise settles rather than staying pending.
+
+A database error on a list read is a `500 { error }`, never an empty list.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
