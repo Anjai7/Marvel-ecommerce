@@ -1,6 +1,8 @@
 /* Pure reporting helpers for the admin console. No React, no network —
  * everything derives from already-fetched orders/products arrays. */
 
+import { ORDER_STATUSES, isLowStock } from "./adminConstants";
+
 export function parseAmount(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   const parsed = parseFloat(value);
@@ -45,8 +47,8 @@ export function lastNDayBuckets(orders = [], days = 7, now = new Date()) {
     }
     result.push({
       key,
-      label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      day: d.toLocaleDateString("en-US", { weekday: "short" }),
+      label: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+      day: d.toLocaleDateString("en-IN", { weekday: "short" }),
       revenue,
       ordersCount,
     });
@@ -121,41 +123,45 @@ export function revenueGrowth(orders = [], now = new Date()) {
   };
 }
 
-const KNOWN_STATUSES = ["pending", "processing", "shipped", "delivered", "completed", "cancelled"];
-
-/** Order counts per fulfillment stage. Unknown statuses fold into pending. */
+/**
+ * Order counts per fulfillment stage. Unknown statuses are not counted into any
+ * stage — an order is never reported as a stage the database does not have.
+ */
 export function summarizeStatuses(orders = []) {
   const list = Array.isArray(orders) ? orders : [];
   const summary = {
     total: list.length,
-    pending: 0,
-    processing: 0,
-    shipped: 0,
-    delivered: 0,
-    completed: 0,
-    cancelled: 0,
     inFlight: 0,
   };
+  for (const status of ORDER_STATUSES) summary[status] = 0;
   for (const order of list) {
-    const raw = String(order?.status || "pending").toLowerCase();
-    const status = KNOWN_STATUSES.includes(raw) ? raw : "pending";
-    summary[status] += 1;
+    const raw = String(order?.status || "")
+      .trim()
+      .toLowerCase();
+    if (ORDER_STATUSES.includes(raw)) summary[raw] += 1;
   }
   summary.inFlight = summary.processing + summary.shipped;
   return summary;
 }
 
+/**
+ * Identity for repeat-buyer analysis.
+ *
+ * A signed-in order belongs to its `user_id`; only a guest (no `user_id`) is
+ * keyed by the email they typed, and only failing that by their name. No email
+ * address is special-cased.
+ */
 function customerKey(order) {
+  if (order?.user_id) return String(order.user_id);
   const email = String(order?.customer_email || "")
     .trim()
     .toLowerCase();
-  if (email && email !== "user@marvel.com") return email;
-  if (order?.user_id) return String(order.user_id);
+  if (email) return email;
   const name = String(order?.customer_name || "").trim();
-  return email || name || "guest";
+  return name ? `guest:${name}` : "guest";
 }
 
-/** Repeat-buyer analysis keyed by email (falling back to user id). */
+/** Repeat-buyer analysis keyed by `user_id`, then guest email. Names come from the API only. */
 export function computeRepeatCustomers(orders = []) {
   const list = Array.isArray(orders) ? orders : [];
   const byKey = new Map();
@@ -163,13 +169,14 @@ export function computeRepeatCustomers(orders = []) {
     const key = customerKey(order);
     const entry = byKey.get(key) || {
       key,
-      name: order?.customer_name || "Marvel Shopper",
+      name: String(order?.customer_name || "").trim() || null,
       email: String(order?.customer_email || "").trim() || null,
       orders: 0,
       spent: 0,
     };
     entry.orders += 1;
     entry.spent += parseAmount(order?.total_amount);
+    if (!entry.name && order?.customer_name) entry.name = String(order.customer_name).trim();
     if (!entry.email && order?.customer_email) entry.email = String(order.customer_email).trim();
     byKey.set(key, entry);
   }
@@ -184,14 +191,15 @@ export function computeRepeatCustomers(orders = []) {
 }
 
 function itemTitle(item) {
-  return item?.title || item?.name || "Item";
+  return String(item?.title || item?.name || "").trim();
 }
 
 function itemQty(item) {
   return Math.max(1, parseInt(item?.quantity ?? item?.qty ?? 1, 10) || 1);
 }
 
-/** Best sellers aggregated from order line items. */
+/** Best sellers aggregated from order line items. Untitled lines are skipped — a
+ * product is never invented to hold their revenue. */
 export function aggregateBestSellers(orders = [], limit = 5) {
   const list = Array.isArray(orders) ? orders : [];
   const byTitle = new Map();
@@ -199,6 +207,7 @@ export function aggregateBestSellers(orders = [], limit = 5) {
     const items = Array.isArray(order?.items) ? order.items : [];
     for (const item of items) {
       const title = itemTitle(item);
+      if (!title) continue;
       const qty = itemQty(item);
       const revenue = parseAmount(item?.price) * qty;
       const entry = byTitle.get(title) || {
@@ -226,7 +235,7 @@ export function summarizeInventory(products = []) {
     if (stock <= 0) summary.outOfStock += 1;
     else {
       summary.inStock += 1;
-      if (stock <= 5) summary.lowStock += 1;
+      if (isLowStock(stock)) summary.lowStock += 1;
     }
     summary.value += parseAmount(p?.price) * stock;
   }
@@ -273,9 +282,9 @@ export function customerStats(users = [], orders = []) {
       }
       return {
         id: u?.id,
-        name: u?.full_name || "Unnamed Customer",
+        name: String(u?.full_name || "").trim() || null,
         email: u?.email || "",
-        status: u?.status || "active",
+        status: u?.status || "",
         joined: u?.created_at || null,
         orders: mineList.length,
         spent,

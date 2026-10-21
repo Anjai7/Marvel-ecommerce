@@ -72,6 +72,16 @@ import {
   summarizeInventory,
   customerStats,
 } from "./reportUtils";
+import {
+  EMPTY,
+  ORDER_STATUSES,
+  ORDER_STATUS_LABELS,
+  ROLE_LABELS,
+  displayInitial,
+  displayValue,
+  formatAdminDate,
+  isLowStock,
+} from "./adminConstants";
 import "./admin-reports.css";
 import RevenueTrendChart from "./charts/RevenueTrendChart";
 import OrderStatusChart from "./charts/OrderStatusChart";
@@ -87,6 +97,26 @@ import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 
+/* Sidebar icon per order stage, keyed by the `order_status` enum value. */
+const ORDER_STATUS_ICONS = {
+  pending: Activity,
+  processing: RefreshCw,
+  shipped: ArrowUpRight,
+  delivered: CheckCircle,
+  cancelled: XCircle,
+};
+
+/** `#abcd1234` for a real order id, the neutral dash when the API returned none. */
+function orderRef(order) {
+  return order?.id ? `#${String(order.id).substring(0, 8)}` : EMPTY;
+}
+
+/** A stored amount as rupees, or the neutral dash when the API has no amount. */
+function money(value) {
+  if (value === null || value === undefined || value === "") return EMPTY;
+  return formatCurrency(value);
+}
+
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
   const isSuperAdmin = currentRole === "super_admin" || customRole === "super_admin";
@@ -99,6 +129,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // Global Loading and Sync States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // Set when the API could not be reached. There is no cached copy of the
+  // records, so the console shows an explicit error state instead of zeros.
+  const [syncError, setSyncError] = useState(null);
   const { addToast } = useToast();
 
   // Live Database States
@@ -124,9 +157,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     title: "",
     price: "",
     original_price: "",
-    category: "Electronics",
+    category: "",
     category_id: null,
-    stock: "15",
+    stock: "",
     image_url: "",
     description: "",
   });
@@ -140,14 +173,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   // Modals States
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  // Plan and billing are derived by the server from the role
+  // (server/routes/users.js → formatUserProfile), so the form never invents one
+  // and never sends an override.
   const [addUserForm, setAddUserForm] = useState({
     fullName: "",
     email: "",
     password: "",
     role: "user",
     storeName: "",
-    plan: "Basic",
-    billing: "Auto Debit",
+    plan: "",
+    billing: "",
   });
   const [addUserLoading, setAddUserLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -163,8 +199,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     role: "user",
     status: "active",
     store_name: "",
-    plan: "Basic",
-    billing: "Auto Debit",
+    // Read-only mirrors of what the server returned — see handleOpenEditUser.
+    plan: "",
+    billing: "",
   });
   const [editUserLoading, setEditUserLoading] = useState(false);
 
@@ -190,12 +227,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       setUsers(Array.isArray(usersData) ? usersData : []);
       setProducts(Array.isArray(productsData) ? productsData : []);
       setOrders(Array.isArray(ordersData) ? ordersData : []);
+      setSyncError(null);
     } catch (err) {
       console.error("Admin Console Sync Error:", err);
+      setSyncError(err?.message || "The admin API did not respond.");
       addToast({
-        title: "Sync Warning",
-        message: "Failed to connect to database. Showing cached records.",
-        type: "warning",
+        title: "Sync Failed",
+        message:
+          "Could not load records from the API. Nothing is cached, so the figures are unavailable — not zero.",
+        type: "error",
       });
     } finally {
       setLoading(false);
@@ -236,9 +276,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       title: "",
       price: "",
       original_price: "",
-      category: "Electronics",
+      category: "",
       category_id: null,
-      stock: "15",
+      stock: "",
       image_url: "",
       description: "",
     });
@@ -265,9 +305,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         prod.original_price !== undefined && prod.original_price !== null
           ? String(prod.original_price)
           : "",
-      category: prod.category || "Electronics",
+      category: prod.category || "",
       category_id: prod.category_id ?? null,
-      stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "15",
+      stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "",
       image_url: prod.image_url || prod.image || "",
       description: prod.description || "",
     });
@@ -294,7 +334,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           : undefined,
         category: productForm.category,
         category_id: productForm.category_id ?? null,
-        stock: parseInt(productForm.stock, 10) || 0,
+        // A blank stock field means "not stated" — leave the stored value to the
+        // server instead of claiming the product is out of stock.
+        stock:
+          String(productForm.stock).trim() === ""
+            ? undefined
+            : parseInt(productForm.stock, 10) || 0,
         image_url: productForm.image_url.trim(),
         description: productForm.description.trim(),
       };
@@ -395,14 +440,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       return sum + amt;
     }, 0);
 
-    // 2. Orders breakdown
-    const completedOrders = orders.filter(
-      (o) => o.status === "delivered" || o.status === "completed"
-    ).length;
+    // 2. Orders breakdown — the `order_status` enum has no "completed" value.
+    const completedOrders = orders.filter((o) => o.status === "delivered").length;
     const processingOrders = orders.filter(
       (o) => o.status === "processing" || o.status === "shipped"
     ).length;
-    const pendingOrders = orders.filter((o) => o.status === "pending" || !o.status).length;
+    const pendingOrders = orders.filter((o) => o.status === "pending").length;
 
     // 3. Users breakdown
     const superAdminsCount = users.filter((u) => u.role === "super_admin").length;
@@ -410,15 +453,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     const vendorsCount = users.filter((u) => u.role === "vendor").length;
     const customersCount = users.filter((u) => u.role === "user" || !u.role).length;
     const activeUsersCount = users.filter(
-      (u) => (u.status || "active").toLowerCase() === "active"
+      (u) => String(u.status || "").toLowerCase() === "active"
     ).length;
 
     // 4. Products breakdown
     const inStockProducts = products.filter((p) => (parseInt(p.stock, 10) || 0) > 0).length;
-    const lowStockProducts = products.filter((p) => {
-      const stock = parseInt(p.stock, 10) || 0;
-      return stock > 0 && stock <= 5;
-    }).length;
+    const lowStockProducts = products.filter((p) => isLowStock(p.stock)).length;
 
     // 5. Average Order Value (AOV)
     const aov = orders.length > 0 ? (totalRevenue / orders.length).toFixed(2) : "0.00";
@@ -460,7 +500,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     const repeat = computeRepeatCustomers(orders);
     const sellers = aggregateBestSellers(orders, 5);
     const inventory = summarizeInventory(products);
-    const delivered = statuses.delivered + statuses.completed;
     return {
       windows,
       growth,
@@ -468,7 +507,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       repeat,
       sellers,
       inventory,
-      deliveredRate: statuses.total > 0 ? (delivered / statuses.total) * 100 : null,
+      deliveredRate: statuses.total > 0 ? (statuses.delivered / statuses.total) * 100 : null,
     };
   }, [orders, products]);
 
@@ -483,7 +522,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   const filteredOrders = useMemo(() => {
     if (ordersView === "all") return orders;
-    return orders.filter((o) => String(o.status || "pending").toLowerCase() === ordersView);
+    return orders.filter((o) => String(o.status || "").toLowerCase() === ordersView);
   }, [orders, ordersView]);
 
   const customerRows = useMemo(() => customerStats(users, orders), [users, orders]);
@@ -505,8 +544,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
       const matchesRole = roleFilter === "all" || u.role === roleFilter;
       const matchesStatus =
-        statusFilter === "all" ||
-        (u.status || "active").toLowerCase() === statusFilter.toLowerCase();
+        statusFilter === "all" || (u.status || "").toLowerCase() === statusFilter.toLowerCase();
 
       return matchesSearch && matchesRole && matchesStatus;
     });
@@ -541,7 +579,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
     setAddUserLoading(true);
     try {
-      const created = await apiAdminCreateUser(addUserForm);
+      // Plan and billing are derived from the role by the server, so an empty
+      // value is left out of the payload rather than overriding that derivation.
+      const { plan, billing, ...account } = addUserForm;
+      const payload = { ...account };
+      if (plan) payload.plan = plan;
+      if (billing) payload.billing = billing;
+
+      const created = await apiAdminCreateUser(payload);
       setUsers((prev) => [created, ...prev]);
       setShowAddUserModal(false);
       setAddUserForm({
@@ -550,12 +595,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         password: "",
         role: "user",
         storeName: "",
-        plan: "Basic",
-        billing: "Auto Debit",
+        plan: "",
+        billing: "",
       });
       addToast({
         title: "User Created Successfully",
-        message: `Account for ${created.full_name} (${created.role.toUpperCase()}) is active.`,
+        message: `Account for ${displayValue(created.full_name)} (${created.role ? created.role.toUpperCase() : EMPTY}) is active.`,
         type: "success",
       });
     } catch (err) {
@@ -576,10 +621,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       full_name: user.full_name || "",
       email: user.email || "",
       role: user.role || "user",
-      status: user.status || "active",
+      status: user.status || "",
       store_name: user.store_name || "",
-      plan: user.plan || "Basic",
-      billing: user.billing || "Auto Debit",
+      // Exactly what the server returned — the form only displays these.
+      plan: user.plan || "",
+      billing: user.billing || "",
     });
   };
 
@@ -590,7 +636,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
     setEditUserLoading(true);
     try {
-      const updatedUser = await apiUpdateUserDetails(editingUser.id, editUserForm);
+      // The server derives plan and billing from the role and ignores these on
+      // update, so they are never sent.
+      const { full_name, email, role, status, store_name } = editUserForm;
+      const updatedUser = await apiUpdateUserDetails(editingUser.id, {
+        full_name,
+        email,
+        role,
+        status,
+        store_name,
+      });
       setUsers((prev) => prev.map((u) => (u.id === editingUser.id ? { ...u, ...updatedUser } : u)));
 
       if (viewingUser && viewingUser.id === editingUser.id) {
@@ -600,7 +655,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       setEditingUser(null);
       addToast({
         title: "User Updated",
-        message: `Successfully saved changes for ${updatedUser.full_name || updatedUser.email}.`,
+        message: `Successfully saved changes for ${displayValue(updatedUser.full_name || updatedUser.email)}.`,
         type: "success",
       });
     } catch (err) {
@@ -719,43 +774,62 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setShowPassword(true);
   };
 
-  // Helper for Role Badges
+  // Helper for Role Badges. An absent role renders the neutral dash, never a
+  // role the API did not report.
   const renderRoleBadge = (role) => {
     switch (role) {
       case "super_admin":
         return (
           <span className="role-pill super-admin">
             <Crown size={12} className="role-icon" />
-            Super Admin
+            {ROLE_LABELS.super_admin}
           </span>
         );
       case "admin":
         return (
           <span className="role-pill admin">
             <ShieldCheck size={12} className="role-icon" />
-            Admin
+            {ROLE_LABELS.admin}
           </span>
         );
       case "vendor":
         return (
           <span className="role-pill vendor">
             <Store size={12} className="role-icon" />
-            Vendor
+            {ROLE_LABELS.vendor}
+          </span>
+        );
+      case "user":
+        return (
+          <span className="role-pill user">
+            <UserIcon size={12} className="role-icon" />
+            {ROLE_LABELS.user}
           </span>
         );
       default:
         return (
           <span className="role-pill user">
             <UserIcon size={12} className="role-icon" />
-            Customer
+            {displayValue(role)}
           </span>
         );
     }
   };
 
-  // Helper for Status Badges
+  // Helper for Status Badges. The label is the API's status, capitalised; an
+  // absent status renders the neutral dash.
   const renderStatusBadge = (status) => {
-    const s = (status || "active").toLowerCase();
+    const s = String(status || "")
+      .trim()
+      .toLowerCase();
+    if (!s) {
+      return (
+        <span className="status-pill unknown">
+          <span className="status-dot"></span>
+          {EMPTY}
+        </span>
+      );
+    }
     return (
       <span className={`status-pill ${s}`}>
         <span className="status-dot"></span>
@@ -776,6 +850,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     banners: "Site Content — Banners",
     footer: "Site Content — Footer",
   };
+
+  // Nothing loaded and no cached copy exists, so the console has no business
+  // data to render: show the failure explicitly instead of an empty dashboard.
+  const dataUnavailable =
+    Boolean(syncError) && users.length === 0 && products.length === 0 && orders.length === 0;
 
   return (
     <div className="admin-app-layout">
@@ -1001,28 +1080,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <span>All Orders</span>
                 <span className="sidebar-submenu-count">{orders.length}</span>
               </button>
-              <button
-                id="admin-tab-orders-pending"
-                onClick={() => {
-                  setActiveTab("orders");
-                  setOrdersView("pending");
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "pending" ? "active" : ""}`}
-              >
-                <Activity size={14} />
-                <span>Pending</span>
-              </button>
-              <button
-                id="admin-tab-orders-delivered"
-                onClick={() => {
-                  setActiveTab("orders");
-                  setOrdersView("delivered");
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "delivered" ? "active" : ""}`}
-              >
-                <CheckCircle size={14} />
-                <span>Delivered</span>
-              </button>
+              {ORDER_STATUSES.map((status) => {
+                const StatusIcon = ORDER_STATUS_ICONS[status];
+                return (
+                  <button
+                    key={status}
+                    id={`admin-tab-orders-${status}`}
+                    onClick={() => {
+                      setActiveTab("orders");
+                      setOrdersView(status);
+                    }}
+                    className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === status ? "active" : ""}`}
+                  >
+                    <StatusIcon size={14} />
+                    <span>{ORDER_STATUS_LABELS[status]}</span>
+                    <span className="sidebar-submenu-count">{salesReport.statuses[status]}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -1167,19 +1242,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* Authenticated User Profile Snippet */}
           <div className="sidebar-user-card">
             <div className="user-avatar-circle">
-              {currentUser?.full_name
-                ? currentUser.full_name.charAt(0).toUpperCase()
-                : currentUser?.email
-                  ? currentUser.email.charAt(0).toUpperCase()
-                  : "A"}
+              {displayInitial(currentUser?.full_name || currentUser?.email)}
               <div className="online-indicator"></div>
             </div>
             <div className="user-details-mini">
-              <span className="user-display-name">
-                {currentUser?.full_name ||
-                  (currentUser?.email ? currentUser.email.split("@")[0] : "Administrator")}
-              </span>
-              <span className="user-display-email">{currentUser?.email || "admin@marvel.com"}</span>
+              <span className="user-display-name">{displayValue(currentUser?.full_name)}</span>
+              <span className="user-display-email">{displayValue(currentUser?.email)}</span>
               <div className="user-role-badge-row">
                 {renderRoleBadge(isSuperAdmin ? "super_admin" : currentRole || "admin")}
               </div>
@@ -1232,10 +1300,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           <div className="navbar-actions-block"></div>
         </header>
 
+        {/* FAILURE STATE — the API returned nothing and no cached copy exists.
+            The dashboard is suppressed instead of rendering plausible zeros. */}
+        {syncError && (
+          <div className="admin-sync-error" role="alert">
+            <AlertTriangle size={22} className="admin-sync-error-icon" />
+            <div className="admin-sync-error-body">
+              <h2 className="admin-sync-error-title">
+                {dataUnavailable ? "Live data unavailable" : "Last refresh failed"}
+              </h2>
+              <p className="admin-sync-error-message">
+                {dataUnavailable
+                  ? "No records could be loaded from the API. Nothing is cached, so no totals or tables are shown — the figures are unknown, not zero."
+                  : "This view still shows the records from the last successful sync. Refresh to update it."}
+              </p>
+              <p className="admin-sync-error-detail">{syncError}</p>
+            </div>
+            <Button variant="outline" onClick={loadDashboardData} disabled={refreshing}>
+              {refreshing ? "Retrying..." : "Retry"}
+            </Button>
+          </div>
+        )}
+
         {/* ================================================== */}
         {/* TAB 1: DYNAMIC DASHBOARD (Charts & Live DB Data)   */}
         {/* ================================================== */}
-        {activeTab === "dashboard" && dashboardView === "overview" && (
+        {!dataUnavailable && activeTab === "dashboard" && dashboardView === "overview" && (
           <div className="dashboard-tab-view animate-fade-in">
             {/* KPI STATS CARDS GRID */}
             <div className="metrics-cards-grid">
@@ -1367,10 +1457,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <div className="role-distribution-layout">
                   <UserRolesChart
                     data={[
-                      { name: "Super Admin", value: metrics.superAdminsCount },
-                      { name: "Admin", value: metrics.adminsCount },
-                      { name: "Vendor", value: metrics.vendorsCount },
-                      { name: "Customer", value: metrics.customersCount },
+                      { name: "super_admin", value: metrics.superAdminsCount },
+                      { name: "admin", value: metrics.adminsCount },
+                      { name: "vendor", value: metrics.vendorsCount },
+                      { name: "user", value: metrics.customersCount },
                     ]}
                   />
                   <OrderStatusChart data={salesReport.statuses} />
@@ -1422,33 +1512,31 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       orders.slice(0, 5).map((order, idx) => (
                         <tr key={order.id || idx}>
-                          <td className="font-mono text-primary font-bold">
-                            #{String(order.id).substring(0, 8)}
-                          </td>
+                          <td className="font-mono text-primary font-bold">{orderRef(order)}</td>
                           <td>
                             <div className="customer-info-cell">
                               <span className="customer-name">
-                                {order.customer_name || "Marvel Shopper"}
+                                {displayValue(order.customer_name)}
                               </span>
                               <span className="customer-email">
-                                {order.customer_email || "user@marvel.com"}
+                                {displayValue(order.customer_email)}
                               </span>
                             </div>
                           </td>
-                          <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
-                          <td className="font-bold text-emerald">
-                            {formatCurrency(order.total_amount)}
-                          </td>
                           <td>
-                            <span className={`status-pill ${order.status || "processing"}`}>
+                            {Array.isArray(order.items) ? `${order.items.length} items` : EMPTY}
+                          </td>
+                          <td className="font-bold text-emerald">{money(order.total_amount)}</td>
+                          <td>
+                            <span
+                              className={`status-pill ${String(order.status || "").toLowerCase()}`}
+                            >
                               <span className="status-dot"></span>
-                              {order.status || "Processing"}
+                              {displayValue(order.status)}
                             </span>
                           </td>
                           <td className="text-muted text-sm">
-                            {order.created_at
-                              ? new Date(order.created_at).toLocaleDateString()
-                              : "Today"}
+                            {formatAdminDate(order.created_at)}
                           </td>
                         </tr>
                       ))
@@ -1459,7 +1547,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           </div>
         )}
-        {activeTab === "dashboard" && dashboardView === "sales" && (
+        {!dataUnavailable && activeTab === "dashboard" && dashboardView === "sales" && (
           <div className="dashboard-tab-view animate-fade-in">
             {/* Sales window KPI cards */}
             <div className="sales-mini-grid">
@@ -1546,13 +1634,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 ) : (
                   salesReport.repeat.top.map((buyer) => (
                     <div key={buyer.key} className="repeat-row">
-                      <div className="repeat-avatar">
-                        {(buyer.name || "M").charAt(0).toUpperCase()}
-                      </div>
+                      <div className="repeat-avatar">{displayInitial(buyer.name)}</div>
                       <div className="repeat-info">
-                        <div className="repeat-name">{buyer.name}</div>
+                        <div className="repeat-name">{displayValue(buyer.name)}</div>
                         <div className="repeat-meta">
-                          {buyer.email || "no email"} • {buyer.orders} orders
+                          {displayValue(buyer.email)} • {buyer.orders} orders
                         </div>
                       </div>
                       <span className="topseller-rev">{formatCurrency(buyer.spent)}</span>
@@ -1600,7 +1686,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {/* TAB 2: USERS MANAGEMENT (Add, View, Edit, Roles)   */}
         {/* ================================================== */}
-        {activeTab === "users" && (
+        {!dataUnavailable && activeTab === "users" && (
           <div className="users-tab-view animate-fade-in">
             {/* SEARCH & FILTERS CONTROL BAR */}
             <div className="users-control-toolbar">
@@ -1718,17 +1804,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           <td>
                             <div className="user-profile-cell">
                               <div className={`user-table-avatar ${userItem.role}`}>
-                                {userItem.full_name
-                                  ? userItem.full_name.charAt(0).toUpperCase()
-                                  : userItem.email
-                                    ? userItem.email.charAt(0).toUpperCase()
-                                    : "U"}
+                                {displayInitial(userItem.full_name || userItem.email)}
                               </div>
                               <div className="user-meta-column">
                                 <span className="user-full-name">
-                                  {userItem.full_name || "Unnamed User"}
+                                  {displayValue(userItem.full_name)}
                                 </span>
-                                <span className="user-email-text">{userItem.email}</span>
+                                <span className="user-email-text">
+                                  {displayValue(userItem.email)}
+                                </span>
                               </div>
                             </div>
                           </td>
@@ -1745,28 +1829,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                               {userItem.role === "vendor" ? (
                                 <span className="store-name-tag">
                                   <Store size={12} />
-                                  {userItem.store_name || "Seller Store"}
+                                  {displayValue(userItem.store_name)}
                                 </span>
                               ) : (
-                                <span className="plan-name-tag">
-                                  {userItem.plan ||
-                                    (userItem.role === "super_admin" || userItem.role === "admin"
-                                      ? "Enterprise"
-                                      : "Basic")}
-                                </span>
+                                <span className="plan-name-tag">{displayValue(userItem.plan)}</span>
                               )}
                             </div>
                           </td>
 
                           {/* Joined Date */}
                           <td className="text-muted text-sm font-mono">
-                            {userItem.created_at
-                              ? new Date(userItem.created_at).toLocaleDateString("en-US", {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                })
-                              : "Active"}
+                            {formatAdminDate(userItem.created_at)}
                           </td>
 
                           {/* ACTION BUTTONS (VIEW, EDIT, ROLE, PASSWORD, DELETE) */}
@@ -1851,7 +1924,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {/* TAB 3: PRODUCT CATALOG (list, add, edit, feature)  */}
         {/* ================================================== */}
-        {activeTab === "products" && (
+        {!dataUnavailable && activeTab === "products" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="products-toolbar">
               <div className="search-input-wrapper">
@@ -1965,7 +2038,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           placeholder="Optional"
                           value={productForm.original_price}
                           onChange={(e) =>
-                            setProductForm((prev) => ({ ...prev, original_price: e.target.value }))
+                            setProductForm((prev) => ({
+                              ...prev,
+                              original_price: e.target.value,
+                            }))
                           }
                         />
                       </div>
@@ -1975,7 +2051,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           type="number"
                           min="0"
                           step="1"
-                          placeholder="15"
+                          placeholder="e.g. 25"
                           value={productForm.stock}
                           onChange={(e) =>
                             setProductForm((prev) => ({ ...prev, stock: e.target.value }))
@@ -2074,29 +2150,35 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                                   />
                                 ) : null}
                                 <div>
-                                  <div className="product-title-text">{prod.title}</div>
-                                  <div className="product-sku-text">
-                                    {prod.sku || String(prod.id).substring(0, 8)}
+                                  <div className="product-title-text">
+                                    {displayValue(prod.title)}
                                   </div>
+                                  <div className="product-sku-text">{displayValue(prod.sku)}</div>
                                 </div>
                               </div>
                             </td>
-                            <td>{prod.category}</td>
+                            <td>{displayValue(prod.category)}</td>
                             <td className="font-bold">
-                              {formatCurrency(prod.price)}
+                              {money(prod.price)}
                               {prod.original_price ? (
                                 <span className="text-muted text-sm">
                                   {" "}
-                                  <s>{formatCurrency(prod.original_price)}</s>
+                                  <s>{money(prod.original_price)}</s>
                                 </span>
                               ) : null}
                             </td>
                             <td>
-                              <span
-                                className={`stock-pill ${stockCount <= 0 ? "out" : stockCount <= 5 ? "low" : "ok"}`}
-                              >
-                                {stockCount} in stock
-                              </span>
+                              {prod.stock === null ||
+                              prod.stock === undefined ||
+                              String(prod.stock).trim() === "" ? (
+                                EMPTY
+                              ) : (
+                                <span
+                                  className={`stock-pill ${stockCount <= 0 ? "out" : isLowStock(stockCount) ? "low" : "ok"}`}
+                                >
+                                  {stockCount} in stock
+                                </span>
+                              )}
                             </td>
                             <td>
                               <button
@@ -2151,15 +2233,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {/* TAB 4: ORDERS PIPELINE (filter + fulfillment)      */}
         {/* ================================================== */}
-        {activeTab === "orders" && (
+        {!dataUnavailable && activeTab === "orders" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="report-pills-row">
               {[
                 ["all", "All Orders", orders.length],
-                ["pending", "Pending", salesReport.statuses.pending],
-                ["processing", "Processing", salesReport.statuses.processing],
-                ["shipped", "Shipped", salesReport.statuses.shipped],
-                ["delivered", "Delivered", salesReport.statuses.delivered],
+                ...ORDER_STATUSES.map((status) => [
+                  status,
+                  ORDER_STATUS_LABELS[status],
+                  salesReport.statuses[status],
+                ]),
               ].map(([value, label, count]) => (
                 <button
                   key={value}
@@ -2201,33 +2284,31 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       filteredOrders.slice(0, 20).map((order, idx) => (
                         <tr key={order.id || idx}>
-                          <td className="font-mono text-primary font-bold">
-                            #{String(order.id).substring(0, 8)}
-                          </td>
+                          <td className="font-mono text-primary font-bold">{orderRef(order)}</td>
                           <td>
                             <div className="customer-info-cell">
                               <span className="customer-name">
-                                {order.customer_name || "Marvel Shopper"}
+                                {displayValue(order.customer_name)}
                               </span>
                               <span className="customer-email">
-                                {order.customer_email || "user@marvel.com"}
+                                {displayValue(order.customer_email)}
                               </span>
                             </div>
                           </td>
-                          <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
-                          <td className="font-bold text-emerald">
-                            {formatCurrency(order.total_amount)}
-                          </td>
                           <td>
-                            <span className={`status-pill ${order.status || "processing"}`}>
+                            {Array.isArray(order.items) ? `${order.items.length} items` : EMPTY}
+                          </td>
+                          <td className="font-bold text-emerald">{money(order.total_amount)}</td>
+                          <td>
+                            <span
+                              className={`status-pill ${String(order.status || "").toLowerCase()}`}
+                            >
                               <span className="status-dot"></span>
-                              {order.status || "Processing"}
+                              {displayValue(order.status)}
                             </span>
                           </td>
                           <td className="text-muted text-sm">
-                            {order.created_at
-                              ? new Date(order.created_at).toLocaleDateString()
-                              : "Today"}
+                            {formatAdminDate(order.created_at)}
                           </td>
                           <td className="text-right">
                             {order.status === "processing" || order.status === "shipped" ? (
@@ -2255,7 +2336,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {/* TAB 5: CUSTOMER INSIGHTS (all + repeat buyers)     */}
         {/* ================================================== */}
-        {activeTab === "customers" && (
+        {!dataUnavailable && activeTab === "customers" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="report-pills-row">
               <button
@@ -2302,22 +2383,18 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           <td>
                             <div className="user-profile-cell">
                               <div className="user-table-avatar user">
-                                {(cust.name || "M").charAt(0).toUpperCase()}
+                                {displayInitial(cust.name)}
                               </div>
                               <div className="user-meta-column">
-                                <span className="user-full-name">{cust.name}</span>
-                                <span className="user-email-text">
-                                  {cust.email || "no email on file"}
-                                </span>
+                                <span className="user-full-name">{displayValue(cust.name)}</span>
+                                <span className="user-email-text">{displayValue(cust.email)}</span>
                               </div>
                             </div>
                           </td>
                           <td className="font-bold">{cust.orders}</td>
                           <td className="font-bold text-emerald">{formatCurrency(cust.spent)}</td>
                           <td className="text-muted text-sm">
-                            {cust.lastOrderAt
-                              ? new Date(cust.lastOrderAt).toLocaleDateString()
-                              : "Never"}
+                            {formatAdminDate(cust.lastOrderAt)}
                           </td>
                           <td>
                             {cust.repeat ? (
@@ -2519,15 +2596,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               {/* Profile Card Header */}
               <div className="view-profile-hero">
                 <div className={`view-hero-avatar ${viewingUser.role}`}>
-                  {viewingUser.full_name
-                    ? viewingUser.full_name.charAt(0).toUpperCase()
-                    : viewingUser.email
-                      ? viewingUser.email.charAt(0).toUpperCase()
-                      : "U"}
+                  {displayInitial(viewingUser.full_name || viewingUser.email)}
                 </div>
                 <div className="view-hero-info">
-                  <h4 className="hero-full-name">{viewingUser.full_name || "Unnamed User"}</h4>
-                  <p className="hero-email">{viewingUser.email}</p>
+                  <h4 className="hero-full-name">{displayValue(viewingUser.full_name)}</h4>
+                  <p className="hero-email">{displayValue(viewingUser.email)}</p>
                   <div className="hero-badges-row">
                     {renderRoleBadge(viewingUser.role)}
                     {renderStatusBadge(viewingUser.status)}
@@ -2560,28 +2633,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
                 <div className="meta-info-item">
                   <span className="meta-label">REGISTERED DATE</span>
-                  <span className="meta-value">
-                    {viewingUser.created_at
-                      ? new Date(viewingUser.created_at).toLocaleString()
-                      : "Live Profile"}
-                  </span>
+                  <span className="meta-value">{formatAdminDate(viewingUser.created_at)}</span>
                 </div>
 
                 <div className="meta-info-item">
                   <span className="meta-label">SUBSCRIPTION PLAN</span>
-                  <span className="meta-value">{viewingUser.plan || "Enterprise"}</span>
+                  <span className="meta-value">{displayValue(viewingUser.plan)}</span>
                 </div>
 
                 <div className="meta-info-item">
                   <span className="meta-label">BILLING METHOD</span>
-                  <span className="meta-value">{viewingUser.billing || "Auto Debit"}</span>
+                  <span className="meta-value">{displayValue(viewingUser.billing)}</span>
                 </div>
 
                 {viewingUser.role === "vendor" && (
                   <div className="meta-info-item full-width">
                     <span className="meta-label">VENDOR STORE NAME</span>
                     <span className="meta-value font-bold text-emerald">
-                      {viewingUser.store_name || "Seller Storefront"}
+                      {displayValue(viewingUser.store_name)}
                     </span>
                   </div>
                 )}
@@ -2736,33 +2805,51 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
               )}
 
+              {/* Plan and billing are derived by the server from the account
+                  role (server/routes/users.js → formatUserProfile) and are not
+                  stored from the client. The console only shows what the API
+                  returned; it never offers a value the server would overwrite. */}
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label">Plan Tier</label>
+                  <label className="form-label" htmlFor="edit-user-plan">
+                    Plan Tier
+                  </label>
                   <select
+                    id="edit-user-plan"
                     value={editUserForm.plan}
-                    onChange={(e) => setEditUserForm((prev) => ({ ...prev, plan: e.target.value }))}
+                    disabled
+                    aria-describedby="edit-user-plan-hint"
                     className="form-select-field"
                   >
-                    <option value="Basic">Basic</option>
-                    <option value="Team">Team</option>
-                    <option value="Enterprise">Enterprise</option>
+                    <option value="">{EMPTY}</option>
+                    {editUserForm.plan ? (
+                      <option value={editUserForm.plan}>{editUserForm.plan}</option>
+                    ) : null}
                   </select>
+                  <p id="edit-user-plan-hint" className="form-field-hint">
+                    Derived by the server from the account role — read only.
+                  </p>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Billing Method</label>
+                  <label className="form-label" htmlFor="edit-user-billing">
+                    Billing Method
+                  </label>
                   <select
+                    id="edit-user-billing"
                     value={editUserForm.billing}
-                    onChange={(e) =>
-                      setEditUserForm((prev) => ({ ...prev, billing: e.target.value }))
-                    }
+                    disabled
+                    aria-describedby="edit-user-billing-hint"
                     className="form-select-field"
                   >
-                    <option value="Auto Debit">Auto Debit</option>
-                    <option value="Manual - Paypal">Manual - Paypal</option>
-                    <option value="Manual - Cash">Manual - Cash</option>
+                    <option value="">{EMPTY}</option>
+                    {editUserForm.billing ? (
+                      <option value={editUserForm.billing}>{editUserForm.billing}</option>
+                    ) : null}
                   </select>
+                  <p id="edit-user-billing-hint" className="form-field-hint">
+                    Derived by the server from the account role — read only.
+                  </p>
                 </div>
               </div>
 

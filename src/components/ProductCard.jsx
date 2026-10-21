@@ -3,6 +3,16 @@ import { Card, Badge, Button, Rating, ProductPrice, SimpleTooltip, useToast } fr
 import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textOrNull(value) {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
 export function ProductCard({ product, onQuickView, onNavigate }) {
   const [wishlisted, setWishlisted] = useState(false);
   const [cartState, setCartState] = useState("idle"); // idle | loading | added
@@ -10,13 +20,14 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
   const { addToast } = useToast();
   const { addItem } = useCart();
 
-  const title = product?.title || product?.name || "Product";
-  const image = product?.image_url || product?.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
-  const rating = product?.rating || 4.8;
-  const reviews = product?.reviews_count || product?.reviews || 24;
-  const price = product?.price || 0;
-  const originalPrice = product?.original_price || product?.originalPrice;
-  const desc = product?.description || product?.desc;
+  const title = textOrNull(product?.title) || textOrNull(product?.name) || "Product";
+  const image = textOrNull(product?.image_url) || textOrNull(product?.image);
+  const rating = numberOrNull(product?.rating);
+  const reviews = numberOrNull(product?.reviews_count ?? product?.reviews);
+  const price = numberOrNull(product?.price);
+  const originalPrice = numberOrNull(product?.original_price ?? product?.originalPrice);
+  const desc = textOrNull(product?.description) || textOrNull(product?.desc);
+  const offerText = textOrNull(product?.offer_text);
 
   const handleWishlist = (e) => {
     e.stopPropagation();
@@ -57,16 +68,10 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     }
   };
 
-  // Genuine promotional offer detection (only shown on select items with offer/discount)
-  const discountPercent = product?.discount ? Number(product.discount) : (originalPrice && Number(originalPrice) > Number(price) ? Math.round(((Number(originalPrice) - Number(price)) / Number(originalPrice)) * 100) : null);
-  
-  const hasOffer = Boolean(
-    product?.is_on_sale ||
-    product?.has_offer ||
-    (discountPercent && discountPercent >= 20 && (product?.is_featured || (typeof product?.id === 'number' && product.id % 3 === 0) || (typeof product?.id === 'string' && product.id.charCodeAt(product.id.length - 1) % 3 === 0)))
-  );
-
-  const offerRibbonText = discountPercent ? `${discountPercent}% OFF` : (product?.offer_text || "SPECIAL DEAL");
+  const discountPercent =
+    price !== null && originalPrice !== null && originalPrice > price
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : null;
 
   return (
     <Card
@@ -79,12 +84,10 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       aria-label={onNavigate ? `View ${title}` : undefined}
       style={{ cursor: onNavigate ? "pointer" : "default" }}
     >
-      {/* 45-Degree Slanted Gift Wrapper Offer Ribbon on Left Side (Only on Offer Items) */}
-      {hasOffer && (
+      {/* Offer ribbon: only the stored `offer_text`, never a generated deal. */}
+      {offerText && (
         <div className="product-card-offer-ribbon-left">
-          <span className="card-ribbon-text">
-            🎁 {offerRibbonText}
-          </span>
+          <span className="card-ribbon-text">{offerText}</span>
         </div>
       )}
 
@@ -96,14 +99,20 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
 
       {/* Image Container with aspect ratio 1/1 & skeleton shimmer */}
       <div className="product-img-container">
-        {!imageLoaded && <div className="product-img-skeleton" />}
-        <img
-          src={image}
-          alt={title}
-          loading="lazy"
-          onLoad={() => setImageLoaded(true)}
-          className={`product-img-element ${imageLoaded ? "is-loaded" : "is-loading"}`}
-        />
+        {image ? (
+          <>
+            {!imageLoaded && <div className="product-img-skeleton" />}
+            <img
+              src={image}
+              alt={title}
+              loading="lazy"
+              onLoad={() => setImageLoaded(true)}
+              className={`product-img-element ${imageLoaded ? "is-loaded" : "is-loading"}`}
+            />
+          </>
+        ) : (
+          <div className="product-img-skeleton" aria-hidden="true" />
+        )}
 
         {/* Quick View Button on Hover */}
         <button
@@ -142,17 +151,17 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
         </div>
         {desc && <div className="product-desc">{desc}</div>}
 
-        <div className="product-rating-row">
-          <Rating rating={rating} count={reviews} />
-        </div>
+        {rating !== null && (
+          <div className="product-rating-row">
+            <Rating rating={rating} count={reviews !== null ? reviews : undefined} />
+          </div>
+        )}
 
-        <div className="product-price-row">
-          <ProductPrice
-            price={price}
-            originalPrice={originalPrice}
-            discount={product.discount}
-          />
-        </div>
+        {price !== null && (
+          <div className="product-price-row">
+            <ProductPrice price={price} originalPrice={originalPrice} discount={discountPercent} />
+          </div>
+        )}
 
         <div className="product-actions">
           <Button

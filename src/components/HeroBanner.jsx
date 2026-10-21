@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useContent } from "../context/ContentContext";
+import { useSettings } from "../context/SettingsContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
@@ -19,22 +20,31 @@ function toRenderSlide(row) {
   };
 }
 
-/** The only static fallback kept on the storefront: the homepage is never blank. */
-const FALLBACK_SLIDE = {
-  badge: "⚡ SMART TECH SALE",
-  title: "Upgrade Your Everyday",
-  subtitle: "Next-gen gadgets at prices that don't break the bank. Up to 50% OFF.",
-  btn: "Shop Now",
-  btnPath: "/products",
-  bgImage: "",
-  image: "",
-  bg: "linear-gradient(135deg, #091322 0%, #172a45 100%)",
-  price: "",
-};
+/**
+ * The rescue slide is backend-owned: `settings.hero_fallback` carries the
+ * badge, copy, CTA and gradient. An unconfigured fallback resolves to `null`,
+ * so the page renders nothing rather than a hardcoded promotion.
+ */
+function toFallbackSlide(row) {
+  if (!row || typeof row !== "object" || !row.title) return null;
+  return {
+    badge: row.badge || "",
+    title: row.title,
+    subtitle: row.subtitle || "",
+    btn: row.btn_text || "Shop Now",
+    btnPath: row.btn_path || "/products",
+    bgImage: "",
+    image: "",
+    bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+    price: "",
+  };
+}
 
 export default function HeroBanner({ onNavigate }) {
   const { hero, loading, errors } = useContent();
+  const { settings } = useSettings();
   const heroError = errors?.hero ?? null;
+  const fallbackSlide = toFallbackSlide(settings?.hero_fallback);
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(
     () =>
@@ -46,11 +56,12 @@ export default function HeroBanner({ onNavigate }) {
     .filter((slide) => slide && slide.is_active !== false && slide.title)
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
     .map(toRenderSlide);
-  // The static slide is a rescue, not a placeholder: it appears only when the
+  // The backend slide is a rescue, not a placeholder: it appears only when the
   // hero fetch failed or the load settled with nothing, never while loading.
   const settled = !loading;
-  const showFallback = heroError !== null || (settled && liveSlides.length === 0);
-  const slides = liveSlides.length > 0 ? liveSlides : showFallback ? [FALLBACK_SLIDE] : [];
+  const showFallback =
+    fallbackSlide !== null && (heroError !== null || (settled && liveSlides.length === 0));
+  const slides = liveSlides.length > 0 ? liveSlides : showFallback ? [fallbackSlide] : [];
 
   useEffect(() => {
     setCurrent((c) => (c >= slides.length ? 0 : c));
@@ -113,7 +124,7 @@ export default function HeroBanner({ onNavigate }) {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {heroError && (
+      {heroError && fallbackSlide && (
         <div
           role="status"
           style={{

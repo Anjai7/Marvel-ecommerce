@@ -1,372 +1,364 @@
 /**
- * Dynamically builds a rich, fully populated product details object for ProductViewPage
- * based on the actual database product record.
+ * Adapter from `GET /api/products/:id/details` to the product-page view model.
+ *
+ * Every value here is copied from the payload. When the API has nothing for a
+ * field the field is `null` (or an empty array), never a made-up placeholder:
+ * no default price, rating, review count, image, brand, SKU, colour, size,
+ * EMI plan, bank offer, coupon, highlight, specification, dimension, material,
+ * care instruction, certification, in-box item, delivery promise, warranty,
+ * seller, user guide or review.
  */
 
-export function buildDynamicProductDetails(rawProduct) {
-  if (!rawProduct) return null;
+/** A trimmed, non-empty string, or null. */
+function text(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
 
-  const id = rawProduct.id;
-  const name = rawProduct.title || rawProduct.name || "Premium Tech Product";
-  const category = rawProduct.category || "Electronics";
-  const price = parseFloat(rawProduct.price) || 99.99;
-  const originalPrice =
-    parseFloat(rawProduct.original_price || rawProduct.originalPrice) || Math.round(price * 1.28);
-  const discount = Math.max(5, Math.round(((originalPrice - price) / originalPrice) * 100));
-  const rating = parseFloat(rawProduct.rating) || 4.8;
-  const reviews = parseInt(rawProduct.reviews_count || rawProduct.reviews) || 128;
-  const stock = parseInt(rawProduct.stock) || 15;
-  const inStock = stock > 0;
-  const mainImage =
-    rawProduct.image_url ||
-    rawProduct.image ||
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800";
-  const brand =
-    rawProduct.manufacturer_name || rawProduct.vendor_name || name.split(" ")[0] || "Marvel Tech";
-  const sku =
-    rawProduct.sku ||
-    rawProduct.model_name ||
-    `MRV-${String(name.replace(/[^a-zA-Z0-9]/g, "").substring(0, 6)).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+/** A finite number, or null. Accepts the numeric strings PostgREST returns. */
+function amount(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-  // Multi-angle media gallery based on primary image
-  const media = [
-    { type: "image", url: mainImage, thumb: mainImage },
-    { type: "image", url: `${mainImage}&sat=-10`, thumb: mainImage },
-    { type: "image", url: `${mainImage}&exp=-5`, thumb: mainImage },
-    { type: "image", url: `${mainImage}&sharp=10`, thumb: mainImage },
-  ];
+/**
+ * A JSONB column arrives parsed. Older rows may store JSON as a string, so a
+ * string that clearly holds JSON is parsed; anything else is returned as-is.
+ */
+function jsonValue(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[") && !trimmed.startsWith("{")) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+}
 
-  // Colors
-  const colors = [
-    { name: "Midnight Black", hex: "#1e293b", available: true },
-    { name: "Silver Frost", hex: "#e2e8f0", available: true },
-    { name: "Ocean Navy", hex: "#1e40af", available: true },
-    { name: "Titanium Gold", hex: "#d97706", available: inStock },
-  ];
+/** A list of display strings from a JSONB column holding strings or objects. */
+export function textList(value) {
+  const data = jsonValue(value);
+  if (data === null || data === undefined) return [];
+  const rows = Array.isArray(data) ? data : [data];
+  return rows
+    .map((row) => {
+      if (typeof row === "string") return text(row);
+      if (row && typeof row === "object") {
+        return text(row.label ?? row.title ?? row.name ?? row.text ?? row.value);
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
 
-  // Sizes / Variants
-  const sizes = ["Standard", "Plus", "Pro Max"];
+/** `free_shipping` / `freeShipping` style lookup. */
+function pick(source, ...keys) {
+  for (const key of keys) {
+    if (source[key] !== undefined && source[key] !== null) return source[key];
+  }
+  return null;
+}
 
-  // EMI Options (4 items so index 0, 1, 2, 3 all exist safely)
-  const emiOptions = [
-    { months: 3, emi: Math.round(price / 3), interest: "No Cost" },
-    { months: 6, emi: Math.round(price / 6), interest: "No Cost" },
-    { months: 9, emi: Math.round((price * 1.03) / 9), interest: "3% Standard" },
-    { months: 12, emi: Math.round((price * 1.05) / 12), interest: "No Cost" },
-  ];
+function labelFromKey(key) {
+  return key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (first) => first.toUpperCase());
+}
 
-  const offerDetails = {
-    bankOffers: [
-      {
-        bank: "HDFC Bank",
-        offer: "10% Instant Discount up to ₹50 on Credit Card EMI",
-        code: "HDFC10",
-      },
-      { bank: "Chase Sapphire", offer: "5% Unlimited Cashback on Electronics", code: "CHASE5" },
-      { bank: "American Express", offer: "Extra ₹25 Off on orders above ₹150", code: "AMEX25" },
-    ],
-    couponOffers: [
-      { code: "MARVEL10", desc: "Extra 10% Off for platform members" },
-      { code: "FIRSTBUY", desc: "Flat ₹15 Off on first order" },
-    ],
-    emiOptions,
-  };
+function toPair(row) {
+  if (!row || typeof row !== "object") return null;
+  const label = text(row.label ?? row.name ?? row.key ?? row.title);
+  const value = text(row.value ?? row.text ?? row.detail);
+  return label && value ? { label, value } : null;
+}
 
-  const deliveryInfo = {
-    freeShipping: true,
-    estimatedDays: "2-3 Business Days",
-    expressAvailable: true,
-    returnDays: 14,
-    warranty: "2 Years Full Marvel Protection",
-  };
+function toPairs(source) {
+  const data = jsonValue(source);
+  if (!data) return [];
+  if (Array.isArray(data)) return data.map(toPair).filter(Boolean);
+  if (typeof data !== "object") return [];
+  return Object.entries(data)
+    .map(([key, value]) => {
+      const rendered = text(value);
+      return rendered ? { label: labelFromKey(key), value: rendered } : null;
+    })
+    .filter(Boolean);
+}
 
-  const seller = {
-    name: rawProduct.vendor_name || "TechGear Official Store",
-    rating: 4.9,
-    soldBy: rawProduct.vendor_name || "Verified Marvel Seller",
-    verified: true,
-  };
+/** `specifications` JSONB → `[{ category, items: [{ label, value }] }]`. */
+export function specificationGroups(value) {
+  const data = jsonValue(value);
+  if (!data) return [];
 
-  // Category-specific dynamic highlights & specs
-  let highlights = [];
-  let specifications =
-    Array.isArray(rawProduct.specifications) && rawProduct.specifications.length > 0
-      ? rawProduct.specifications
-      : [];
-  let dimensions =
-    typeof rawProduct.dimensions === "object" &&
-    rawProduct.dimensions &&
-    Object.keys(rawProduct.dimensions).length > 0
-      ? rawProduct.dimensions
-      : { height: "18.5 cm", width: "16.0 cm", depth: "7.2 cm", weight: "245 g" };
-
-  if (specifications.length === 0) {
-    if (
-      category.toLowerCase().includes("audio") ||
-      name.toLowerCase().includes("headphone") ||
-      name.toLowerCase().includes("earbud")
-    ) {
-      highlights = [
-        "Active Hybrid Noise Cancellation (35dB reduction with transparency mode)",
-        "High-Res Audio certification with custom low-distortion titanium drivers",
-        "Up to 40 hours total battery life with ultra-fast USB-C charge (10 min -> 4 hrs)",
-        "Multipoint dual-device Bluetooth connectivity for seamless laptop and phone switching",
-        "Ergonomic acoustic dampening cushions with breathable protein memory foam",
-        "AI beamforming quad-microphone array for crystal clear phone and video calls",
-      ];
-      specifications = [
-        {
-          category: "Acoustics & Audio",
-          items: [
-            { label: "Driver Size", value: "40mm Titanium Dynamic" },
-            { label: "Frequency Range", value: "10Hz - 40,000Hz" },
-            { label: "ANC Reduction", value: "35dB Hybrid Active" },
-            { label: "Audio Codecs", value: "LDAC, AAC, SBC" },
-          ],
-        },
-        {
-          category: "Battery & Power",
-          items: [
-            { label: "Playtime (ANC On)", value: "32 Hours" },
-            { label: "Playtime (ANC Off)", value: "45 Hours" },
-            { label: "Charging Time", value: "90 Minutes" },
-            { label: "Port", value: "USB Type-C" },
-          ],
-        },
-        {
-          category: "Connectivity",
-          items: [
-            { label: "Bluetooth Version", value: "5.3 LE" },
-            { label: "Range", value: "Up to 25m (82ft)" },
-            { label: "Multi-point", value: "Yes (2 Devices)" },
-            { label: "Wired Option", value: "3.5mm Gold-Plated Jack" },
-          ],
-        },
-      ];
-      dimensions = { height: "19.2 cm", width: "16.5 cm", depth: "7.8 cm", weight: "250 g" };
-    } else if (
-      category.toLowerCase().includes("wearable") ||
-      name.toLowerCase().includes("watch") ||
-      name.toLowerCase().includes("band")
-    ) {
-      highlights = [
-        "Comprehensive biometric health suite: SpO2, ECG, Heart Rate & Stress Monitor",
-        "Dual-band 5-satellite GPS precision navigation and route breadcrumbs",
-        "5ATM / 50m water resistance rating for swimming and high-speed water sports",
-        "Up to 14 days ultra-long endurance battery life on single magnetic charge",
-        "Smart notification sync, custom watchfaces, and voice assistant integration",
-      ];
-      specifications = [
-        {
-          category: "Display & Build",
-          items: [
-            { label: "Display Size", value: '1.43" AMOLED 466x466' },
-            { label: "Glass", value: "Sapphire Crystal Glass" },
-            { label: "Chassis", value: "Aerospace Titanium Alloy" },
-            { label: "Water Resistance", value: "5ATM (50 Meters)" },
-          ],
-        },
-        {
-          category: "Sensors & Health",
-          items: [
-            { label: "Heart Rate", value: "Optical 8-Channel PPG" },
-            { label: "Blood Oxygen", value: "Continuous SpO2" },
-            { label: "GPS", value: "Dual-Frequency L1/L5" },
-            { label: "Sleep Tracking", value: "REM & Sleep Stage AI" },
-          ],
-        },
-        {
-          category: "Battery",
-          items: [
-            { label: "Typical Usage", value: "12 - 14 Days" },
-            { label: "GPS Active", value: "36 Continuous Hours" },
-            { label: "Charging", value: "Fast Magnetic Wireless" },
-          ],
-        },
-      ];
-      dimensions = { height: "4.6 cm", width: "4.6 cm", depth: "1.2 cm", weight: "48 g" };
-    } else {
-      highlights = [
-        rawProduct.description ||
-          "Engineered with precision aerospace materials for maximum durability and peak performance.",
-        "Universal plug-and-play compatibility across Windows, macOS, iOS, and Android.",
-        "Eco-certified sustainable packaging and low-power standby efficiency.",
-        "Backed by 2-year manufacturer warranty with dedicated 24/7 priority customer care.",
-        "Tested and verified by Marvel platform quality moderation team.",
-      ];
-      specifications = [
-        {
-          category: "General Specifications",
-          items: [
-            { label: "Category", value: category },
-            { label: "Model SKU", value: sku },
-            { label: "Condition", value: "Brand New (Sealed)" },
-            { label: "Warranty", value: "2 Years Complete Coverage" },
-          ],
-        },
-        {
-          category: "Performance",
-          items: [
-            { label: "Power Source", value: "Smart Power Management" },
-            { label: "Efficiency Rating", value: "Grade A+ Energy Star" },
-            { label: "Connectivity", value: "High-Speed Interface" },
-          ],
-        },
-      ];
-    }
+  const looksGrouped =
+    Array.isArray(data) &&
+    data.some((row) => row && typeof row === "object" && Array.isArray(row.items));
+  if (looksGrouped) {
+    return data
+      .map((group) => ({
+        category: text(group.category ?? group.title ?? group.name),
+        items: toPairs(group.items),
+      }))
+      .filter((group) => group.items.length > 0);
   }
 
-  const materials =
-    Array.isArray(rawProduct.materials) && rawProduct.materials.length > 0
-      ? rawProduct.materials
-      : [
-          { part: "Chassis / Body", material: "Aerospace Grade Aluminum & Recycled Polymers" },
-          { part: "Contact Surfaces", material: "Skin-Safe Soft-Touch Coating" },
-          { part: "Internal Shielding", material: "Copper Electro-Magnetic Interference Layer" },
-        ];
+  const items = toPairs(data);
+  return items.length > 0 ? [{ category: null, items }] : [];
+}
 
-  const careInstructions =
-    Array.isArray(rawProduct.care_instructions) && rawProduct.care_instructions.length > 0
-      ? rawProduct.care_instructions
-      : [
-          "Wipe clean with a soft, dry micro-fiber cloth after extended usage.",
-          "Avoid exposing to extreme temperatures exceeding 60°C or direct prolonged sunlight.",
-          "Store in the included travel protection pouch when not in active use.",
-          "Do not immerse in chemical solvents, harsh detergents, or saline water.",
-        ];
+/** `dimensions` JSONB → `[{ label, value }]`. */
+export function dimensionRows(value) {
+  return toPairs(value);
+}
 
+/** `materials` JSONB → `[{ part, material }]`. */
+export function materialRows(value) {
+  const data = jsonValue(value);
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row) => {
+      if (typeof row === "string") return { part: null, material: text(row) };
+      if (!row || typeof row !== "object") return null;
+      const part = text(row.part ?? row.label ?? row.name);
+      const material = text(row.material ?? row.value ?? row.text);
+      return part || material ? { part, material } : null;
+    })
+    .filter(Boolean)
+    .filter((row) => row.material);
+}
+
+/**
+ * `delivery_info` JSONB → `{ estimatedDays, lines }`.
+ *
+ * `lines` holds only the promises the stored value actually makes. Nothing is
+ * assumed when the column is empty.
+ */
+export function deliverySummary(value) {
+  const data = jsonValue(value);
+  if (!data) return { estimatedDays: null, lines: [] };
+
+  if (Array.isArray(data)) {
+    return { estimatedDays: null, lines: textList(data) };
+  }
+  if (typeof data !== "object") return { estimatedDays: null, lines: [] };
+
+  const estimatedDays = text(pick(data, "estimated_days", "estimatedDays", "eta", "delivery_time"));
+  const lines = [];
+
+  if (pick(data, "free_shipping", "freeShipping") === true) lines.push("Free shipping");
+  if (pick(data, "express_available", "expressAvailable") === true) {
+    lines.push("Express delivery available");
+  }
+
+  const returnDays = amount(pick(data, "return_days", "returnDays"));
+  if (returnDays !== null) lines.push(`${returnDays}-day returns`);
+  else if (pick(data, "returns") === true) lines.push("Returns accepted");
+
+  lines.push(...textList(pick(data, "notes", "lines", "details")));
+
+  return { estimatedDays, lines };
+}
+
+/** `user_guide` JSONB → `{ url, version, fileSize, steps }`, or null. */
+export function userGuideDetails(value) {
+  const data = jsonValue(value);
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+
+  const url = text(pick(data, "url", "pdf_url", "file_url", "href"));
+  const version = text(pick(data, "version", "manual_version", "manualVersion"));
+  const fileSize = text(pick(data, "file_size", "fileSize", "size"));
+  const steps = (Array.isArray(data.steps) ? data.steps : [])
+    .map((step, index) => {
+      if (typeof step === "string") {
+        return text(step) ? { step: index + 1, title: text(step), desc: null } : null;
+      }
+      if (!step || typeof step !== "object") return null;
+      const title = text(step.title ?? step.name ?? step.label);
+      const desc = text(step.desc ?? step.description ?? step.text);
+      if (!title && !desc) return null;
+      return { step: amount(step.step) ?? index + 1, title, desc };
+    })
+    .filter(Boolean);
+
+  if (!url && !version && !fileSize && steps.length === 0) return null;
+  return { url, version, fileSize, steps };
+}
+
+/** Offers from the API grouped by `kind`, preserving the server's order. */
+export function groupOffers(offers) {
+  const groups = { emi: [], bank: [], coupon: [] };
+  if (!Array.isArray(offers)) return groups;
+
+  for (const offer of offers) {
+    if (!offer || typeof offer !== "object") continue;
+    const kind = offer.kind;
+    if (!Object.hasOwn(groups, kind)) continue;
+    groups[kind].push({
+      title: text(offer.title),
+      bank: text(offer.bank),
+      code: text(offer.code),
+      description: text(offer.description),
+      months: amount(offer.months),
+      amount: amount(offer.amount),
+      interest: text(offer.interest),
+    });
+  }
+  return groups;
+}
+
+/** Stored reviews → summary with one row per star that occurs. */
+export function reviewSummary(reviews) {
+  const source = reviews && typeof reviews === "object" ? reviews : {};
+  const total = amount(source.total) ?? 0;
+  const overall = amount(source.overall);
+  const raw = source.breakdown && typeof source.breakdown === "object" ? source.breakdown : {};
+
+  const breakdown = Object.entries(raw)
+    .map(([stars, count]) => ({ stars: Number(stars), count: amount(count) ?? 0 }))
+    .filter((row) => Number.isInteger(row.stars) && row.stars >= 1 && row.stars <= 5)
+    .map((row) => ({
+      ...row,
+      percent: total > 0 ? Math.round((row.count / total) * 100) : 0,
+    }))
+    .sort((a, b) => b.stars - a.stars);
+
+  return { overall, total, breakdown };
+}
+
+function mapMedia(media) {
+  if (!Array.isArray(media)) return [];
+  return media
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const url = text(item.url);
+      if (!url) return null;
+      return {
+        id: item.id ?? null,
+        url,
+        type: "image",
+        thumb: url,
+        kind: text(item.kind),
+      };
+    })
+    .filter(Boolean);
+}
+
+function mapColors(colors) {
+  if (!Array.isArray(colors)) return [];
+  return colors
+    .map((color) => {
+      const label = text(color?.label ?? color?.name);
+      return label ? { id: color.id ?? null, label, value: text(color.value) } : null;
+    })
+    .filter(Boolean);
+}
+
+function mapSizes(sizes) {
+  if (!Array.isArray(sizes)) return [];
+  return sizes
+    .map((size) => {
+      const label = text(size?.label ?? size?.name);
+      return label ? { id: size.id ?? null, label, value: text(size.value) } : null;
+    })
+    .filter(Boolean);
+}
+
+function sellerFrom(product) {
+  const name = text(product.vendor_name ?? product.seller_name ?? product.store_name);
+  return name ? { name } : null;
+}
+
+function manufacturerFrom(product) {
   const manufacturer = {
-    name: rawProduct.manufacturer_name || brand,
-    importedBy: rawProduct.importer_packer || "Marvel Retail Operations Pvt. Ltd.",
-    manufacturingDate: rawProduct.manufacturing_date || "October 2025",
-    address:
-      rawProduct.manufacturer_address ||
-      "Global Innovation Center, Tech Zone 4, Bangalore, KA 560100",
-    supportPhone: rawProduct.support_phone || "1800-419-0123 (Toll Free)",
-    supportEmail: rawProduct.support_email || "support@marvel.com",
+    name: text(product.manufacturer_name),
+    importedBy: text(product.importer_packer),
+    manufacturingDate: text(product.manufacturing_date),
+    address: text(product.manufacturer_address),
+    supportPhone: text(product.support_phone),
+    supportEmail: text(product.support_email),
   };
+  return Object.values(manufacturer).some(Boolean) ? manufacturer : null;
+}
 
-  const userGuide = {
-    manualVersion: "v3.2",
-    fileSize: "2.4 MB",
-    steps: [
-      {
-        step: 1,
-        title: "Unbox & Inspect",
-        desc: "Remove device and verify tamper seal. Charge to 100% before first use.",
-      },
-      {
-        step: 2,
-        title: "Initial Pairing",
-        desc: "Hold power button for 3 seconds until LED pulses blue to enter pairing mode.",
-      },
-      {
-        step: 3,
-        title: "Download Companion App",
-        desc: "Scan QR code in packaging to customize firmware settings, EQ curves, and buttons.",
-      },
-    ],
-  };
+/**
+ * Shape one details payload for the product page.
+ *
+ * @param {{ product?: object, offers?: object[], reviews?: object,
+ *   variants?: { colors?: object[], sizes?: object[] }, media?: object[] }} payload
+ * @returns {object|null} null when there is no product row to show
+ */
+export function buildDynamicProductDetails(payload) {
+  const product = payload?.product;
+  if (!product || typeof product !== "object" || product.id === undefined) return null;
+  const price = amount(product.price);
+  const originalPrice = amount(product.original_price ?? product.originalPrice);
+  const discountPercent =
+    price !== null && originalPrice !== null && originalPrice > price
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : null;
+  const stock = amount(product.stock);
+  const offers = groupOffers(payload?.offers);
 
-  const additionalDetails = {
-    modelNumber: rawProduct.model_name || rawProduct.sku || sku,
-    countryOfOrigin: rawProduct.country_of_origin || "India / Global Componentry",
-    hsn: rawProduct.hsn_code || rawProduct.hsn || "85183000",
-    gst: rawProduct.gst_rate || rawProduct.gst || "18%",
-    certifications: Array.isArray(rawProduct.certifications)
-      ? rawProduct.certifications
-      : ["CE Certified", "FCC Compliance", "RoHS Eco-Standard", "BIS Registered"],
-    inBox: Array.isArray(rawProduct.in_box)
-      ? rawProduct.in_box
-      : [
-          "1x Main Device Unit",
-          "1x Braided USB-C Fast Charge Cable",
-          "1x Quick Setup Guide",
-          "1x Marvel Warranty Card",
-        ],
-  };
-
-  const reviewSummary = {
-    overall: rating,
-    totalReviews: reviews,
-    breakdown: [
-      { stars: 5, count: Math.round(reviews * 0.72), percent: 72 },
-      { stars: 4, count: Math.round(reviews * 0.18), percent: 18 },
-      { stars: 3, count: Math.round(reviews * 0.06), percent: 6 },
-      { stars: 2, count: Math.round(reviews * 0.02), percent: 2 },
-      { stars: 1, count: Math.round(reviews * 0.02), percent: 2 },
-    ],
-    attributes: [
-      { label: "Build Quality", score: 4.9 },
-      { label: "Value for Money", score: 4.8 },
-      { label: "Battery Life", score: 4.7 },
-      { label: "Performance", score: 4.9 },
-    ],
-  };
-
-  const topReviews = [
-    {
-      id: "rev-1",
-      author: "Alex Rivera",
-      verified: true,
-      rating: 5,
-      date: "3 days ago",
-      title: "Phenomenal performance and premium build quality!",
-      body: `I've been using this for a week now and the quality is outstanding. Completely exceeded my expectations. Fast delivery from Marvel seller.`,
-    },
-    {
-      id: "rev-2",
-      author: "Sarah Jenkins",
-      verified: true,
-      rating: 5,
-      date: "2 weeks ago",
-      title: "Best purchase in this category, highly recommended!",
-      body: `Battery lasts forever, design is super sleek and it paired instantly with my devices. 10/10.`,
-    },
-    {
-      id: "rev-3",
-      author: "David Chen",
-      verified: true,
-      rating: 4,
-      date: "1 month ago",
-      title: "Great product, excellent customer support",
-      body: `Solid hardware and very responsive customer service when I asked about warranty registration.`,
-    },
-  ];
+  const media = mapMedia(payload?.media);
+  const primaryImage = text(product.image_url ?? product.image);
+  if (media.length === 0 && primaryImage) {
+    media.push({ id: null, url: primaryImage, type: "image", thumb: primaryImage, kind: "hero" });
+  }
 
   return {
-    id,
-    name,
-    brand,
-    sku,
-    category,
-    rating,
-    reviews,
-    badge: `${discount}% OFF`,
-    tag: rawProduct.is_featured ? "Featured Choice" : "Best Seller",
+    id: product.id,
+    name: text(product.title ?? product.name),
+    brand: text(product.brand),
+    sku: text(product.sku),
+    category: text(product.category),
+    description: text(product.description),
+
     price,
     originalPrice,
-    discount,
-    inStock,
-    stockLeft: stock,
-    description:
-      rawProduct.description ||
-      "Premium consumer electronics designed for high reliability and top user satisfaction.",
+    discountPercent,
+    inStock: stock === null ? null : stock > 0,
+    stock,
+    featured: product.is_featured === true,
+
+    offerText: text(product.offer_text),
+    offerEndsAt: text(product.offer_ends_at),
+    warranty: text(product.warranty),
+
     media,
-    colors,
-    sizes,
-    highlights,
-    specifications,
-    offerDetails,
-    deliveryInfo,
-    seller,
-    materials,
-    careInstructions,
-    manufacturer,
-    userGuide,
-    additionalDetails,
-    dimensions,
-    reviewSummary,
-    topReviews,
+    image: media[0]?.url ?? null,
+    colors: mapColors(payload?.variants?.colors),
+    sizes: mapSizes(payload?.variants?.sizes),
+
+    highlights: textList(product.highlights),
+    specifications: specificationGroups(product.specifications),
+    dimensions: dimensionRows(product.dimensions),
+    materials: materialRows(product.materials),
+    careInstructions: textList(product.care_instructions),
+    certifications: textList(product.certifications),
+    inBox: textList(product.in_box),
+
+    deliveryInfo: deliverySummary(product.delivery_info),
+    userGuide: userGuideDetails(product.user_guide),
+    manufacturer: manufacturerFrom(product),
+
+    offers,
+    reviewSummary: reviewSummary(payload?.reviews),
+    seller: sellerFrom(product),
+
+    additionalDetails: {
+      modelNumber: text(product.model_name),
+      countryOfOrigin: text(product.country_of_origin),
+      hsn: text(product.hsn_code ?? product.hsn),
+      gst: text(product.gst_rate ?? product.gst),
+    },
   };
 }
+
+export default buildDynamicProductDetails;

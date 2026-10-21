@@ -20,6 +20,7 @@ import SignUpPage from "./components/auth/SignUpPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ContentProvider } from "./context/ContentContext";
+import { SettingsProvider } from "./context/SettingsContext";
 import { CartProvider, useCart } from "./context/CartContext";
 import CartPage from "./components/cart/CartPage";
 
@@ -341,9 +342,11 @@ export default function App() {
     <ToastProvider>
       <AuthProvider>
         <ContentProvider>
-          <CartProvider>
-            <AppMain />
-          </CartProvider>
+          <SettingsProvider>
+            <CartProvider>
+              <AppMain />
+            </CartProvider>
+          </SettingsProvider>
         </ContentProvider>
       </AuthProvider>
     </ToastProvider>

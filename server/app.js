@@ -8,6 +8,9 @@ import contentRoutes, { bannerRoutes, footerRoutes } from "./routes/content.js";
 import categoriesRoutes from "./routes/categories.js";
 import userRoutes from "./routes/users.js";
 import productRoutes from "./routes/products.js";
+import productDetailsRoutes from "./routes/productDetails.js";
+import settingsRoutes from "./routes/settings.js";
+import wishlistRoutes from "./routes/wishlist.js";
 import orderRoutes from "./routes/orders.js";
 import uploadRoutes from "./routes/upload.js";
 import { assertJwtSecret } from "./middleware/auth.js";
@@ -72,7 +75,11 @@ app.use("/api/content/banners", bannerRoutes);
 app.use("/api/content/footer", footerRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/settings", settingsRoutes);
+// Mounted before productRoutes so `/:id/details` wins over the generic read.
+app.use("/api/products", productDetailsRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/account/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/upload", uploadRoutes);
 

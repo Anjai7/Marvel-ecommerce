@@ -14,9 +14,14 @@ import { apiFetchMenuItems } from "../api/contentApi";
 import { apiFetchHeroSlides } from "../api/backendApi";
 
 const content = vi.hoisted(() => ({ value: null }));
+const settings = vi.hoisted(() => ({ value: null }));
 
 vi.mock("../context/ContentContext", () => ({
   useContent: () => content.value,
+}));
+
+vi.mock("../context/SettingsContext", () => ({
+  useSettings: () => settings.value,
 }));
 
 vi.mock("../api/contentApi", () => ({
@@ -180,6 +185,48 @@ const FOOTER = {
   links: [],
 };
 
+const HERO_FALLBACK = {
+  badge: "⚡ SMART TECH SALE",
+  title: "Upgrade Your Everyday",
+  subtitle: "Next-gen gadgets at prices that don't break the bank. Up to 50% OFF.",
+  btn_text: "Shop Now",
+  btn_path: "/products",
+  bg_gradient: "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+};
+
+// Footer chrome is backend-owned: the component renders these values and
+// nothing of its own.
+const FOOTER_SETTINGS = {
+  value_props: [
+    { icon: "Truck", title: "Free & Fast Delivery", subtitle: "On qualifying orders" },
+    { icon: "RefreshCw", title: "7 Days Replacement", subtitle: "Easy returns" },
+    { icon: "ShieldCheck", title: "100% Genuine Products", subtitle: "Sourced from brands" },
+    { icon: "Headset", title: "24/7 Dedicated Support", subtitle: "We're here to help" },
+  ],
+  payment_methods: ["VISA", "Mastercard", "RuPay", "UPI", "PayTM", "NetBanking"],
+  socials: [
+    { label: "Facebook", href: "https://facebook.com/marvel", icon: "Facebook" },
+    { label: "Instagram", href: "https://instagram.com/marvel", icon: "Instagram" },
+  ],
+  copyright: "© 2026 Marvel Inc. All Rights Reserved.",
+  security_note: "128-bit SSL Encrypted & Secure Shopping",
+  brand_logo: "/header.png",
+  brand_alt: "MARVEL MARKET Logo",
+};
+
+const settingsValue = (overrides = {}) => ({
+  settings: {
+    footer: FOOTER_SETTINGS,
+    store: { description: "Store description from settings.", country: "India" },
+    shipping: { free_threshold: 499 },
+    hero_fallback: HERO_FALLBACK,
+    ...overrides,
+  },
+  loading: false,
+  error: null,
+  refresh: vi.fn(),
+});
+
 const MENU = [
   {
     id: "m1",
@@ -221,6 +268,10 @@ const contentValue = (overrides = {}) => ({
   errors: { ...NO_ERRORS },
   refresh: vi.fn(),
   ...overrides,
+});
+
+beforeEach(() => {
+  settings.value = settingsValue();
 });
 
 describe("storefront surfaces read the content context", () => {
@@ -352,13 +403,50 @@ describe("storefront surfaces read the content context", () => {
     expect(link).toHaveAttribute("href", "#/help");
   });
 
-  it("keeps the value props, social block, payment chips and copyright in code", () => {
+  it("renders the value props, social block, payment chips and copyright from the settings context", () => {
     render(<Footer />);
 
     expect(screen.getByText("Free & Fast Delivery")).toBeVisible();
     expect(screen.getByText("Follow Us:")).toBeVisible();
     expect(screen.getByText("UPI")).toBeVisible();
     expect(screen.getByText("© 2026 Marvel Inc. All Rights Reserved.")).toBeVisible();
+  });
+
+  it("renders the footer chrome from the backend values, not a hardcoded copy", () => {
+    settings.value = settingsValue({
+      footer: {
+        ...FOOTER_SETTINGS,
+        value_props: [{ icon: "Truck", title: "Backend Prop", subtitle: "From settings" }],
+        payment_methods: ["BackendPay"],
+        socials: [{ label: "Backend Social", href: "https://example.com", icon: "Globe" }],
+        copyright: "© 1999 Backend Corp.",
+        security_note: "Backend security note",
+      },
+    });
+
+    render(<Footer />);
+
+    expect(screen.getByText("Backend Prop")).toBeVisible();
+    expect(screen.getByText("BackendPay")).toBeVisible();
+    expect(screen.getByText("Backend Social")).toBeVisible();
+    expect(screen.getByText("© 1999 Backend Corp.")).toBeVisible();
+    expect(screen.getByText("Backend security note")).toBeVisible();
+
+    expect(screen.queryByText("Free & Fast Delivery")).toBeNull();
+    expect(screen.queryByText("© 2026 Marvel Inc. All Rights Reserved.")).toBeNull();
+  });
+
+  it("renders no footer chrome while the settings are missing", () => {
+    settings.value = settingsValue({ footer: null });
+
+    render(<Footer />);
+
+    expect(screen.queryByText("Free & Fast Delivery")).toBeNull();
+    expect(screen.queryByText("Follow Us:")).toBeNull();
+    expect(screen.queryByText("UPI")).toBeNull();
+    expect(screen.queryByText(/All Rights Reserved/)).toBeNull();
+    // The links still come from ContentContext.
+    expect(screen.getByText("Track My Order")).toBeVisible();
   });
 
   it("renders HoverNav menu roots from the context without fetching the menu", () => {
@@ -507,6 +595,34 @@ describe("a failed collection only affects its own surfaces", () => {
     rerender(<HeroBanner />);
 
     expect(screen.getByRole("heading", { name: "Upgrade Your Everyday" })).toBeVisible();
+  });
+
+  it("renders the rescue slide from the settings context, not from code", () => {
+    content.value = contentValue({ hero: [], loading: false });
+    settings.value = settingsValue({
+      hero_fallback: {
+        badge: "",
+        title: "Backend Rescue Title",
+        subtitle: "Backend rescue subtitle",
+        btn_text: "Browse",
+        btn_path: "/products",
+        bg_gradient: "",
+      },
+    });
+
+    render(<HeroBanner />);
+
+    expect(screen.getByRole("heading", { name: "Backend Rescue Title" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Upgrade Your Everyday" })).toBeNull();
+  });
+
+  it("renders no rescue slide when hero_fallback is not configured", () => {
+    content.value = contentValue({ hero: [], loading: false });
+    settings.value = settingsValue({ hero_fallback: null });
+
+    render(<HeroBanner />);
+
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 });
 

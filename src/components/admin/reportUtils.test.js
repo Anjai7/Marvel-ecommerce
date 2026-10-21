@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { LOW_STOCK_THRESHOLD, ORDER_STATUSES } from "./adminConstants";
 import {
   aggregateBestSellers,
   computeRepeatCustomers,
@@ -77,6 +78,8 @@ describe("lastNDayBuckets", () => {
       expect(typeof b.label).toBe("string");
       expect(typeof b.day).toBe("string");
     }
+    // en-IN orders day before month: "14 Oct", not "Oct 14".
+    expect(buckets[buckets.length - 1].label).toMatch(/^\d{1,2} \w{3}$/);
   });
 
   it("returns empty buckets for no orders", () => {
@@ -124,6 +127,21 @@ describe("summarizeStatuses", () => {
       inFlight: 2,
     });
   });
+
+  it("reports exactly the database order_status enum and nothing more", () => {
+    const summary = summarizeStatuses(ORDERS);
+    const stages = Object.keys(summary)
+      .filter((key) => key !== "total" && key !== "inFlight")
+      .sort();
+    expect(stages).toEqual([...ORDER_STATUSES].sort());
+    expect(summary).not.toHaveProperty("completed");
+  });
+
+  it("does not report an order with no status as a stage", () => {
+    const summary = summarizeStatuses([{ id: "x1", total_amount: 10 }]);
+    expect(summary.total).toBe(1);
+    expect(ORDER_STATUSES.every((stage) => summary[stage] === 0)).toBe(true);
+  });
 });
 
 describe("computeRepeatCustomers", () => {
@@ -143,6 +161,34 @@ describe("computeRepeatCustomers", () => {
     expect(r.repeatCustomers).toBe(1);
     expect(r.top[0].key).toBe("u9");
   });
+
+  it("keys a signed-in buyer by user_id, not by their email", () => {
+    const r = computeRepeatCustomers([
+      { id: "1", user_id: "u1", customer_email: "old@x.com", total_amount: 10 },
+      { id: "2", user_id: "u1", customer_email: "new@x.com", total_amount: 20 },
+    ]);
+    expect(r.totalCustomers).toBe(1);
+    expect(r.repeatCustomers).toBe(1);
+    expect(r.top[0]).toMatchObject({ key: "u1", orders: 2, spent: 30 });
+  });
+
+  it("never special-cases an email address", () => {
+    const r = computeRepeatCustomers([
+      { id: "1", customer_email: "user@marvel.com", total_amount: 10 },
+      { id: "2", customer_email: "user@marvel.com", total_amount: 20 },
+    ]);
+    expect(r.totalCustomers).toBe(1);
+    expect(r.repeatCustomers).toBe(1);
+    expect(r.top[0]).toMatchObject({ email: "user@marvel.com", orders: 2, spent: 30 });
+  });
+
+  it("leaves a missing customer name null instead of inventing one", () => {
+    const r = computeRepeatCustomers([
+      { id: "1", customer_email: "x@y.z", total_amount: 5 },
+      { id: "2", customer_email: "x@y.z", total_amount: 5 },
+    ]);
+    expect(r.top[0].name).toBeNull();
+  });
 });
 
 describe("aggregateBestSellers", () => {
@@ -151,6 +197,20 @@ describe("aggregateBestSellers", () => {
     expect(top[0]).toMatchObject({ title: "Watch", qty: 2, revenue: 200 });
     expect(top.find((t) => t.title === "Headphones")).toMatchObject({ qty: 2, revenue: 150.5 });
     expect(top.every((t) => typeof t.title === "string")).toBe(true);
+  });
+
+  it("does not invent a product name for an untitled line item", () => {
+    const top = aggregateBestSellers([
+      {
+        id: "o1",
+        items: [
+          { price: 100, quantity: 1 },
+          { title: "Watch", price: 50, quantity: 1 },
+        ],
+      },
+    ]);
+    expect(top).toHaveLength(1);
+    expect(top[0].title).toBe("Watch");
   });
 });
 
@@ -165,6 +225,11 @@ describe("summarizeInventory", () => {
     expect(s).toMatchObject({ total: 4, inStock: 3, lowStock: 1, outOfStock: 1 });
     expect(s.value).toBeCloseTo(100 * 10 + 50 * 3 + 9.99 * 7, 2);
   });
+
+  it("bands low stock on the one shared threshold", () => {
+    expect(summarizeInventory([{ price: 1, stock: LOW_STOCK_THRESHOLD }]).lowStock).toBe(1);
+    expect(summarizeInventory([{ price: 1, stock: LOW_STOCK_THRESHOLD + 1 }]).lowStock).toBe(0);
+  });
 });
 
 describe("customerStats", () => {
@@ -178,5 +243,22 @@ describe("customerStats", () => {
     expect(stats).toHaveLength(2);
     expect(stats[0]).toMatchObject({ name: "Asha", orders: 2, spent: 300, repeat: true });
     expect(stats[1]).toMatchObject({ name: "Ben", orders: 1, spent: 50.5, repeat: false });
+  });
+
+  it("leaves a missing name and status empty instead of inventing them", () => {
+    const stats = customerStats([{ id: "u4", email: "nameless@x.com", role: "user" }], []);
+    expect(stats[0]).toMatchObject({ name: null, status: "", orders: 0, spent: 0 });
+  });
+
+  it("keeps the real customer segment rule (role === user only)", () => {
+    const stats = customerStats(
+      [
+        { id: "a", email: "a@x.com", role: "user" },
+        { id: "b", email: "b@x.com", role: "admin" },
+        { id: "c", email: "c@x.com", role: "vendor" },
+      ],
+      []
+    );
+    expect(stats.map((s) => s.id)).toEqual(["a"]);
   });
 });

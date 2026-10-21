@@ -1,4 +1,5 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { LOW_STOCK_THRESHOLD } from "../adminConstants";
 
 export default function InventoryChart({ data }) {
   if (!data) {
@@ -11,7 +12,11 @@ export default function InventoryChart({ data }) {
 
   const chartData = [
     { name: "In Stock", value: data.inStock, color: "#10b981" },
-    { name: "Low Stock (5 or fewer)", value: data.lowStock, color: "#f59e0b" },
+    {
+      name: `Low Stock (${LOW_STOCK_THRESHOLD} or fewer)`,
+      value: data.lowStock,
+      color: "#f59e0b",
+    },
     { name: "Out of Stock", value: data.outOfStock, color: "#ef4444" },
   ];
 

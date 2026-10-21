@@ -1,7 +1,15 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 import UnifiedAdminConsole from "./UnifiedAdminConsole";
+import { ORDER_STATUSES } from "./adminConstants";
+import {
+  apiAdminCreateUser,
+  apiFetchAllUsers,
+  apiFetchOrders,
+  apiFetchProducts,
+  apiUpdateUserDetails,
+} from "../../api/backendApi";
 
 vi.mock("../../api/backendApi", () => ({
   apiFetchProducts: vi.fn().mockResolvedValue([]),
@@ -58,6 +66,19 @@ vi.mock("../../context/AuthContext", () => ({
   }),
 }));
 
+const STATUS_LABELS = ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"];
+
+beforeEach(() => {
+  for (const fetchMock of [apiFetchAllUsers, apiFetchOrders, apiFetchProducts]) {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue([]);
+  }
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("UnifiedAdminConsole", () => {
   it("does not expose an initial status selector when adding a user", async () => {
     const user = userEvent.setup();
@@ -93,5 +114,186 @@ describe("UnifiedAdminConsole", () => {
     await expect(screen.getByText("Today Orders")).toBeVisible();
     await expect(screen.getByText("Orders & Revenue")).toBeVisible();
     await expect(screen.getByText("Inventory Snapshot")).toBeVisible();
+  });
+
+  it("renders a neutral dash for every order value the API did not supply", async () => {
+    apiFetchOrders.mockResolvedValueOnce([
+      { id: "order-12345678", total_amount: 199, status: null, created_at: null, items: null },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const idCell = await screen.findByText("#order-12");
+    const row = idCell.closest("tr");
+
+    expect(screen.queryByText("Marvel Shopper")).toBeNull();
+    expect(screen.queryByText("user@marvel.com")).toBeNull();
+    expect(screen.queryByText("Today")).toBeNull();
+    expect(screen.queryByText("Processing")).toBeNull();
+    // customer name, customer email, item count, status and date are all unknown
+    expect(within(row).getAllByText("—")).toHaveLength(5);
+    expect(within(row).getByText(/199/)).toBeVisible();
+  });
+
+  it("does not fabricate a SKU or a category on the product catalog", async () => {
+    const user = userEvent.setup();
+    apiFetchProducts.mockResolvedValueOnce([
+      { id: "prod-1", title: "Aurora Speaker", price: 999, stock: 2 },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
+
+    const row = (await screen.findByText("Aurora Speaker")).closest("tr");
+    // No SKU on the row and no SKU guessed from the id; no category invented.
+    expect(screen.queryByText(/prod-1/)).toBeNull();
+    expect(within(row).getAllByText("—")).toHaveLength(2);
+  });
+
+  it("starts the product form empty instead of inventing a category or stock", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
+    await user.click(within(nav).getByRole("button", { name: "Add Product" }));
+
+    // An empty number input reports null through toHaveValue; the point is it is
+    // not a fabricated "15".
+    const stockField = screen.getByPlaceholderText("e.g. 25");
+    expect(stockField.value).toBe("");
+    expect(stockField).toHaveValue(null);
+    expect(screen.getByLabelText("Category")).toHaveValue("");
+    expect(screen.queryByText("Electronics")).toBeNull();
+  });
+
+  it("does not fabricate a name, plan or billing method for a user", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      { id: "u1", email: "asha@x.com", full_name: "", role: "user", status: "active" },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Users Accounts/ }));
+
+    const row = (await screen.findByText("asha@x.com")).closest("tr");
+    expect(within(row).queryByText("Unnamed User")).toBeNull();
+    expect(within(row).queryByText("Basic")).toBeNull();
+    expect(within(row).queryByText("Enterprise")).toBeNull();
+    // avatar initial + name + plan
+    expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows the server's plan and billing without offering an override", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      {
+        id: "u1",
+        email: "asha@x.com",
+        full_name: "Asha",
+        role: "vendor",
+        status: "active",
+        store_name: "Asha Store",
+        plan: "Team",
+        billing: "Manual - Paypal",
+      },
+    ]);
+    apiUpdateUserDetails.mockResolvedValue({
+      id: "u1",
+      email: "asha@x.com",
+      full_name: "Asha",
+      role: "vendor",
+      status: "active",
+      store_name: "Asha Store",
+    });
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Users Accounts/ }));
+    await screen.findByText("Asha");
+    await user.click(screen.getByTitle("Edit User Details"));
+
+    const plan = screen.getByLabelText("Plan Tier");
+    const billing = screen.getByLabelText("Billing Method");
+    expect(plan).toBeDisabled();
+    expect(plan).toHaveValue("Team");
+    expect(billing).toBeDisabled();
+    expect(billing).toHaveValue("Manual - Paypal");
+    expect(within(plan).queryByRole("option", { name: "Basic" })).toBeNull();
+    expect(within(billing).queryByRole("option", { name: "Manual - Cash" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: /Save Changes/ }));
+    await waitFor(() => expect(apiUpdateUserDetails).toHaveBeenCalledTimes(1));
+    const payload = apiUpdateUserDetails.mock.calls[0][1];
+    expect(payload).not.toHaveProperty("plan");
+    expect(payload).not.toHaveProperty("billing");
+    expect(payload).toMatchObject({ full_name: "Asha", role: "vendor", status: "active" });
+  });
+
+  it("creates users without forcing a plan or billing method", async () => {
+    const user = userEvent.setup();
+    apiAdminCreateUser.mockResolvedValue({
+      id: "u2",
+      full_name: "New Person",
+      email: "new@x.com",
+      role: "user",
+      status: "active",
+    });
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Users Accounts/ }));
+    await user.click(within(nav).getByRole("button", { name: "Add User" }));
+
+    await user.type(screen.getByPlaceholderText("e.g. Alex Morgan"), "New Person");
+    await user.type(screen.getByPlaceholderText("alex@marvel.com"), "new@x.com");
+    await user.type(screen.getByPlaceholderText("Minimum 6 characters"), "secret123");
+    await user.click(screen.getByRole("button", { name: /Create User Account/ }));
+
+    await waitFor(() => expect(apiAdminCreateUser).toHaveBeenCalledTimes(1));
+    const payload = apiAdminCreateUser.mock.calls[0][0];
+    expect(payload).not.toHaveProperty("plan");
+    expect(payload).not.toHaveProperty("billing");
+    expect(payload).toMatchObject({ fullName: "New Person", email: "new@x.com" });
+  });
+
+  it("lists exactly the database order statuses in the sidebar and the pills", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Orders Pipeline/ }));
+
+    for (const label of STATUS_LABELS) {
+      expect(within(nav).getByRole("button", { name: new RegExp(`^${label}`) })).toBeVisible();
+    }
+    expect(within(nav).queryByRole("button", { name: /^Completed/ })).toBeNull();
+
+    await user.click(within(nav).getByRole("button", { name: /^Cancelled/ }));
+
+    const main = screen.getByRole("main");
+    for (const label of STATUS_LABELS) {
+      expect(within(main).getByRole("button", { name: `${label} (0)` })).toBeVisible();
+    }
+    expect(within(main).queryByRole("button", { name: /^Completed/ })).toBeNull();
+    expect(ORDER_STATUSES).toHaveLength(STATUS_LABELS.length);
+  });
+
+  it("shows an explicit failure state when no records can be loaded", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    apiFetchOrders.mockRejectedValueOnce(new Error("Network down"));
+
+    render(<UnifiedAdminConsole />);
+
+    const alert = await screen.findByRole("alert");
+    expect(within(alert).getByText("Live data unavailable")).toBeVisible();
+    expect(within(alert).getByText(/nothing is cached/i)).toBeVisible();
+    expect(within(alert).getByText("Network down")).toBeVisible();
+    // No plausible-looking dashboard of zeros, and no claim of a cache.
+    expect(screen.queryByText("TOTAL PLATFORM REVENUE")).toBeNull();
+    expect(screen.queryByText(/Showing cached records/i)).toBeNull();
+
+    errorSpy.mockRestore();
   });
 });

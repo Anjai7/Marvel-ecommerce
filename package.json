@@ -36,6 +36,7 @@
     "seed:content": "node server/seed_content.js",
     "seed:products": "node server/seed_dynamic_products.js",
     "seed:fill": "node server/seed_catalog_fill.js",
+    "seed:content-details": "node server/seed_backend_content.js",
     "prepare": "lefthook install"
   },
   "dependencies": {

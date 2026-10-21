@@ -8,36 +8,32 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "../adminConstants";
 
+/* Keyed by the `order_status` enum value, so every slice is a stage the
+ * database can actually store. */
 const STATUS_COLORS = {
   pending: "#f59e0b",
   processing: "#3b82f6",
   shipped: "#8b5cf6",
   delivered: "#10b981",
-  completed: "#059669",
   cancelled: "#ef4444",
 };
 
 export default function OrderStatusChart({ data }) {
-  if (!data || Object.values(data).every((v) => v === 0)) {
+  const chartData = ORDER_STATUSES.map((status) => ({
+    name: ORDER_STATUS_LABELS[status],
+    value: Number(data?.[status]) || 0,
+    color: STATUS_COLORS[status],
+  }));
+
+  if (!data || !chartData.some((entry) => entry.value > 0)) {
     return (
       <div className="chart-empty">
         <span className="chart-empty-text">No orders yet</span>
       </div>
     );
   }
-
-  const labels = {
-    pending: "Pending",
-    processing: "Processing",
-    shipped: "Shipped",
-    delivered: "Delivered",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  };
-  const chartData = Object.entries(data)
-    .filter(([, v]) => v > 0)
-    .map(([k, v]) => ({ name: labels[k] || k, value: v, color: STATUS_COLORS[k] }));
 
   return (
     <div className="recharts-wrapper">

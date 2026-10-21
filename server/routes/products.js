@@ -44,23 +44,10 @@ function formatProduct(p) {
     image: displayImage || p.image_url,
     sku: generatedSku,
     model_name: p.model_name || generatedSku,
-    country_of_origin: p.country_of_origin || "India / Global Componentry",
-    manufacturer_name: p.manufacturer_name || p.vendor_name || "TechGear Flagship Store",
-    importer_packer: p.importer_packer || "Marvel Retail Operations Pvt. Ltd.",
-    manufacturing_date: p.manufacturing_date || "October 2025",
-    hsn_code: p.hsn_code || "85183000",
-    gst_rate: p.gst_rate || "18%",
-    certifications: Array.isArray(p.certifications)
-      ? p.certifications
-      : ["CE Certified", "FCC Compliance", "RoHS Eco-Standard", "BIS Registered"],
-    in_box: Array.isArray(p.in_box)
-      ? p.in_box
-      : [
-          "1x Main Device Unit",
-          "1x Fast Charge Cable",
-          "1x Quick Setup Guide",
-          "1x Marvel Warranty Card",
-        ],
+    // `country_of_origin`, `manufacturer_name`, `importer_packer`,
+    // `manufacturing_date`, `hsn_code`, `gst_rate`, `certifications` and
+    // `in_box` are stored columns now. They are nullable, and a null means
+    // "not configured": never substitute a hardcoded value here.
     specifications: Array.isArray(p.specifications) ? p.specifications : [],
     dimensions: typeof p.dimensions === "object" && p.dimensions ? p.dimensions : {},
     materials: Array.isArray(p.materials) ? p.materials : [],
@@ -209,11 +196,7 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
 
     if (error) {
       console.error("Supabase product read error:", error.message);

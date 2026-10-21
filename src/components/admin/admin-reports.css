@@ -362,6 +362,58 @@
   margin-bottom: 16px;
 }
 
+/* ── Explicit API failure state ───────────────────────── */
+.admin-sync-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.admin-sync-error-icon {
+  color: #b91c1c;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.admin-sync-error-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-sync-error-title {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.admin-sync-error-message {
+  margin: 0;
+  font-size: 13px;
+  color: #7f1d1d;
+  line-height: 1.5;
+}
+
+.admin-sync-error-detail {
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  font-family: monospace;
+  color: #b91c1c;
+  word-break: break-word;
+}
+
+/* Server-owned fields shown read-only in the user form. */
+.form-field-hint {
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  color: #64748b;
+}
+
 @media (max-width: 900px) {
   .sales-mini-grid {
     grid-template-columns: repeat(2, 1fr);

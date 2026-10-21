@@ -1,8 +1,24 @@
 import React from "react";
 import { useContent } from "../context/ContentContext";
+import { useSettings } from "../context/SettingsContext";
 import { SimpleTooltip } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
-import { ShieldCheck, Truck, RefreshCw, Headset, Lock, ChevronRight } from "lucide-react";
+import {
+  ShieldCheck,
+  Truck,
+  RefreshCw,
+  Headset,
+  Lock,
+  ChevronRight,
+  Package,
+  Star,
+  Gift,
+  CreditCard,
+  Heart,
+  BadgeCheck,
+  Sparkles,
+  RotateCcw,
+} from "lucide-react";
 
 /* ── Inline social SVGs (lucide-react doesn't ship these brand icons) ── */
 const SocialFacebook = () => (
@@ -45,12 +61,67 @@ const SocialLinkedin = () => (
   </svg>
 );
 
-/* Marketing micro-copy: intentionally kept in code, out of scope for the CMS. */
-const PAYMENTS = ["VISA", "Mastercard", "RuPay", "UPI", "PayTM", "NetBanking"];
+/* ── Icon registries: the backend stores icon NAMES, not components ── */
+const normalizeIconName = (name) =>
+  typeof name === "string" ? name.toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+
+const VALUE_PROP_ICONS = {
+  truck: Truck,
+  delivery: Truck,
+  refreshcw: RefreshCw,
+  refresh: RefreshCw,
+  returns: RotateCcw,
+  rotateccw: RotateCcw,
+  shieldcheck: ShieldCheck,
+  shield: ShieldCheck,
+  headset: Headset,
+  support: Headset,
+  package: Package,
+  star: Star,
+  gift: Gift,
+  creditcard: CreditCard,
+  heart: Heart,
+  badgecheck: BadgeCheck,
+  sparkles: Sparkles,
+  lock: Lock,
+};
+
+const SOCIAL_ICONS = {
+  facebook: SocialFacebook,
+  twitter: SocialTwitter,
+  x: SocialTwitter,
+  instagram: SocialInstagram,
+  youtube: SocialYoutube,
+  linkedin: SocialLinkedin,
+};
+
+const asArray = (value) => (Array.isArray(value) ? value : []);
+const asText = (value) => (typeof value === "string" && value.trim() !== "" ? value : "");
 
 export default function Footer() {
   const { footer, loading, errors } = useContent();
+  const { settings } = useSettings();
   const error = errors?.footer ?? null;
+
+  const footerSettings =
+    settings?.footer && typeof settings.footer === "object" && !Array.isArray(settings.footer)
+      ? settings.footer
+      : null;
+
+  // Every marketing block comes from the backend; a missing key renders
+  // nothing rather than a hardcoded copy.
+  const valueProps = asArray(footerSettings?.value_props);
+  const paymentMethods = asArray(footerSettings?.payment_methods).filter(
+    (method) => typeof method === "string" && method.trim() !== ""
+  );
+  const socials = asArray(footerSettings?.socials).filter(
+    (social) => social && (asText(social.label) || asText(social.href))
+  );
+  const copyright = asText(footerSettings?.copyright);
+  const securityNote = asText(footerSettings?.security_note);
+  const brandLogo = asText(footerSettings?.brand_logo);
+  const brandAlt = asText(footerSettings?.brand_alt);
+  const storeDescription = asText(settings?.store?.description);
 
   const sections = Array.isArray(footer?.sections) ? footer.sections : [];
   const flatLinks = Array.isArray(footer?.links) ? footer.links : [];
@@ -70,95 +141,72 @@ export default function Footer() {
         ? "No footer links configured yet."
         : null;
 
+  const hasBottomBar = Boolean(copyright || securityNote || paymentMethods.length > 0);
+
   return (
     <footer className="footer" id="main-footer">
-      {/* ── Value Proposition Bar ── */}
-      <div className="footer-prop-bar">
-        <div className="container footer-prop-grid">
-          <div className="footer-prop-item">
-            <div className="footer-prop-icon">
-              <Truck size={22} />
-            </div>
-            <div>
-              <div className="footer-prop-title">Free & Fast Delivery</div>
-              <div className="footer-prop-sub">On orders over ₹499 across India</div>
-            </div>
-          </div>
-
-          <div className="footer-prop-item">
-            <div className="footer-prop-icon">
-              <RefreshCw size={22} />
-            </div>
-            <div>
-              <div className="footer-prop-title">7 Days Replacement</div>
-              <div className="footer-prop-sub">Easy, hassle-free returns policy</div>
-            </div>
-          </div>
-
-          <div className="footer-prop-item">
-            <div className="footer-prop-icon">
-              <ShieldCheck size={22} />
-            </div>
-            <div>
-              <div className="footer-prop-title">100% Genuine Products</div>
-              <div className="footer-prop-sub">Sourced directly from top brands</div>
-            </div>
-          </div>
-
-          <div className="footer-prop-item">
-            <div className="footer-prop-icon">
-              <Headset size={22} />
-            </div>
-            <div>
-              <div className="footer-prop-title">24/7 Dedicated Support</div>
-              <div className="footer-prop-sub">We're here to help anytime</div>
-            </div>
+      {/* ── Value Proposition Bar (settings.footer.value_props) ── */}
+      {valueProps.length > 0 && (
+        <div className="footer-prop-bar">
+          <div className="container footer-prop-grid">
+            {valueProps.map((prop, index) => {
+              const Icon = VALUE_PROP_ICONS[normalizeIconName(prop?.icon)];
+              const title = asText(prop?.title);
+              if (!title) return null;
+              const subtitle = asText(prop?.subtitle);
+              return (
+                <div className="footer-prop-item" key={`${title}-${index}`}>
+                  {Icon && (
+                    <div className="footer-prop-icon">
+                      <Icon size={22} />
+                    </div>
+                  )}
+                  <div>
+                    <div className="footer-prop-title">{title}</div>
+                    {subtitle && <div className="footer-prop-sub">{subtitle}</div>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Main Footer Links & Brand Section ── */}
       <div className="container footer-main-content">
         <div className="footer-grid">
           {/* Brand & Newsletter Column */}
           <div className="footer-brand-col">
-            <a href="/" className="footer-logo-wrap">
-              <img src="/header.png" alt="MARVEL MARKET Logo" className="footer-logo-img" />
-            </a>
-            <p className="footer-brand-desc">
-              Your ultimate online shopping destination for top electronics, fashion, home
-              essentials, and lifestyle products with unbeatable deals and fast doorstep delivery.
-            </p>
+            {brandLogo && (
+              <a href="/" className="footer-logo-wrap">
+                <img src={brandLogo} alt={brandAlt} className="footer-logo-img" />
+              </a>
+            )}
+            {storeDescription && <p className="footer-brand-desc">{storeDescription}</p>}
 
-            {/* Social Links */}
-            <div className="footer-socials">
-              <span className="social-label">Follow Us:</span>
-              <SimpleTooltip content="Facebook">
-                <a href="#" className="social-icon-btn facebook" aria-label="Facebook">
-                  <SocialFacebook />
-                </a>
-              </SimpleTooltip>
-              <SimpleTooltip content="Twitter">
-                <a href="#" className="social-icon-btn twitter" aria-label="Twitter">
-                  <SocialTwitter />
-                </a>
-              </SimpleTooltip>
-              <SimpleTooltip content="Instagram">
-                <a href="#" className="social-icon-btn instagram" aria-label="Instagram">
-                  <SocialInstagram />
-                </a>
-              </SimpleTooltip>
-              <SimpleTooltip content="YouTube">
-                <a href="#" className="social-icon-btn youtube" aria-label="YouTube">
-                  <SocialYoutube />
-                </a>
-              </SimpleTooltip>
-              <SimpleTooltip content="LinkedIn">
-                <a href="#" className="social-icon-btn linkedin" aria-label="LinkedIn">
-                  <SocialLinkedin />
-                </a>
-              </SimpleTooltip>
-            </div>
+            {/* Social Links (settings.footer.socials) */}
+            {socials.length > 0 && (
+              <div className="footer-socials">
+                <span className="social-label">Follow Us:</span>
+                {socials.map((social, index) => {
+                  const label = asText(social.label);
+                  const href = asText(social.href);
+                  const key = normalizeIconName(social.icon) || normalizeIconName(label);
+                  const Icon = SOCIAL_ICONS[key];
+                  return (
+                    <SimpleTooltip content={label} key={`${label || href}-${index}`}>
+                      <a
+                        href={href || "#"}
+                        className={`social-icon-btn ${key}`}
+                        aria-label={label || undefined}
+                      >
+                        {Icon ? <Icon /> : label ? <span>{label}</span> : null}
+                      </a>
+                    </SimpleTooltip>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Nav Columns */}
@@ -199,26 +247,34 @@ export default function Footer() {
           </div>
         )}
 
-        {/* ── Bottom Copyright & Payments Bar ── */}
-        <div className="footer-bottom">
-          <div className="footer-copyright">
-            <span>© 2026 Marvel Inc. All Rights Reserved.</span>
-            <span className="footer-security-note">
-              <Lock size={12} color="var(--green)" /> 128-bit SSL Encrypted & Secure Shopping
-            </span>
-          </div>
+        {/* ── Bottom Copyright & Payments Bar (settings.footer.*) ── */}
+        {hasBottomBar && (
+          <div className="footer-bottom">
+            {(copyright || securityNote) && (
+              <div className="footer-copyright">
+                {copyright && <span>{copyright}</span>}
+                {securityNote && (
+                  <span className="footer-security-note">
+                    <Lock size={12} color="var(--green)" /> {securityNote}
+                  </span>
+                )}
+              </div>
+            )}
 
-          <div className="payment-methods-row">
-            <span className="pay-label">100% Safe Payments:</span>
-            <div className="payment-badges">
-              {PAYMENTS.map((p) => (
-                <span className="pay-chip" key={p}>
-                  {p}
-                </span>
-              ))}
-            </div>
+            {paymentMethods.length > 0 && (
+              <div className="payment-methods-row">
+                <span className="pay-label">100% Safe Payments:</span>
+                <div className="payment-badges">
+                  {paymentMethods.map((method) => (
+                    <span className="pay-chip" key={method}>
+                      {method}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </footer>
   );

@@ -31,6 +31,7 @@ import {
   Store,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function Header({
   currentUser,
@@ -48,14 +49,28 @@ export default function Header({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { addToast } = useToast();
+  const { settings } = useSettings();
   let cartItems = [];
+  let cartSubtotal = 0;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- unconditional call; try/catch only guards missing CartProvider in isolated tests
     const cart = useCart();
     if (cart && Array.isArray(cart.items)) cartItems = cart.items;
+    cartSubtotal = Number(cart?.subtotal) || 0;
   } catch {
     cartItems = [];
   }
+
+  // The free-shipping claim is only shown when the cart actually qualifies,
+  // using the backend's threshold and country.
+  const freeThreshold = Number(settings?.shipping?.free_threshold);
+  const storeCountry = typeof settings?.store?.country === "string" ? settings.store.country : "";
+  const qualifiesForFreeShipping =
+    cartItems.length > 0 &&
+    storeCountry !== "" &&
+    Number.isFinite(freeThreshold) &&
+    freeThreshold >= 0 &&
+    cartSubtotal >= freeThreshold;
 
   const userRole = currentUser?.role || "user";
   const userInitial = currentUser?.full_name ? currentUser.full_name[0].toUpperCase() : "U";
@@ -299,9 +314,12 @@ export default function Header({
                   {cartCount} items
                 </Badge>
               </div>
-              <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
-                Items in your cart qualify for <strong>FREE Express Shipping</strong>!
-              </div>
+              {qualifiesForFreeShipping && (
+                <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
+                  Items in your cart qualify for <strong>FREE Express Shipping</strong> across{" "}
+                  {storeCountry}!
+                </div>
+              )}
               {cartItems.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
                   Your cart is empty.

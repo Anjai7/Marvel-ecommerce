@@ -1,14 +1,9 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-
-const ROLE_COLORS = {
-  super_admin: "#a855f7",
-  admin: "#3b82f6",
-  vendor: "#ec4899",
-  user: "#2563eb",
-};
+import { roleColor, roleLabel } from "./roleColors";
 
 export default function UserRolesChart({ data }) {
-  if (!data || data.length === 0) {
+  const total = Array.isArray(data) ? data.reduce((sum, d) => sum + d.value, 0) : 0;
+  if (!data || data.length === 0 || total === 0) {
     return (
       <div className="chart-empty">
         <span className="chart-empty-text">No users yet</span>
@@ -16,16 +11,23 @@ export default function UserRolesChart({ data }) {
     );
   }
 
-  const total = data.reduce((sum, d) => sum + d.value, 0);
   return (
     <div className="recharts-wrapper">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
         <ResponsiveContainer width={220} height={220}>
           <PieChart>
             <Tooltip
-              content={({ active, name, value }) =>
-                active && `<div>${name}: ${value} (${((value / total) * 100).toFixed(0)}%)</div>`
-              }
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const slice = payload[0];
+                const value = Number(slice.value) || 0;
+                return (
+                  <div>
+                    {roleLabel(slice.payload?.name)}: {value} ({((value / total) * 100).toFixed(0)}
+                    %)
+                  </div>
+                );
+              }}
             />
             <Pie
               data={data}
@@ -39,7 +41,7 @@ export default function UserRolesChart({ data }) {
               labelLine={false}
             >
               {data.map((entry, idx) => (
-                <Cell key={`cell-${idx}`} fill={ROLE_COLORS[entry.name] || "#64748b"} />
+                <Cell key={`cell-${idx}`} fill={roleColor(entry.name)} />
               ))}
             </Pie>
           </PieChart>

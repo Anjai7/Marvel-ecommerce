@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Info,
   Package,
-  MessageSquare,
   Ruler,
   Zap,
   Droplets,
@@ -21,14 +20,15 @@ import {
   Check,
   ShieldCheck,
 } from "lucide-react";
+
 import { useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
 
-const TABS = [
+/** Tab definitions. A tab is only offered when the product has its data. */
+const TAB_DEFINITIONS = [
   { key: "offers", label: "Price & Offers", icon: Tag },
   { key: "info", label: "Product Information", icon: Info },
   { key: "details", label: "Item Details", icon: Package },
-  { key: "feedback", label: "Feedback & Price Match", icon: MessageSquare },
   { key: "measurements", label: "Measurements", icon: Ruler },
   { key: "specs", label: "Features & Specs", icon: Zap },
   { key: "materials", label: "Materials & Care", icon: Droplets },
@@ -65,12 +65,14 @@ function RatingBar({ percent, stars }) {
   );
 }
 
+/** Rows whose value the API actually provided. */
+function presentRows(rows) {
+  return rows.filter(([, value]) => Boolean(value));
+}
+
 export default function ProductInfoTabs({ product }) {
   const [activeTab, setActiveTab] = useState("offers");
   const [openCollapse, setOpenCollapse] = useState("offers");
-  const [feedbackStep, setFeedbackStep] = useState(0);
-  const [feedbackRating, setFeedbackRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
   const [copiedCode, setCopiedCode] = useState(null);
   const { addToast } = useToast();
 
@@ -101,6 +103,68 @@ export default function ProductInfoTabs({ product }) {
     };
   }, [checkScrollArrows]);
 
+  if (!product) return null;
+
+  const {
+    offers = { emi: [], bank: [], coupon: [] },
+    specifications = [],
+    dimensions = [],
+    materials = [],
+    careInstructions = [],
+    manufacturer = null,
+    userGuide = null,
+    additionalDetails = {},
+    inBox = [],
+    certifications = [],
+    highlights = [],
+    reviewSummary = { overall: null, total: 0, breakdown: [] },
+  } = product;
+
+  const offerCount = offers.emi.length + offers.bank.length + offers.coupon.length;
+
+  const infoRows = presentRows([
+    ["Brand", product.brand],
+    ["Model Name", additionalDetails.modelNumber],
+    ["SKU / Product ID", product.sku],
+    ["Country of Origin", additionalDetails.countryOfOrigin],
+    ["Manufacturer", manufacturer?.name],
+    ["Importer / Packer", manufacturer?.importedBy],
+    ["Manufacturing Date", manufacturer?.manufacturingDate],
+    ["HSN Code", additionalDetails.hsn],
+    ["GST Rate", additionalDetails.gst],
+  ]);
+
+  const supportRows = presentRows([
+    ["Address", manufacturer?.address],
+    ["Support Phone", manufacturer?.supportPhone],
+    ["Customer Service", manufacturer?.supportEmail],
+  ]);
+
+  const additionalRows = presentRows([
+    ["Model Number", additionalDetails.modelNumber],
+    ["Country of Origin", additionalDetails.countryOfOrigin],
+    ["HSN Code", additionalDetails.hsn],
+    ["GST Rate", additionalDetails.gst],
+  ]);
+
+  // ── Only offer a tab when its data exists ──────────────────────
+  const hasTab = {
+    offers: offerCount > 0,
+    info: Boolean(product.description) || infoRows.length > 0,
+    details: inBox.length > 0 || supportRows.length > 0 || Boolean(product.warranty),
+    measurements: dimensions.length > 0,
+    specs: specifications.length > 0 || highlights.length > 0,
+    materials: materials.length > 0 || careInstructions.length > 0,
+    guide: Boolean(userGuide),
+    additional: additionalRows.length > 0 || certifications.length > 0 || reviewSummary.total > 0,
+  };
+
+  const tabs = TAB_DEFINITIONS.filter((tab) => hasTab[tab.key]);
+  if (tabs.length === 0) return null;
+
+  const currentTab = tabs.some((tab) => tab.key === activeTab) ? activeTab : tabs[0].key;
+  const currentCollapse = tabs.some((tab) => tab.key === openCollapse) ? openCollapse : null;
+
   const handleScrollBy = (direction) => {
     const el = tabsTrackRef.current;
     if (!el) return;
@@ -115,20 +179,6 @@ export default function ProductInfoTabs({ product }) {
     }
   };
 
-  if (!product) return null;
-
-  const {
-    offerDetails = { emiOptions: [], bankOffers: [], couponOffers: [] },
-    specifications = [],
-    dimensions = {},
-    materials = [],
-    careInstructions = [],
-    manufacturer = {},
-    userGuide = { steps: [] },
-    additionalDetails = { inBox: [], certifications: [] },
-    reviewSummary = { breakdown: [] },
-  } = product;
-
   const copyCoupon = (code) => {
     navigator.clipboard?.writeText(code);
     setCopiedCode(code);
@@ -140,136 +190,130 @@ export default function ProductInfoTabs({ product }) {
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
-  const handleFeedbackSubmit = (e) => {
-    e.preventDefault();
-    setFeedbackStep(2);
-    addToast({
-      title: "Feedback Submitted",
-      message: "Thank you for reporting this price! We'll review it shortly.",
-      type: "success",
-    });
-  };
-
   // ── Tab Panel Content Dictionary ──────────────────────────────
   const content = {
     offers: (
       <div className="pit-offers-content">
-        <div className="pit-section-title">
-          <CreditCard size={17} color="var(--navy)" /> No Cost EMI Plans
-        </div>
-        <div className="pit-emi-grid">
-          {offerDetails.emiOptions?.map((opt) => (
-            <div className="pit-emi-card" key={opt.months}>
-              <div className="pit-emi-months">{opt.months} Months</div>
-              <div className="pit-emi-amount">
-                {formatCurrency(opt.emi)}
-                <span>/mo</span>
-              </div>
-              <div className={`pit-emi-interest ${opt.interest === "No Cost" ? "free" : ""}`}>
-                {opt.interest}
-              </div>
+        {offers.emi.length > 0 && (
+          <>
+            <div className="pit-section-title">
+              <CreditCard size={17} color="var(--navy)" /> EMI Plans
             </div>
-          ))}
-        </div>
+            <div className="pit-emi-grid">
+              {offers.emi.map((opt, index) => (
+                <div className="pit-emi-card" key={`${opt.months}-${index}`}>
+                  <div className="pit-emi-months">
+                    {opt.months !== null ? `${opt.months} Months` : (opt.title ?? "EMI")}
+                  </div>
+                  <div className="pit-emi-amount">
+                    {opt.amount !== null ? formatCurrency(opt.amount) : "—"}
+                    {opt.amount !== null && <span>/mo</span>}
+                  </div>
+                  <div className={`pit-emi-interest ${opt.interest === "No Cost" ? "free" : ""}`}>
+                    {opt.interest ?? opt.description ?? ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>
-          💳 Partner Bank Offers
-        </div>
-        <div className="pit-bank-list">
-          {offerDetails.bankOffers?.map((o, i) => (
-            <div className="pit-bank-row" key={i}>
-              <div className="pit-bank-icon">{o.bank.charAt(0)}</div>
-              <div className="pit-bank-details">
-                <div className="pit-bank-name">{o.bank}</div>
-                <div className="pit-bank-desc">{o.offer}</div>
-                {o.code && (
-                  <button className="pit-code-pill" onClick={() => copyCoupon(o.code)}>
-                    {copiedCode === o.code ? (
-                      <>
-                        <Check size={12} /> Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy size={12} /> Code: {o.code}
-                      </>
+        {offers.bank.length > 0 && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Partner Bank Offers
+            </div>
+            <div className="pit-bank-list">
+              {offers.bank.map((o, i) => (
+                <div className="pit-bank-row" key={i}>
+                  {o.bank && <div className="pit-bank-icon">{o.bank.charAt(0)}</div>}
+                  <div className="pit-bank-details">
+                    {o.bank && <div className="pit-bank-name">{o.bank}</div>}
+                    <div className="pit-bank-desc">{o.description ?? o.title ?? o.code}</div>
+                    {o.code && (
+                      <button className="pit-code-pill" onClick={() => copyCoupon(o.code)}>
+                        {copiedCode === o.code ? (
+                          <>
+                            <Check size={12} /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} /> Code: {o.code}
+                          </>
+                        )}
+                      </button>
                     )}
-                  </button>
-                )}
-              </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>
-          🏷️ Exclusive Promo Codes
-        </div>
-        <div className="pit-coupon-grid">
-          {offerDetails.couponOffers?.map((o, i) => (
-            <div className="pit-coupon-card" key={i}>
-              <div className="pit-coupon-top">
-                <span className="pit-coupon-code">{o.code}</span>
-                <button className="pit-coupon-copy-btn" onClick={() => copyCoupon(o.code)}>
-                  {copiedCode === o.code ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
-                </button>
-              </div>
-              <div className="pit-coupon-desc">{o.desc}</div>
+        {offers.coupon.length > 0 && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Promo Codes
             </div>
-          ))}
-        </div>
+            <div className="pit-coupon-grid">
+              {offers.coupon.map((o, i) => (
+                <div className="pit-coupon-card" key={i}>
+                  <div className="pit-coupon-top">
+                    <span className="pit-coupon-code">{o.code ?? o.title}</span>
+                    {o.code && (
+                      <button className="pit-coupon-copy-btn" onClick={() => copyCoupon(o.code)}>
+                        {copiedCode === o.code ? (
+                          <Check size={14} color="#16a34a" />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <div className="pit-coupon-desc">{o.description ?? o.title ?? ""}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     ),
 
     info: (
       <div className="pit-info-content">
-        <table className="pit-table">
-          <tbody>
-            <tr>
-              <td>Brand</td>
-              <td>{product.brand}</td>
-            </tr>
-            <tr>
-              <td>Model Name</td>
-              <td>{additionalDetails.modelNumber}</td>
-            </tr>
-            <tr>
-              <td>SKU / Product ID</td>
-              <td>{product.sku}</td>
-            </tr>
-            <tr>
-              <td>Country of Origin</td>
-              <td>{additionalDetails.countryOfOrigin}</td>
-            </tr>
-            <tr>
-              <td>Manufacturer</td>
-              <td>{manufacturer.name}</td>
-            </tr>
-            <tr>
-              <td>Importer / Packer</td>
-              <td>{manufacturer.importedBy}</td>
-            </tr>
-            <tr>
-              <td>Manufacturing Date</td>
-              <td>{manufacturer.manufacturingDate}</td>
-            </tr>
-            <tr>
-              <td>HSN Code</td>
-              <td>{additionalDetails.hsn}</td>
-            </tr>
-            <tr>
-              <td>GST Rate</td>
-              <td>{additionalDetails.gst}</td>
-            </tr>
-          </tbody>
-        </table>
-        {additionalDetails.certifications?.length > 0 && (
+        {product.description && (
+          <p
+            style={{
+              fontSize: 13.5,
+              color: "var(--gray-600, #475569)",
+              lineHeight: 1.7,
+              marginBottom: 16,
+            }}
+          >
+            {product.description}
+          </p>
+        )}
+        {infoRows.length > 0 && (
+          <table className="pit-table">
+            <tbody>
+              {infoRows.map(([label, value]) => (
+                <tr key={label}>
+                  <td>{label}</td>
+                  <td>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {certifications.length > 0 && (
           <>
             <div className="pit-section-title" style={{ marginTop: 22 }}>
               Quality &amp; Safety Certifications
             </div>
             <div className="pit-cert-pills">
-              {additionalDetails.certifications.map((c, i) => (
+              {certifications.map((certification, i) => (
                 <span className="pit-cert-pill" key={i}>
-                  <ShieldCheck size={14} color="var(--green)" /> {c}
+                  <ShieldCheck size={14} color="var(--green)" /> {certification}
                 </span>
               ))}
             </div>
@@ -280,138 +324,55 @@ export default function ProductInfoTabs({ product }) {
 
     details: (
       <div className="pit-details-content">
-        <div className="pit-section-title">What's in the Box</div>
-        <div className="pit-inbox-grid">
-          {additionalDetails.inBox?.map((item, i) => (
-            <div className="pit-inbox-card" key={i}>
-              <span className="pit-inbox-check">✓</span>
-              <span>{item}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="pit-section-title" style={{ marginTop: 24 }}>
-          Manufacturer Contact &amp; Support
-        </div>
-        <table className="pit-table">
-          <tbody>
-            <tr>
-              <td>Address</td>
-              <td>{manufacturer.address}</td>
-            </tr>
-            <tr>
-              <td>Toll-Free Support</td>
-              <td>{manufacturer.supportPhone}</td>
-            </tr>
-            <tr>
-              <td>Customer Service</td>
-              <td>
-                <a href={`mailto:${manufacturer.supportEmail}`} className="pit-link">
-                  {manufacturer.supportEmail} <ExternalLink size={12} />
-                </a>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    ),
-
-    feedback: (
-      <div className="pit-feedback-content">
-        <div className="pit-feedback-title">Would you like to tell us about a lower price?</div>
-        <div className="pit-feedback-sub">
-          Found a lower price elsewhere? Let us know and we'll do our best to match or beat it!
-        </div>
-
-        {feedbackStep === 0 && (
-          <div className="pit-fb-step">
-            <div className="pit-section-title" style={{ marginTop: 16 }}>
-              1. Rate this product's current pricing value
-            </div>
-            <div className="pit-fb-stars">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`pit-fb-star ${s <= (hoverRating || feedbackRating) ? "active" : ""}`}
-                  onMouseEnter={() => setHoverRating(s)}
-                  onMouseLeave={() => setHoverRating(0)}
-                  onClick={() => setFeedbackRating(s)}
-                >
-                  <Star
-                    size={30}
-                    fill={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "none"}
-                    color={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "#cbd5e1"}
-                  />
-                </button>
+        {inBox.length > 0 && (
+          <>
+            <div className="pit-section-title">What&apos;s in the Box</div>
+            <div className="pit-inbox-grid">
+              {inBox.map((item, i) => (
+                <div className="pit-inbox-card" key={i}>
+                  <span className="pit-inbox-check">✓</span>
+                  <span>{item}</span>
+                </div>
               ))}
             </div>
-            {feedbackRating > 0 && (
-              <button className="pit-fb-next" onClick={() => setFeedbackStep(1)}>
-                Continue to Report Lower Price →
-              </button>
-            )}
-          </div>
+          </>
         )}
 
-        {feedbackStep === 1 && (
-          <form className="pit-fb-step" onSubmit={handleFeedbackSubmit}>
-            <div className="pit-section-title" style={{ marginTop: 16 }}>
-              2. Competitor Store &amp; Price Details
+        {product.warranty && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Warranty
             </div>
-            <div className="pit-fb-form">
-              <div className="pit-fb-field">
-                <label>Website URL or Store Name</label>
-                <input
-                  className="pit-fb-input"
-                  type="text"
-                  placeholder="e.g. https://store.com/item or Local Store"
-                  required
-                />
-              </div>
-              <div className="pit-fb-field">
-                <label>Lower Price Seen (₹)</label>
-                <input className="pit-fb-input" type="number" placeholder="e.g. 23990" required />
-              </div>
-              <div className="pit-fb-field">
-                <label>Additional details / promo codes seen</label>
-                <textarea
-                  className="pit-fb-textarea"
-                  rows={3}
-                  placeholder="Tell us if there were coupons, delivery charges or bundled offers..."
-                />
-              </div>
-              <div className="pit-fb-btns">
-                <button type="button" className="pit-fb-back" onClick={() => setFeedbackStep(0)}>
-                  ← Back
-                </button>
-                <button type="submit" className="pit-fb-submit">
-                  Submit Price Match Request
-                </button>
-              </div>
-            </div>
-          </form>
-        )}
-
-        {feedbackStep === 2 && (
-          <div className="pit-fb-success">
-            <div className="pit-fb-check">✓</div>
-            <div className="pit-fb-success-title">Price Match Request Received!</div>
-            <p>
-              Our pricing analytics team has logged this report for SKU{" "}
-              <strong>{product.sku}</strong>. We'll update the listing price if the competitor match
-              is verified.
+            <p style={{ fontSize: 13.5, color: "var(--gray-600, #475569)", lineHeight: 1.7 }}>
+              {product.warranty}
             </p>
-            <button
-              className="pit-fb-reset"
-              onClick={() => {
-                setFeedbackStep(0);
-                setFeedbackRating(0);
-              }}
-            >
-              Submit Another Price
-            </button>
-          </div>
+          </>
+        )}
+
+        {supportRows.length > 0 && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Manufacturer Contact &amp; Support
+            </div>
+            <table className="pit-table">
+              <tbody>
+                {supportRows.map(([label, value]) => (
+                  <tr key={label}>
+                    <td>{label}</td>
+                    <td>
+                      {label === "Customer Service" ? (
+                        <a href={`mailto:${value}`} className="pit-link">
+                          {value} <ExternalLink size={12} />
+                        </a>
+                      ) : (
+                        value
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
     ),
@@ -419,43 +380,37 @@ export default function ProductInfoTabs({ product }) {
     measurements: (
       <div className="pit-measure-content">
         <div className="pit-section-title">Dimensions &amp; Physical Specifications</div>
-        <div className="pit-measure-grid">
-          <div className="pit-measure-card">
-            <span className="pit-measure-label">Height</span>
-            <span className="pit-measure-val">{dimensions.height}</span>
-          </div>
-          <div className="pit-measure-card">
-            <span className="pit-measure-label">Width</span>
-            <span className="pit-measure-val">{dimensions.width}</span>
-          </div>
-          <div className="pit-measure-card">
-            <span className="pit-measure-label">Depth</span>
-            <span className="pit-measure-val">{dimensions.depth}</span>
-          </div>
-          <div className="pit-measure-card">
-            <span className="pit-measure-label">Weight</span>
-            <span className="pit-measure-val">{dimensions.weight}</span>
-          </div>
-        </div>
-
-        <div className="pit-measure-fit-box">
-          <div className="pit-fit-icon">🎧</div>
-          <div>
-            <strong>Ergonomic Over-Ear Fit:</strong> Engineered for all-day comfort with adjustable
-            synthetic leather headband and pressure-relieving memory foam earpads.
-          </div>
+        <div className="pit-dim-grid">
+          {dimensions.map((row) => (
+            <div className="pit-dim-card" key={row.label}>
+              <span className="pit-dim-label">{row.label}</span>
+              <span className="pit-dim-value">{row.value}</span>
+            </div>
+          ))}
         </div>
       </div>
     ),
 
     specs: (
       <div className="pit-specs-content">
+        {highlights.length > 0 && (
+          <div className="pit-spec-group">
+            <div className="pit-spec-group-label">Highlights</div>
+            <ul className="pd-highlight-list">
+              {highlights.map((highlight, i) => (
+                <li key={i}>
+                  <Check size={14} className="pd-hl-check" /> <span>{highlight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {specifications.map((group, i) => (
           <div className="pit-spec-group" key={i}>
-            <div className="pit-spec-group-title">{group.category}</div>
+            {group.category && <div className="pit-spec-group-label">{group.category}</div>}
             <table className="pit-table">
               <tbody>
-                {group.items?.map((item, j) => (
+                {group.items.map((item, j) => (
                   <tr key={j}>
                     <td>{item.label}</td>
                     <td>{item.value}</td>
@@ -470,106 +425,119 @@ export default function ProductInfoTabs({ product }) {
 
     materials: (
       <div className="pit-materials-content">
-        <div className="pit-section-title">Materials Breakdown</div>
-        <div className="pit-mat-grid">
-          {materials.map((m, i) => (
-            <div className="pit-mat-card" key={i}>
-              <div className="pit-mat-part">{m.part}</div>
-              <div className="pit-mat-material">{m.material}</div>
+        {materials.length > 0 && (
+          <>
+            <div className="pit-section-title">Materials Breakdown</div>
+            <div className="pit-materials-grid">
+              {materials.map((material, i) => (
+                <div className="pit-material-card" key={i}>
+                  {material.part && <div className="pit-material-part">{material.part}</div>}
+                  <div className="pit-material-val">{material.material}</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>
-          Care &amp; Maintenance Guidelines
-        </div>
-        <ul className="pit-care-list">
-          {careInstructions.map((c, i) => (
-            <li key={i}>
-              <span className="pit-care-bullet">💧</span>
-              <span>{c}</span>
-            </li>
-          ))}
-        </ul>
+        {careInstructions.length > 0 && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Care &amp; Maintenance Guidelines
+            </div>
+            <ul className="pit-care-list">
+              {careInstructions.map((instruction, i) => (
+                <li key={i}>
+                  <span className="pit-care-bullet">💧</span>
+                  <span>{instruction}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
     ),
 
-    guide: (
+    guide: userGuide ? (
       <div className="pit-guide-content">
-        <div className="pit-guide-header">
+        <div className="pit-guide-top">
           <div>
             <div className="pit-section-title">User Manual &amp; Quick Start Guide</div>
-            <div className="pit-guide-sub">Version {userGuide.manualVersion} • English (EN)</div>
+            {(userGuide.version || userGuide.fileSize) && (
+              <div className="pit-sc-sub">
+                {[userGuide.version ? `Version ${userGuide.version}` : null, userGuide.fileSize]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </div>
+            )}
           </div>
-          <button
-            className="pit-download-btn"
-            onClick={() =>
-              addToast({
-                title: "Downloading Manual",
-                message: "Starting PDF download for Sony WH-1000XM5 User Guide...",
-                type: "info",
-              })
-            }
-          >
-            <Download size={15} /> Download PDF Guide ({userGuide.fileSize})
-          </button>
+          {userGuide.url && (
+            <a
+              className="pit-pdf-btn"
+              href={userGuide.url}
+              target="_blank"
+              rel="noreferrer"
+              download
+            >
+              <Download size={15} /> Download Guide
+            </a>
+          )}
         </div>
 
-        <div className="pit-guide-steps">
-          {userGuide.steps?.map((s, i) => (
-            <div className="pit-step-card" key={i}>
-              <div className="pit-step-num">{s.step}</div>
-              <div className="pit-step-info">
-                <div className="pit-step-title">{s.title}</div>
-                <div className="pit-step-desc">{s.desc}</div>
+        {userGuide.steps.length > 0 && (
+          <div className="pit-guide-steps">
+            {userGuide.steps.map((step, i) => (
+              <div className="pit-guide-step" key={i}>
+                <div className="pit-step-num">{step.step}</div>
+                <div className="pit-step-info">
+                  {step.title && <div className="pit-step-title">{step.title}</div>}
+                  {step.desc && <div className="pit-step-desc">{step.desc}</div>}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
-    ),
+    ) : null,
 
     additional: (
       <div className="pit-additional-content">
-        <div className="pit-section-title">Regulatory &amp; Compliance Details</div>
-        <table className="pit-table">
-          <tbody>
-            <tr>
-              <td>Model Number</td>
-              <td>{additionalDetails.modelNumber}</td>
-            </tr>
-            <tr>
-              <td>Country of Origin</td>
-              <td>{additionalDetails.countryOfOrigin}</td>
-            </tr>
-            <tr>
-              <td>HSN Code</td>
-              <td>{additionalDetails.hsn}</td>
-            </tr>
-            <tr>
-              <td>GST Rate</td>
-              <td>{additionalDetails.gst}</td>
-            </tr>
-          </tbody>
-        </table>
+        {additionalRows.length > 0 && (
+          <>
+            <div className="pit-section-title">Regulatory &amp; Compliance Details</div>
+            <table className="pit-table">
+              <tbody>
+                {additionalRows.map(([label, value]) => (
+                  <tr key={label}>
+                    <td>{label}</td>
+                    <td>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>
-          Rating Breakdown Summary
-        </div>
-        <div className="pit-rating-summary">
-          <div className="pit-rating-big">
-            <span className="pit-big-score">{reviewSummary.overall || "4.7"}</span>
-            <span className="pit-big-label">/ 5</span>
-            <div className="pit-big-count">
-              {(reviewSummary.totalReviews || 48392).toLocaleString()} ratings
+        {reviewSummary.total > 0 && (
+          <>
+            <div className="pit-section-title" style={{ marginTop: 24 }}>
+              Rating Breakdown Summary
             </div>
-          </div>
-          <div className="pit-rbar-list">
-            {reviewSummary.breakdown?.map((b) => (
-              <RatingBar key={b.stars} stars={b.stars} percent={b.percent} />
-            ))}
-          </div>
-        </div>
+            <div className="pit-rating-summary">
+              <div className="pit-rating-big">
+                <span className="pit-big-score">
+                  {reviewSummary.overall !== null ? reviewSummary.overall : "—"}
+                </span>
+                <span className="pit-big-label">/ 5</span>
+                <div className="pit-big-count">{reviewSummary.total.toLocaleString()} ratings</div>
+              </div>
+              <div className="pit-rbar-list">
+                {reviewSummary.breakdown.map((row) => (
+                  <RatingBar key={row.stars} stars={row.stars} percent={row.percent} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     ),
   };
@@ -597,16 +565,16 @@ export default function ProductInfoTabs({ product }) {
             role="tablist"
             aria-label="Product Information Categories"
           >
-            {TABS.map((t) => (
+            {tabs.map((tab) => (
               <button
-                key={t.key}
+                key={tab.key}
                 role="tab"
-                aria-selected={activeTab === t.key}
-                className={`pit-tab ${activeTab === t.key ? "active" : ""}`}
-                onClick={(e) => handleTabClick(t.key, e)}
+                aria-selected={currentTab === tab.key}
+                className={`pit-tab ${currentTab === tab.key ? "active" : ""}`}
+                onClick={(e) => handleTabClick(tab.key, e)}
               >
-                <t.icon size={16} />
-                <span>{t.label}</span>
+                <tab.icon size={16} />
+                <span>{tab.label}</span>
               </button>
             ))}
           </div>
@@ -624,20 +592,20 @@ export default function ProductInfoTabs({ product }) {
         </div>
 
         {/* Tab Panel Content (Only active tab rendered) */}
-        <div className="pit-tab-content">{content[activeTab]}</div>
+        <div className="pit-tab-content">{content[currentTab]}</div>
       </div>
 
       {/* ── Mobile: Collapsible Accordion ── */}
       <div className="pit-accordion">
-        {TABS.map((t) => (
+        {tabs.map((tab) => (
           <Collapsible
-            key={t.key}
-            label={t.label}
-            icon={t.icon}
-            open={openCollapse === t.key}
-            onToggle={() => setOpenCollapse((o) => (o === t.key ? null : t.key))}
+            key={tab.key}
+            label={tab.label}
+            icon={tab.icon}
+            open={currentCollapse === tab.key}
+            onToggle={() => setOpenCollapse((open) => (open === tab.key ? null : tab.key))}
           >
-            {content[t.key]}
+            {content[tab.key]}
           </Collapsible>
         ))}
       </div>

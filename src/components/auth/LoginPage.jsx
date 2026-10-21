@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
 
 export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
@@ -37,6 +38,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
 
   const { login } = useAuth();
   const { addToast } = useToast();
+  const { settings } = useSettings();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -283,7 +285,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
           </div>
 
           <div style={{ marginTop: 36, fontSize: 12, color: "rgba(255, 255, 255, 0.75)" }}>
-            © 2026 Marvel Retail Operations. All rights reserved.
+            {settings?.footer?.copyright || ""}
           </div>
         </div>
 

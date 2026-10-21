@@ -17,11 +17,22 @@ export default defineConfig({
   reporter: process.env.CI
     ? [["html", { open: "never" }], ["github"]]
     : [["html", { open: "never" }]],
+  // Every page load fans out to ONE Express API process (content, settings,
+  // menu, products), and each of those calls waits on a round trip to
+  // Supabase. The default worker count is half the cores, so on a many-core
+  // machine sixteen browsers queue behind one API and content assertions time
+  // out for reasons that have nothing to do with the code under test. Six
+  // workers still saturate the machine and keep the suite quick.
+  workers: process.env.CI ? 2 : 6,
   use: {
     baseURL: "http://127.0.0.1:5173",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // A page load makes several API calls; under load they queue behind each
+    // other. These assertions check WHAT is rendered, not how fast it arrives,
+    // so give them room rather than making them flaky.
+    expect: { timeout: 15000 },
   },
   projects: [
     {

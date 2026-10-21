@@ -1,22 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Package,
   Heart,
   User,
   MapPin,
-  Clock,
   CheckCircle2,
   Truck,
-  ExternalLink,
   ChevronRight,
   ArrowLeft,
-  RotateCcw,
-  ShieldCheck,
   ShoppingBag,
-  CreditCard,
 } from "lucide-react";
-import { Button, Badge, useToast } from "../ui";
+import { Button, useToast } from "../ui";
 import { apiFetchOrders } from "../../api/backendApi";
+import { apiFetchWishlist, apiAddToWishlist, apiRemoveFromWishlist } from "../../api/wishlistApi";
 import { useCart } from "../../context/CartContext";
 import { formatCurrency } from "../../lib/currency";
 
@@ -28,28 +24,35 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
   const { addToast } = useToast();
   const { addItem } = useCart();
 
-  const [wishlist, setWishlist] = useState([
-    {
-      id: "p1",
-      title: "Wireless Noise-Canceling Headphones Pro",
-      price: 199.99,
-      original_price: 249.99,
-      image:
-        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=80",
-      category: "Electronics",
-      in_stock: true,
-    },
-    {
-      id: "p2",
-      title: "Smart OLED Watch Ultra",
-      price: 349.5,
-      original_price: 399.0,
-      image:
-        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop&q=80",
-      category: "Wearables",
-      in_stock: true,
-    },
-  ]);
+  // The wishlist is the user's stored rows, never a demo list.
+  const [wishlist, setWishlist] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistError, setWishlistError] = useState(null);
+
+  const loadWishlist = useCallback(async () => {
+    setWishlistLoading(true);
+    try {
+      const data = await apiFetchWishlist();
+      setWishlist(Array.isArray(data?.items) ? data.items : []);
+      setWishlistError(null);
+    } catch (e) {
+      setWishlist([]);
+      setWishlistError(
+        e instanceof Error && e.message ? e.message : "Could not load your wishlist."
+      );
+    } finally {
+      setWishlistLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setWishlist([]);
+      setWishlistLoading(false);
+      return;
+    }
+    loadWishlist();
+  }, [currentUser, loadWishlist]);
 
   useEffect(() => {
     loadOrders();
@@ -146,10 +149,39 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
     }
   };
 
-  const handleRemoveWishlist = (id, title) => {
-    setWishlist(wishlist.filter((item) => item.id !== id));
-    addToast({ title: "Removed from Wishlist", message: title, type: "info" });
+  const handleRemoveWishlist = async (productId, title) => {
+    if (!productId) return;
+    try {
+      await apiRemoveFromWishlist(productId);
+      setWishlist((previous) => previous.filter((item) => item.product_id !== productId));
+      addToast({ title: "Removed from Wishlist", message: title, type: "info" });
+    } catch {
+      addToast({
+        title: "Could not remove",
+        message: "The wishlist could not be updated. Please try again.",
+        type: "error",
+      });
+    }
   };
+
+  const handleAddWishlist = async (productId, title) => {
+    if (!productId) return;
+    try {
+      await apiAddToWishlist(productId);
+      await loadWishlist();
+      addToast({ title: "Saved to Wishlist", message: title, type: "success" });
+    } catch {
+      addToast({
+        title: "Could not save",
+        message: "The wishlist could not be updated. Please try again.",
+        type: "error",
+      });
+    }
+  };
+
+  // A row without its joined product cannot be rendered honestly; the empty
+  // state describes the visible list rather than a blank grid.
+  const savedWishlist = wishlist.filter((entry) => entry?.product);
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 120px)", padding: "32px 16px" }}>
@@ -259,7 +291,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               cursor: "pointer",
             }}
           >
-            <Heart size={18} /> Saved Wishlist ({wishlist.length})
+            <Heart size={18} /> Saved Wishlist ({savedWishlist.length})
           </button>
 
           <button
@@ -377,6 +409,26 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                               Qty: {item.quantity} • {formatCurrency(item.price)}
                             </div>
                           </div>
+                          {item.product_id && (
+                            <button
+                              type="button"
+                              aria-label={`Save ${item.title} to wishlist`}
+                              title="Save to wishlist"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddWishlist(item.product_id, item.title);
+                              }}
+                              style={{
+                                border: "none",
+                                background: "none",
+                                color: "#94a3b8",
+                                cursor: "pointer",
+                                padding: 4,
+                              }}
+                            >
+                              <Heart size={16} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -628,84 +680,167 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
           </div>
         )}
 
-        {/* TAB 2: WISHLIST */}
-        {activeTab === "wishlist" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: 20,
-            }}
-          >
-            {wishlist.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 16,
-                  padding: 18,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-              >
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  style={{
-                    width: "100%",
-                    height: 180,
-                    objectFit: "cover",
-                    borderRadius: 12,
-                    marginBottom: 12,
-                  }}
-                />
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#2563eb",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {item.category}
-                </div>
-                <h4
-                  style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", margin: "4px 0 8px 0" }}
-                >
-                  {item.title}
-                </h4>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-                    {formatCurrency(item.price)}
-                  </span>
-                  <span style={{ fontSize: 13, color: "#94a3b8", textDecoration: "line-through" }}>
-                    {formatCurrency(item.original_price)}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    style={{ flex: 1 }}
-                    onClick={() => {
-                      addItem(item, 1);
-                      addToast({ title: "Moved to Cart", message: item.title, type: "success" });
+        {/* TAB 2: WISHLIST (GET /api/account/wishlist) */}
+        {activeTab === "wishlist" &&
+          (wishlistLoading ? (
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 16,
+                padding: 32,
+                border: "1px solid #e2e8f0",
+                textAlign: "center",
+                color: "#64748b",
+                fontSize: 14,
+              }}
+            >
+              Loading your wishlist…
+            </div>
+          ) : wishlistError ? (
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 16,
+                padding: 32,
+                border: "1px solid #e2e8f0",
+                textAlign: "center",
+                color: "#64748b",
+                fontSize: 14,
+              }}
+            >
+              Wishlist is temporarily unavailable.
+            </div>
+          ) : savedWishlist.length === 0 ? (
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 16,
+                padding: 40,
+                border: "1px solid #e2e8f0",
+                textAlign: "center",
+              }}
+            >
+              <Heart size={40} color="#cbd5e1" />
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", margin: "12px 0 6px" }}>
+                Your wishlist is empty
+              </h3>
+              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 18px" }}>
+                Products you save will appear here.
+              </p>
+              {onNavigateHome && (
+                <Button variant="primary" size="sm" onClick={onNavigateHome}>
+                  Browse the store
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 20,
+              }}
+            >
+              {savedWishlist.map((entry) => {
+                const product = entry?.product;
+                if (!product) return null;
+
+                const title = product.title || product.name || "";
+                const image = product.image_url || product.image || "";
+                const hasPrice = product.price != null && Number.isFinite(Number(product.price));
+                const hasOriginal =
+                  product.original_price != null &&
+                  Number(product.original_price) > Number(product.price);
+
+                return (
+                  <div
+                    key={entry.id ?? entry.product_id}
+                    style={{
+                      background: "#ffffff",
+                      borderRadius: 16,
+                      padding: 18,
+                      border: "1px solid #e2e8f0",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
                     }}
                   >
-                    <ShoppingBag size={14} style={{ marginRight: 6 }} /> Move to Cart
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleRemoveWishlist(item.id, item.title)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    {image && (
+                      <img
+                        src={image}
+                        alt={title}
+                        style={{
+                          width: "100%",
+                          height: 180,
+                          objectFit: "cover",
+                          borderRadius: 12,
+                          marginBottom: 12,
+                        }}
+                      />
+                    )}
+                    {product.category && (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#2563eb",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {product.category}
+                      </div>
+                    )}
+                    <h4
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#0f172a",
+                        margin: "4px 0 8px 0",
+                      }}
+                    >
+                      {title}
+                    </h4>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}
+                    >
+                      <span style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+                        {hasPrice ? formatCurrency(product.price) : "—"}
+                      </span>
+                      {hasOriginal && (
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "#94a3b8",
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          {formatCurrency(product.original_price)}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        style={{ flex: 1 }}
+                        onClick={() => {
+                          addItem(product, 1);
+                          addToast({ title: "Moved to Cart", message: title, type: "success" });
+                        }}
+                      >
+                        <ShoppingBag size={14} style={{ marginRight: 6 }} /> Move to Cart
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleRemoveWishlist(entry.product_id, title)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
 
         {/* TAB 3: PROFILE & ADDRESSES */}
         {activeTab === "profile" && (

@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucide-react";
 import { useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
 import { apiFetchProducts } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
+
+function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textOrNull(value) {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
 
 function FVCard({ product, onView }) {
   const [wishlisted, setWishlisted] = useState(false);
@@ -11,16 +21,12 @@ function FVCard({ product, onView }) {
   const { addToast } = useToast();
   const { addItem } = useCart();
 
-  const title = product.title || product.name || "Product";
-  const image =
-    product.image_url ||
-    product.image ||
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
-  const price = parseFloat(product.price) || 0;
-  const originalPrice =
-    parseFloat(product.original_price || product.originalPrice) || Math.round(price * 1.25);
-  const rating = parseFloat(product.rating) || 4.8;
-  const reviews = parseInt(product.reviews_count || product.reviews) || 48;
+  const title = textOrNull(product.title) || textOrNull(product.name) || "Product";
+  const image = textOrNull(product.image_url) || textOrNull(product.image);
+  const price = numberOrNull(product.price);
+  const originalPrice = numberOrNull(product.original_price ?? product.originalPrice);
+  const rating = numberOrNull(product.rating);
+  const reviews = numberOrNull(product.reviews_count ?? product.reviews);
 
   const handleCart = (e) => {
     e.stopPropagation();
@@ -41,7 +47,9 @@ function FVCard({ product, onView }) {
   };
 
   const discount =
-    originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    price !== null && originalPrice !== null && originalPrice > price
+      ? Math.round(((originalPrice - price) / originalPrice) * 100)
+      : null;
 
   const handleView = () => onView && onView(product);
 
@@ -64,7 +72,9 @@ function FVCard({ product, onView }) {
       aria-label={onView ? `View ${title}` : undefined}
       style={{ cursor: onView ? "pointer" : "default" }}
     >
-      {discount > 0 && <span className="fv-badge fv-badge-discount">{discount}% OFF</span>}
+      {discount !== null && discount > 0 && (
+        <span className="fv-badge fv-badge-discount">{discount}% OFF</span>
+      )}
       <button className="fv-wish" onClick={handleWish} aria-label="Wishlist">
         <Heart
           size={16}
@@ -74,9 +84,13 @@ function FVCard({ product, onView }) {
       </button>
 
       <div className="fv-img-wrap">
-        <img src={image} alt={title} className="fv-img" loading="lazy" />
+        {image ? (
+          <img src={image} alt={title} className="fv-img" loading="lazy" />
+        ) : (
+          <div className="fv-img" style={{ background: "#f1f5f9" }} aria-hidden="true" />
+        )}
         <div className="fv-overlay">
-          <Eye size={15} /> Quick View
+          <Eye size={15} /> View Product
         </div>
       </div>
 
@@ -85,17 +99,21 @@ function FVCard({ product, onView }) {
           {title}
         </div>
 
-        <div className="fv-rating-row">
-          <span className="fv-rating-chip">
-            <Star size={11} fill="#f59e0b" color="#f59e0b" />
-            <strong>{rating}</strong>
-          </span>
-          <span className="fv-review-count">({reviews.toLocaleString()})</span>
-        </div>
+        {rating !== null && (
+          <div className="fv-rating-row">
+            <span className="fv-rating-chip">
+              <Star size={11} fill="#f59e0b" color="#f59e0b" />
+              <strong>{rating}</strong>
+            </span>
+            {reviews !== null && reviews > 0 && (
+              <span className="fv-review-count">({reviews.toLocaleString()})</span>
+            )}
+          </div>
+        )}
 
         <div className="fv-price-row">
-          <span className="fv-price">{formatCurrency(price)}</span>
-          {originalPrice > price && (
+          {price !== null && <span className="fv-price">{formatCurrency(price)}</span>}
+          {price !== null && originalPrice !== null && originalPrice > price && (
             <span className="fv-original">{formatCurrency(originalPrice)}</span>
           )}
         </div>
@@ -118,27 +136,42 @@ function FVCard({ product, onView }) {
   );
 }
 
-export default function FrequentlyVisited({ onView }) {
+/**
+ * "More From the Store" — other products from the catalogue.
+ *
+ * This strip is a plain catalogue list, so its heading says exactly that. There
+ * is no view-tracking endpoint behind it and the copy must not claim one.
+ */
+export default function FrequentlyVisited({ onView, excludeId }) {
   const scrollRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
   const [items, setItems] = useState([]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadItems = async () => {
       try {
-        const liveProds = await apiFetchProducts();
-        if (liveProds && liveProds.length > 0) {
-          setItems(liveProds.slice(0, 8));
-        }
-      } catch (err) {
-        console.error("Error loading frequently visited:", err);
+        const products = await apiFetchProducts();
+        if (cancelled || !Array.isArray(products)) return;
+        setItems(
+          products
+            .filter((product) => product && String(product.id) !== String(excludeId))
+            .slice(0, 8)
+        );
+      } catch {
+        if (!cancelled) setItems([]);
       }
     };
-    loadItems();
-  }, []);
 
-  // Group products into pairs of 2 for 2-card slider design
+    loadItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [excludeId]);
+
+  // Group products into pairs of 2 for the 2-card slider design
   const pairs = [];
   for (let i = 0; i < items.length; i += 2) {
     pairs.push(items.slice(i, i + 2));
@@ -161,14 +194,12 @@ export default function FrequentlyVisited({ onView }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="fv-section" id="frequently-visited">
+    <section className="fv-section" id="more-products">
       <div className="container">
         <div className="fv-header">
           <div>
-            <h2 className="fv-title">Frequently Visited Together</h2>
-            <p className="fv-subtitle">
-              Customers who viewed this item also explored these products
-            </p>
+            <h2 className="fv-title">More From the Store</h2>
+            <p className="fv-subtitle">Other products currently listed in our catalogue</p>
           </div>
         </div>
 

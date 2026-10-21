@@ -1,7 +1,17 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
-  ChevronUp, ChevronDown, ChevronLeft, ChevronRight,
-  ZoomIn, X, Play, Pause, Maximize2, Rows, Columns, Sparkles
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  X,
+  Play,
+  Pause,
+  Maximize2,
+  Rows,
+  Columns,
+  Sparkles,
 } from "lucide-react";
 
 export default function ProductImageGallery({ media = [] }) {
@@ -12,19 +22,28 @@ export default function ProductImageGallery({ media = [] }) {
   const [zoomPos, setZoomPos] = useState({ x: 50, y: 50, mouseX: 0, mouseY: 0 });
   const [lightbox, setLightbox] = useState(false);
   const [orientation, setOrientation] = useState("vertical"); // "vertical" | "horizontal"
-  const [autoPlay, setAutoPlay] = useState(
-    () => typeof window === "undefined" || !window.matchMedia
+  const [autoPlay, setAutoPlay] = useState(() =>
+    typeof window === "undefined" || !window.matchMedia
       ? false
       : !window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
   const [slideshowPaused, setSlideshowPaused] = useState(false);
-  const mainRef  = useRef(null);
+  const mainRef = useRef(null);
   const videoRef = useRef(null);
   const thumbsRef = useRef(null);
 
   const THUMB_VISIBLE = 5;
   const activeMedia = media[activeIdx] || {};
   const isVideo = activeMedia.type === "video";
+
+  const goNext = useCallback(() => {
+    if (media.length === 0) return;
+    setActiveIdx((p) => (p + 1) % media.length);
+  }, [media.length]);
+  const goPrev = useCallback(() => {
+    if (media.length === 0) return;
+    setActiveIdx((p) => (p - 1 + media.length) % media.length);
+  }, [media.length]);
 
   // Stop video when switching away
   useEffect(() => {
@@ -36,23 +55,23 @@ export default function ProductImageGallery({ media = [] }) {
     const handleKey = (e) => {
       if (lightbox) {
         if (e.key === "ArrowRight") goNext();
-        if (e.key === "ArrowLeft")  goPrev();
-        if (e.key === "Escape")     setLightbox(false);
+        if (e.key === "ArrowLeft") goPrev();
+        if (e.key === "Escape") setLightbox(false);
       } else {
         if (e.key === "ArrowRight") goNext();
-        if (e.key === "ArrowLeft")  goPrev();
+        if (e.key === "ArrowLeft") goPrev();
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightbox, activeIdx, media.length]);
+  }, [lightbox, goNext, goPrev]);
 
   // Auto-slide the main viewer (pauses on hover, lightbox, zoom lens, video, reduced motion)
   useEffect(() => {
     if (!autoPlay || slideshowPaused || lightbox || isVideo || media.length < 2) return;
     const t = setInterval(goNext, 4500);
     return () => clearInterval(t);
-  }, [autoPlay, slideshowPaused, lightbox, isVideo, media.length, activeIdx]);
+  }, [autoPlay, slideshowPaused, lightbox, isVideo, media.length, goNext]);
 
   // Keep thumbnail strip in sync
   useEffect(() => {
@@ -63,20 +82,23 @@ export default function ProductImageGallery({ media = [] }) {
     }
   }, [activeIdx]);
 
-  const handleMouseMove = useCallback((e) => {
-    if (isVideo || !mainRef.current) return;
-    const rect = mainRef.current.getBoundingClientRect();
-    const clientX = e.clientX - rect.left;
-    const clientY = e.clientY - rect.top;
-    const xPercent = (clientX / rect.width) * 100;
-    const yPercent = (clientY / rect.height) * 100;
-    setZoomPos({
-      x: Math.min(100, Math.max(0, xPercent)),
-      y: Math.min(100, Math.max(0, yPercent)),
-      mouseX: clientX,
-      mouseY: clientY,
-    });
-  }, [isVideo]);
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (isVideo || !mainRef.current) return;
+      const rect = mainRef.current.getBoundingClientRect();
+      const clientX = e.clientX - rect.left;
+      const clientY = e.clientY - rect.top;
+      const xPercent = (clientX / rect.width) * 100;
+      const yPercent = (clientY / rect.height) * 100;
+      setZoomPos({
+        x: Math.min(100, Math.max(0, xPercent)),
+        y: Math.min(100, Math.max(0, yPercent)),
+        mouseX: clientX,
+        mouseY: clientY,
+      });
+    },
+    [isVideo]
+  );
 
   const scrollThumbs = (dir) => {
     setThumbStart((prev) => {
@@ -89,8 +111,26 @@ export default function ProductImageGallery({ media = [] }) {
   const canScrollPrev = thumbStart > 0;
   const canScrollNext = thumbStart + THUMB_VISIBLE < media.length;
 
-  const goNext = () => setActiveIdx((p) => (p + 1) % media.length);
-  const goPrev = () => setActiveIdx((p) => (p - 1 + media.length) % media.length);
+  // Nothing stored: say so instead of showing a broken frame.
+  if (media.length === 0) {
+    return (
+      <div className="pvg-root" id="product-gallery-root">
+        <div
+          className="pvg-main-wrap"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: 320,
+            color: "#64748b",
+            fontSize: 14,
+          }}
+        >
+          No images have been published for this product.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`pvg-root pvg-layout-${orientation}`} id="product-gallery-root">
@@ -106,14 +146,30 @@ export default function ProductImageGallery({ media = [] }) {
           aria-label={autoPlay ? "Pause auto-slide" : "Play auto-slide"}
           title={autoPlay ? "Pause auto-slide" : "Play auto-slide"}
         >
-          {autoPlay ? (<><Pause size={13} /> Pause</>) : (<><Play size={13} /> Auto-slide</>)}
+          {autoPlay ? (
+            <>
+              <Pause size={13} /> Pause
+            </>
+          ) : (
+            <>
+              <Play size={13} /> Auto-slide
+            </>
+          )}
         </button>
         <button
           className="pvg-orientation-btn"
-          onClick={() => setOrientation(o => o === "vertical" ? "horizontal" : "vertical")}
+          onClick={() => setOrientation((o) => (o === "vertical" ? "horizontal" : "vertical"))}
           title={`Switch to ${orientation === "vertical" ? "Horizontal" : "Vertical"} Thumbnails`}
         >
-          {orientation === "vertical" ? <><Rows size={13} /> Horizontal View</> : <><Columns size={13} /> Vertical View</>}
+          {orientation === "vertical" ? (
+            <>
+              <Rows size={13} /> Horizontal View
+            </>
+          ) : (
+            <>
+              <Columns size={13} /> Vertical View
+            </>
+          )}
         </button>
       </div>
 
@@ -205,7 +261,12 @@ export default function ProductImageGallery({ media = [] }) {
               </button>
             </div>
           )}
-          <button className="pvg-fullscreen-btn" onClick={() => setLightbox(true)} aria-label="View fullscreen" title="Expand fullscreen">
+          <button
+            className="pvg-fullscreen-btn"
+            onClick={() => setLightbox(true)}
+            aria-label="View fullscreen"
+            title="Expand fullscreen"
+          >
             <Maximize2 size={16} />
           </button>
         </div>
@@ -225,8 +286,14 @@ export default function ProductImageGallery({ media = [] }) {
           <div
             ref={mainRef}
             className={`pvg-main-img-wrap ${zoom ? "zooming" : ""}`}
-            onMouseEnter={() => { if (!isVideo) setZoom(true); setSlideshowPaused(true); }}
-            onMouseLeave={() => { setZoom(false); setSlideshowPaused(false); }}
+            onMouseEnter={() => {
+              if (!isVideo) setZoom(true);
+              setSlideshowPaused(true);
+            }}
+            onMouseLeave={() => {
+              setZoom(false);
+              setSlideshowPaused(false);
+            }}
             onMouseMove={handleMouseMove}
             onClick={() => setLightbox(true)}
           >
@@ -259,24 +326,40 @@ export default function ProductImageGallery({ media = [] }) {
 
         {/* Media counter */}
         <div className="pvg-counter">
-          {activeMedia.type === "video" ? "▶ Video Showcase" : `Photo ${activeIdx + 1} of ${media.length}`}
+          {activeMedia.type === "video"
+            ? "▶ Video Showcase"
+            : `Photo ${activeIdx + 1} of ${media.length}`}
         </div>
       </div>
 
       {/* ── Fullscreen Lightbox Modal ── */}
       {lightbox && (
         <div className="pvg-lightbox" onClick={() => setLightbox(false)}>
-          <button className="pvg-lb-close" onClick={() => setLightbox(false)} aria-label="Close modal">
+          <button
+            className="pvg-lb-close"
+            onClick={() => setLightbox(false)}
+            aria-label="Close modal"
+          >
             <X size={24} />
           </button>
           <div className="pvg-lb-inner" onClick={(e) => e.stopPropagation()}>
-            <button className="pvg-lb-arrow" onClick={goPrev} aria-label="Previous"><ChevronLeft size={32} /></button>
+            <button className="pvg-lb-arrow" onClick={goPrev} aria-label="Previous">
+              <ChevronLeft size={32} />
+            </button>
             {isVideo ? (
-              <video src={activeMedia.url} poster={activeMedia.poster} controls autoPlay className="pvg-lb-img" />
+              <video
+                src={activeMedia.url}
+                poster={activeMedia.poster}
+                controls
+                autoPlay
+                className="pvg-lb-img"
+              />
             ) : (
               <img src={activeMedia.url} alt="Product Fullscreen" className="pvg-lb-img" />
             )}
-            <button className="pvg-lb-arrow" onClick={goNext} aria-label="Next"><ChevronRight size={32} /></button>
+            <button className="pvg-lb-arrow" onClick={goNext} aria-label="Next">
+              <ChevronRight size={32} />
+            </button>
           </div>
           {/* Lightbox thumbnails */}
           <div className="pvg-lb-thumbs">
@@ -284,11 +367,16 @@ export default function ProductImageGallery({ media = [] }) {
               <button
                 key={i}
                 className={`pvg-lb-thumb ${i === activeIdx ? "active" : ""}`}
-                onClick={(e) => { e.stopPropagation(); setActiveIdx(i); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveIdx(i);
+                }}
               >
                 <img src={item.thumb} alt="" />
                 {item.type === "video" && (
-                  <span className="pvg-lb-play"><Play size={12} fill="white" /></span>
+                  <span className="pvg-lb-play">
+                    <Play size={12} fill="white" />
+                  </span>
                 )}
               </button>
             ))}
