@@ -1,7 +1,7 @@
 -- ====================================================
 -- BACKEND-OWNED CONTENT
 --
--- Contract: docs/superpowers/specs/2026-10-21-backend-owned-content.md
+-- Contract: docs/backend-owned-content.md
 --
 -- Additive and re-runnable. Every table is created IF NOT EXISTS, every
 -- column is added IF NOT EXISTS, every index is created IF NOT EXISTS and

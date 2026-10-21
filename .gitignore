@@ -19,7 +19,6 @@ playwright-report
 test-results
 .vitest
 .knip
-.superpowers/
 
 # Environment variables, credentials & secrets
 .env

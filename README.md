@@ -201,8 +201,9 @@ a deterministic id and never delete.
   editors, and what happens on the storefront when you save.
 - [`docs/sql/README.md`](docs/sql/README.md) — the database hand-off, the
   verification queries and the rollback.
-- [`docs/superpowers/specs/2026-10-20-dynamic-site-content-design.md`](docs/superpowers/specs/2026-10-20-dynamic-site-content-design.md)
-  — the design the implementation follows.
+- [`docs/backend-owned-content.md`](docs/backend-owned-content.md) — the
+  contract every value in the app follows: which tables own which content,
+  the API shapes, and the rule that nothing is invented in the client.
 
 ### Before deploying
 

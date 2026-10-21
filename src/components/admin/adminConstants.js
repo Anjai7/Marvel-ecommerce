@@ -1,6 +1,6 @@
 /* Shared constants and neutral display helpers for the admin console.
  *
- * Rule (see docs/superpowers/specs/2026-10-21-backend-owned-content.md): the
+ * Rule (see docs/backend-owned-content.md): the
  * console never invents a business value. When the API has no value the screen
  * shows `EMPTY`, a neutral em dash — never a made-up name, email, date, plan or
  * number. Enumerations here mirror the database exactly so the client cannot
