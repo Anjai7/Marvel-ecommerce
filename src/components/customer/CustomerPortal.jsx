@@ -11,6 +11,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { Button, useToast } from "../ui";
+import CustomerWishlistTab from "./CustomerWishlistTab";
+import CustomerProfileTab from "./CustomerProfileTab";
 import { apiFetchOrders } from "../../api/backendApi";
 import { apiFetchWishlist, apiAddToWishlist, apiRemoveFromWishlist } from "../../api/wishlistApi";
 import { useCart } from "../../context/CartContext";
@@ -693,263 +695,22 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
         )}
 
         {/* TAB 2: WISHLIST (GET /api/account/wishlist) */}
-        {activeTab === "wishlist" &&
-          (wishlistLoading ? (
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: 32,
-                border: "1px solid #e2e8f0",
-                textAlign: "center",
-                color: "#64748b",
-                fontSize: 14,
-              }}
-            >
-              Loading your wishlist…
-            </div>
-          ) : wishlistError ? (
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: 32,
-                border: "1px solid #e2e8f0",
-                textAlign: "center",
-                color: "#64748b",
-                fontSize: 14,
-              }}
-            >
-              Wishlist is temporarily unavailable.
-            </div>
-          ) : savedWishlist.length === 0 ? (
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 16,
-                padding: 40,
-                border: "1px solid #e2e8f0",
-                textAlign: "center",
-              }}
-            >
-              <Heart size={40} color="#cbd5e1" />
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", margin: "12px 0 6px" }}>
-                Your wishlist is empty
-              </h3>
-              <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 18px" }}>
-                Products you save will appear here.
-              </p>
-              {onNavigateHome && (
-                <Button variant="primary" size="sm" onClick={onNavigateHome}>
-                  Browse the store
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
-                gap: 20,
-              }}
-            >
-              {savedWishlist.map((entry) => {
-                const product = entry?.product;
-                if (!product) return null;
-
-                const title = product.title || product.name || "";
-                const image = product.image_url || product.image || "";
-                const hasPrice = product.price != null && Number.isFinite(Number(product.price));
-                const hasOriginal =
-                  product.original_price != null &&
-                  Number(product.original_price) > Number(product.price);
-
-                return (
-                  <div
-                    key={entry.id ?? entry.product_id}
-                    style={{
-                      background: "#ffffff",
-                      borderRadius: 16,
-                      padding: 18,
-                      border: "1px solid #e2e8f0",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                    }}
-                  >
-                    {image && (
-                      <img
-                        src={image}
-                        alt={title}
-                        style={{
-                          width: "100%",
-                          height: 180,
-                          objectFit: "cover",
-                          borderRadius: 12,
-                          marginBottom: 12,
-                        }}
-                      />
-                    )}
-                    {product.category && (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#2563eb",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        {product.category}
-                      </div>
-                    )}
-                    <h4
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: "#0f172a",
-                        margin: "4px 0 8px 0",
-                      }}
-                    >
-                      {title}
-                    </h4>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}
-                    >
-                      <span style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
-                        {hasPrice ? formatCurrency(product.price) : "—"}
-                      </span>
-                      {hasOriginal && (
-                        <span
-                          style={{
-                            fontSize: 13,
-                            color: "#94a3b8",
-                            textDecoration: "line-through",
-                          }}
-                        >
-                          {formatCurrency(product.original_price)}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        style={{ flex: 1 }}
-                        onClick={() => {
-                          addItem(product, 1);
-                          addToast({ title: "Moved to Cart", message: title, type: "success" });
-                        }}
-                      >
-                        <ShoppingBag size={14} style={{ marginRight: 6 }} /> Move to Cart
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleRemoveWishlist(entry.product_id, title)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+        {activeTab === "wishlist" && (
+          <CustomerWishlistTab
+            wishlistLoading={wishlistLoading}
+            wishlistError={wishlistError}
+            savedWishlist={savedWishlist}
+            onNavigateHome={onNavigateHome}
+            onAddToCart={(product, title) => {
+              addItem(product, 1);
+              addToast({ title: "Moved to Cart", message: title, type: "success" });
+            }}
+            onRemoveWishlist={handleRemoveWishlist}
+          />
+        )}
 
         {/* TAB 3: PROFILE & ADDRESSES */}
-        {activeTab === "profile" && (
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: 16,
-              padding: 28,
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 20 }}>
-              Personal Details & Addresses
-            </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
-                gap: 20,
-                maxWidth: 640,
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#475569",
-                    display: "block",
-                    marginBottom: 6,
-                  }}
-                >
-                  Full Name
-                </label>
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    fontWeight: 600,
-                  }}
-                >
-                  {currentUser?.full_name || "Alex Customer"}
-                </div>
-              </div>
-              <div>
-                <label
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#475569",
-                    display: "block",
-                    marginBottom: 6,
-                  }}
-                >
-                  Email Address
-                </label>
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    fontWeight: 600,
-                  }}
-                >
-                  {currentUser?.email || "user@marvel.com"}
-                </div>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#475569",
-                    display: "block",
-                    marginBottom: 6,
-                  }}
-                >
-                  Primary Delivery Address
-                </label>
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 8,
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    fontWeight: 500,
-                  }}
-                >
-                  742 Evergreen Terrace, Springfield, OR 97477, United States
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === "profile" && <CustomerProfileTab currentUser={currentUser} />}
       </div>
     </div>
   );

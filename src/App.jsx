@@ -3,13 +3,7 @@ import Header from "./components/Header";
 import DynamicMenu from "./components/navigation/DynamicMenu";
 import HoverNav from "./components/HoverNav";
 import MobileMenu from "./components/MobileMenu";
-import HeroBanner from "./components/HeroBanner";
-import CategorySlider from "./components/CategorySlider";
-import BannerLayout from "./components/BannerLayout";
-import TrendingProducts from "./components/TrendingProducts";
-import PromoBannerCarousel from "./components/PromoBannerCarousel";
-import FeaturedProducts from "./components/FeaturedProducts";
-import Footer from "./components/Footer";
+import StorefrontHome from "./components/storefront/StorefrontHome";
 import ScrollToTop from "./components/ScrollToTop";
 import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
@@ -30,48 +24,25 @@ import VendorDashboard from "./components/vendor/VendorDashboard";
 import AdminPortal from "./components/admin/AdminPortal";
 import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
 
-/**
- * Real hash routing. `#/product/:id` keeps its single id; `category/*` carries
- * the whole ancestor path because slugs are unique only per parent, so the
- * last segment alone cannot identify a category.
- */
-export function getHashRoute() {
-  const raw = window.location.hash.replace(/^#\/?/, "").trim();
-  if (!raw) return { page: "home", id: null, path: null, full: "" };
+// Routes & Navigation
+import {
+  getHashRoute,
+  menuPathToCategoryPath,
+  resolveMenuNavigation,
+  getDashboardRouteForRole,
+  getAuthRedirectRoute,
+  isStorefrontRoute,
+  isCategoryRoute,
+  isProductRoute,
+  isAccountRoute,
+  isVendorRoute,
+  isAdminRoute,
+  isSuperAdminRoute,
+  isStandaloneAdminView,
+} from "./lib/routes";
 
-  const parts = raw.split("?")[0].split("/");
-  const page = (parts[0] || "home").toLowerCase();
-
-  if (page === "category") {
-    const remainder = parts.slice(1).join("/");
-    let path = remainder;
-    try {
-      path = decodeURIComponent(remainder);
-    } catch {
-      // A malformed escape keeps the raw remainder; the page shows its
-      // unknown-category state rather than crashing the router.
-    }
-    path = path.replace(/^\/+|\/+$/g, "");
-    return { page, id: path || null, path, full: raw };
-  }
-
-  return { page, id: parts[1] || null, path: null, full: raw };
-}
-
-/**
- * `menu_items.path` already is the full category path, so the nav mapping is a
- * string strip — the menu path and the category path are the same string.
- * Hash-form values (`#/category/x`, allowed by §4.1) normalize the same way.
- */
-export function menuPathToCategoryPath(path) {
-  const clean = String(path ?? "")
-    .trim()
-    .replace(/^#/, "")
-    .replace(/^\/+/, "");
-  if (clean === "category") return "";
-  if (!clean.startsWith("category/")) return null;
-  return clean.slice("category/".length);
-}
+// Re-export for backward-compatibility with tests
+export { getHashRoute, menuPathToCategoryPath };
 
 function AppMain() {
   const { user, isLoggedIn, role: userRole, logout } = useAuth();
@@ -109,72 +80,25 @@ function AppMain() {
   };
 
   const handleDynamicMenuClick = (path) => {
-    const cleanPath = path.replace(/^#/, "").replace(/^\//, "");
-    const categoryPath = menuPathToCategoryPath(path);
-    if (cleanPath === "vendor-dashboard" || cleanPath === "vendor") {
-      if (!isLoggedIn) navigateTo("login", "vendor");
-      else navigateTo("vendor");
-    } else if (
-      cleanPath === "admin-dashboard" ||
-      cleanPath === "admin" ||
-      cleanPath === "admin-portal"
-    ) {
-      if (!isLoggedIn) navigateTo("login", "admin");
-      else navigateTo("admin");
-    } else if (
-      cleanPath === "superadmin-dashboard" ||
-      cleanPath === "super-admin" ||
-      cleanPath === "superadmin"
-    ) {
-      if (!isLoggedIn) navigateTo("login", "super_admin");
-      else navigateTo("super-admin");
-    } else if (
-      cleanPath === "customer-portal" ||
-      cleanPath === "account" ||
-      cleanPath === "orders"
-    ) {
-      if (!isLoggedIn) navigateTo("login", "user");
-      else navigateTo("account");
-    } else if (cleanPath === "products" || cleanPath === "product") {
-      navigateTo("product");
-    } else if (categoryPath !== null) {
-      navigateTo(`category/${categoryPath}`);
-    } else {
-      navigateTo("");
-    }
+    const { route, role } = resolveMenuNavigation(path, isLoggedIn);
+    navigateTo(route, role);
   };
 
   const handleNavigateAdmin = () => {
-    if (userRole === "super_admin") navigateTo("super-admin");
-    else if (userRole === "admin") navigateTo("admin");
-    else if (userRole === "vendor") navigateTo("vendor");
-    else navigateTo("account");
+    navigateTo(getDashboardRouteForRole(userRole));
   };
 
   const handleQuickView = (product) => {
     setQuickViewProduct(product);
   };
 
-  // Determine active view from URL hash route
-  const isStorefront = currentRoute.page === "" || currentRoute.page === "home";
-  const isLoginPage = currentRoute.page === "login";
-  const isSignUpPage = currentRoute.page === "signup";
-  const isProductPage = currentRoute.page === "product" || currentRoute.page === "products";
-  const isCategoryPage = currentRoute.page === "category";
-  const isAccountPage =
-    currentRoute.page === "account" ||
-    currentRoute.page === "customer-portal" ||
-    currentRoute.page === "orders";
-  const isVendorPage = currentRoute.page === "vendor" || currentRoute.page === "vendor-dashboard";
-  const isAdminPage =
-    currentRoute.page === "admin" ||
-    currentRoute.page === "admin-portal" ||
-    currentRoute.page === "admin-dashboard";
-  const isSuperAdminPage =
-    currentRoute.page === "super-admin" ||
-    currentRoute.page === "superadmin" ||
-    currentRoute.page === "superadmin-dashboard";
-  const isCartPage = currentRoute.page === "cart";
+  const handleAuthSuccess = (auth) => {
+    navigateTo(getAuthRedirectRoute(auth?.role));
+  };
+
+  const page = currentRoute.page;
+  const isStorefront = isStorefrontRoute(page);
+  const isStandaloneAdmin = isStandaloneAdminView(page);
 
   return (
     <div className="app">
@@ -185,7 +109,7 @@ function AppMain() {
         onLogin={() => navigateTo("login")}
       />
 
-      {!isAdminPage && !isSuperAdminPage && (
+      {!isStandaloneAdmin && (
         <div className="sticky-header-wrapper">
           <Header
             currentUser={user}
@@ -213,27 +137,15 @@ function AppMain() {
 
       {/* 1. CUSTOMER STOREFRONT */}
       {isStorefront && (
-        <>
-          <HeroBanner onNavigate={handleDynamicMenuClick} />
-          <CategorySlider />
-          <BannerLayout />
-          <TrendingProducts
-            onQuickView={handleQuickView}
-            onNavigate={handleSelectProduct}
-            onSelectProduct={handleSelectProduct}
-          />
-          <PromoBannerCarousel />
-          <FeaturedProducts
-            onQuickView={handleQuickView}
-            onNavigate={handleSelectProduct}
-            onSelectProduct={handleSelectProduct}
-          />
-          <Footer />
-        </>
+        <StorefrontHome
+          onNavigate={handleDynamicMenuClick}
+          onSelectProduct={handleSelectProduct}
+          onQuickView={handleQuickView}
+        />
       )}
 
       {/* 2. CATEGORY LANDING PAGE */}
-      {isCategoryPage && (
+      {isCategoryRoute(page) && (
         <CategoryPage
           path={currentRoute.path}
           onNavigate={handleDynamicMenuClick}
@@ -241,33 +153,24 @@ function AppMain() {
         />
       )}
 
-      {/* 2. AUTHENTICATION (LOGIN & SIGNUP) */}
-      {isLoginPage && (
+      {/* 3. AUTHENTICATION (LOGIN & SIGNUP) */}
+      {page === "login" && (
         <LoginPage
-          onLoginSuccess={(auth) => {
-            if (auth.role === "vendor") navigateTo("vendor");
-            else if (auth.role === "admin") navigateTo("admin");
-            else if (auth.role === "super_admin") navigateTo("super-admin");
-            else navigateTo("");
-          }}
+          defaultRole={loginDefaultRole}
+          onLoginSuccess={handleAuthSuccess}
           onNavigateSignUp={() => navigateTo("signup")}
         />
       )}
 
-      {isSignUpPage && (
+      {page === "signup" && (
         <SignUpPage
-          onSignUpSuccess={(auth) => {
-            if (auth.role === "vendor") navigateTo("vendor");
-            else if (auth.role === "admin") navigateTo("admin");
-            else if (auth.role === "super_admin") navigateTo("super-admin");
-            else navigateTo("");
-          }}
+          onSignUpSuccess={handleAuthSuccess}
           onNavigateLogin={() => navigateTo("login")}
         />
       )}
 
-      {/* 3. DYNAMIC PRODUCT VIEW DETAILS PAGE */}
-      {isProductPage && (
+      {/* 4. DYNAMIC PRODUCT VIEW DETAILS PAGE */}
+      {isProductRoute(page) && (
         <ProductViewPage
           productId={currentRoute.id}
           product={selectedProduct}
@@ -277,7 +180,7 @@ function AppMain() {
       )}
 
       {/* 4. PROTECTED CUSTOMER PORTAL */}
-      {isAccountPage && (
+      {isAccountRoute(page) && (
         <ProtectedRoute allowedRoles={["user", "vendor", "admin", "super_admin"]}>
           <CustomerPortal
             currentUser={user}
@@ -288,27 +191,27 @@ function AppMain() {
       )}
 
       {/* 5. PROTECTED VENDOR HUB */}
-      {isVendorPage && (
+      {isVendorRoute(page) && (
         <ProtectedRoute allowedRoles={["vendor", "super_admin"]}>
           <VendorDashboard currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
       {/* 6. PROTECTED PLATFORM ADMIN CONSOLE */}
-      {isAdminPage && (
+      {isAdminRoute(page) && (
         <ProtectedRoute allowedRoles={["admin", "super_admin"]}>
           <AdminPortal currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
       {/* 7. PROTECTED SUPER ADMIN HUB */}
-      {isSuperAdminPage && (
+      {isSuperAdminRoute(page) && (
         <ProtectedRoute allowedRoles={["super_admin"]}>
           <SuperAdminDashboard currentUser={user} onNavigateHome={() => navigateTo("")} />
         </ProtectedRoute>
       )}
 
-      {isCartPage && (
+      {page === "cart" && (
         <CartPage
           onNavigateHome={() => navigateTo("")}
           onCheckout={() => {

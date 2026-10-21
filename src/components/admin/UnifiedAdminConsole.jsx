@@ -97,6 +97,13 @@ import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
+import {
+  CreateUserModal,
+  ViewUserModal,
+  EditUserModal,
+  ResetPasswordModal,
+  DeleteUserModal,
+} from "./modals";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 
 /* Sidebar icon per order stage, keyed by the `order_status` enum value. */
@@ -2574,548 +2581,68 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       {/* 3. MODALS & POPUPS                                   */}
       {/* ==================================================== */}
 
-      {/* ---------------------------------------------------- */}
-      {/* MODAL 1: ADD NEW USER                                */}
-      {/* ---------------------------------------------------- */}
-      {showAddUserModal && (
-        <div className="modal-backdrop-overlay">
-          <div className="modal-content-container animate-scale-up">
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <div className="modal-icon-bubble purple">
-                  <Plus size={20} />
-                </div>
-                <div>
-                  <h3 className="modal-title">Create User Account</h3>
-                  <p className="modal-subtitle">
-                    Add a new authenticated user profile to Supabase database
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setShowAddUserModal(false)} className="modal-close-btn">
-                <X size={18} />
-              </button>
-            </div>
+      <CreateUserModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        form={addUserForm}
+        setForm={setAddUserForm}
+        onSubmit={handleCreateUser}
+        loading={addUserLoading}
+        isSuperAdmin={isSuperAdmin}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        onGeneratePassword={generateRandomPassword}
+      />
 
-            <form onSubmit={handleCreateUser} className="modal-form">
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label">Full Name *</label>
-                  <Input
-                    required
-                    type="text"
-                    placeholder="e.g. Alex Morgan"
-                    value={addUserForm.fullName}
-                    onChange={(e) =>
-                      setAddUserForm((prev) => ({ ...prev, fullName: e.target.value }))
-                    }
-                  />
-                </div>
+      <ViewUserModal
+        user={viewingUser}
+        onClose={() => setViewingUser(null)}
+        renderRoleBadge={renderRoleBadge}
+        renderStatusBadge={renderStatusBadge}
+        onEdit={(target) => {
+          setViewingUser(null);
+          handleOpenEditUser(target);
+        }}
+        onResetPassword={(target) => {
+          setViewingUser(null);
+          setResetTargetUser(target);
+        }}
+        onToggleStatus={(id, status, name) => handleToggleStatus(id, status, name)}
+        onCopyId={(id) => {
+          navigator.clipboard.writeText(id);
+          addToast({
+            title: "Copied",
+            message: "User ID copied to clipboard.",
+            type: "info",
+          });
+        }}
+      />
 
-                <div className="form-group">
-                  <label className="form-label">Email Address *</label>
-                  <Input
-                    required
-                    type="email"
-                    placeholder="alex@marvel.com"
-                    value={addUserForm.email}
-                    onChange={(e) => setAddUserForm((prev) => ({ ...prev, email: e.target.value }))}
-                  />
-                </div>
-              </div>
+      <EditUserModal
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+        form={editUserForm}
+        setForm={setEditUserForm}
+        onSubmit={handleSaveEditUser}
+        loading={editUserLoading}
+        isSuperAdmin={isSuperAdmin}
+      />
 
-              <div className="form-group">
-                <div className="label-with-action">
-                  <label className="form-label">Temporary Password *</label>
-                  <button
-                    type="button"
-                    onClick={generateRandomPassword}
-                    className="generate-pass-btn"
-                  >
-                    <Sparkles size={12} /> Auto-Generate
-                  </button>
-                </div>
-                <div className="password-input-wrapper">
-                  <Input
-                    required
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Minimum 6 characters"
-                    value={addUserForm.password}
-                    onChange={(e) =>
-                      setAddUserForm((prev) => ({ ...prev, password: e.target.value }))
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="toggle-password-btn"
-                  >
-                    {showPassword ? <X size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
+      <ResetPasswordModal
+        user={resetTargetUser}
+        onClose={() => setResetTargetUser(null)}
+        newPassword={resetNewPassword}
+        setNewPassword={setResetNewPassword}
+        onSubmit={handleResetPassword}
+        loading={resetPasswordLoading}
+      />
 
-              <div className="form-group-row">
-                {/* Role Selector */}
-                <div className="form-group">
-                  <label className="form-label">Account Role *</label>
-                  <select
-                    value={addUserForm.role}
-                    onChange={(e) => setAddUserForm((prev) => ({ ...prev, role: e.target.value }))}
-                    className="form-select-field"
-                  >
-                    <option value="user">Customer (Standard Shopper)</option>
-                    <option value="vendor">Vendor / Seller</option>
-                    <option value="admin">Platform Admin</option>
-                    {isSuperAdmin && <option value="super_admin">Super Admin (Root)</option>}
-                  </select>
-                </div>
-              </div>
-
-              {/* Vendor Store Name if role is vendor */}
-              {addUserForm.role === "vendor" && (
-                <div className="form-group animate-fade-in">
-                  <label className="form-label">Store / Business Name *</label>
-                  <Input
-                    type="text"
-                    placeholder="e.g. Apex Electronics"
-                    value={addUserForm.storeName}
-                    onChange={(e) =>
-                      setAddUserForm((prev) => ({ ...prev, storeName: e.target.value }))
-                    }
-                  />
-                </div>
-              )}
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setShowAddUserModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={addUserLoading} className="submit-primary-btn">
-                  {addUserLoading ? (
-                    <>
-                      <RefreshCw size={15} className="spin-animation" /> Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} /> Create User Account
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------------------------------------------- */}
-      {/* MODAL 2: VIEW USER DETAILS                           */}
-      {/* ---------------------------------------------------- */}
-      {viewingUser && (
-        <div className="modal-backdrop-overlay">
-          <div className="modal-content-container animate-scale-up">
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <div className="modal-icon-bubble blue">
-                  <Eye size={20} />
-                </div>
-                <div>
-                  <h3 className="modal-title">User Account Overview</h3>
-                  <p className="modal-subtitle">Direct profile details from Supabase database</p>
-                </div>
-              </div>
-              <button onClick={() => setViewingUser(null)} className="modal-close-btn">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="view-user-body">
-              {/* Profile Card Header */}
-              <div className="view-profile-hero">
-                <div className={`view-hero-avatar ${viewingUser.role}`}>
-                  {displayInitial(viewingUser.full_name || viewingUser.email)}
-                </div>
-                <div className="view-hero-info">
-                  <h4 className="hero-full-name">{displayValue(viewingUser.full_name)}</h4>
-                  <p className="hero-email">{displayValue(viewingUser.email)}</p>
-                  <div className="hero-badges-row">
-                    {renderRoleBadge(viewingUser.role)}
-                    {renderStatusBadge(viewingUser.status)}
-                  </div>
-                </div>
-              </div>
-
-              {/* User Metadata Grid */}
-              <div className="view-metadata-grid">
-                <div className="meta-info-item">
-                  <span className="meta-label">USER ID</span>
-                  <div className="copyable-id">
-                    <span className="meta-value font-mono">{viewingUser.id}</span>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(viewingUser.id);
-                        addToast({
-                          title: "Copied",
-                          message: "User ID copied to clipboard.",
-                          type: "info",
-                        });
-                      }}
-                      className="copy-id-btn"
-                      title="Copy ID"
-                    >
-                      <Copy size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="meta-info-item">
-                  <span className="meta-label">REGISTERED DATE</span>
-                  <span className="meta-value">{formatAdminDate(viewingUser.created_at)}</span>
-                </div>
-
-                <div className="meta-info-item">
-                  <span className="meta-label">SUBSCRIPTION PLAN</span>
-                  <span className="meta-value">{displayValue(viewingUser.plan)}</span>
-                </div>
-
-                <div className="meta-info-item">
-                  <span className="meta-label">BILLING METHOD</span>
-                  <span className="meta-value">{displayValue(viewingUser.billing)}</span>
-                </div>
-
-                {viewingUser.role === "vendor" && (
-                  <div className="meta-info-item full-width">
-                    <span className="meta-label">VENDOR STORE NAME</span>
-                    <span className="meta-value font-bold text-emerald">
-                      {displayValue(viewingUser.store_name)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Quick Actions in View Modal */}
-              <div className="view-quick-actions">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const target = viewingUser;
-                    setViewingUser(null);
-                    handleOpenEditUser(target);
-                  }}
-                  className="quick-action-btn"
-                >
-                  <Edit2 size={15} /> Edit Profile
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const target = viewingUser;
-                    setViewingUser(null);
-                    setResetTargetUser(target);
-                  }}
-                  className="quick-action-btn"
-                >
-                  <Key size={15} /> Reset Password
-                </Button>
-
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    handleToggleStatus(
-                      viewingUser.id,
-                      viewingUser.status,
-                      viewingUser.full_name || viewingUser.email
-                    )
-                  }
-                  className="quick-action-btn"
-                >
-                  {viewingUser.status === "active" ? "Deactivate User" : "Activate User"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="modal-actions-footer">
-              <Button onClick={() => setViewingUser(null)} className="full-width-btn">
-                Close Window
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------------------------------------------- */}
-      {/* MODAL 3: EDIT USER DETAILS                           */}
-      {/* ---------------------------------------------------- */}
-      {editingUser && (
-        <div className="modal-backdrop-overlay">
-          <div className="modal-content-container animate-scale-up">
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <div className="modal-icon-bubble emerald">
-                  <Edit2 size={20} />
-                </div>
-                <div>
-                  <h3 className="modal-title">Edit User Profile</h3>
-                  <p className="modal-subtitle">
-                    Update user details in Supabase profiles database
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setEditingUser(null)} className="modal-close-btn">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditUser} className="modal-form">
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label">Full Name</label>
-                  <Input
-                    type="text"
-                    required
-                    value={editUserForm.full_name}
-                    onChange={(e) =>
-                      setEditUserForm((prev) => ({ ...prev, full_name: e.target.value }))
-                    }
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Email Address</label>
-                  <Input
-                    type="email"
-                    required
-                    value={editUserForm.email}
-                    onChange={(e) =>
-                      setEditUserForm((prev) => ({ ...prev, email: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="form-group-row">
-                {/* Role Selector */}
-                <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <select
-                    value={editUserForm.role}
-                    onChange={(e) => setEditUserForm((prev) => ({ ...prev, role: e.target.value }))}
-                    className="form-select-field"
-                  >
-                    <option value="user">Customer (User)</option>
-                    <option value="vendor">Vendor</option>
-                    <option value="admin">Platform Admin</option>
-                    {isSuperAdmin && <option value="super_admin">Super Admin</option>}
-                  </select>
-                </div>
-
-                {/* Status Selector */}
-                <div className="form-group">
-                  <label className="form-label">Account Status</label>
-                  <select
-                    value={editUserForm.status}
-                    onChange={(e) =>
-                      setEditUserForm((prev) => ({ ...prev, status: e.target.value }))
-                    }
-                    className="form-select-field"
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="pending">Pending</option>
-                    <option value="banned">Banned</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Vendor Store Name */}
-              {editUserForm.role === "vendor" && (
-                <div className="form-group animate-fade-in">
-                  <label className="form-label">Vendor Store Name</label>
-                  <Input
-                    type="text"
-                    value={editUserForm.store_name}
-                    onChange={(e) =>
-                      setEditUserForm((prev) => ({ ...prev, store_name: e.target.value }))
-                    }
-                  />
-                </div>
-              )}
-
-              {/* Plan and billing are derived by the server from the account
-                  role (server/routes/users.js → formatUserProfile) and are not
-                  stored from the client. The console only shows what the API
-                  returned; it never offers a value the server would overwrite. */}
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="edit-user-plan">
-                    Plan Tier
-                  </label>
-                  <select
-                    id="edit-user-plan"
-                    value={editUserForm.plan}
-                    disabled
-                    aria-describedby="edit-user-plan-hint"
-                    className="form-select-field"
-                  >
-                    <option value="">{EMPTY}</option>
-                    {editUserForm.plan ? (
-                      <option value={editUserForm.plan}>{editUserForm.plan}</option>
-                    ) : null}
-                  </select>
-                  <p id="edit-user-plan-hint" className="form-field-hint">
-                    Derived by the server from the account role — read only.
-                  </p>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="edit-user-billing">
-                    Billing Method
-                  </label>
-                  <select
-                    id="edit-user-billing"
-                    value={editUserForm.billing}
-                    disabled
-                    aria-describedby="edit-user-billing-hint"
-                    className="form-select-field"
-                  >
-                    <option value="">{EMPTY}</option>
-                    {editUserForm.billing ? (
-                      <option value={editUserForm.billing}>{editUserForm.billing}</option>
-                    ) : null}
-                  </select>
-                  <p id="edit-user-billing-hint" className="form-field-hint">
-                    Derived by the server from the account role — read only.
-                  </p>
-                </div>
-              </div>
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={editUserLoading}
-                  className="submit-primary-btn emerald"
-                >
-                  {editUserLoading ? (
-                    <>
-                      <RefreshCw size={15} className="spin-animation" /> Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} /> Save Changes
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------------------------------------------- */}
-      {/* MODAL 4: RESET PASSWORD                              */}
-      {/* ---------------------------------------------------- */}
-      {resetTargetUser && (
-        <div className="modal-backdrop-overlay">
-          <div className="modal-content-container animate-scale-up">
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <div className="modal-icon-bubble amber">
-                  <Key size={20} />
-                </div>
-                <div>
-                  <h3 className="modal-title">Reset User Password</h3>
-                  <p className="modal-subtitle">
-                    Set a new secure password for {resetTargetUser.email}
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setResetTargetUser(null)} className="modal-close-btn">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleResetPassword} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">New Password *</label>
-                <Input
-                  type="password"
-                  required
-                  placeholder="Enter at least 6 characters"
-                  value={resetNewPassword}
-                  onChange={(e) => setResetNewPassword(e.target.value)}
-                />
-              </div>
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setResetTargetUser(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={resetPasswordLoading}
-                  className="submit-primary-btn amber"
-                >
-                  {resetPasswordLoading ? "Resetting..." : "Confirm Password Reset"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------------------------------------------- */}
-      {/* MODAL 5: DELETE USER CONFIRMATION                    */}
-      {/* ---------------------------------------------------- */}
-      {deletingUser && (
-        <div className="modal-backdrop-overlay">
-          <div className="modal-content-container animate-scale-up">
-            <div className="modal-header">
-              <div className="modal-title-with-icon">
-                <div className="modal-icon-bubble red">
-                  <AlertTriangle size={20} />
-                </div>
-                <div>
-                  <h3 className="modal-title">Delete User Account</h3>
-                  <p className="modal-subtitle">
-                    This action is irreversible and deletes DB records
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setDeletingUser(null)} className="modal-close-btn">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="delete-modal-body">
-              <p>
-                Are you sure you want to permanently delete the account for{" "}
-                <strong>{deletingUser.full_name || deletingUser.email}</strong>?
-              </p>
-              <div className="delete-warning-box">
-                <AlertTriangle size={16} />
-                <span>The user will immediately lose access to Marvel platform services.</span>
-              </div>
-            </div>
-
-            <div className="modal-actions-footer">
-              <Button type="button" variant="outline" onClick={() => setDeletingUser(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleDeleteUser}
-                disabled={deleteLoading}
-                className="submit-primary-btn red"
-              >
-                {deleteLoading ? "Deleting..." : "Permanently Delete"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteUserModal
+        user={deletingUser}
+        onClose={() => setDeletingUser(null)}
+        onConfirm={handleDeleteUser}
+        loading={deleteLoading}
+      />
     </div>
   );
 }
