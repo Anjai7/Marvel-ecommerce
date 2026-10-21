@@ -296,4 +296,194 @@ describe("UnifiedAdminConsole", () => {
 
     errorSpy.mockRestore();
   });
+
+  /** The "Showing N of M customers" counter, whose digits are separate <strong>s. */
+  const customerCount = () =>
+    screen.getByText((_content, element) => element?.classList?.contains("results-count"));
+
+  const openCustomersTab = async (user, nav) => {
+    await user.click(within(nav).getByRole("button", { name: /Customers Insights/ }));
+    await screen.findByRole("main");
+  };
+
+  const CUSTOMER_SEARCH = "Search customers by name, email, or store...";
+
+  it("filters customers by name and email and updates the visible count", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      { id: "c1", full_name: "Asha Rao", email: "asha@marvel.com", role: "user", status: "active" },
+      { id: "c2", full_name: "Ben Ito", email: "ben@marvel.com", role: "user", status: "active" },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await openCustomersTab(user, nav);
+    await screen.findByText("Asha Rao");
+    expect(customerCount()).toHaveTextContent("Showing 2 of 2 customers");
+
+    const search = screen.getByPlaceholderText(CUSTOMER_SEARCH);
+    await user.type(search, "asha");
+    expect(screen.getByText("Asha Rao")).toBeVisible();
+    expect(screen.queryByText("Ben Ito")).toBeNull();
+    expect(customerCount()).toHaveTextContent("Showing 1 of 2 customers");
+
+    await user.clear(search);
+    await user.type(search, "ben@marvel");
+    expect(screen.queryByText("Asha Rao")).toBeNull();
+    expect(screen.getByText("Ben Ito")).toBeVisible();
+    expect(customerCount()).toHaveTextContent("Showing 1 of 2 customers");
+  });
+
+  it("matches a customer's store name", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      {
+        id: "c1",
+        full_name: "Asha Rao",
+        email: "asha@marvel.com",
+        role: "user",
+        status: "active",
+        store_name: "Asha Textiles",
+      },
+      { id: "c2", full_name: "Ben Ito", email: "ben@marvel.com", role: "user", status: "active" },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await openCustomersTab(user, nav);
+    await screen.findByText("Asha Rao");
+
+    await user.type(screen.getByPlaceholderText(CUSTOMER_SEARCH), "textiles");
+    expect(screen.getByText("Asha Rao")).toBeVisible();
+    expect(screen.queryByText("Ben Ito")).toBeNull();
+    expect(customerCount()).toHaveTextContent("Showing 1 of 2 customers");
+  });
+
+  it("shows the empty state when no customer matches the search", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      { id: "c1", full_name: "Asha Rao", email: "asha@marvel.com", role: "user", status: "active" },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await openCustomersTab(user, nav);
+    await screen.findByText("Asha Rao");
+
+    await user.type(screen.getByPlaceholderText(CUSTOMER_SEARCH), "nobody-here");
+    expect(screen.getByText("No customers match your search.")).toBeVisible();
+    expect(screen.queryByText("Asha Rao")).toBeNull();
+    expect(customerCount()).toHaveTextContent("Showing 0 of 1 customers");
+  });
+
+  it("filters the repeat-buyer segment, not just all customers", async () => {
+    const user = userEvent.setup();
+    apiFetchAllUsers.mockResolvedValueOnce([
+      { id: "c1", full_name: "Asha Rao", email: "asha@marvel.com", role: "user", status: "active" },
+      { id: "c2", full_name: "Ben Ito", email: "ben@marvel.com", role: "user", status: "active" },
+    ]);
+    apiFetchOrders.mockResolvedValueOnce([
+      {
+        id: "o1",
+        user_id: "c1",
+        customer_email: "asha@marvel.com",
+        total_amount: 100,
+        status: "delivered",
+        created_at: "2026-10-01T10:00:00Z",
+      },
+      {
+        id: "o2",
+        user_id: "c1",
+        customer_email: "asha@marvel.com",
+        total_amount: 50,
+        status: "delivered",
+        created_at: "2026-10-02T10:00:00Z",
+      },
+      {
+        id: "o3",
+        user_id: "c2",
+        customer_email: "ben@marvel.com",
+        total_amount: 70,
+        status: "pending",
+        created_at: "2026-10-03T10:00:00Z",
+      },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await openCustomersTab(user, nav);
+    const main = screen.getByRole("main");
+    await user.click(within(main).getByRole("button", { name: /^Repeat Buyers/ }));
+    expect(screen.getByText("Asha Rao")).toBeVisible();
+    expect(screen.queryByText("Ben Ito")).toBeNull();
+    expect(customerCount()).toHaveTextContent("Showing 1 of 1 customers");
+
+    // Ben only bought once, so searching for him inside the repeat segment
+    // matches nothing — the search filters the dataset the pills show.
+    await user.type(screen.getByPlaceholderText(CUSTOMER_SEARCH), "ben");
+    expect(screen.getByText("No customers match your search.")).toBeVisible();
+    expect(screen.queryByText("Asha Rao")).toBeNull();
+  });
+
+  it("keeps only one sidebar section open at a time", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    const dashboard = within(nav).getByRole("button", { name: /Dashboard Live Metrics/ });
+    const usersTab = within(nav).getByRole("button", { name: /Users Accounts/ });
+    const productsTab = within(nav).getByRole("button", { name: /Products Catalog/ });
+
+    expect(dashboard).toHaveAttribute("aria-expanded", "true");
+    expect(within(nav).getByRole("button", { name: "Overview" })).toBeVisible();
+
+    await user.click(usersTab);
+    expect(usersTab).toHaveAttribute("aria-expanded", "true");
+    expect(dashboard).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).queryByRole("button", { name: "Overview" })).toBeNull();
+    expect(within(nav).getByRole("button", { name: /View Users/ })).toBeVisible();
+
+    await user.click(productsTab);
+    expect(productsTab).toHaveAttribute("aria-expanded", "true");
+    expect(usersTab).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).queryByRole("button", { name: /View Users/ })).toBeNull();
+    expect(within(nav).getAllByRole("button", { expanded: true })).toHaveLength(1);
+  });
+
+  it("closes the open sidebar section when it is clicked again", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    const usersTab = within(nav).getByRole("button", { name: /Users Accounts/ });
+
+    await user.click(usersTab);
+    expect(usersTab).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(usersTab);
+    expect(usersTab).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).queryByRole("button", { name: /View Users/ })).toBeNull();
+    expect(within(nav).queryAllByRole("button", { expanded: true })).toHaveLength(0);
+  });
+
+  it("opens the parent section when one of its sub-items is clicked", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    const ordersTab = within(nav).getByRole("button", { name: /Orders Pipeline/ });
+    const dashboard = within(nav).getByRole("button", { name: /Dashboard Live Metrics/ });
+
+    await user.click(ordersTab);
+    expect(ordersTab).toHaveAttribute("aria-expanded", "true");
+    expect(dashboard).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(within(nav).getByRole("button", { name: /^Pending/ }));
+    expect(ordersTab).toHaveAttribute("aria-expanded", "true");
+    expect(dashboard).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).getAllByRole("button", { expanded: true })).toHaveLength(1);
+    expect(
+      within(screen.getByRole("main")).getByRole("button", { name: "Pending (0)" })
+    ).toBeVisible();
+  });
 });

@@ -376,6 +376,24 @@
   margin: 0;
 }
 
+/* Offer to create the category page a new item's path points at. */
+.menu-create-page-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.menu-create-page-text code,
+.menu-item-editor .form-hint code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #eef2f7;
+  color: #334155;
+  font-size: 11.5px;
+  word-break: break-all;
+}
+
 @media (max-width: 860px) {
   .menu-tree-path {
     display: none;

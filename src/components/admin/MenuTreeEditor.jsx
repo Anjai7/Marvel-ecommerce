@@ -26,6 +26,7 @@ import {
   apiFetchCategoryTree,
   apiFetchMenuItems,
   apiReorderMenuItems,
+  apiSaveCategory,
   apiSaveMenuItem,
   apiUpdateMenuItem,
 } from "../../api/contentApi";
@@ -164,6 +165,133 @@ function categoryChoices(nodes = [], ancestors = [], acc = []) {
   return acc;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Category page offer                                                        */
+/* -------------------------------------------------------------------------- */
+
+/** One path segment of a category URL — the slug rules the server enforces. */
+const CATEGORY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * The slug chain of a category-style path, or null when the path is not one.
+ *
+ * Rule: the path must be exactly `/category/` followed by one to three slug
+ * segments with no empty segment. `/category/electronics` and
+ * `/category/audio/speakers` qualify. `/`, `/deals`, `/admin-dashboard`,
+ * `/vendor-dashboard`, `/category`, `/category/` and `/category/a//b` do not —
+ * those are not category pages, so the offer must stay hidden.
+ */
+function categoryPathSegments(path) {
+  const trimmed = String(path ?? "").trim();
+  if (!trimmed.startsWith("/category/")) return null;
+  const segments = trimmed.split("/").slice(2);
+  if (segments.length === 0 || segments.length > 3) return null;
+  if (!segments.every((segment) => CATEGORY_SLUG.test(segment))) return null;
+  return segments;
+}
+
+/** `/category/a/b` for a chain of category rows. */
+function categoryPathOf(chain = []) {
+  return `/category/${chain.map((entry) => entry.slug).join("/")}`;
+}
+
+/** Walk the category tree along slug segments; the row plus its ancestor chain. */
+function findCategoryByPath(nodes = [], segments = [], ancestors = []) {
+  if (segments.length === 0) return null;
+  const [head, ...rest] = segments;
+  for (const node of nodes) {
+    if (node?.slug !== head) continue;
+    const chain = [...ancestors, node];
+    if (rest.length === 0) return { node, chain };
+    const nested = findCategoryByPath(node.children ?? [], rest, chain);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/**
+ * First row with this slug, at any depth. Two levels may legitimately share a
+ * slug, so the exact-path lookup above wins when it matches.
+ */
+function findCategoryBySlug(nodes = [], slug, ancestors = []) {
+  for (const node of nodes) {
+    const chain = [...ancestors, node];
+    if (node?.slug === slug) return { node, chain };
+    const nested = findCategoryBySlug(node.children ?? [], slug, chain);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/** A category row by id, with its ancestor chain. */
+function findCategoryById(nodes = [], id, ancestors = []) {
+  if (id == null) return null;
+  for (const node of nodes) {
+    const chain = [...ancestors, node];
+    if (node.id === id) return { node, chain };
+    const nested = findCategoryById(node.children ?? [], id, chain);
+    if (nested) return nested;
+  }
+  return null;
+}
+
+/**
+ * What saving would do about the category page the item's path points at.
+ *
+ * - null: the offer does not apply — an edit, a category is already linked,
+ *   or the path is not a category path.
+ * - { action: "reuse" }: a category already covers this path or slug; link it
+ *   instead of creating a duplicate.
+ * - { action: "create" }: create the category under `parentId` (null = level 1)
+ *   and point the menu item at `path`.
+ * - { action: "error" }: the category cannot be created (below a level-3
+ *   parent), so the item is saved alone and the admin is warned.
+ *
+ * The parent category is the one the PARENT menu item links to, so a level-2
+ * menu item creates a level-2 category. A deeper path also resolves its own
+ * ancestors, which covers a parent menu item that has no category linked yet.
+ */
+function planCategoryPage({ form, title, path, menuTree, categoryTree }) {
+  if (!form || form.id || form.categoryId) return null;
+  const segments = categoryPathSegments(path);
+  if (!segments) return null;
+
+  const slug = segments[segments.length - 1];
+  const existing =
+    findCategoryByPath(categoryTree, segments) ?? findCategoryBySlug(categoryTree, slug);
+  if (existing) {
+    return {
+      action: "reuse",
+      name: existing.node.name,
+      categoryId: existing.node.id,
+      path: categoryPathOf(existing.chain),
+    };
+  }
+
+  const parentMenuItem = form.parentId != null ? findNode(menuTree, form.parentId) : null;
+  const parent =
+    findCategoryById(categoryTree, parentMenuItem?.category_id) ??
+    (segments.length > 1 ? findCategoryByPath(categoryTree, segments.slice(0, -1)) : null);
+
+  const parentChain = parent?.chain ?? [];
+  const targetPath = categoryPathOf([...parentChain, { slug }]);
+  if (parentChain.length >= 3) {
+    return {
+      action: "error",
+      message: `'${targetPath}' would be a level 4 category, but categories stop at level 3.`,
+    };
+  }
+
+  return {
+    action: "create",
+    name: String(title ?? "").trim(),
+    slug,
+    parentId: parent?.node.id ?? null,
+    parentChain,
+    path: targetPath,
+  };
+}
+
 function toPayload(form) {
   return {
     title: (form.title ?? "").trim(),
@@ -249,6 +377,9 @@ function newForm(parent, order) {
     promoCtaText: "",
     promoCtaPath: "",
     isActive: true,
+    // Defaults ON: when the path points at a category page that does not
+    // exist yet, saving the item without it produces a dead link.
+    createCategoryPage: true,
   };
 }
 
@@ -279,6 +410,7 @@ function editForm(item, parentId) {
 export default function MenuTreeEditor({ role = "admin" }) {
   const { addToast } = useToast();
   const [tree, setTree] = useState([]);
+  const [categoryTree, setCategoryTree] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState({});
@@ -319,7 +451,11 @@ export default function MenuTreeEditor({ role = "admin" }) {
   const loadCategories = useCallback(async () => {
     try {
       const data = await apiFetchCategoryTree({ includeInactive: true });
-      setCategories(categoryChoices(data?.categories ?? []));
+      // Keep the raw tree: the offer needs slugs and ancestor chains, which
+      // the flattened select options drop.
+      const nodes = data?.categories ?? [];
+      setCategoryTree(nodes);
+      setCategories(categoryChoices(nodes));
     } catch (err) {
       // The menu is still editable without the optional category link.
       addToast({ title: "Categories Load Failed", message: err.message, type: "error" });
@@ -360,6 +496,47 @@ export default function MenuTreeEditor({ role = "admin" }) {
         path: choice ? choice.path : previous.path,
       };
     });
+
+  /**
+   * Create or reuse the category page a new item points at. Returns null when
+   * the offer does not apply, `{ categoryId, path }` when the item can be
+   * linked, or `{ error }` when only the menu item can be saved.
+   */
+  const linkCategoryPage = async (form, payload) => {
+    const plan = planCategoryPage({
+      form,
+      title: payload.title,
+      path: payload.path,
+      menuTree: tree,
+      categoryTree,
+    });
+    if (!plan) return null;
+    if (plan.action === "reuse") return { categoryId: plan.categoryId, path: plan.path };
+    if (plan.action === "error") return { error: plan.message };
+
+    try {
+      // `level` is derived from `parent_id` server-side, so it is not sent.
+      // The flags keep the new page visible in the nav and category strip.
+      const saved = await apiSaveCategory({
+        name: plan.name || payload.title,
+        slug: plan.slug,
+        parent_id: plan.parentId,
+        is_active: true,
+        show_in_nav: true,
+        show_in_homepage: true,
+      });
+      const categoryId = saved?.category?.id ?? null;
+      if (!categoryId) {
+        return {
+          error:
+            "The category page was created but its id was not returned, so the menu item could not be linked to it.",
+        };
+      }
+      return { categoryId, path: plan.path };
+    } catch (err) {
+      return { error: err?.message || "Could not create the category page." };
+    }
+  };
 
   const handleMove = async (item, from, to) => {
     if (requestInFlight.current) return;
@@ -419,7 +596,28 @@ export default function MenuTreeEditor({ role = "admin" }) {
           stored ? changedFields(stored, payload) : { id: editing.id, ...payload }
         );
       } else {
-        await apiSaveMenuItem(payload);
+        // Create the page first so the menu item never points at a 404 when
+        // the category write is what fails.
+        let categoryWarning = "";
+        let itemPayload = payload;
+        if (editing.createCategoryPage !== false) {
+          const linked = await linkCategoryPage(editing, payload);
+          if (linked?.error) {
+            categoryWarning = linked.error;
+          } else if (linked?.categoryId) {
+            itemPayload = { ...payload, category_id: linked.categoryId, path: linked.path };
+          }
+        }
+        await apiSaveMenuItem(itemPayload);
+        // The item is saved either way: an unavailable category must not lose
+        // the admin's input, but it must never fail silently.
+        if (categoryWarning) {
+          addToast({
+            title: "Category Not Created",
+            message: `${categoryWarning} The menu item was saved, but its link may not resolve until the category page exists.`,
+            type: "error",
+          });
+        }
       }
       const savedId = editing.id;
       setEditing(null);
@@ -430,6 +628,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
       });
       broadcast();
       await load();
+      // A saved item may have created a category, so refresh the link options.
+      await loadCategories();
     } catch (err) {
       // Keep the form open: the admin's input must survive a failed write.
       const message = err?.message || "Could not save the menu item.";
@@ -581,6 +781,19 @@ export default function MenuTreeEditor({ role = "admin" }) {
   // An empty tree proves nothing, so the control stays available there.
   const badgeVariantSupported =
     tree.length === 0 || tree.some((node) => Object.hasOwn(node, "badge_variant"));
+
+  // Recomputed from the live form: the offer disappears the moment a category
+  // is linked, and it never applies while editing an existing item.
+  const categoryPlan = editing
+    ? planCategoryPage({
+        form: editing,
+        title: editing.title,
+        path: editing.path,
+        menuTree: tree,
+        categoryTree,
+      })
+    : null;
+  const categoryOfferOn = editing?.createCategoryPage !== false;
 
   return (
     <div className="dashboard-tab-view animate-fade-in">
@@ -779,6 +992,43 @@ export default function MenuTreeEditor({ role = "admin" }) {
                   </div>
                 </div>
               </div>
+
+              {categoryPlan && (
+                <div className="form-section" data-testid="menu-create-category">
+                  <h4 className="form-section-title">Category page</h4>
+                  <p className="menu-create-page-text">
+                    {categoryPlan.action === "reuse" ? (
+                      <>
+                        The page already exists at <code>{categoryPlan.path}</code>. Saving links
+                        this menu item to it instead of creating a duplicate.
+                      </>
+                    ) : categoryPlan.action === "error" ? (
+                      categoryPlan.message
+                    ) : (
+                      <>
+                        <code>{editing.path}</code> has no category page yet. Saving can create{" "}
+                        <code>{categoryPlan.path}</code> and point this menu item at it.
+                      </>
+                    )}
+                  </p>
+
+                  {categoryPlan.action !== "error" && (
+                    <div className="form-group">
+                      <span className="form-label">Matching category page</span>
+                      <ActiveToggle
+                        active={categoryOfferOn}
+                        label="category page creation"
+                        onChange={(active) => setField("createCategoryPage", active)}
+                      />
+                      <output className="form-hint">
+                        {categoryOfferOn
+                          ? "On: saving writes the category page first, then links this item to it."
+                          : "Off: only the menu item is saved, so the path may not resolve."}
+                      </output>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="form-section">
                 <h4 className="form-section-title">Badge, roles &amp; visibility</h4>

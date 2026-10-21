@@ -119,6 +119,24 @@ function money(value) {
   return formatCurrency(value);
 }
 
+/**
+ * Which sidebar section owns each tab. Site Content owns its five sub-tabs
+ * (menus, hero, categories, banners, footer). Activating a tab opens the
+ * section that owns it, so the open section and the active tab agree.
+ */
+const SECTION_BY_TAB = {
+  dashboard: "dashboard",
+  users: "users",
+  products: "products",
+  orders: "orders",
+  customers: "customers",
+  menus: "siteContent",
+  hero: "siteContent",
+  categories: "siteContent",
+  banners: "siteContent",
+  footer: "siteContent",
+};
+
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
   const isSuperAdmin = currentRole === "super_admin" || customRole === "super_admin";
@@ -126,7 +144,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const canManageSiteContent = isSuperAdmin || currentRole === "admin" || customRole === "admin";
 
   // Active Tab State (Dashboard, Products, Orders, Customers, Users)
-  const [activeTab, setActiveTab] = useState("dashboard"); // "dashboard" | "products" | "orders" | "customers" | "users"
+  const [activeTab, setActiveTabState] = useState("dashboard"); // "dashboard" | "products" | "orders" | "customers" | "users"
 
   // Global Loading and Sync States
   const [loading, setLoading] = useState(true);
@@ -144,12 +162,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // Time Range for Dashboard Charts
   const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d"
 
-  // Sidebar submenu expansion + per-tab sub-views
+  // Sidebar submenu expansion + per-tab sub-views. The sidebar is an accordion:
+  // at most one section is open, and the open section follows the active tab.
   const [expandedMenus, setExpandedMenus] = useState({ dashboard: true });
   const [dashboardView, setDashboardView] = useState("overview"); // "overview" | "sales"
   const [productsView, setProductsView] = useState("list"); // "list" | "add"
   const [ordersView, setOrdersView] = useState("all"); // "all" | order status
   const [customersView, setCustomersView] = useState("all"); // "all" | "repeat"
+  const [customerSearch, setCustomerSearch] = useState("");
 
   // Products management states
   const [editingProduct, setEditingProduct] = useState(null);
@@ -264,9 +284,37 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     }
   };
 
-  // Sidebar submenu expand/collapse
+  // Sidebar submenu expand/collapse — one section at a time (accordion).
+  // Opening a section closes every other one; clicking the open section closes
+  // it, so the admin can collapse everything.
   const toggleMenu = (key) => {
-    setExpandedMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+    setExpandedMenus((prev) => (prev[key] ? {} : { [key]: true }));
+  };
+
+  /**
+   * Activates a tab and opens the sidebar section that owns it. Sub-items
+   * (Overview, Pending, Add User, Hero, …) and the alert banner go through the
+   * same door, so a sub-view can never leave a different section expanded.
+   */
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    const section = SECTION_BY_TAB[tab];
+    // Tabs outside the sidebar (Settings) leave nothing open, so the sidebar
+    // never points at a section the admin is not looking at.
+    setExpandedMenus(section ? { [section]: true } : {});
+  };
+
+  /**
+   * A parent section button: opens its first tab and its submenu, or collapses
+   * the section when it is already open.
+   */
+  const handleSectionClick = (key, tab, onOpen) => {
+    if (expandedMenus[key]) {
+      toggleMenu(key);
+      return;
+    }
+    if (onOpen) onOpen();
+    setActiveTab(tab);
   };
 
   // ----------------------------------------------------
@@ -528,10 +576,39 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   }, [orders, ordersView]);
 
   const customerRows = useMemo(() => customerStats(users, orders), [users, orders]);
-  const visibleCustomers = useMemo(
+
+  // Registered customers carry a store name on the account (not on the order
+  // rollup), so look it up by id instead of widening the report helper.
+  const storeNameByUserId = useMemo(() => {
+    const map = new Map();
+    for (const u of users) {
+      if (u?.id) map.set(String(u.id), u.store_name || "");
+    }
+    return map;
+  }, [users]);
+
+  // The search filters whichever dataset the pills currently show.
+  const customerSegment = useMemo(
     () => (customersView === "repeat" ? customerRows.filter((c) => c.repeat) : customerRows),
     [customerRows, customersView]
   );
+
+  const visibleCustomers = useMemo(() => {
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return customerSegment;
+    return customerSegment.filter(
+      (c) =>
+        String(c.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(c.email || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(storeNameByUserId.get(String(c.id)) || "")
+          .toLowerCase()
+          .includes(q)
+    );
+  }, [customerSegment, customerSearch, storeNameByUserId]);
 
   // ----------------------------------------------------
   // USER MANAGEMENT HANDLERS
@@ -907,11 +984,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 1: DASHBOARD (with submenu) */}
           <button
             id="admin-tab-dashboard"
-            onClick={() => {
-              setActiveTab("dashboard");
-              setDashboardView("overview");
-              toggleMenu("dashboard");
-            }}
+            onClick={() =>
+              handleSectionClick("dashboard", "dashboard", () => setDashboardView("overview"))
+            }
             className={`sidebar-tab-button ${activeTab === "dashboard" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.dashboard}
           >
@@ -957,11 +1032,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* TAB 2: USERS (with submenu: View Users / Add User) */}
           <button
             id="admin-tab-users"
-            onClick={() => {
-              setActiveTab("users");
-              setShowAddUserModal(false);
-              toggleMenu("users");
-            }}
+            onClick={() => handleSectionClick("users", "users", () => setShowAddUserModal(false))}
             className={`sidebar-tab-button ${activeTab === "users" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.users}
           >
@@ -1011,11 +1082,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 3: PRODUCTS (with submenu) */}
           <button
             id="admin-tab-products"
-            onClick={() => {
-              setActiveTab("products");
-              setProductsView("list");
-              toggleMenu("products");
-            }}
+            onClick={() =>
+              handleSectionClick("products", "products", () => setProductsView("list"))
+            }
             className={`sidebar-tab-button ${activeTab === "products" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.products}
           >
@@ -1063,11 +1132,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 4: ORDERS (with submenu) */}
           <button
             id="admin-tab-orders"
-            onClick={() => {
-              setActiveTab("orders");
-              setOrdersView("all");
-              toggleMenu("orders");
-            }}
+            onClick={() => handleSectionClick("orders", "orders", () => setOrdersView("all"))}
             className={`sidebar-tab-button ${activeTab === "orders" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.orders}
           >
@@ -1122,11 +1187,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {/* MENU 5: CUSTOMERS (with submenu) */}
           <button
             id="admin-tab-customers"
-            onClick={() => {
-              setActiveTab("customers");
-              setCustomersView("all");
-              toggleMenu("customers");
-            }}
+            onClick={() =>
+              handleSectionClick("customers", "customers", () => setCustomersView("all"))
+            }
             className={`sidebar-tab-button ${activeTab === "customers" ? "active" : ""}`}
             aria-expanded={!!expandedMenus.customers}
           >
@@ -1176,10 +1239,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           {canManageSiteContent && (
             <button
               id="admin-tab-site-content"
-              onClick={() => {
-                setActiveTab("menus");
-                toggleMenu("siteContent");
-              }}
+              onClick={() => handleSectionClick("siteContent", "menus")}
               className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
@@ -2338,10 +2398,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 Repeat Buyers ({salesReport.repeat.repeatCustomers})
               </button>
             </div>
+            <div className="users-control-toolbar">
+              <div className="search-input-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search customers by name, email, or store..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="users-search-field"
+                />
+                {customerSearch && (
+                  <button
+                    onClick={() => setCustomerSearch("")}
+                    className="clear-search-btn"
+                    aria-label="Clear customer search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="users-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{visibleCustomers.length}</strong> customers
+                  Showing <strong>{visibleCustomers.length}</strong> of{" "}
+                  <strong>{customerSegment.length}</strong> customers
                 </span>
               </div>
               <div className="table-responsive-wrapper">
@@ -2360,7 +2442,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       <tr>
                         <td colSpan={5} className="empty-table-cell">
                           <Users size={28} className="empty-icon" />
-                          <p>No customers in this segment yet.</p>
+                          <p>
+                            {customerSearch.trim()
+                              ? "No customers match your search."
+                              : "No customers in this segment yet."}
+                          </p>
                         </td>
                       </tr>
                     ) : (

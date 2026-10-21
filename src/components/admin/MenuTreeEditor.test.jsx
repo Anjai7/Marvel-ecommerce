@@ -9,6 +9,7 @@ import {
   apiFetchCategoryTree,
   apiFetchMenuItems,
   apiReorderMenuItems,
+  apiSaveCategory,
   apiSaveMenuItem,
   apiUpdateMenuItem,
 } from "../../api/contentApi";
@@ -17,6 +18,7 @@ vi.mock("../../api/contentApi", () => ({
   apiFetchMenuItems: vi.fn(),
   apiFetchCategoryTree: vi.fn(),
   apiSaveMenuItem: vi.fn(),
+  apiSaveCategory: vi.fn(),
   apiUpdateMenuItem: vi.fn(),
   apiDeleteMenuItem: vi.fn(),
   apiReorderMenuItems: vi.fn(),
@@ -136,6 +138,13 @@ const stripBadgeVariant = (nodes = []) =>
     children: children ? stripBadgeVariant(children) : children,
   }));
 
+/** TREE_DATA with Electronics linked to category c1, for parent derivation. */
+const treeWithLinkedCategory = () => {
+  const tree = JSON.parse(JSON.stringify(TREE_DATA));
+  tree[0].children[0].category_id = "c1";
+  return tree;
+};
+
 const renderEditor = () =>
   render(
     <ToastProvider>
@@ -176,6 +185,7 @@ beforeEach(() => {
   apiFetchCategoryTree.mockResolvedValue(CATEGORY_TREE);
   apiDeleteMenuItem.mockResolvedValue({ message: "deleted" });
   apiSaveMenuItem.mockResolvedValue({ id: "9" });
+  apiSaveCategory.mockResolvedValue({ category: { id: "c9" } });
   apiUpdateMenuItem.mockResolvedValue({ item: { id: "2" } });
   apiReorderMenuItems.mockResolvedValue({ message: "reordered" });
 });
@@ -576,5 +586,200 @@ describe("MenuTreeEditor", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(apiDeleteMenuItem).toHaveBeenCalledWith("1"));
+  });
+
+  describe("category page offer", () => {
+    /** Open the create dialog for a new top-level item. */
+    const openCreateForm = async (user) => {
+      renderEditor();
+      await screen.findByText("Shop");
+      await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
+      return screen.findByRole("dialog", { name: "Menu item editor" });
+    };
+
+    /** Type a title and replace the item's path. */
+    const fillItem = async (user, dialog, { title, path }) => {
+      await user.type(within(dialog).getByLabelText("Title *"), title);
+      const pathInput = within(dialog).getByLabelText("Path *");
+      await user.clear(pathInput);
+      await user.type(pathInput, path);
+    };
+
+    it("offers the page only when a new item's path is a category path", async () => {
+      const user = userEvent.setup();
+      const dialog = await openCreateForm(user);
+      const pathInput = within(dialog).getByLabelText("Path *");
+
+      // The form opens at "/", which is not a category page.
+      expect(within(dialog).queryByTestId("menu-create-category")).not.toBeInTheDocument();
+
+      for (const candidate of [
+        "/category",
+        "/category/",
+        "/deals",
+        "/admin-dashboard",
+        "/vendor-dashboard",
+      ]) {
+        await user.clear(pathInput);
+        await user.type(pathInput, candidate);
+        expect(within(dialog).queryByTestId("menu-create-category")).not.toBeInTheDocument();
+      }
+
+      for (const candidate of ["/category/audio", "/category/audio/speakers"]) {
+        await user.clear(pathInput);
+        await user.type(pathInput, candidate);
+        expect(within(dialog).getByTestId("menu-create-category")).toBeVisible();
+      }
+    });
+
+    it("hides the offer once a category is linked", async () => {
+      const user = userEvent.setup();
+      const dialog = await openCreateForm(user);
+
+      await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
+      expect(within(dialog).getByTestId("menu-create-category")).toBeVisible();
+
+      await user.selectOptions(within(dialog).getByLabelText("Category"), "c2");
+
+      expect(within(dialog).queryByTestId("menu-create-category")).not.toBeInTheDocument();
+      expect(within(dialog).getByLabelText("Path *")).toHaveValue("/category/electronics/mobiles");
+    });
+
+    it("creates the category page and links it when the offer is on", async () => {
+      const user = userEvent.setup();
+      const dialog = await openCreateForm(user);
+
+      await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
+      // On by default: otherwise the save produces a dead link.
+      expect(
+        within(dialog).getByRole("button", { name: "Deactivate category page creation" })
+      ).toBeVisible();
+
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
+      expect(apiSaveCategory).toHaveBeenCalledWith({
+        name: "Audio",
+        slug: "audio",
+        parent_id: null,
+        is_active: true,
+        show_in_nav: true,
+        show_in_homepage: true,
+      });
+      expect(apiSaveMenuItem.mock.calls[0][0]).toMatchObject({
+        title: "Audio",
+        path: "/category/audio",
+        category_id: "c9",
+      });
+      // The page exists before the item points at it.
+      expect(apiSaveCategory.mock.invocationCallOrder[0]).toBeLessThan(
+        apiSaveMenuItem.mock.invocationCallOrder[0]
+      );
+    });
+
+    it("creates a child category under the parent menu item's category", async () => {
+      const user = userEvent.setup();
+      apiFetchMenuItems.mockResolvedValueOnce(treeWithLinkedCategory());
+      renderEditor();
+
+      await screen.findByText("Electronics");
+      const menu = await openRowMenu(user, "Electronics");
+      await user.click(within(menu).getByRole("menuitem", { name: "Add child to Electronics" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+      await fillItem(user, dialog, { title: "Gadgets", path: "/category/gadgets" });
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
+      // Electronics links to c1 (level 1), so the new page is level 2 and its
+      // path carries the parent's slug.
+      expect(apiSaveCategory).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Gadgets", slug: "gadgets", parent_id: "c1" })
+      );
+      expect(apiSaveMenuItem.mock.calls[0][0]).toMatchObject({
+        path: "/category/electronics/gadgets",
+        category_id: "c9",
+      });
+    });
+
+    it("reuses an existing category with the same slug instead of duplicating it", async () => {
+      const user = userEvent.setup();
+      const dialog = await openCreateForm(user);
+
+      await fillItem(user, dialog, { title: "Electronics", path: "/category/electronics" });
+      // The tree already has this slug at level 1.
+      expect(within(dialog).getByTestId("menu-create-category")).toHaveTextContent(
+        /already exists/i
+      );
+
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
+      expect(apiSaveCategory).not.toHaveBeenCalled();
+      expect(apiSaveMenuItem.mock.calls[0][0]).toMatchObject({
+        path: "/category/electronics",
+        category_id: "c1",
+      });
+    });
+
+    it("saves only the menu item when the admin turns the offer off", async () => {
+      const user = userEvent.setup();
+      const dialog = await openCreateForm(user);
+
+      await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
+      await user.click(
+        within(dialog).getByRole("button", { name: "Deactivate category page creation" })
+      );
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
+      expect(apiSaveCategory).not.toHaveBeenCalled();
+      expect(apiSaveMenuItem.mock.calls[0][0]).toMatchObject({
+        path: "/category/audio",
+        category_id: null,
+      });
+    });
+
+    it("still saves the item and warns when the category cannot be created", async () => {
+      const user = userEvent.setup();
+      apiSaveCategory.mockRejectedValue(new Error("Slug already exists."));
+      const dialog = await openCreateForm(user);
+
+      await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
+      expect(await screen.findByText("Category Not Created")).toBeVisible();
+      expect(screen.getByText(/The menu item was saved/)).toBeVisible();
+      expect(apiSaveMenuItem.mock.calls[0][0]).toMatchObject({
+        path: "/category/audio",
+        category_id: null,
+      });
+    });
+
+    it("never applies the offer to an edit of an existing item", async () => {
+      const user = userEvent.setup();
+      renderEditor();
+
+      await screen.findByText("Deals");
+      const menu = await openRowMenu(user, "Deals");
+      await user.click(within(menu).getByRole("menuitem", { name: "Edit Deals" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+      const pathInput = within(dialog).getByLabelText("Path *");
+      await user.clear(pathInput);
+      await user.type(pathInput, "/category/clearance");
+
+      expect(within(dialog).queryByTestId("menu-create-category")).not.toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
+
+      await waitFor(() => expect(apiUpdateMenuItem).toHaveBeenCalledTimes(1));
+      expect(apiSaveCategory).not.toHaveBeenCalled();
+      expect(apiUpdateMenuItem).toHaveBeenCalledWith("4", {
+        id: "4",
+        path: "/category/clearance",
+      });
+    });
   });
 });
