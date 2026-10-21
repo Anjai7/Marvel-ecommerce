@@ -122,7 +122,7 @@ describe("UnifiedAdminConsole", () => {
     ]);
     render(<UnifiedAdminConsole />);
 
-    const idCell = await screen.findByText("#order-12");
+    const idCell = await screen.findByText("#12345678");
     const row = idCell.closest("tr");
 
     expect(screen.queryByText("Marvel Shopper")).toBeNull();
@@ -306,6 +306,10 @@ describe("UnifiedAdminConsole", () => {
     await screen.findByRole("main");
   };
 
+  /** The "Showing N of M order records" counter, whose digits are separate <strong>s. */
+  const orderCount = () =>
+    screen.getByText((_content, element) => element?.classList?.contains("results-count"));
+
   const CUSTOMER_SEARCH = "Search customers by name, email, or store...";
 
   it("filters customers by name and email and updates the visible count", async () => {
@@ -423,6 +427,90 @@ describe("UnifiedAdminConsole", () => {
     await user.type(screen.getByPlaceholderText(CUSTOMER_SEARCH), "ben");
     expect(screen.getByText("No customers match your search.")).toBeVisible();
     expect(screen.queryByText("Asha Rao")).toBeNull();
+  });
+
+  it("filters orders by reference, customer and item, and updates the visible count", async () => {
+    const user = userEvent.setup();
+    apiFetchOrders.mockResolvedValueOnce([
+      {
+        id: "11111111-2222-4333-8444-55555555aaaa",
+        customer_name: "Asha Rao",
+        customer_email: "asha@marvel.com",
+        status: "pending",
+        total_amount: 1200,
+        items: [{ title: "Aurora Speaker", price: 1200, quantity: 1 }],
+      },
+      {
+        id: "11111111-2222-4333-8444-66666666bbbb",
+        customer_name: "Ben Ito",
+        customer_email: "ben@marvel.com",
+        status: "delivered",
+        total_amount: 3400,
+        items: [{ title: "Chronos Watch", price: 3400, quantity: 1 }],
+      },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Orders Pipeline/ }));
+    await screen.findByRole("main");
+
+    const search = screen.getByPlaceholderText("Search orders by reference, customer, or item...");
+    await user.type(search, "asha");
+    expect(screen.getByText("Asha Rao")).toBeVisible();
+    expect(screen.queryByText("Ben Ito")).toBeNull();
+    expect(orderCount()).toHaveTextContent("Showing 1 of 2 order records");
+
+    await user.clear(search);
+    await user.type(search, "chronos");
+    expect(screen.queryByText("Asha Rao")).toBeNull();
+    expect(screen.getByText("Ben Ito")).toBeVisible();
+
+    await user.clear(search);
+    await user.type(search, "ben@marvel");
+    expect(screen.getByText("Ben Ito")).toBeVisible();
+    expect(screen.queryByText("Asha Rao")).toBeNull();
+  });
+
+  it("shows the empty state when no order matches the search", async () => {
+    const user = userEvent.setup();
+    apiFetchOrders.mockResolvedValueOnce([
+      {
+        id: "11111111-2222-4333-8444-55555555aaaa",
+        customer_name: "Asha Rao",
+        customer_email: "asha@marvel.com",
+        status: "pending",
+        total_amount: 1200,
+        items: [],
+      },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Orders Pipeline/ }));
+    await screen.findByRole("main");
+
+    const search = screen.getByPlaceholderText("Search orders by reference, customer, or item...");
+    await user.type(search, "nobody-here");
+
+    expect(screen.getByText("No orders match your search.")).toBeVisible();
+  });
+
+  it("gives each order a reference that actually tells them apart", async () => {
+    const user = userEvent.setup();
+    // Two ids that share a head, the way a batch-minted set does.
+    apiFetchOrders.mockResolvedValueOnce([
+      { id: "f2000000-0000-4000-8000-aaaaaaaaaaaa", customer_name: "A", status: "pending" },
+      { id: "f2000000-0000-4000-8000-bbbbbbbbbbbb", customer_name: "B", status: "pending" },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Orders Pipeline/ }));
+    await screen.findByRole("main");
+
+    const refs = screen.getAllByText(/^#[0-9a-f]{8}$/).map((node) => node.textContent);
+    expect(new Set(refs).size).toBe(refs.length);
   });
 
   it("keeps only one sidebar section open at a time", async () => {

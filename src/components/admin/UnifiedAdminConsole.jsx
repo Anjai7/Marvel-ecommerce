@@ -108,9 +108,20 @@ const ORDER_STATUS_ICONS = {
   cancelled: XCircle,
 };
 
-/** `#abcd1234` for a real order id, the neutral dash when the API returned none. */
+/** How many order rows the table renders before it stops. */
+const ORDER_ROW_LIMIT = 20;
+
+/**
+ * A short reference for an order: the last eight characters of its id.
+ *
+ * The head of a uuid is not a useful reference — ids minted in a batch share a
+ * prefix, so showing the head named every one of them identically. The tail
+ * carries the part that actually differs.
+ */
 function orderRef(order) {
-  return order?.id ? `#${String(order.id).substring(0, 8)}` : EMPTY;
+  const id = String(order?.id ?? "").trim();
+  if (!id) return EMPTY;
+  return `#${id.slice(-8)}`;
 }
 
 /** A stored amount as rupees, or the neutral dash when the API has no amount. */
@@ -168,6 +179,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [dashboardView, setDashboardView] = useState("overview"); // "overview" | "sales"
   const [productsView, setProductsView] = useState("list"); // "list" | "add"
   const [ordersView, setOrdersView] = useState("all"); // "all" | order status
+  const [orderSearch, setOrderSearch] = useState("");
   const [customersView, setCustomersView] = useState("all"); // "all" | "repeat"
   const [customerSearch, setCustomerSearch] = useState("");
 
@@ -574,6 +586,28 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     if (ordersView === "all") return orders;
     return orders.filter((o) => String(o.status || "").toLowerCase() === ordersView);
   }, [orders, ordersView]);
+
+  // The search filters whichever stage the pills currently show. A pasted
+  // reference ("#555555aa") is matched too, so the short form on screen finds
+  // the order.
+  const visibleOrders = useMemo(() => {
+    const q = orderSearch.trim().toLowerCase().replace(/^#/, "");
+    if (!q) return filteredOrders;
+    return filteredOrders.filter((order) => {
+      const haystack = [
+        order?.id,
+        order?.customer_name,
+        order?.customer_email,
+        order?.status,
+        ...(Array.isArray(order?.items) ? order.items.map((item) => item?.title) : []),
+      ];
+      return haystack.some((value) =>
+        String(value ?? "")
+          .toLowerCase()
+          .includes(q)
+      );
+    });
+  }, [filteredOrders, orderSearch]);
 
   const customerRows = useMemo(() => customerStats(users, orders), [users, orders]);
 
@@ -2299,11 +2333,35 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </button>
               ))}
             </div>
+            <div className="users-control-toolbar">
+              <div className="search-input-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search orders by reference, customer, or item..."
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  className="users-search-field"
+                />
+                {orderSearch && (
+                  <button
+                    onClick={() => setOrderSearch("")}
+                    className="clear-search-btn"
+                    aria-label="Clear order search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="users-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{filteredOrders.length}</strong> of{" "}
-                  <strong>{orders.length}</strong> order records
+                  Showing <strong>{visibleOrders.length}</strong> of{" "}
+                  <strong>{filteredOrders.length}</strong> order records
+                  {visibleOrders.length > ORDER_ROW_LIMIT
+                    ? ` (first ${ORDER_ROW_LIMIT} shown — narrow the search or the stage)`
+                    : ""}
                 </span>
               </div>
               <div className="table-responsive-wrapper">
@@ -2320,15 +2378,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.length === 0 ? (
+                    {visibleOrders.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="empty-table-cell">
                           <ClipboardList size={28} className="empty-icon" />
-                          <p>No orders in this stage yet.</p>
+                          <p>
+                            {orderSearch.trim()
+                              ? "No orders match your search."
+                              : "No orders in this stage yet."}
+                          </p>
                         </td>
                       </tr>
                     ) : (
-                      filteredOrders.slice(0, 20).map((order, idx) => (
+                      visibleOrders.slice(0, ORDER_ROW_LIMIT).map((order, idx) => (
                         <tr key={order.id || idx}>
                           <td className="font-mono text-primary font-bold">{orderRef(order)}</td>
                           <td>
