@@ -140,7 +140,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
           maxWidth: 880,
           width: "100%",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
           background: "#ffffff",
           borderRadius: 20,
           boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0,0,0,0.1)",
@@ -152,7 +152,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
           style={{
             background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
             color: "#ffffff",
-            padding: "44px 36px",
+            padding: "clamp(24px, 5vw, 44px) clamp(20px, 4vw, 36px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
@@ -292,7 +292,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
         {/* Right Side: Sign In Form */}
         <div
           style={{
-            padding: "44px 38px",
+            padding: "clamp(24px, 5vw, 44px) clamp(18px, 4vw, 38px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",

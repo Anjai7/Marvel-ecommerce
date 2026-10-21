@@ -253,7 +253,16 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
 
         {/* Tab Navigation */}
         <div
-          style={{ display: "flex", gap: 12, borderBottom: "2px solid #e2e8f0", marginBottom: 24 }}
+          style={{
+            display: "flex",
+            gap: 12,
+            borderBottom: "2px solid #e2e8f0",
+            marginBottom: 24,
+            overflowX: "auto",
+            whiteSpace: "nowrap",
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+          }}
         >
           <button
             onClick={() => setActiveTab("orders")}
@@ -269,6 +278,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               color: activeTab === "orders" ? "#2563eb" : "#64748b",
               borderBottom: activeTab === "orders" ? "3px solid #2563eb" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <Package size={18} /> My Orders & Deliveries ({orders.length})
@@ -289,6 +299,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               borderBottom:
                 activeTab === "wishlist" ? "3px solid #2563eb" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <Heart size={18} /> Saved Wishlist ({savedWishlist.length})
@@ -308,6 +319,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               color: activeTab === "profile" ? "#2563eb" : "#64748b",
               borderBottom: activeTab === "profile" ? "3px solid #2563eb" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <User size={18} /> Account Settings & Addresses
@@ -319,7 +331,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
               gap: 24,
             }}
           >
@@ -577,7 +589,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
                     gap: 14,
                     marginBottom: 20,
                   }}
@@ -737,7 +749,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
                 gap: 20,
               }}
             >
@@ -856,7 +868,12 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               Personal Details & Addresses
             </h3>
             <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, maxWidth: 640 }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+                gap: 20,
+                maxWidth: 640,
+              }}
             >
               <div>
                 <label

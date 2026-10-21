@@ -179,6 +179,12 @@
   margin-top: 12px;
 }
 
+@media (max-width: 860px) {
+  .cart-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .cart-banner {
     flex-direction: column;
@@ -210,5 +216,30 @@
   .cart-item-total + button {
     order: 6;
     flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .cart-banner {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .cart-banner-text h1 {
+    font-size: 22px;
+  }
+
+  .cart-banner-img {
+    width: 90px;
+    height: 90px;
+  }
+
+  .cart-item {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .cart-summary {
+    padding: 16px;
   }
 }

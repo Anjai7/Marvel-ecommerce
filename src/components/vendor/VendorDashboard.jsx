@@ -472,7 +472,16 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
 
         {/* Tab Controls */}
         <div
-          style={{ display: "flex", gap: 12, borderBottom: "2px solid #e2e8f0", marginBottom: 24 }}
+          style={{
+            display: "flex",
+            gap: 12,
+            borderBottom: "2px solid #e2e8f0",
+            marginBottom: 24,
+            overflowX: "auto",
+            whiteSpace: "nowrap",
+            WebkitOverflowScrolling: "touch",
+            scrollbarWidth: "none",
+          }}
         >
           <button
             onClick={() => setActiveTab("overview")}
@@ -489,6 +498,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               borderBottom:
                 activeTab === "overview" ? "3px solid #7c3aed" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <TrendingUp size={18} /> Store Overview
@@ -509,6 +519,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               borderBottom:
                 activeTab === "products" ? "3px solid #7c3aed" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <ShoppingBag size={18} /> Product Catalog ({products.length})
@@ -528,6 +539,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               color: activeTab === "orders" ? "#7c3aed" : "#64748b",
               borderBottom: activeTab === "orders" ? "3px solid #7c3aed" : "3px solid transparent",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <Truck size={18} /> Order Fulfillment ({orders.length})
@@ -536,7 +548,13 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+              gap: 24,
+            }}
+          >
             {/* Recent Orders Overview */}
             <div
               style={{
@@ -684,7 +702,14 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               }}
             >
               <div
-                style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 260 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  flex: 1,
+                  minWidth: "min(100%, 260px)",
+                }}
               >
                 <Input
                   type="text"
