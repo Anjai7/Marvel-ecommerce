@@ -40,6 +40,7 @@ import {
   Star,
   Wallet,
   Boxes,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import CategoryPicker from "./CategoryPicker";
@@ -104,6 +105,7 @@ import {
   ResetPasswordModal,
   DeleteUserModal,
 } from "./modals";
+import OperationsHub from "./OperationsHub";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 
 /* Sidebar icon per order stage, keyed by the `order_status` enum value. */
@@ -144,15 +146,16 @@ function money(value) {
  */
 const SECTION_BY_TAB = {
   dashboard: "dashboard",
-  users: "users",
-  products: "products",
   orders: "orders",
+  products: "products",
   customers: "customers",
+  users: "users",
   menus: "siteContent",
   hero: "siteContent",
   categories: "siteContent",
   banners: "siteContent",
   footer: "siteContent",
+  settings: "settings",
 };
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
@@ -1018,9 +1021,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           </div>
         </div>
 
-        {/* ALL TABS ON LEFT SIDE (2 FOR NOW) */}
+        {/* ALL TABS ON LEFT SIDE */}
         <nav className="sidebar-navigation">
-          <div className="nav-section-label">PLATFORM CONTROLS</div>
+          <div className="nav-section-label">DAILY OPERATIONS</div>
 
           {/* MENU 1: DASHBOARD (with submenu) */}
           <button
@@ -1070,107 +1073,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           )}
 
-          {/* TAB 2: USERS (with submenu: View Users / Add User) */}
-          <button
-            id="admin-tab-users"
-            onClick={() => handleSectionClick("users", "users", () => setShowAddUserModal(false))}
-            className={`sidebar-tab-button ${activeTab === "users" ? "active" : ""}`}
-            aria-expanded={!!expandedMenus.users}
-          >
-            <div className="tab-icon-box">
-              <Users size={19} />
-            </div>
-            <div className="tab-text-box">
-              <span className="tab-title">Users</span>
-              <span className="tab-description">Accounts & Roles</span>
-            </div>
-            <span className="tab-badge-counter">{users.length}</span>
-            <span className={`sidebar-parent-chevron ${expandedMenus.users ? "open" : ""}`}>
-              <ChevronDown size={15} />
-            </span>
-            {activeTab === "users" && <div className="active-glow-indicator"></div>}
-          </button>
-          {expandedMenus.users && (
-            <div className="sidebar-submenu">
-              <button
-                id="admin-tab-users-list"
-                onClick={() => {
-                  setActiveTab("users");
-                  setShowAddUserModal(false);
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "users" && !showAddUserModal ? "active" : ""}`}
-              >
-                <Eye size={14} />
-                <span>View Users</span>
-                <span className="sidebar-submenu-count">{users.length}</span>
-              </button>
-              <button
-                id="admin-tab-users-add"
-                onClick={() => {
-                  setActiveTab("users");
-                  setShowAddUserModal(true);
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "users" && showAddUserModal ? "active" : ""}`}
-              >
-                <Plus size={14} />
-                <span>Add User</span>
-              </button>
-            </div>
-          )}
-
-          <div className="nav-section-label">CATALOG & SALES</div>
-
-          {/* MENU 3: PRODUCTS (with submenu) */}
-          <button
-            id="admin-tab-products"
-            onClick={() =>
-              handleSectionClick("products", "products", () => setProductsView("list"))
-            }
-            className={`sidebar-tab-button ${activeTab === "products" ? "active" : ""}`}
-            aria-expanded={!!expandedMenus.products}
-          >
-            <div className="tab-icon-box">
-              <Package size={19} />
-            </div>
-            <div className="tab-text-box">
-              <span className="tab-title">Products</span>
-              <span className="tab-description">Catalog & Inventory</span>
-            </div>
-            <span className="tab-badge-counter">{products.length}</span>
-            <span className={`sidebar-parent-chevron ${expandedMenus.products ? "open" : ""}`}>
-              <ChevronDown size={15} />
-            </span>
-            {activeTab === "products" && <div className="active-glow-indicator"></div>}
-          </button>
-          {expandedMenus.products && (
-            <div className="sidebar-submenu">
-              <button
-                id="admin-tab-products-list"
-                onClick={() => {
-                  setActiveTab("products");
-                  setProductsView("list");
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
-              >
-                <Package size={14} />
-                <span>All Products</span>
-                <span className="sidebar-submenu-count">{products.length}</span>
-              </button>
-              <button
-                id="admin-tab-products-add"
-                onClick={() => {
-                  setActiveTab("products");
-                  handleOpenAddProduct();
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
-              >
-                <Plus size={14} />
-                <span>Add Product</span>
-              </button>
-            </div>
-          )}
-
-          {/* MENU 4: ORDERS (with submenu) */}
+          {/* MENU 2: ORDERS (with submenu) */}
           <button
             id="admin-tab-orders"
             onClick={() => handleSectionClick("orders", "orders", () => setOrdersView("all"))}
@@ -1225,7 +1128,57 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           )}
 
-          {/* MENU 5: CUSTOMERS (with submenu) */}
+          {/* MENU 3: PRODUCTS (with submenu) */}
+          <button
+            id="admin-tab-products"
+            onClick={() =>
+              handleSectionClick("products", "products", () => setProductsView("list"))
+            }
+            className={`sidebar-tab-button ${activeTab === "products" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.products}
+          >
+            <div className="tab-icon-box">
+              <Package size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Products</span>
+              <span className="tab-description">Catalog & Inventory</span>
+            </div>
+            <span className="tab-badge-counter">{products.length}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.products ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
+            {activeTab === "products" && <div className="active-glow-indicator"></div>}
+          </button>
+          {expandedMenus.products && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-products-list"
+                onClick={() => {
+                  setActiveTab("products");
+                  setProductsView("list");
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
+              >
+                <Package size={14} />
+                <span>All Products</span>
+                <span className="sidebar-submenu-count">{products.length}</span>
+              </button>
+              <button
+                id="admin-tab-products-add"
+                onClick={() => {
+                  setActiveTab("products");
+                  handleOpenAddProduct();
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
+              >
+                <Plus size={14} />
+                <span>Add Product</span>
+              </button>
+            </div>
+          )}
+
+          {/* MENU 4: CUSTOMERS (with submenu) */}
           <button
             id="admin-tab-customers"
             onClick={() =>
@@ -1275,8 +1228,56 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           )}
 
-          {/* ===== SITE CONTENT (Task 4: Menus tab; Task 5 adds Hero/Categories sub-tabs below) ===== */}
-          {canManageSiteContent && <div className="nav-section-label">SITE CONTENT</div>}
+          {/* MENU 5: USERS (with submenu: View Users / Add User) */}
+          <button
+            id="admin-tab-users"
+            onClick={() => handleSectionClick("users", "users", () => setShowAddUserModal(false))}
+            className={`sidebar-tab-button ${activeTab === "users" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.users}
+          >
+            <div className="tab-icon-box">
+              <Users size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Users</span>
+              <span className="tab-description">Accounts & Roles</span>
+            </div>
+            <span className="tab-badge-counter">{users.length}</span>
+            <span className={`sidebar-parent-chevron ${expandedMenus.users ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
+            {activeTab === "users" && <div className="active-glow-indicator"></div>}
+          </button>
+          {expandedMenus.users && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-users-list"
+                onClick={() => {
+                  setActiveTab("users");
+                  setShowAddUserModal(false);
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "users" && !showAddUserModal ? "active" : ""}`}
+              >
+                <Eye size={14} />
+                <span>View Users</span>
+                <span className="sidebar-submenu-count">{users.length}</span>
+              </button>
+              <button
+                id="admin-tab-users-add"
+                onClick={() => {
+                  setActiveTab("users");
+                  setShowAddUserModal(true);
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "users" && showAddUserModal ? "active" : ""}`}
+              >
+                <Plus size={14} />
+                <span>Add User</span>
+              </button>
+            </div>
+          )}
+
+          {/* ===== ONLINE STORE (CMS) ===== */}
+          {canManageSiteContent && <div className="nav-section-label">ONLINE STORE (CMS)</div>}
           {canManageSiteContent && (
             <button
               id="admin-tab-site-content"
@@ -1311,7 +1312,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Layers size={14} />
                 <span>Menus</span>
               </button>
-              {/* Task 5: Hero / Categories sub-tabs */}
               <button
                 id="admin-tab-site-content-hero"
                 onClick={() => {
@@ -1354,6 +1354,33 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
             </div>
           )}
+
+          {/* ===== CONFIGURATION ===== */}
+          <div className="nav-section-label">CONFIGURATION</div>
+          <button
+            id="admin-tab-settings"
+            onClick={() => setActiveTab("settings")}
+            className={`sidebar-tab-button ${activeTab === "settings" ? "active" : ""}`}
+          >
+            <div className="tab-icon-box">
+              <SettingsIcon size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Settings</span>
+              <span className="tab-description">Store &amp; Preferences</span>
+            </div>
+            {activeTab === "settings" && <div className="active-glow-indicator"></div>}
+          </button>
+
+          {/* LIVE STORE QUICK LINK */}
+          <a
+            href="#/"
+            className="sidebar-live-store-link"
+            title="Open customer-facing storefront in new or current tab"
+          >
+            <ExternalLink size={14} />
+            <span>View Live Store</span>
+          </a>
         </nav>
       </aside>
 
@@ -1414,6 +1441,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {!dataUnavailable && activeTab === "dashboard" && dashboardView === "overview" && (
           <div className="dashboard-tab-view animate-fade-in">
+            <OperationsHub
+              metrics={metrics}
+              salesReport={salesReport}
+              onNavigateTab={(tab, subView) => {
+                setActiveTab(tab);
+                if (tab === "orders" && subView) setOrdersView(subView);
+                else if (tab === "products" && subView) setProductsView(subView);
+                else if (tab === "customers" && subView) setCustomersView(subView);
+              }}
+              onOpenAddProduct={handleOpenAddProduct}
+              userName={currentUser?.name || currentUser?.email?.split("@")[0] || "Admin"}
+            />
+
             {/* KPI STATS CARDS GRID */}
             <div className="metrics-cards-grid">
               {/* Card 1: Total Revenue */}
