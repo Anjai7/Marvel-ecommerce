@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import {
   LayoutDashboard,
   Users,
-  LogOut,
   Plus,
   Eye,
   Edit2,
@@ -82,6 +81,9 @@ import {
   formatAdminDate,
   isLowStock,
 } from "./adminConstants";
+import { buildAlerts } from "./adminAlerts";
+import { AdminNotifications, AdminProfileMenu } from "./AdminTopBar";
+import SettingsEditor from "./SettingsEditor";
 import "./admin-reports.css";
 import RevenueTrendChart from "./charts/RevenueTrendChart";
 import OrderStatusChart from "./charts/OrderStatusChart";
@@ -849,12 +851,28 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     categories: "Site Content — Categories",
     banners: "Site Content — Banners",
     footer: "Site Content — Footer",
+    settings: "Settings",
   };
 
   // Nothing loaded and no cached copy exists, so the console has no business
   // data to render: show the failure explicitly instead of an empty dashboard.
   const dataUnavailable =
     Boolean(syncError) && users.length === 0 && products.length === 0 && orders.length === 0;
+
+  // The bell counts what needs attention, derived from the same live rows the
+  // rest of the console reads — never a stored counter that could disagree.
+  const alerts = useMemo(() => buildAlerts({ orders, products, users }), [orders, products, users]);
+
+  /** An alert takes the admin to the tab that can act on it. */
+  const handleOpenAlertTab = (tab) => {
+    if (tab === "orders") setOrdersView("all");
+    if (tab === "products") setProductsView("list");
+    if (tab === "customers") setCustomersView("all");
+    setActiveTab(tab);
+  };
+
+  /** The profile menu's Settings entry. */
+  const handleOpenSettings = () => setActiveTab("settings");
 
   return (
     <div className="admin-app-layout">
@@ -1236,47 +1254,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           )}
         </nav>
-
-        {/* SIDEBAR FOOTER: USER PROFILE & SIGNOUT BUTTON */}
-        <div className="sidebar-footer">
-          {/* Authenticated User Profile Snippet */}
-          <div className="sidebar-user-card">
-            <div className="user-avatar-circle">
-              {displayInitial(currentUser?.full_name || currentUser?.email)}
-              <div className="online-indicator"></div>
-            </div>
-            <div className="user-details-mini">
-              <span className="user-display-name">{displayValue(currentUser?.full_name)}</span>
-              <span className="user-display-email">{displayValue(currentUser?.email)}</span>
-              <div className="user-role-badge-row">
-                {renderRoleBadge(isSuperAdmin ? "super_admin" : currentRole || "admin")}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Links: Storefront Shortcut + Signout Button */}
-          <div className="sidebar-actions-group">
-            <button
-              onClick={() => (onNavigateHome ? onNavigateHome() : (window.location.hash = "#/"))}
-              className="storefront-link-btn"
-              title="Return to Customer Storefront"
-            >
-              <Store size={16} />
-              <span>View Storefront</span>
-              <ArrowUpRight size={14} className="link-arrow" />
-            </button>
-
-            {/* HIGH-VISIBILITY SIGNOUT BUTTON */}
-            <button
-              id="admin-signout-button"
-              onClick={handleSignOut}
-              className="signout-action-button"
-            >
-              <LogOut size={17} />
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* ==================================================== */}
@@ -1297,7 +1274,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
           </div>
 
-          <div className="navbar-actions-block"></div>
+          <div className="navbar-actions-block">
+            <AdminNotifications alerts={alerts} onOpenTab={handleOpenAlertTab} />
+            <AdminProfileMenu
+              user={currentUser}
+              role={currentRole}
+              isSuperAdmin={isSuperAdmin}
+              onOpenSettings={handleOpenSettings}
+              onSignOut={handleSignOut}
+            />
+          </div>
         </header>
 
         {/* FAILURE STATE — the API returned nothing and no cached copy exists.
@@ -2431,6 +2417,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
         {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
+
+        {/* TAB 11: SETTINGS — the store's own configuration */}
+        {activeTab === "settings" && <SettingsEditor />}
       </main>
 
       {/* ==================================================== */}

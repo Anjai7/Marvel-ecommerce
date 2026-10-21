@@ -30,6 +30,7 @@ import crypto from "node:crypto";
 import { pathToFileURL } from "node:url";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import { SETTINGS_GROUPS, SETTINGS_KEYS } from "./lib/settings.js";
 
 dotenv.config();
 
@@ -1358,6 +1359,20 @@ export async function seedBackendContent({ client, log = console.log } = {}) {
   if (mediaRows.length > 0) await upsertInChunks(db, "product_media", mediaRows);
 
   // site_settings is keyed by `key`, not `id`, so it needs its own upsert.
+  // The rows must match the allow-list the write route enforces, or an admin
+  // could never edit them.
+  const seededKeys = SITE_SETTINGS.map((row) => row.key).sort();
+  const allowedKeys = [...SETTINGS_KEYS].sort();
+  if (seededKeys.join(",") !== allowedKeys.join(",")) {
+    throw new Error(
+      `The seeded settings keys (${seededKeys.join(", ")}) do not match ` +
+        `the known keys (${allowedKeys.join(", ")}).`
+    );
+  }
+  for (const row of SITE_SETTINGS) {
+    row.group_name = SETTINGS_GROUPS[row.key] ?? "general";
+  }
+
   const { error: settingsError } = await db
     .from("site_settings")
     .upsert(SITE_SETTINGS, { onConflict: "key" });
