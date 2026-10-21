@@ -32,7 +32,7 @@ const SLIDES = [
     product_image_url: "https://example.com/product.jpg",
     fallback_image_url: "",
     bg_gradient: "",
-    price_text: "$99",
+    price_text: "₹99",
     tag: "hot",
     ribbon_text: "deal",
     order_index: 0,

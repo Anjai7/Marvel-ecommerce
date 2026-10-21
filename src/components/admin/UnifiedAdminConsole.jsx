@@ -15,7 +15,7 @@ import {
   XCircle,
   AlertTriangle,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   ShoppingBag,
   Package,
   ShieldCheck,
@@ -85,6 +85,7 @@ import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
+import { formatAmount, formatCurrency } from "../../lib/currency";
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
@@ -1243,12 +1244,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <div className="kpi-card-header">
                   <span className="kpi-label">TOTAL PLATFORM REVENUE</span>
                   <div className="kpi-icon-bubble emerald">
-                    <DollarSign size={20} />
+                    <IndianRupee size={20} />
                   </div>
                 </div>
                 <div className="kpi-value-row">
-                  <span className="kpi-currency">$</span>
-                  <span className="kpi-number">{metrics.totalRevenue}</span>
+                  <span className="kpi-currency">₹</span>
+                  <span className="kpi-number">{formatAmount(metrics.totalRevenue)}</span>
                 </div>
                 <div className="kpi-footer-row">
                   {salesReport.growth.percent === null ? (
@@ -1262,7 +1263,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       {salesReport.growth.percent.toFixed(1)}%
                     </span>
                   )}
-                  <span className="kpi-subtext">Avg Order: ${metrics.aov}</span>
+                  <span className="kpi-subtext">Avg Order: {formatCurrency(metrics.aov)}</span>
                 </div>
               </div>
 
@@ -1436,10 +1437,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           </td>
                           <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
                           <td className="font-bold text-emerald">
-                            $
-                            {typeof order.total_amount === "number"
-                              ? order.total_amount.toFixed(2)
-                              : parseFloat(order.total_amount || 0).toFixed(2)}
+                            {formatCurrency(order.total_amount)}
                           </td>
                           <td>
                             <span className={`status-pill ${order.status || "processing"}`}>
@@ -1468,7 +1466,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="sales-mini-card teal">
                 <span className="sales-mini-label">Today Orders</span>
                 <span className="sales-mini-value">
-                  ${salesReport.windows.today.revenue.toFixed(2)}
+                  {formatCurrency(salesReport.windows.today.revenue)}
                 </span>
                 <span className="sales-mini-sub">
                   {salesReport.windows.today.orders} orders today
@@ -1477,7 +1475,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="sales-mini-card orange">
                 <span className="sales-mini-label">Yesterday Orders</span>
                 <span className="sales-mini-value">
-                  ${salesReport.windows.yesterday.revenue.toFixed(2)}
+                  {formatCurrency(salesReport.windows.yesterday.revenue)}
                 </span>
                 <span className="sales-mini-sub">
                   {salesReport.windows.yesterday.orders} orders yesterday
@@ -1486,7 +1484,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="sales-mini-card blue">
                 <span className="sales-mini-label">This Month</span>
                 <span className="sales-mini-value">
-                  ${salesReport.windows.thisMonth.revenue.toFixed(2)}
+                  {formatCurrency(salesReport.windows.thisMonth.revenue)}
                 </span>
                 <span className="sales-mini-sub">
                   {salesReport.windows.thisMonth.orders} orders this month
@@ -1495,7 +1493,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="sales-mini-card green">
                 <span className="sales-mini-label">Last Month</span>
                 <span className="sales-mini-value">
-                  ${salesReport.windows.lastMonth.revenue.toFixed(2)}
+                  {formatCurrency(salesReport.windows.lastMonth.revenue)}
                 </span>
                 <span className="sales-mini-sub">
                   {salesReport.windows.lastMonth.orders} orders last month
@@ -1557,7 +1555,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           {buyer.email || "no email"} • {buyer.orders} orders
                         </div>
                       </div>
-                      <span className="topseller-rev">${buyer.spent.toFixed(2)}</span>
+                      <span className="topseller-rev">{formatCurrency(buyer.spent)}</span>
                       <span className="repeat-badge">Repeat</span>
                     </div>
                   ))
@@ -1945,7 +1943,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </div>
                     <div className="form-group-row">
                       <div className="form-group">
-                        <label className="form-label">Price (Rs) *</label>
+                        <label className="form-label">Price (₹) *</label>
                         <Input
                           required
                           type="number"
@@ -1959,7 +1957,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Original Price (Rs)</label>
+                        <label className="form-label">Original Price (₹)</label>
                         <Input
                           type="number"
                           min="0"
@@ -2085,11 +2083,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             </td>
                             <td>{prod.category}</td>
                             <td className="font-bold">
-                              ${parseFloat(prod.price || 0).toFixed(2)}
+                              {formatCurrency(prod.price)}
                               {prod.original_price ? (
                                 <span className="text-muted text-sm">
                                   {" "}
-                                  <s>${parseFloat(prod.original_price).toFixed(2)}</s>
+                                  <s>{formatCurrency(prod.original_price)}</s>
                                 </span>
                               ) : null}
                             </td>
@@ -2218,10 +2216,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           </td>
                           <td>{Array.isArray(order.items) ? order.items.length : 1} items</td>
                           <td className="font-bold text-emerald">
-                            $
-                            {typeof order.total_amount === "number"
-                              ? order.total_amount.toFixed(2)
-                              : parseFloat(order.total_amount || 0).toFixed(2)}
+                            {formatCurrency(order.total_amount)}
                           </td>
                           <td>
                             <span className={`status-pill ${order.status || "processing"}`}>
@@ -2318,7 +2313,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             </div>
                           </td>
                           <td className="font-bold">{cust.orders}</td>
-                          <td className="font-bold text-emerald">${cust.spent.toFixed(2)}</td>
+                          <td className="font-bold text-emerald">{formatCurrency(cust.spent)}</td>
                           <td className="text-muted text-sm">
                             {cust.lastOrderAt
                               ? new Date(cust.lastOrderAt).toLocaleDateString()

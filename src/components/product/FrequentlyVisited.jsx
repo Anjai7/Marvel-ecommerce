@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucid
 import { useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
 import { apiFetchProducts } from "../../api/backendApi";
+import { formatCurrency } from "../../lib/currency";
 
 function FVCard({ product, onView }) {
   const [wishlisted, setWishlisted] = useState(false);
@@ -11,9 +12,13 @@ function FVCard({ product, onView }) {
   const { addItem } = useCart();
 
   const title = product.title || product.name || "Product";
-  const image = product.image_url || product.image || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
+  const image =
+    product.image_url ||
+    product.image ||
+    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500";
   const price = parseFloat(product.price) || 0;
-  const originalPrice = parseFloat(product.original_price || product.originalPrice) || Math.round(price * 1.25);
+  const originalPrice =
+    parseFloat(product.original_price || product.originalPrice) || Math.round(price * 1.25);
   const rating = parseFloat(product.rating) || 4.8;
   const reviews = parseInt(product.reviews_count || product.reviews) || 48;
 
@@ -27,7 +32,7 @@ function FVCard({ product, onView }) {
 
   const handleWish = (e) => {
     e.stopPropagation();
-    setWishlisted(w => !w);
+    setWishlisted((w) => !w);
     addToast({
       title: !wishlisted ? "Saved to Wishlist" : "Removed from Wishlist",
       message: `${title} ${!wishlisted ? "added to" : "removed from"} your favorites.`,
@@ -35,9 +40,8 @@ function FVCard({ product, onView }) {
     });
   };
 
-  const discount = originalPrice > price
-    ? Math.round(((originalPrice - price) / originalPrice) * 100)
-    : 0;
+  const discount =
+    originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
 
   const handleView = () => onView && onView(product);
 
@@ -60,13 +64,13 @@ function FVCard({ product, onView }) {
       aria-label={onView ? `View ${title}` : undefined}
       style={{ cursor: onView ? "pointer" : "default" }}
     >
-      {discount > 0 && (
-        <span className="fv-badge fv-badge-discount">
-          {discount}% OFF
-        </span>
-      )}
+      {discount > 0 && <span className="fv-badge fv-badge-discount">{discount}% OFF</span>}
       <button className="fv-wish" onClick={handleWish} aria-label="Wishlist">
-        <Heart size={16} fill={wishlisted ? "#ef4444" : "none"} color={wishlisted ? "#ef4444" : "#94a3b8"} />
+        <Heart
+          size={16}
+          fill={wishlisted ? "#ef4444" : "none"}
+          color={wishlisted ? "#ef4444" : "#94a3b8"}
+        />
       </button>
 
       <div className="fv-img-wrap">
@@ -77,7 +81,9 @@ function FVCard({ product, onView }) {
       </div>
 
       <div className="fv-info">
-        <div className="fv-name" title={title}>{title}</div>
+        <div className="fv-name" title={title}>
+          {title}
+        </div>
 
         <div className="fv-rating-row">
           <span className="fv-rating-chip">
@@ -88,9 +94,9 @@ function FVCard({ product, onView }) {
         </div>
 
         <div className="fv-price-row">
-          <span className="fv-price">${price.toFixed(2)}</span>
+          <span className="fv-price">{formatCurrency(price)}</span>
           {originalPrice > price && (
-            <span className="fv-original">${originalPrice.toFixed(2)}</span>
+            <span className="fv-original">{formatCurrency(originalPrice)}</span>
           )}
         </div>
 
@@ -99,7 +105,13 @@ function FVCard({ product, onView }) {
           onClick={handleCart}
           id={`fv-cart-${product.id}`}
         >
-          {cartAdded ? "✓ Added" : <><ShoppingCart size={14} /> Add to Cart</>}
+          {cartAdded ? (
+            "✓ Added"
+          ) : (
+            <>
+              <ShoppingCart size={14} /> Add to Cart
+            </>
+          )}
         </button>
       </div>
     </div>
@@ -154,7 +166,9 @@ export default function FrequentlyVisited({ onView }) {
         <div className="fv-header">
           <div>
             <h2 className="fv-title">Frequently Visited Together</h2>
-            <p className="fv-subtitle">Customers who viewed this item also explored these products</p>
+            <p className="fv-subtitle">
+              Customers who viewed this item also explored these products
+            </p>
           </div>
         </div>
 
@@ -171,7 +185,7 @@ export default function FrequentlyVisited({ onView }) {
           <div className="fv-track fv-track-pairs" ref={scrollRef} onScroll={updateArrows}>
             {pairs.map((pair, idx) => (
               <div className="fv-pair-column" key={idx}>
-                {pair.map(product => (
+                {pair.map((product) => (
                   <FVCard key={product.id} product={product} onView={onView} />
                 ))}
               </div>

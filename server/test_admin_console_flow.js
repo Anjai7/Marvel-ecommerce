@@ -25,7 +25,7 @@ async function runTests() {
     console.log(`✅ Successfully fetched ${orders.length} orders from DB.`);
 
     const totalRevenue = orders.reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
-    console.log(`💰 Calculated live platform revenue: $${totalRevenue.toFixed(2)}`);
+    console.log(`💰 Calculated live platform revenue: ₹${totalRevenue.toFixed(2)}`);
 
     // 4. Test Edit User Profile
     console.log("\n4. Testing user edit operation in Supabase profiles...");
@@ -40,7 +40,9 @@ async function runTests() {
         .single();
 
       if (updateErr) throw new Error("Profile update failed: " + updateErr.message);
-      console.log(`✅ Successfully updated status for user ${targetUser.email} to '${updated.status}'.`);
+      console.log(
+        `✅ Successfully updated status for user ${targetUser.email} to '${updated.status}'.`
+      );
     }
 
     console.log("\n=================================================");

@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { formatCurrency } from "../../../lib/currency";
 
 export default function OrdersPlusRevenueChart({ data }) {
   if (!data || data.length === 0) {
@@ -28,7 +29,9 @@ export default function OrdersPlusRevenueChart({ data }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickMargin={8} />
           <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
-          <Tooltip />
+          <Tooltip
+            formatter={(value, name) => (name === "revenue" ? formatCurrency(value) : value)}
+          />
           <Legend verticalAlign="top" height={36} />
           <Bar dataKey="orders" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           <Line dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />

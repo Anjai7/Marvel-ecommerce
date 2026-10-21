@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { formatCurrency } from "../../../lib/currency";
 
 export default function RevenueTrendChart({ data }) {
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -33,7 +34,10 @@ export default function RevenueTrendChart({ data }) {
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickMargin={8} />
-          <YAxis tick={{ fontSize: 11, fill: "#64748b" }} tickFormatter={(v) => `$${v}`} />
+          <YAxis
+            tick={{ fontSize: 11, fill: "#64748b" }}
+            tickFormatter={(v) => formatCurrency(v, { decimals: 0 })}
+          />
           <Tooltip cursor={{ strokeDasharray: "3 3" }} />
           <Legend verticalAlign="top" height={36} />
           <Area

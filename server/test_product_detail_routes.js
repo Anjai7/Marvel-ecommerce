@@ -24,7 +24,7 @@ async function testProductRoutes() {
 
   console.log(`✅ Product ID: ${detail.id}`);
   console.log(`   Title: ${detail.title}`);
-  console.log(`   Price: $${detail.price} (Original: $${detail.original_price})`);
+  console.log(`   Price: ₹${detail.price} (Original: ₹${detail.original_price})`);
   console.log(`   Category: ${detail.category} | Stock: ${detail.stock}`);
   console.log(`   Cloudinary CDN Image URL: ${detail.image_url.substring(0, 75)}...`);
   console.log(`   Description: ${detail.description}`);

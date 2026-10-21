@@ -2,12 +2,11 @@ import React from "react";
 import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../../context/CartContext.jsx";
 import { Button, Badge, useToast } from "../ui";
+import { formatCurrency } from "../../lib/currency";
 import "./cart.css";
 
 const FALLBACK_BANNER_IMG =
   "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=300&fit=crop";
-
-const formatINR = (value) => `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
 export function CartPage({ onNavigateHome, onCheckout }) {
   const { items, cartCount, subtotal, savings, total, removeItem, updateQuantity } = useCart();
@@ -70,7 +69,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
                   <div className="cart-item-info">
                     <h3 className="cart-item-title">{title}</h3>
                     {item.category && <div className="cart-item-category">{item.category}</div>}
-                    <div className="cart-item-price">{formatINR(item.price)}</div>
+                    <div className="cart-item-price">{formatCurrency(item.price)}</div>
                   </div>
                   <div className="cart-qty">
                     <button
@@ -90,7 +89,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
                     </button>
                   </div>
                   <div className="cart-item-total" aria-live="polite">
-                    {formatINR(lineTotal)}
+                    {formatCurrency(lineTotal)}
                   </div>
                   <Button
                     variant="secondary"
@@ -109,12 +108,12 @@ export function CartPage({ onNavigateHome, onCheckout }) {
             <h2>Order Summary</h2>
             <div className="cart-summary-row">
               <span>Subtotal</span>
-              <span>{formatINR(subtotal)}</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
             {savings > 0 && (
               <div className="cart-summary-row cart-savings">
                 <span>Savings</span>
-                <span>−{formatINR(savings)}</span>
+                <span>−{formatCurrency(savings)}</span>
               </div>
             )}
             <div className="cart-summary-row">
@@ -123,7 +122,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
             </div>
             <div className="cart-summary-row cart-total" aria-live="polite">
               <span>Total</span>
-              <span>{formatINR(total)}</span>
+              <span>{formatCurrency(total)}</span>
             </div>
             <div className="cart-summary-actions">
               <Button variant="secondary" onClick={onNavigateHome}>

@@ -17,7 +17,7 @@ async function testFullE2E() {
   const userLogin = await fetch(`${API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "user@marvel.com", password: "user123", expectedRole: "user" })
+    body: JSON.stringify({ email: "user@marvel.com", password: "user123", expectedRole: "user" }),
   });
   const userData = await userLogin.json();
   console.log(`   Customer Signed In: ${userData.user?.email} (${userData.user?.role})`);
@@ -25,14 +25,14 @@ async function testFullE2E() {
 
   // Verify /api/auth/me session
   const userMe = await fetch(`${API}/auth/me`, {
-    headers: { "Authorization": `Bearer ${userData.token}` }
+    headers: { Authorization: `Bearer ${userData.token}` },
   });
   const userMeData = await userMe.json();
   console.log(`   Session Validated via GET /api/auth/me: ${userMeData.user?.email}`);
 
   // Fetch Customer Orders from Supabase DB
   const userOrders = await fetch(`${API}/orders?userId=${userData.user.id}&role=user`, {
-    headers: { "Authorization": `Bearer ${userData.token}` }
+    headers: { Authorization: `Bearer ${userData.token}` },
   });
   const userOrdersData = await userOrders.json();
   console.log(`   Live Orders from Supabase DB: ${userOrdersData.length} orders found.\n`);
@@ -42,7 +42,11 @@ async function testFullE2E() {
   const vendorLogin = await fetch(`${API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "vendor@marvel.com", password: "vendor123", expectedRole: "vendor" })
+    body: JSON.stringify({
+      email: "vendor@marvel.com",
+      password: "vendor123",
+      expectedRole: "vendor",
+    }),
   });
   const vendorData = await vendorLogin.json();
   console.log(`   Vendor Signed In: ${vendorData.user?.email} (${vendorData.user?.role})`);
@@ -52,7 +56,7 @@ async function testFullE2E() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${vendorData.token}`
+      Authorization: `Bearer ${vendorData.token}`,
     },
     body: JSON.stringify({
       title: "Titanium Studio Headphones ANC Test",
@@ -63,19 +67,25 @@ async function testFullE2E() {
       description: "Tested from real backend API with Supabase DB persistence",
       image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800",
       vendor_id: vendorData.user.id,
-      vendor_name: vendorData.user.store_name || "TechGear Flagship Store"
-    })
+      vendor_name: vendorData.user.store_name || "TechGear Flagship Store",
+    }),
   });
   const newProd = await newProductRes.json();
-  console.log(`   Created Product in Supabase DB: ID ${newProd.product?.id} - "${newProd.product?.title}"`);
-  console.log(`   Price: $${newProd.product?.price} | Vendor: ${newProd.product?.vendor_name}\n`);
+  console.log(
+    `   Created Product in Supabase DB: ID ${newProd.product?.id} - "${newProd.product?.title}"`
+  );
+  console.log(`   Price: ₹${newProd.product?.price} | Vendor: ${newProd.product?.vendor_name}\n`);
 
   // 4. Admin Authentication & Moderation
   console.log("4️⃣ Admin Login & Catalog Moderation in Supabase DB...");
   const adminLogin = await fetch(`${API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "admin@marvel.com", password: "admin123", expectedRole: "admin" })
+    body: JSON.stringify({
+      email: "admin@marvel.com",
+      password: "admin123",
+      expectedRole: "admin",
+    }),
   });
   const adminData = await adminLogin.json();
   console.log(`   Admin Signed In: ${adminData.user?.email} (${adminData.user?.role})`);
@@ -86,12 +96,14 @@ async function testFullE2E() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${adminData.token}`
+        Authorization: `Bearer ${adminData.token}`,
       },
-      body: JSON.stringify({ moderation_status: "approved", is_featured: true })
+      body: JSON.stringify({ moderation_status: "approved", is_featured: true }),
     });
     const modData = await modRes.json();
-    console.log(`   Moderated Product in Supabase DB: Status -> "${modData.product?.moderation_status}", Featured: ${modData.product?.is_featured}\n`);
+    console.log(
+      `   Moderated Product in Supabase DB: Status -> "${modData.product?.moderation_status}", Featured: ${modData.product?.is_featured}\n`
+    );
   }
 
   // 5. Super Admin Dynamic Menu CRUD in Supabase DB
@@ -99,14 +111,20 @@ async function testFullE2E() {
   const superAdminLogin = await fetch(`${API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "superadmin@marvel.com", password: "superadmin123", expectedRole: "super_admin" })
+    body: JSON.stringify({
+      email: "superadmin@marvel.com",
+      password: "superadmin123",
+      expectedRole: "super_admin",
+    }),
   });
   const superAdminData = await superAdminLogin.json();
-  console.log(`   Super Admin Signed In: ${superAdminData.user?.email} (${superAdminData.user?.role})`);
+  console.log(
+    `   Super Admin Signed In: ${superAdminData.user?.email} (${superAdminData.user?.role})`
+  );
 
   // Fetch Users List from Supabase DB
   const usersRes = await fetch(`${API}/users`, {
-    headers: { "Authorization": `Bearer ${superAdminData.token}` }
+    headers: { Authorization: `Bearer ${superAdminData.token}` },
   });
   const usersList = await usersRes.json();
   console.log(`   Live User Matrix from Supabase DB: ${usersList.length} accounts verified.`);

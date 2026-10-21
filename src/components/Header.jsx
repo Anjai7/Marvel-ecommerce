@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatCurrency } from "../lib/currency";
 import {
   Button,
   Badge,
@@ -97,27 +98,51 @@ export default function Header({
               <DropdownMenuTrigger asChild>
                 <button type="button" className="header-action" id="account-btn">
                   <Avatar size="sm">
-                    <AvatarFallback style={{
-                      background: userRole === "super_admin" ? "#d97706" : userRole === "vendor" ? "#7c3aed" : userRole === "admin" ? "#0284c7" : "#2563eb",
-                      color: "#fff",
-                      fontWeight: 800
-                    }}>
+                    <AvatarFallback
+                      style={{
+                        background:
+                          userRole === "super_admin"
+                            ? "#d97706"
+                            : userRole === "vendor"
+                              ? "#7c3aed"
+                              : userRole === "admin"
+                                ? "#0284c7"
+                                : "#2563eb",
+                        color: "#fff",
+                        fontWeight: 800,
+                      }}
+                    >
                       {userInitial}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="ha-sub" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div
+                      className="ha-sub"
+                      style={{ display: "flex", alignItems: "center", gap: 4 }}
+                    >
                       Hello, {currentUser?.full_name?.split(" ")[0] || "User"}
                     </div>
-                    <div className="ha-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                      <span style={{
-                        fontSize: 10,
-                        fontWeight: 800,
-                        padding: "1px 6px",
-                        borderRadius: 8,
-                        background: userRole === "super_admin" ? "#f59e0b" : userRole === "vendor" ? "#8b5cf6" : userRole === "admin" ? "#0284c7" : "#3b82f6",
-                        color: "#fff"
-                      }}>
+                    <div
+                      className="ha-label"
+                      style={{ display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: "1px 6px",
+                          borderRadius: 8,
+                          background:
+                            userRole === "super_admin"
+                              ? "#f59e0b"
+                              : userRole === "vendor"
+                                ? "#8b5cf6"
+                                : userRole === "admin"
+                                  ? "#0284c7"
+                                  : "#3b82f6",
+                          color: "#fff",
+                        }}
+                      >
                         {userRole.replace("_", " ").toUpperCase()}
                       </span>
                       ▾
@@ -129,7 +154,9 @@ export default function Header({
               <DropdownMenuContent align="end" style={{ width: 230 }}>
                 <DropdownMenuLabel>
                   <div style={{ fontWeight: 800 }}>{currentUser?.full_name}</div>
-                  <div style={{ fontSize: 11, color: "var(--gray-500)", fontWeight: 400 }}>{currentUser?.email}</div>
+                  <div style={{ fontSize: 11, color: "var(--gray-500)", fontWeight: 400 }}>
+                    {currentUser?.email}
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
@@ -180,10 +207,7 @@ export default function Header({
                   Saved Wishlist
                 </DropdownMenuItem>
 
-                <DropdownMenuItem
-                  icon={<Settings size={16} />}
-                  onClick={onNavigateCustomerPortal}
-                >
+                <DropdownMenuItem icon={<Settings size={16} />} onClick={onNavigateCustomerPortal}>
                   Account Settings
                 </DropdownMenuItem>
 
@@ -262,9 +286,18 @@ export default function Header({
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" style={{ width: 280, padding: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 12,
+                }}
+              >
                 <span style={{ fontWeight: 700, fontSize: 14 }}>My Shopping Cart</span>
-                <Badge variant="secondary" size="sm">{cartCount} items</Badge>
+                <Badge variant="secondary" size="sm">
+                  {cartCount} items
+                </Badge>
               </div>
               <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
                 Items in your cart qualify for <strong>FREE Express Shipping</strong>!
@@ -276,22 +309,47 @@ export default function Header({
               ) : (
                 <div style={{ marginBottom: 14 }}>
                   {cartItems.slice(0, 3).map((item) => (
-                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <img src={item.image} alt={item.title} style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }} />
+                    <div
+                      key={item.id}
+                      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }}
+                      />
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 170 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            maxWidth: 170,
+                          }}
+                        >
                           {item.title}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--gray-600)" }}>
-                          Qty {item.quantity} · ₹{item.price}
+                          Qty {item.quantity} · {formatCurrency(item.price)}
                         </div>
                       </div>
                     </div>
                   ))}
-                  {cartItems.length > 3 && <div style={{ fontSize: 12, color: "var(--gray-600)" }}>+{cartItems.length - 3} more…</div>}
+                  {cartItems.length > 3 && (
+                    <div style={{ fontSize: 12, color: "var(--gray-600)" }}>
+                      +{cartItems.length - 3} more…
+                    </div>
+                  )}
                 </div>
               )}
-              <Button variant="secondary" size="sm" style={{ width: "100%", marginBottom: 8 }} onClick={onNavigateCart}>
+              <Button
+                variant="secondary"
+                size="sm"
+                style={{ width: "100%", marginBottom: 8 }}
+                onClick={onNavigateCart}
+              >
                 View Cart
               </Button>
               <Button variant="accent" size="sm" style={{ width: "100%" }} onClick={onNavigateCart}>

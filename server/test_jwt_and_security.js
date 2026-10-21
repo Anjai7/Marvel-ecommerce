@@ -4,7 +4,7 @@ const TEST_CREDS = [
   { email: "user@marvel.com", password: "user123", expectedRole: "user" },
   { email: "vendor@marvel.com", password: "vendor123", expectedRole: "vendor" },
   { email: "admin@marvel.com", password: "admin123", expectedRole: "admin" },
-  { email: "superadmin@marvel.com", password: "superadmin123", expectedRole: "super_admin" }
+  { email: "superadmin@marvel.com", password: "superadmin123", expectedRole: "super_admin" },
 ];
 
 async function testJWTAndSecurity() {
@@ -22,7 +22,7 @@ async function testJWTAndSecurity() {
     const res = await fetch(`${BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cred)
+      body: JSON.stringify(cred),
     });
 
     const data = await res.json();
@@ -40,7 +40,7 @@ async function testJWTAndSecurity() {
 
     // Test session restoration via GET /api/auth/me
     const meRes = await fetch(`${BASE}/auth/me`, {
-      headers: { "Authorization": `Bearer ${data.token}` }
+      headers: { Authorization: `Bearer ${data.token}` },
     });
     const meData = await meRes.json();
     console.log(`   Session Restored via JWT: ${meData.user?.email} (${meData.user?.role})\n`);
@@ -60,10 +60,10 @@ async function testJWTAndSecurity() {
 
   if (products.length > 0) {
     const first = products[0];
-    console.log(`   Example Product: '${first.title}' ($${first.price})`);
+    console.log(`   Example Product: '${first.title}' (₹${first.price})`);
     console.log(`   Category: ${first.category} | Stock: ${first.stock}`);
     console.log(`   Cloudinary Signed CDN URL: ${first.image_url.substring(0, 80)}...`);
-    console.log(`   Access Type: ${first.access_type || 'authenticated'}`);
+    console.log(`   Access Type: ${first.access_type || "authenticated"}`);
   }
 
   // 4. Test Customer Orders from DB

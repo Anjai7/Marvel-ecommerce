@@ -1,21 +1,39 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  Info, Package, MessageSquare, Ruler, Zap, Droplets,
-  BookOpen, MoreHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  Tag, CreditCard, Download, ExternalLink, Star, Copy, Check, ShieldCheck
+  Info,
+  Package,
+  MessageSquare,
+  Ruler,
+  Zap,
+  Droplets,
+  BookOpen,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Tag,
+  CreditCard,
+  Download,
+  ExternalLink,
+  Star,
+  Copy,
+  Check,
+  ShieldCheck,
 } from "lucide-react";
 import { useToast } from "../ui";
+import { formatCurrency } from "../../lib/currency";
 
 const TABS = [
-  { key: "offers",       label: "Price & Offers",       icon: Tag },
-  { key: "info",         label: "Product Information",  icon: Info },
-  { key: "details",      label: "Item Details",         icon: Package },
-  { key: "feedback",     label: "Feedback & Price Match", icon: MessageSquare },
-  { key: "measurements", label: "Measurements",         icon: Ruler },
-  { key: "specs",        label: "Features & Specs",     icon: Zap },
-  { key: "materials",    label: "Materials & Care",     icon: Droplets },
-  { key: "guide",        label: "User Guide",           icon: BookOpen },
-  { key: "additional",   label: "Additional Details",   icon: MoreHorizontal },
+  { key: "offers", label: "Price & Offers", icon: Tag },
+  { key: "info", label: "Product Information", icon: Info },
+  { key: "details", label: "Item Details", icon: Package },
+  { key: "feedback", label: "Feedback & Price Match", icon: MessageSquare },
+  { key: "measurements", label: "Measurements", icon: Ruler },
+  { key: "specs", label: "Features & Specs", icon: Zap },
+  { key: "materials", label: "Materials & Care", icon: Droplets },
+  { key: "guide", label: "User Guide", icon: BookOpen },
+  { key: "additional", label: "Additional Details", icon: MoreHorizontal },
 ];
 
 function Collapsible({ label, icon: Icon, open, onToggle, children }) {
@@ -36,7 +54,9 @@ function Collapsible({ label, icon: Icon, open, onToggle, children }) {
 function RatingBar({ percent, stars }) {
   return (
     <div className="pit-rbar-row">
-      <span className="pit-rbar-stars">{stars} <Star size={12} fill="#f59e0b" color="#f59e0b" /></span>
+      <span className="pit-rbar-stars">
+        {stars} <Star size={12} fill="#f59e0b" color="#f59e0b" />
+      </span>
       <div className="pit-rbar-track">
         <div className="pit-rbar-fill" style={{ width: `${percent}%` }} />
       </div>
@@ -46,12 +66,12 @@ function RatingBar({ percent, stars }) {
 }
 
 export default function ProductInfoTabs({ product }) {
-  const [activeTab, setActiveTab]       = useState("offers");
+  const [activeTab, setActiveTab] = useState("offers");
   const [openCollapse, setOpenCollapse] = useState("offers");
   const [feedbackStep, setFeedbackStep] = useState(0);
   const [feedbackRating, setFeedbackRating] = useState(0);
-  const [hoverRating, setHoverRating]   = useState(0);
-  const [copiedCode, setCopiedCode]     = useState(null);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [copiedCode, setCopiedCode] = useState(null);
   const { addToast } = useToast();
 
   // Carousel navigation state
@@ -106,7 +126,7 @@ export default function ProductInfoTabs({ product }) {
     manufacturer = {},
     userGuide = { steps: [] },
     additionalDetails = { inBox: [], certifications: [] },
-    reviewSummary = { breakdown: [] }
+    reviewSummary = { breakdown: [] },
   } = product;
 
   const copyCoupon = (code) => {
@@ -115,7 +135,7 @@ export default function ProductInfoTabs({ product }) {
     addToast({
       title: "Coupon Copied!",
       message: `Code ${code} copied to clipboard. Apply at checkout.`,
-      type: "success"
+      type: "success",
     });
     setTimeout(() => setCopiedCode(null), 2500);
   };
@@ -126,7 +146,7 @@ export default function ProductInfoTabs({ product }) {
     addToast({
       title: "Feedback Submitted",
       message: "Thank you for reporting this price! We'll review it shortly.",
-      type: "success"
+      type: "success",
     });
   };
 
@@ -134,18 +154,27 @@ export default function ProductInfoTabs({ product }) {
   const content = {
     offers: (
       <div className="pit-offers-content">
-        <div className="pit-section-title"><CreditCard size={17} color="var(--navy)" /> No Cost EMI Plans</div>
+        <div className="pit-section-title">
+          <CreditCard size={17} color="var(--navy)" /> No Cost EMI Plans
+        </div>
         <div className="pit-emi-grid">
-          {offerDetails.emiOptions?.map(opt => (
+          {offerDetails.emiOptions?.map((opt) => (
             <div className="pit-emi-card" key={opt.months}>
               <div className="pit-emi-months">{opt.months} Months</div>
-              <div className="pit-emi-amount">₹{opt.emi.toLocaleString("en-IN")}<span>/mo</span></div>
-              <div className={`pit-emi-interest ${opt.interest === "No Cost" ? "free" : ""}`}>{opt.interest}</div>
+              <div className="pit-emi-amount">
+                {formatCurrency(opt.emi)}
+                <span>/mo</span>
+              </div>
+              <div className={`pit-emi-interest ${opt.interest === "No Cost" ? "free" : ""}`}>
+                {opt.interest}
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>💳 Partner Bank Offers</div>
+        <div className="pit-section-title" style={{ marginTop: 24 }}>
+          💳 Partner Bank Offers
+        </div>
         <div className="pit-bank-list">
           {offerDetails.bankOffers?.map((o, i) => (
             <div className="pit-bank-row" key={i}>
@@ -155,7 +184,15 @@ export default function ProductInfoTabs({ product }) {
                 <div className="pit-bank-desc">{o.offer}</div>
                 {o.code && (
                   <button className="pit-code-pill" onClick={() => copyCoupon(o.code)}>
-                    {copiedCode === o.code ? <><Check size={12} /> Copied</> : <><Copy size={12} /> Code: {o.code}</>}
+                    {copiedCode === o.code ? (
+                      <>
+                        <Check size={12} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Code: {o.code}
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -163,7 +200,9 @@ export default function ProductInfoTabs({ product }) {
           ))}
         </div>
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>🏷️ Exclusive Promo Codes</div>
+        <div className="pit-section-title" style={{ marginTop: 24 }}>
+          🏷️ Exclusive Promo Codes
+        </div>
         <div className="pit-coupon-grid">
           {offerDetails.couponOffers?.map((o, i) => (
             <div className="pit-coupon-card" key={i}>
@@ -184,20 +223,49 @@ export default function ProductInfoTabs({ product }) {
       <div className="pit-info-content">
         <table className="pit-table">
           <tbody>
-            <tr><td>Brand</td><td>{product.brand}</td></tr>
-            <tr><td>Model Name</td><td>{additionalDetails.modelNumber}</td></tr>
-            <tr><td>SKU / Product ID</td><td>{product.sku}</td></tr>
-            <tr><td>Country of Origin</td><td>{additionalDetails.countryOfOrigin}</td></tr>
-            <tr><td>Manufacturer</td><td>{manufacturer.name}</td></tr>
-            <tr><td>Importer / Packer</td><td>{manufacturer.importedBy}</td></tr>
-            <tr><td>Manufacturing Date</td><td>{manufacturer.manufacturingDate}</td></tr>
-            <tr><td>HSN Code</td><td>{additionalDetails.hsn}</td></tr>
-            <tr><td>GST Rate</td><td>{additionalDetails.gst}</td></tr>
+            <tr>
+              <td>Brand</td>
+              <td>{product.brand}</td>
+            </tr>
+            <tr>
+              <td>Model Name</td>
+              <td>{additionalDetails.modelNumber}</td>
+            </tr>
+            <tr>
+              <td>SKU / Product ID</td>
+              <td>{product.sku}</td>
+            </tr>
+            <tr>
+              <td>Country of Origin</td>
+              <td>{additionalDetails.countryOfOrigin}</td>
+            </tr>
+            <tr>
+              <td>Manufacturer</td>
+              <td>{manufacturer.name}</td>
+            </tr>
+            <tr>
+              <td>Importer / Packer</td>
+              <td>{manufacturer.importedBy}</td>
+            </tr>
+            <tr>
+              <td>Manufacturing Date</td>
+              <td>{manufacturer.manufacturingDate}</td>
+            </tr>
+            <tr>
+              <td>HSN Code</td>
+              <td>{additionalDetails.hsn}</td>
+            </tr>
+            <tr>
+              <td>GST Rate</td>
+              <td>{additionalDetails.gst}</td>
+            </tr>
           </tbody>
         </table>
         {additionalDetails.certifications?.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 22 }}>Quality &amp; Safety Certifications</div>
+            <div className="pit-section-title" style={{ marginTop: 22 }}>
+              Quality &amp; Safety Certifications
+            </div>
             <div className="pit-cert-pills">
               {additionalDetails.certifications.map((c, i) => (
                 <span className="pit-cert-pill" key={i}>
@@ -222,12 +290,27 @@ export default function ProductInfoTabs({ product }) {
           ))}
         </div>
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>Manufacturer Contact &amp; Support</div>
+        <div className="pit-section-title" style={{ marginTop: 24 }}>
+          Manufacturer Contact &amp; Support
+        </div>
         <table className="pit-table">
           <tbody>
-            <tr><td>Address</td><td>{manufacturer.address}</td></tr>
-            <tr><td>Toll-Free Support</td><td>{manufacturer.supportPhone}</td></tr>
-            <tr><td>Customer Service</td><td><a href={`mailto:${manufacturer.supportEmail}`} className="pit-link">{manufacturer.supportEmail} <ExternalLink size={12} /></a></td></tr>
+            <tr>
+              <td>Address</td>
+              <td>{manufacturer.address}</td>
+            </tr>
+            <tr>
+              <td>Toll-Free Support</td>
+              <td>{manufacturer.supportPhone}</td>
+            </tr>
+            <tr>
+              <td>Customer Service</td>
+              <td>
+                <a href={`mailto:${manufacturer.supportEmail}`} className="pit-link">
+                  {manufacturer.supportEmail} <ExternalLink size={12} />
+                </a>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -236,13 +319,17 @@ export default function ProductInfoTabs({ product }) {
     feedback: (
       <div className="pit-feedback-content">
         <div className="pit-feedback-title">Would you like to tell us about a lower price?</div>
-        <div className="pit-feedback-sub">Found a lower price elsewhere? Let us know and we'll do our best to match or beat it!</div>
+        <div className="pit-feedback-sub">
+          Found a lower price elsewhere? Let us know and we'll do our best to match or beat it!
+        </div>
 
         {feedbackStep === 0 && (
           <div className="pit-fb-step">
-            <div className="pit-section-title" style={{ marginTop: 16 }}>1. Rate this product's current pricing value</div>
+            <div className="pit-section-title" style={{ marginTop: 16 }}>
+              1. Rate this product's current pricing value
+            </div>
             <div className="pit-fb-stars">
-              {[1, 2, 3, 4, 5].map(s => (
+              {[1, 2, 3, 4, 5].map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -251,7 +338,11 @@ export default function ProductInfoTabs({ product }) {
                   onMouseLeave={() => setHoverRating(0)}
                   onClick={() => setFeedbackRating(s)}
                 >
-                  <Star size={30} fill={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "none"} color={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "#cbd5e1"} />
+                  <Star
+                    size={30}
+                    fill={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "none"}
+                    color={s <= (hoverRating || feedbackRating) ? "#f59e0b" : "#cbd5e1"}
+                  />
                 </button>
               ))}
             </div>
@@ -265,11 +356,18 @@ export default function ProductInfoTabs({ product }) {
 
         {feedbackStep === 1 && (
           <form className="pit-fb-step" onSubmit={handleFeedbackSubmit}>
-            <div className="pit-section-title" style={{ marginTop: 16 }}>2. Competitor Store &amp; Price Details</div>
+            <div className="pit-section-title" style={{ marginTop: 16 }}>
+              2. Competitor Store &amp; Price Details
+            </div>
             <div className="pit-fb-form">
               <div className="pit-fb-field">
                 <label>Website URL or Store Name</label>
-                <input className="pit-fb-input" type="text" placeholder="e.g. https://store.com/item or Local Store" required />
+                <input
+                  className="pit-fb-input"
+                  type="text"
+                  placeholder="e.g. https://store.com/item or Local Store"
+                  required
+                />
               </div>
               <div className="pit-fb-field">
                 <label>Lower Price Seen (₹)</label>
@@ -277,11 +375,19 @@ export default function ProductInfoTabs({ product }) {
               </div>
               <div className="pit-fb-field">
                 <label>Additional details / promo codes seen</label>
-                <textarea className="pit-fb-textarea" rows={3} placeholder="Tell us if there were coupons, delivery charges or bundled offers..." />
+                <textarea
+                  className="pit-fb-textarea"
+                  rows={3}
+                  placeholder="Tell us if there were coupons, delivery charges or bundled offers..."
+                />
               </div>
               <div className="pit-fb-btns">
-                <button type="button" className="pit-fb-back" onClick={() => setFeedbackStep(0)}>← Back</button>
-                <button type="submit" className="pit-fb-submit">Submit Price Match Request</button>
+                <button type="button" className="pit-fb-back" onClick={() => setFeedbackStep(0)}>
+                  ← Back
+                </button>
+                <button type="submit" className="pit-fb-submit">
+                  Submit Price Match Request
+                </button>
               </div>
             </div>
           </form>
@@ -291,8 +397,20 @@ export default function ProductInfoTabs({ product }) {
           <div className="pit-fb-success">
             <div className="pit-fb-check">✓</div>
             <div className="pit-fb-success-title">Price Match Request Received!</div>
-            <p>Our pricing analytics team has logged this report for SKU <strong>{product.sku}</strong>. We'll update the listing price if the competitor match is verified.</p>
-            <button className="pit-fb-reset" onClick={() => { setFeedbackStep(0); setFeedbackRating(0); }}>Submit Another Price</button>
+            <p>
+              Our pricing analytics team has logged this report for SKU{" "}
+              <strong>{product.sku}</strong>. We'll update the listing price if the competitor match
+              is verified.
+            </p>
+            <button
+              className="pit-fb-reset"
+              onClick={() => {
+                setFeedbackStep(0);
+                setFeedbackRating(0);
+              }}
+            >
+              Submit Another Price
+            </button>
           </div>
         )}
       </div>
@@ -323,7 +441,8 @@ export default function ProductInfoTabs({ product }) {
         <div className="pit-measure-fit-box">
           <div className="pit-fit-icon">🎧</div>
           <div>
-            <strong>Ergonomic Over-Ear Fit:</strong> Engineered for all-day comfort with adjustable synthetic leather headband and pressure-relieving memory foam earpads.
+            <strong>Ergonomic Over-Ear Fit:</strong> Engineered for all-day comfort with adjustable
+            synthetic leather headband and pressure-relieving memory foam earpads.
           </div>
         </div>
       </div>
@@ -361,7 +480,9 @@ export default function ProductInfoTabs({ product }) {
           ))}
         </div>
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>Care &amp; Maintenance Guidelines</div>
+        <div className="pit-section-title" style={{ marginTop: 24 }}>
+          Care &amp; Maintenance Guidelines
+        </div>
         <ul className="pit-care-list">
           {careInstructions.map((c, i) => (
             <li key={i}>
@@ -380,7 +501,16 @@ export default function ProductInfoTabs({ product }) {
             <div className="pit-section-title">User Manual &amp; Quick Start Guide</div>
             <div className="pit-guide-sub">Version {userGuide.manualVersion} • English (EN)</div>
           </div>
-          <button className="pit-download-btn" onClick={() => addToast({ title: "Downloading Manual", message: "Starting PDF download for Sony WH-1000XM5 User Guide...", type: "info" })}>
+          <button
+            className="pit-download-btn"
+            onClick={() =>
+              addToast({
+                title: "Downloading Manual",
+                message: "Starting PDF download for Sony WH-1000XM5 User Guide...",
+                type: "info",
+              })
+            }
+          >
             <Download size={15} /> Download PDF Guide ({userGuide.fileSize})
           </button>
         </div>
@@ -404,22 +534,38 @@ export default function ProductInfoTabs({ product }) {
         <div className="pit-section-title">Regulatory &amp; Compliance Details</div>
         <table className="pit-table">
           <tbody>
-            <tr><td>Model Number</td><td>{additionalDetails.modelNumber}</td></tr>
-            <tr><td>Country of Origin</td><td>{additionalDetails.countryOfOrigin}</td></tr>
-            <tr><td>HSN Code</td><td>{additionalDetails.hsn}</td></tr>
-            <tr><td>GST Rate</td><td>{additionalDetails.gst}</td></tr>
+            <tr>
+              <td>Model Number</td>
+              <td>{additionalDetails.modelNumber}</td>
+            </tr>
+            <tr>
+              <td>Country of Origin</td>
+              <td>{additionalDetails.countryOfOrigin}</td>
+            </tr>
+            <tr>
+              <td>HSN Code</td>
+              <td>{additionalDetails.hsn}</td>
+            </tr>
+            <tr>
+              <td>GST Rate</td>
+              <td>{additionalDetails.gst}</td>
+            </tr>
           </tbody>
         </table>
 
-        <div className="pit-section-title" style={{ marginTop: 24 }}>Rating Breakdown Summary</div>
+        <div className="pit-section-title" style={{ marginTop: 24 }}>
+          Rating Breakdown Summary
+        </div>
         <div className="pit-rating-summary">
           <div className="pit-rating-big">
             <span className="pit-big-score">{reviewSummary.overall || "4.7"}</span>
             <span className="pit-big-label">/ 5</span>
-            <div className="pit-big-count">{(reviewSummary.totalReviews || 48392).toLocaleString()} ratings</div>
+            <div className="pit-big-count">
+              {(reviewSummary.totalReviews || 48392).toLocaleString()} ratings
+            </div>
           </div>
           <div className="pit-rbar-list">
-            {reviewSummary.breakdown?.map(b => (
+            {reviewSummary.breakdown?.map((b) => (
               <RatingBar key={b.stars} stars={b.stars} percent={b.percent} />
             ))}
           </div>
@@ -451,7 +597,7 @@ export default function ProductInfoTabs({ product }) {
             role="tablist"
             aria-label="Product Information Categories"
           >
-            {TABS.map(t => (
+            {TABS.map((t) => (
               <button
                 key={t.key}
                 role="tab"
@@ -478,20 +624,18 @@ export default function ProductInfoTabs({ product }) {
         </div>
 
         {/* Tab Panel Content (Only active tab rendered) */}
-        <div className="pit-tab-content">
-          {content[activeTab]}
-        </div>
+        <div className="pit-tab-content">{content[activeTab]}</div>
       </div>
 
       {/* ── Mobile: Collapsible Accordion ── */}
       <div className="pit-accordion">
-        {TABS.map(t => (
+        {TABS.map((t) => (
           <Collapsible
             key={t.key}
             label={t.label}
             icon={t.icon}
             open={openCollapse === t.key}
-            onToggle={() => setOpenCollapse(o => o === t.key ? null : t.key)}
+            onToggle={() => setOpenCollapse((o) => (o === t.key ? null : t.key))}
           >
             {content[t.key]}
           </Collapsible>
