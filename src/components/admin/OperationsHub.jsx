@@ -1,13 +1,4 @@
-import {
-  Plus,
-  ExternalLink,
-  Truck,
-  AlertTriangle,
-  Users,
-  Sparkles,
-  ChevronRight,
-  TrendingUp,
-} from "lucide-react";
+import { Truck, AlertTriangle, Users, Sparkles, ChevronRight, TrendingUp } from "lucide-react";
 
 /**
  * OperationsHub: Shopify-style high-priority daily operational dashboard hub.
@@ -17,7 +8,7 @@ export default function OperationsHub({
   metrics,
   salesReport,
   onNavigateTab,
-  onOpenAddProduct,
+  onOpenAddProduct = () => {},
   userName = "Admin",
 }) {
   const pendingOrProcessing =
@@ -34,14 +25,6 @@ export default function OperationsHub({
           <p className="operations-hub-subtitle">
             Welcome back, {userName}. High-priority actions and store status for today.
           </p>
-        </div>
-        <div className="operations-hub-quick-actions">
-          <button type="button" onClick={onOpenAddProduct} className="hub-quick-btn primary">
-            <Plus size={15} /> Add New Product
-          </button>
-          <a href="#/" className="hub-quick-btn secondary" title="Open storefront homepage">
-            <ExternalLink size={15} /> View Live Store
-          </a>
         </div>
       </div>
 

@@ -39,20 +39,18 @@ describe("OperationsHub", () => {
     expect(screen.getByText("4")).toBeInTheDocument();
   });
 
-  it("calls onOpenAddProduct when '+ Add New Product' button is clicked", () => {
-    const handleAddProduct = vi.fn();
+  it("does not render redundant Add New Product or View Live Store buttons in the header", () => {
     render(
       <OperationsHub
         metrics={defaultMetrics}
         salesReport={defaultSalesReport}
         onNavigateTab={vi.fn()}
-        onOpenAddProduct={handleAddProduct}
+        onOpenAddProduct={vi.fn()}
       />
     );
 
-    const addBtn = screen.getByRole("button", { name: /Add New Product/i });
-    fireEvent.click(addBtn);
-    expect(handleAddProduct).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /Add New Product/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /View Live Store/i })).not.toBeInTheDocument();
   });
 
   it("navigates to orders processing when orders card is clicked", () => {
@@ -85,19 +83,5 @@ describe("OperationsHub", () => {
     const lowStockCard = screen.getByText("Low Stock Inventory").closest(".hub-card");
     fireEvent.click(lowStockCard);
     expect(handleNavigate).toHaveBeenCalledWith("products", "list");
-  });
-
-  it("renders live store link pointing to storefront route", () => {
-    render(
-      <OperationsHub
-        metrics={defaultMetrics}
-        salesReport={defaultSalesReport}
-        onNavigateTab={vi.fn()}
-        onOpenAddProduct={vi.fn()}
-      />
-    );
-
-    const storeLink = screen.getByRole("link", { name: /View Live Store/i });
-    expect(storeLink).toHaveAttribute("href", "#/");
   });
 });

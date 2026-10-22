@@ -128,7 +128,8 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
     <div
       style={{
         minHeight: "calc(100vh - 120px)",
-        background: "var(--gray-50, #f8fafc)",
+        background:
+          "linear-gradient(135deg, rgba(15, 23, 42, 0.72) 0%, rgba(30, 58, 138, 0.82) 100%), url('/ecommerce-bg.jpg') center/cover no-repeat fixed",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -137,23 +138,22 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
     >
       <div
         style={{
-          maxWidth: 880,
+          maxWidth: 900,
           width: "100%",
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
           background: "#ffffff",
           borderRadius: 20,
-          boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0,0,0,0.1)",
+          boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.2)",
           overflow: "hidden",
         }}
       >
-        {/* Left Side: Brand & Hero Showcase Panel */}
+        {/* Left Side: Clean Brand Panel */}
         <div
           style={{
             position: "relative",
             overflow: "hidden",
-            background:
-              "linear-gradient(180deg, rgba(15, 23, 42, 0.74) 0%, rgba(15, 23, 42, 0.92) 100%), url('/login-hero.jpg') center/cover no-repeat",
+            background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
             color: "#ffffff",
             padding: "clamp(28px, 5vw, 44px) clamp(22px, 4vw, 36px)",
             display: "flex",
