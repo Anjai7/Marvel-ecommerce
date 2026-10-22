@@ -435,15 +435,18 @@ export default function CategoriesTreeEditor() {
             >
               <Plus size={15} />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={`Edit page for ${node.name}`}
-              onClick={() => setPagePanelCategory(node)}
-            >
-              <FileText size={15} />
-            </Button>
+            {/* Category page editor button hidden on main; available on admin-managed-pages branch */}
+            {false && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit page for ${node.name}`}
+                onClick={() => setPagePanelCategory(node)}
+              >
+                <FileText size={15} />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"

@@ -1287,7 +1287,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <button
               id="admin-tab-site-content"
               onClick={() => handleSectionClick("siteContent", "menus")}
-              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer", "pages"].includes(activeTab) ? "active" : ""}`}
+              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
               <div className="tab-icon-box">
@@ -1300,9 +1300,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
                 <ChevronDown size={15} />
               </span>
-              {["menus", "hero", "categories", "banners", "footer", "pages"].includes(
-                activeTab
-              ) && <div className="active-glow-indicator"></div>}
+              {["menus", "hero", "categories", "banners", "footer"].includes(activeTab) && (
+                <div className="active-glow-indicator"></div>
+              )}
             </button>
           )}
           {canManageSiteContent && expandedMenus.siteContent && (
@@ -1357,16 +1357,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <ClipboardList size={14} />
                 <span>Footer</span>
               </button>
-              <button
-                id="admin-tab-site-content-pages"
-                onClick={() => {
-                  setActiveTab("pages");
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
-              >
-                <FileText size={14} />
-                <span>Pages</span>
-              </button>
+              {/* Pages tab is hidden on main; available on admin-managed-pages branch */}
+              {false && (
+                <button
+                  id="admin-tab-site-content-pages"
+                  onClick={() => {
+                    setActiveTab("pages");
+                  }}
+                  className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
+                >
+                  <FileText size={14} />
+                  <span>Pages</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -2628,8 +2631,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
 
-        {/* TAB 11: SITE CONTENT > PAGES — the CMS page builder */}
-        {activeTab === "pages" && canManageSiteContent && <PagesEditor />}
+        {/* TAB 11: SITE CONTENT > PAGES — the CMS page builder (enabled on admin-managed-pages branch) */}
+        {false && activeTab === "pages" && canManageSiteContent && <PagesEditor />}
 
         {/* TAB 12: SETTINGS — the store's own configuration */}
         {activeTab === "settings" && <SettingsEditor />}
