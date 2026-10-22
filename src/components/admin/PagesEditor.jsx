@@ -21,9 +21,11 @@ import {
   apiFetchPages,
   apiPublishPage,
   apiSavePage,
+  apiSavePageSections,
   apiUnpublishPage,
 } from "../../api/pagesApi";
 import { PAGE_KINDS, PAGE_TEMPLATES } from "../../../server/lib/pageRules.js";
+import { PAGE_STARTER_PRESETS } from "./pageTemplates.js";
 
 /**
  * The pages screen: the list of CMS pages and the editor behind it.
@@ -40,7 +42,14 @@ const CONTENT_EVENT = "marvel_content_updated";
 
 /** The empty form of the new-page dialog. */
 function emptyDraft() {
-  return { title: "", slug: "", slugTouched: false, kind: "", template: "" };
+  return {
+    title: "",
+    slug: "",
+    slugTouched: false,
+    kind: "landing",
+    template: "landing",
+    presetId: "landing",
+  };
 }
 
 export default function PagesEditor() {
@@ -129,11 +138,30 @@ export default function PagesEditor() {
     try {
       const result = await apiSavePage(payload);
       const created = result?.page;
+
+      // If a starter preset with sections was picked, populate them automatically
+      const preset = PAGE_STARTER_PRESETS.find((p) => p.id === draft.presetId);
+      if (created?.id && preset && preset.sections.length > 0) {
+        try {
+          await apiSavePageSections(
+            created.id,
+            preset.sections.map((sec, idx) => ({
+              type: sec.type,
+              enabled: true,
+              data: sec.data || {},
+              style: sec.style || {},
+            }))
+          );
+        } catch (sectionErr) {
+          console.warn("[cms] could not apply starter sections:", sectionErr?.message);
+        }
+      }
+
       setCreateOpen(false);
       setDraft(emptyDraft());
       addToast({
         title: "Page Created",
-        message: `'${payload.title || payload.slug}' created as a draft.`,
+        message: `'${payload.title || payload.slug}' created with ${preset?.sections?.length || 0} starter sections.`,
         type: "success",
       });
       broadcast();
@@ -368,6 +396,85 @@ export default function PagesEditor() {
                 value={draft.slug}
                 onChange={(event) => handleSlugChange(event.target.value)}
               />
+            </div>
+
+            {/* Starter Presets */}
+            <div className="form-group">
+              <label className="form-label" style={{ marginBottom: 6 }}>
+                Choose a Starter Layout
+              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {PAGE_STARTER_PRESETS.map((preset) => {
+                  const selected = draft.presetId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          presetId: preset.id,
+                          kind: preset.kind || prev.kind,
+                          template: preset.template || prev.template,
+                        }))
+                      }
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: selected ? "2px solid #2563eb" : "1px solid #cbd5e1",
+                        background: selected ? "#eff6ff" : "#ffffff",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: selected ? "#1d4ed8" : "#0f172a",
+                          }}
+                        >
+                          {preset.name}
+                        </span>
+                        {preset.badge && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: 6,
+                              background: selected ? "#dbeafe" : "#f1f5f9",
+                              color: selected ? "#1e40af" : "#64748b",
+                            }}
+                          >
+                            {preset.badge}
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.35 }}>
+                        {preset.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="form-group-row">

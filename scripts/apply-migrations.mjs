@@ -101,15 +101,40 @@ async function postgresExecutor() {
     );
   }
   const { Client } = pg.default ?? pg;
-  const client = new Client({
-    host: `db.${projectRef}.supabase.co`,
-    port: 5432,
-    user: "postgres",
-    password: DB_PASSWORD,
-    database: "postgres",
-    ssl: { rejectUnauthorized: false },
-  });
-  await client.connect();
+  const directHost = env.SUPABASE_DB_HOST || `db.${projectRef}.supabase.co`;
+  const port = Number(env.SUPABASE_DB_PORT || 5432);
+  const user = env.SUPABASE_DB_USER || "postgres";
+
+  async function tryConnect(hostToUse, userToUse) {
+    const c = new Client({
+      host: hostToUse,
+      port,
+      user: userToUse,
+      password: DB_PASSWORD,
+      database: "postgres",
+      ssl: { rejectUnauthorized: false },
+    });
+    await c.connect();
+    return c;
+  }
+
+  let client;
+  try {
+    const userForHost = directHost.includes("pooler.supabase.com")
+      ? `postgres.${projectRef}`
+      : user;
+    client = await tryConnect(directHost, userForHost);
+  } catch (err) {
+    if (err.code === "ENETUNREACH" && !env.SUPABASE_DB_HOST) {
+      // Local ISP does not support IPv6 routing to direct Supabase host; fall back to IPv4 pooler
+      console.log("direct IPv6 unreachable; falling back to Supabase IPv4 connection pooler...");
+      const poolerHost = "aws-0-ap-south-1.pooler.supabase.com";
+      client = await tryConnect(poolerHost, `postgres.${projectRef}`);
+    } else {
+      throw err;
+    }
+  }
+
   return async (sql) => {
     const res = await client.query(sql);
     return res.rows;
@@ -168,6 +193,7 @@ const SENTINELS = {
   20261020000006: { table: "password_reset_tokens" },
   20261020000007: { table: "categories" },
   20261020000008: { column: "menu_items", name: "category_id" },
+  20261022000000: { table: "pages" },
 };
 
 const migrationFiles = readdirSync(MIGRATIONS_DIR)
@@ -304,6 +330,8 @@ const checks = [
   ["menu_items.level", await columnExists(exec, "menu_items", "level")],
   ["menu_items.promo_cta_path", await columnExists(exec, "menu_items", "promo_cta_path")],
   ["products.category_id", await columnExists(exec, "products", "category_id")],
+  ["table pages", await tableExists(exec, "pages")],
+  ["table page_sections", await tableExists(exec, "page_sections")],
 ];
 let failed = 0;
 for (const [name, ok] of checks) {

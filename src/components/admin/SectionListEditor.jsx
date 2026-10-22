@@ -1,5 +1,22 @@
-import { useEffect, useRef, useState } from "react";
-import { Copy, Edit2, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Copy,
+  Edit2,
+  FolderTree,
+  HelpCircle,
+  Image as ImageIcon,
+  Layers,
+  Layout,
+  Megaphone,
+  MousePointerClick,
+  Plus,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Trash2,
+  Type,
+  Video,
+} from "lucide-react";
 import {
   Button,
   Dialog,
@@ -8,6 +25,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "../ui";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 import ConfirmDialog from "./ConfirmDialog";
@@ -51,6 +69,57 @@ function sectionName(section, index) {
   return `${typeLabel(section?.type)} ${index + 1}`;
 }
 
+/** A friendly one-line summary of what the section contains for quick visual scanning. */
+function sectionPreviewSummary(section) {
+  if (!section || !section.data) return "";
+  const d = section.data;
+  switch (section.type) {
+    case "hero":
+      return d.heading ? `"${d.heading}"` : d.eyebrow || "Empty headline";
+    case "richtext":
+      return d.body
+        ? `${d.body
+            .replace(/[#*_`\n]/g, " ")
+            .slice(0, 45)
+            .trim()}…`
+        : "No text entered";
+    case "promo_banner":
+      return d.title ? `"${d.title}"` : "Promo banner";
+    case "cta":
+      return d.heading
+        ? `"${d.heading}"`
+        : d.button_label
+          ? `Button: ${d.button_label}`
+          : "CTA block";
+    case "product_grid":
+      return `${d.layout || "grid"} • ${d.limit || 12} max items • ${d.columns || 4} cols`;
+    case "category_grid":
+      return `${d.columns || 3} columns • limit ${d.limit || 12}`;
+    case "faq":
+      return Array.isArray(d.items) && d.items.length > 0
+        ? `${d.items.length} Q&A item${d.items.length > 1 ? "s" : ""}`
+        : "No questions yet";
+    case "image":
+      return d.image_alt
+        ? `Alt: "${d.image_alt}"`
+        : d.image_url
+          ? "Image configured"
+          : "No image URL";
+    case "gallery":
+      return Array.isArray(d.images) && d.images.length > 0
+        ? `${d.images.length} images (${d.carousel ? "carousel" : "grid"})`
+        : "No images yet";
+    case "video":
+      return d.video_url ? "Video URL linked" : "No video URL";
+    case "category_listing":
+      return `Listing • ${d.layout || "grid"} layout • sort by ${d.sort || "featured"}`;
+    case "spacer":
+      return `${d.height || 48}px height`;
+    default:
+      return "";
+  }
+}
+
 /** A copy of the section's data, with every list copied as well. */
 function copyData(data) {
   if (!data || typeof data !== "object") return {};
@@ -80,9 +149,48 @@ function defaultSectionStyle() {
   return style;
 }
 
+const SECTION_ICONS = {
+  hero: Sparkles,
+  richtext: Type,
+  image: ImageIcon,
+  gallery: Layout,
+  product_grid: ShoppingBag,
+  category_grid: FolderTree,
+  promo_banner: Megaphone,
+  cta: MousePointerClick,
+  faq: HelpCircle,
+  video: Video,
+  category_listing: Layers,
+  spacer: Layers,
+};
+
+const SECTION_CATEGORIES = {
+  all: "All Sections",
+  commerce: "Commerce",
+  media: "Media & Visuals",
+  content: "Content & Text",
+};
+
+const TYPE_TO_CATEGORY = {
+  product_grid: "commerce",
+  category_grid: "commerce",
+  category_listing: "commerce",
+  hero: "media",
+  image: "media",
+  gallery: "media",
+  video: "media",
+  richtext: "content",
+  promo_banner: "content",
+  cta: "content",
+  faq: "content",
+  spacer: "content",
+};
+
 export default function SectionListEditor({ sections = [], onChange }) {
   const [editing, setEditing] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [pickerCategory, setPickerCategory] = useState("all");
+  const [pickerSearch, setPickerSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   const [focusTarget, setFocusTarget] = useState(null);
@@ -215,6 +323,21 @@ export default function SectionListEditor({ sections = [], onChange }) {
             >
               <div>
                 <div style={{ fontWeight: 700 }}>{typeLabel(section.type)}</div>
+                {sectionPreviewSummary(section) && (
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: "#475569",
+                      marginTop: 2,
+                      maxWidth: 340,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {sectionPreviewSummary(section)}
+                  </div>
+                )}
                 <div className="text-sm text-muted">
                   Position {index + 1} of {sections.length}
                   {section.enabled === false ? " — hidden" : ""}
@@ -285,31 +408,149 @@ export default function SectionListEditor({ sections = [], onChange }) {
         </Button>
       </div>
 
-      {/* The type picker. Every catalogue type is listed with its label and
-          its description, so the choice is made from the catalogue and not
-          from a hard-coded list. */}
-      <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent style={{ maxWidth: 520 }}>
+      {/* The type picker: categorized, searchable, and accompanied by icons and clear descriptions */}
+      <Dialog
+        open={adding}
+        onOpenChange={(open) => {
+          setAdding(open);
+          if (!open) {
+            setPickerCategory("all");
+            setPickerSearch("");
+          }
+        }}
+      >
+        <DialogContent style={{ maxWidth: 580 }}>
           <DialogHeader>
             <DialogTitle>Add section</DialogTitle>
-            <DialogDescription>Pick the type to append to the end of the page.</DialogDescription>
+            <DialogDescription>Pick a component to append to your page layout.</DialogDescription>
           </DialogHeader>
-          <div className="section-picker-grid">
-            {Object.entries(SECTION_TYPES).map(([type, definition]) => (
-              <button
-                key={type}
-                type="button"
-                aria-label={definition.label}
-                className="section-picker-option"
-                onClick={() => handleAdd(type)}
-              >
-                <span className="section-picker-title">{definition.label}</span>
-                <span className="section-picker-desc">{definition.description}</span>
-              </button>
-            ))}
+
+          {/* Quick search input */}
+          <div style={{ position: "relative", marginBottom: 8 }}>
+            <Search
+              size={15}
+              style={{
+                position: "absolute",
+                left: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#94a3b8",
+                pointerEvents: "none",
+              }}
+            />
+            <Input
+              type="text"
+              placeholder="Search sections by name or description..."
+              value={pickerSearch}
+              onChange={(e) => setPickerSearch(e.target.value)}
+              style={{ paddingLeft: 34, height: 38 }}
+            />
+          </div>
+
+          {/* Category filter tabs */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              overflowX: "auto",
+              paddingBottom: 6,
+              marginBottom: 8,
+            }}
+          >
+            {Object.entries(SECTION_CATEGORIES).map(([catKey, catLabel]) => {
+              const active = pickerCategory === catKey;
+              return (
+                <button
+                  key={catKey}
+                  type="button"
+                  onClick={() => setPickerCategory(catKey)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                    color: active ? "#2563eb" : "#64748b",
+                    background: active ? "#eff6ff" : "transparent",
+                    border: active ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {catLabel}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="section-picker-grid" style={{ maxHeight: "50vh", overflowY: "auto" }}>
+            {Object.entries(SECTION_TYPES)
+              .filter(([type, definition]) => {
+                if (pickerCategory !== "all" && TYPE_TO_CATEGORY[type] !== pickerCategory) {
+                  return false;
+                }
+                if (pickerSearch.trim()) {
+                  const query = pickerSearch.toLowerCase().trim();
+                  const matchesLabel = definition.label.toLowerCase().includes(query);
+                  const matchesDesc = definition.description.toLowerCase().includes(query);
+                  return matchesLabel || matchesDesc;
+                }
+                return true;
+              })
+              .map(([type, definition]) => {
+                const IconComponent = SECTION_ICONS[type] || Layout;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    aria-label={definition.label}
+                    className="section-picker-option"
+                    onClick={() => {
+                      handleAdd(type);
+                      setPickerCategory("all");
+                      setPickerSearch("");
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                        background: "#f1f5f9",
+                        color: "#2563eb",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: 2,
+                      }}
+                    >
+                      <IconComponent size={18} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                      <span className="section-picker-title">{definition.label}</span>
+                      <span className="section-picker-desc">{definition.description}</span>
+                    </div>
+                  </button>
+                );
+              })}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAdding(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAdding(false);
+                setPickerCategory("all");
+                setPickerSearch("");
+              }}
+            >
               Cancel
             </Button>
           </DialogFooter>

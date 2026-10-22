@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Trash2 } from "lucide-react";
+import {
+  Check,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Monitor,
+  Smartphone,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Badge, Button, Input, useToast } from "../ui";
 import { slugify } from "./ContentEditorKit";
 import SectionListEditor from "./SectionListEditor";
@@ -215,6 +224,9 @@ export default function PageEditor({ pageId, onClose }) {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [previewViewport, setPreviewViewport] = useState("desktop");
+  const [previewNonce, setPreviewNonce] = useState(1);
   // Synchronous guard: a state update is too late to stop a double-click that
   // lands in the same tick, so every write checks this ref first.
   const requestInFlight = useRef(false);
@@ -319,6 +331,7 @@ export default function PageEditor({ pageId, onClose }) {
         message: `'${payload.title}' saved.`,
         type: "success",
       });
+      setPreviewNonce((n) => n + 1);
       broadcast();
     } catch (error) {
       const message = error?.message || "Could not save the page.";
@@ -343,6 +356,7 @@ export default function PageEditor({ pageId, onClose }) {
         message: `${sections.length} section${sections.length === 1 ? "" : "s"} saved.`,
         type: "success",
       });
+      setPreviewNonce((n) => n + 1);
       broadcast();
     } catch (error) {
       const message = error?.message || "Could not save the sections.";
@@ -490,10 +504,22 @@ export default function PageEditor({ pageId, onClose }) {
             <Badge variant={status === "Published" ? "success" : "secondary"}>{status}</Badge>
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Button type="button" variant="outline" onClick={onClose}>
             Back to pages
           </Button>
+
+          {/* Toggle inline live preview pane */}
+          <Button
+            type="button"
+            variant={showLivePreview ? "primary" : "outline"}
+            onClick={() => setShowLivePreview((v) => !v)}
+            title="Toggle interactive live preview without leaving the editor"
+          >
+            {showLivePreview ? <EyeOff size={15} /> : <Eye size={15} />}
+            <span>{showLivePreview ? "Hide Preview" : "Live Preview"}</span>
+          </Button>
+
           {/* A link that looks like a button is a real anchor: the house button
               cannot wrap another element. */}
           <a
@@ -503,7 +529,7 @@ export default function PageEditor({ pageId, onClose }) {
             rel="noopener noreferrer"
           >
             <span className="ui-btn-content">
-              <ExternalLink size={15} /> Preview
+              <ExternalLink size={15} /> Open in Tab
             </span>
           </a>
           <Button
@@ -726,6 +752,117 @@ export default function PageEditor({ pageId, onClose }) {
 
         <SectionListEditor sections={sections} onChange={setSections} />
       </div>
+
+      {/* Embedded Live Preview Panel */}
+      {showLivePreview && (
+        <div
+          className="admin-content-card"
+          style={{
+            marginTop: 24,
+            padding: 16,
+            background: "#f8fafc",
+            border: "1.5px solid #cbd5e1",
+            borderRadius: 16,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
+                Interactive Live Preview
+              </h4>
+              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                Previewing: {pageUrl(form?.slug || page.slug)} (Draft & published sections)
+              </p>
+            </div>
+
+            {/* Viewport switch: Desktop vs Mobile */}
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={() => setPreviewViewport("desktop")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: previewViewport === "desktop" ? "#2563eb" : "#ffffff",
+                  color: previewViewport === "desktop" ? "#ffffff" : "#475569",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                <Monitor size={14} /> Desktop
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewViewport("mobile")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: previewViewport === "mobile" ? "#2563eb" : "#ffffff",
+                  color: previewViewport === "mobile" ? "#ffffff" : "#475569",
+                  border: "1px solid #cbd5e1",
+                }}
+              >
+                <Smartphone size={14} /> Mobile (390px)
+              </button>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              background: "#0f172a",
+              borderRadius: 12,
+              padding: previewViewport === "mobile" ? "20px 0" : "0",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: previewViewport === "mobile" ? 390 : "100%",
+                height: 640,
+                borderRadius: previewViewport === "mobile" ? 24 : 0,
+                boxShadow: previewViewport === "mobile" ? "0 12px 36px rgba(0,0,0,0.4)" : "none",
+                overflow: "hidden",
+                border: previewViewport === "mobile" ? "4px solid #334155" : "none",
+                background: "#ffffff",
+                transition: "width 0.25s ease",
+              }}
+            >
+              <iframe
+                title="Page Live Preview"
+                key={`${form?.slug || page.slug}-${previewNonce}`}
+                src={`${pagePreviewUrl(form?.slug || page.slug)}&t=${previewNonce}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  border: "none",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteOpen}
