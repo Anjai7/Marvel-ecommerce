@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Edit2, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, FileText, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
   apiDeleteCategory,
@@ -10,6 +10,7 @@ import {
 } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
 import { ActiveToggle, ImageField, OrderControls, slugify } from "./ContentEditorKit";
+import CategoryPagePanel from "./CategoryPagePanel";
 
 const CONTENT_EVENT = "marvel_content_updated";
 
@@ -57,7 +58,7 @@ function visibleNodes(nodes = [], showHidden) {
 
 /** The single source of truth for what a save writes: every field the form owns. */
 function toPayload(form) {
-  return {
+  const payload = {
     name: (form.name ?? "").trim(),
     // Send the slug exactly as the admin typed it — an empty value must reach
     // the server so its "slug is required" validation can surface instead of
@@ -75,6 +76,36 @@ function toPayload(form) {
     show_in_nav: Boolean(form.showInNav),
     show_in_homepage: Boolean(form.showInHomepage),
   };
+
+  if (
+    form.id ||
+    form.metaTitle ||
+    form.metaDescription ||
+    form.canonicalUrl ||
+    form.listingLayout ||
+    form.listingSort ||
+    (form.listingPageSize !== "" && form.listingPageSize != null) ||
+    form.listingShowSort != null ||
+    form.listingShowFilters != null
+  ) {
+    payload.meta_title = (form.metaTitle ?? "").trim() || null;
+    payload.meta_description = (form.metaDescription ?? "").trim() || null;
+    payload.canonical_url = (form.canonicalUrl ?? "").trim() || null;
+    payload.listing_layout = form.listingLayout || null;
+    payload.listing_sort = form.listingSort || null;
+    payload.listing_page_size =
+      form.listingPageSize !== "" && form.listingPageSize != null
+        ? Number(form.listingPageSize)
+        : null;
+    if (form.listingShowSort != null) {
+      payload.listing_show_sort = Boolean(form.listingShowSort);
+    }
+    if (form.listingShowFilters != null) {
+      payload.listing_show_filters = Boolean(form.listingShowFilters);
+    }
+  }
+
+  return payload;
 }
 
 /** The stored value of a payload field, normalized the same way a save is. */
@@ -92,6 +123,12 @@ function storedValue(node, key) {
       return node.show_in_nav !== false;
     case "show_in_homepage":
       return node.show_in_homepage === true;
+    case "listing_page_size":
+      return node.listing_page_size != null ? Number(node.listing_page_size) : null;
+    case "listing_show_sort":
+      return node.listing_show_sort != null ? Boolean(node.listing_show_sort) : null;
+    case "listing_show_filters":
+      return node.listing_show_filters != null ? Boolean(node.listing_show_filters) : null;
     default:
       return node[key] || null;
   }
@@ -123,6 +160,14 @@ function newForm(parent, order) {
     isActive: true,
     showInNav: true,
     showInHomepage: false,
+    metaTitle: "",
+    metaDescription: "",
+    canonicalUrl: "",
+    listingLayout: "",
+    listingSort: "",
+    listingPageSize: "",
+    listingShowSort: null,
+    listingShowFilters: null,
   };
 }
 
@@ -143,6 +188,14 @@ function editForm(node) {
     isActive: node.is_active !== false,
     showInNav: node.show_in_nav !== false,
     showInHomepage: node.show_in_homepage === true,
+    metaTitle: node.meta_title ?? "",
+    metaDescription: node.meta_description ?? "",
+    canonicalUrl: node.canonical_url ?? "",
+    listingLayout: node.listing_layout ?? "",
+    listingSort: node.listing_sort ?? "",
+    listingPageSize: node.listing_page_size != null ? String(node.listing_page_size) : "",
+    listingShowSort: node.listing_show_sort ?? null,
+    listingShowFilters: node.listing_show_filters ?? null,
   };
 }
 
@@ -158,6 +211,7 @@ export default function CategoriesTreeEditor() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [pagePanelCategory, setPagePanelCategory] = useState(null);
   // Synchronous guard: state updates are too late to stop a double-click that
   // lands in the same tick, so every write checks this ref first.
   const requestInFlight = useRef(false);
@@ -380,6 +434,15 @@ export default function CategoriesTreeEditor() {
               onClick={() => openCreate(node)}
             >
               <Plus size={15} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit page for ${node.name}`}
+              onClick={() => setPagePanelCategory(node)}
+            >
+              <FileText size={15} />
             </Button>
             <Button
               type="button"
@@ -641,6 +704,121 @@ export default function CategoriesTreeEditor() {
                 Show on homepage
               </label>
 
+              <div className="form-group-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="category-meta-title">
+                    Meta title
+                  </label>
+                  <Input
+                    id="category-meta-title"
+                    type="text"
+                    value={editing.metaTitle}
+                    onChange={(event) => setField("metaTitle", event.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="category-canonical-url">
+                    Canonical URL
+                  </label>
+                  <Input
+                    id="category-canonical-url"
+                    type="text"
+                    value={editing.canonicalUrl}
+                    onChange={(event) => setField("canonicalUrl", event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-meta-description">
+                  Meta description
+                </label>
+                <textarea
+                  id="category-meta-description"
+                  className="ui-input"
+                  rows={2}
+                  value={editing.metaDescription}
+                  onChange={(event) => setField("metaDescription", event.target.value)}
+                />
+              </div>
+
+              <div className="form-group-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="category-listing-layout">
+                    Listing layout
+                  </label>
+                  <select
+                    id="category-listing-layout"
+                    className="form-select-field"
+                    value={editing.listingLayout}
+                    onChange={(event) => setField("listingLayout", event.target.value)}
+                  >
+                    <option value="">Default (Grid)</option>
+                    <option value="grid">Grid</option>
+                    <option value="list">List</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="category-listing-sort">
+                    Listing sort
+                  </label>
+                  <select
+                    id="category-listing-sort"
+                    className="form-select-field"
+                    value={editing.listingSort}
+                    onChange={(event) => setField("listingSort", event.target.value)}
+                  >
+                    <option value="">Default (Featured)</option>
+                    <option value="featured">Featured</option>
+                    <option value="newest">Newest</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="rating">Rating</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="category-listing-page-size">
+                    Page size
+                  </label>
+                  <Input
+                    id="category-listing-page-size"
+                    type="number"
+                    min={0}
+                    value={editing.listingPageSize}
+                    onChange={(event) => setField("listingPageSize", event.target.value)}
+                    placeholder="0 = all"
+                  />
+                </div>
+              </div>
+
+              <label
+                className="form-label"
+                htmlFor="category-show-sort"
+                style={{ display: "flex", gap: 8, alignItems: "center" }}
+              >
+                <input
+                  id="category-show-sort"
+                  type="checkbox"
+                  checked={Boolean(editing.listingShowSort)}
+                  onChange={(event) => setField("listingShowSort", event.target.checked)}
+                />
+                Show sort control
+              </label>
+
+              <label
+                className="form-label"
+                htmlFor="category-show-filters"
+                style={{ display: "flex", gap: 8, alignItems: "center" }}
+              >
+                <input
+                  id="category-show-filters"
+                  type="checkbox"
+                  checked={Boolean(editing.listingShowFilters)}
+                  onChange={(event) => setField("listingShowFilters", event.target.checked)}
+                />
+                Show filter controls
+              </label>
+
               {formError && (
                 <p role="alert" className="form-error">
                   {formError}
@@ -673,6 +851,13 @@ export default function CategoriesTreeEditor() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      {pagePanelCategory && (
+        <CategoryPagePanel
+          category={pagePanelCategory}
+          onClose={() => setPagePanelCategory(null)}
+        />
+      )}
     </div>
   );
 }
