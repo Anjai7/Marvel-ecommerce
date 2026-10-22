@@ -39,4 +39,12 @@ test.describe("admin console", () => {
     await page.locator("#admin-tab-products-add").click();
     await expect(page.getByRole("button", { name: "Publish Product" })).toBeVisible();
   });
+
+  test("sidebar exposes the Pages editor", async ({ page }) => {
+    await page.locator("#admin-tab-site-content").click();
+    await expect(page.locator("#admin-tab-site-content-pages")).toBeVisible();
+    await page.locator("#admin-tab-site-content-pages").click();
+    await expect(page.getByRole("heading", { name: "Pages", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New page" })).toBeVisible();
+  });
 });

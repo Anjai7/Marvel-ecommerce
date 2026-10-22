@@ -100,10 +100,33 @@ Sign in as an admin and open **Site Content** in the sidebar:
 | **Menus**      | the 3-level navigation tree and the mega menu                      |
 | **Hero**       | the homepage hero carousel                                         |
 | **Categories** | the category / subcategory / leaf taxonomy                         |
+| **Pages**      | custom marketing, content and category landing pages               |
 | **Banners**    | the homepage banner layout, the promo carousel and the promo strip |
 | **Footer**     | the footer's link columns and popular-search tags                  |
 
 The full guide is **[docs/admin-content-guide.md](docs/admin-content-guide.md)**.
+
+### Dynamic Pages
+
+Custom marketing, campaign, policy, and category landing pages live at `#/pages/<slug>`
+(with a clean-path fallback for `/pages/<slug>`). Pages are assembled from an ordered
+stack of sections chosen from a 12-type registry:
+
+- **Hero banner** (`hero`) — full-width hero with heading, subheading, CTA, and theme
+- **Rich text** (`richtext`) — safe markdown body (headings, lists, blockquotes, links)
+- **Single image** (`image`) — responsive banner or brand asset with caption and link
+- **Image gallery** (`gallery`) — responsive 2/3/4-column image grid with lightbox captions
+- **Product grid** (`product_grid`) — curated or manual hand-picked products
+- **Category grid** (`category_grid`) — child or curated category tiles with badges
+- **Promo banner** (`promo_banner`) — promotional offer banner with countdown timer
+- **Call to action** (`cta`) — high-conversion action banner with primary and secondary buttons
+- **FAQ** (`faq`) — collapsible accordion of questions and answers
+- **Video embed** (`video`) — YouTube, Vimeo, or MP4 embed with responsive aspect ratio
+- **Category listing** (`category_listing`) — paginated category products with sort and layout controls
+- **Spacer** (`spacer`) — configurable vertical whitespace divider
+
+Pages support draft, scheduled, published, and expired states with zero-redeploy instant
+publishing: publishing a page or updating its sections is live on the storefront immediately.
 
 ### The category taxonomy
 
@@ -160,6 +183,7 @@ hero's fallback slide, so the homepage is never blank).
 | **Menus**      | The navigation tree and the mega-menu                  |
 | **Hero**       | The homepage hero carousel                             |
 | **Categories** | The three-level category / subcategory / leaf taxonomy |
+| **Pages**      | Custom marketing and category landing pages            |
 | **Banners**    | The homepage promo layout, carousel and offer strip    |
 | **Footer**     | The footer's link columns and popular search tags      |
 

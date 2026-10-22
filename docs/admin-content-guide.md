@@ -13,6 +13,53 @@ Open the admin panel and find **Site Content** in the sidebar. It has five secti
 | **Categories** | the category taxonomy (3 levels)            | the homepage category strip, the navigation, and the category pages |
 | **Banners**    | the promo blocks                            | the homepage banner layout and the promo carousel                   |
 | **Footer**     | the footer link columns and the search tags | the page footer                                                     |
+| **Pages**      | custom campaign, policy & landing pages     | public route `#/pages/<slug>` and custom category page layouts      |
+
+---
+
+## Pages
+
+The CMS page builder allows creating dynamic marketing, campaign, policy, and landing pages with rich composable section components.
+
+### Dynamic URL and Slug Rules
+
+- Each page is mapped to `#/pages/<slug>`.
+- The slug must match `/^[a-z0-9]+(-[a-z0-9]+)*$/` (lowercase letters, numbers, single hyphens, no slashes). Reserved system slugs (such as `admin`, `api`, `login`, `cart`, `checkout`) are disallowed.
+
+### Section Types
+
+Pages are composed of 12 validated section types:
+
+1. **Hero banner** (`hero`) — headline, eyebrow, CTA link, media.
+2. **Rich text** (`richtext`) — markdown-rendered copy (safe React elements only, no XSS).
+3. **Image** (`image`) — responsive image with alt text and optional safe link.
+4. **Gallery** (`gallery`) — multi-image grid.
+5. **Product grid** (`product_grid`) — product cards with server-side search picker, limits, and columns.
+6. **Category grid** (`category_grid`) — category tiles linking to category paths.
+7. **Promo banner** (`promo_banner`) — promotional offer badge, headline, CTA.
+8. **CTA** (`cta`) — call-to-action block.
+9. **FAQ** (`faq`) — accordion question/answer list.
+10. **Video** (`video`) — safe embed video player.
+11. **Category listing** (`category_listing`) — paginated or full category product catalog with configurable sort and filters.
+12. **Spacer** (`spacer`) — vertical whitespace layout divider.
+
+### Ordering and Section Controls
+
+Inside the page editor, sections can be:
+
+- Moved up or down with dedicated accessible order controls.
+- Duplicated with a single click.
+- Deactivated (hidden) without deleting.
+- Edited via generated configuration forms with type-specific inputs (including `ProductPicker` and `CategoryPicker`).
+- Saved in one atomic batch via `PUT /api/pages/:id/sections`.
+
+### Publishing, Scheduling, and Preview
+
+- **Draft**: Page is saved but only visible via authenticated admin preview (`#/pages/<slug>?preview=1`). Public requests answer 404.
+- **Published**: The page is immediately live on `#/pages/<slug>` without requiring any site build or redeploy.
+- **Scheduled**: Specify a future `scheduled_at` timestamp. The page becomes public automatically once the clock passes the schedule time.
+- **Expired**: Optional `expired_at` timestamp automatically unpublishes the page once past.
+- **Archived**: Archived pages are hidden from public view and marked archived in the admin list.
 
 ---
 
@@ -130,14 +177,17 @@ cached in memory for the life of the tab.
 
 ## Who can change what
 
-Only an **admin** or a **super admin** can write to the content API. Every write route
-answers `401` without a token and `403` for any other role, and the server checks this
-before it touches the database.
+Only an **admin** or a **super admin** can write to the content API, create, edit, publish or delete pages. Every write route answers `401` without a token and `403` for any other role, and the server checks this before it touches the database.
+
+| Role                | Categories    | Menus, Hero, Banners, Footer | CMS Pages                                   |
+| ------------------- | ------------- | ---------------------------- | ------------------------------------------- |
+| **Super Admin**     | Full access   | Full access                  | Full access (create, edit, publish, delete) |
+| **Admin**           | Full access   | Full access                  | Full access (create, edit, publish, delete) |
+| **Vendor**          | Read taxonomy | Read-only                    | None                                        |
+| **User / Customer** | View active   | View active                  | View published within schedule              |
 
 ---
 
 ## Where the data lives
 
-The content is in these tables: `categories`, `hero_slides`, `promo_banners`,
-`footer_sections`, `footer_links` and `menu_items`. The schema and the seed scripts are
-described in [`docs/sql/README.md`](./sql/README.md).
+The content is in these tables: `categories`, `hero_slides`, `promo_banners`, `footer_sections`, `footer_links`, `menu_items`, `pages`, and `page_sections`. The schema and migrations are described in [`docs/sql/README.md`](./sql/README.md).
