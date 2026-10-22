@@ -40,6 +40,24 @@ const ICON_MAP = {
 const byOrder = (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0);
 const isVisible = (node) => node && node.is_active !== false;
 
+function isRolePortalItem(node) {
+  if (!node) return false;
+  const path = String(node.path || "").toLowerCase();
+  const title = String(node.title || "").toLowerCase();
+  return (
+    path.startsWith("/admin") ||
+    path.startsWith("/superadmin") ||
+    path.startsWith("/super-admin") ||
+    path.startsWith("/vendor") ||
+    title === "vendor portal" ||
+    title === "admin panel" ||
+    title === "super admin system" ||
+    title === "super admin" ||
+    title === "admin console" ||
+    title === "vendor store"
+  );
+}
+
 /**
  * Normalize the menu API response to a tree. The API returns tree-shaped
  * nodes ({ children }) by default; older responses may be a legacy flat
@@ -301,7 +319,9 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
   );
 
   const menuItems = normalizeToTree(menu);
-  const barItems = menuItems;
+  const barItems = menuItems.filter(
+    (node) => node && node.is_active !== false && !isRolePortalItem(node)
+  );
   const half = Math.floor(barItems.length / 2);
   const notice = loading
     ? "Loading Dynamic Menu..."

@@ -132,7 +132,7 @@ function AppMain() {
 
           {/* Dynamic & Hover Navigation Bars */}
           {isStorefront ? (
-            <HoverNav userRole={userRole} onDynamicNavigate={handleDynamicMenuClick} />
+            <HoverNav onDynamicNavigate={handleDynamicMenuClick} />
           ) : (
             <DynamicMenu onNavigate={handleDynamicMenuClick} activePath={`/${currentRoute.page}`} />
           )}

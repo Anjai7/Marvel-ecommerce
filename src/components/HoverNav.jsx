@@ -40,13 +40,37 @@ function normalizeToLiveTree(data) {
   return sortNodes(roots);
 }
 
-export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
+/**
+ * Role-restricted internal portals (Vendor Portal, Admin Panel, Super Admin System)
+ * belong in the user account dropdown, never in the customer category bar.
+ */
+function isRolePortalItem(node) {
+  if (!node) return false;
+  const path = String(node.path || "").toLowerCase();
+  const title = String(node.title || "").toLowerCase();
+  return (
+    path.startsWith("/admin") ||
+    path.startsWith("/superadmin") ||
+    path.startsWith("/super-admin") ||
+    path.startsWith("/vendor") ||
+    title === "vendor portal" ||
+    title === "admin panel" ||
+    title === "super admin system" ||
+    title === "super admin" ||
+    title === "admin console" ||
+    title === "vendor store"
+  );
+}
+
+export default function HoverNav({ onDynamicNavigate }) {
   const { menu, loading, errors } = useContent();
   const error = errors?.menu ?? null;
   const [activeMenu, setActiveMenu] = useState(null);
   const [browseOpen, setBrowseOpen] = useState(false);
 
-  const roots = normalizeToLiveTree(menu).filter((node) => node && node.is_active !== false);
+  const roots = normalizeToLiveTree(menu).filter(
+    (node) => node && node.is_active !== false && !isRolePortalItem(node)
+  );
 
   const navTimer = useRef(null);
   const browseTimer = useRef(null);
