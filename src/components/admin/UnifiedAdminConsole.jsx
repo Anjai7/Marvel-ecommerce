@@ -40,6 +40,7 @@ import {
   Star,
   Wallet,
   Boxes,
+  FileText,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
@@ -98,6 +99,7 @@ import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
+import PagesEditor from "./PagesEditor";
 import {
   CreateUserModal,
   ViewUserModal,
@@ -140,9 +142,9 @@ function money(value) {
 }
 
 /**
- * Which sidebar section owns each tab. Site Content owns its five sub-tabs
- * (menus, hero, categories, banners, footer). Activating a tab opens the
- * section that owns it, so the open section and the active tab agree.
+ * Which sidebar section owns each tab. Site Content owns its six sub-tabs
+ * (menus, hero, categories, banners, footer, pages). Activating a tab opens
+ * the section that owns it, so the open section and the active tab agree.
  */
 const SECTION_BY_TAB = {
   dashboard: "dashboard",
@@ -155,13 +157,15 @@ const SECTION_BY_TAB = {
   categories: "siteContent",
   banners: "siteContent",
   footer: "siteContent",
+  pages: "siteContent",
   settings: "settings",
 };
 
 export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admin" }) {
   const { user: currentUser, logout, role: currentRole } = useAuth();
   const isSuperAdmin = currentRole === "super_admin" || customRole === "super_admin";
-  // Site Content (menus, hero, categories) is admin-gated; Task 5 adds Hero/Categories here.
+  // Site Content (menus, hero, categories, banners, footer, pages) is
+  // admin-gated.
   const canManageSiteContent = isSuperAdmin || currentRole === "admin" || customRole === "admin";
 
   // Active Tab State (Dashboard, Products, Orders, Customers, Users)
@@ -972,6 +976,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     categories: "Site Content — Categories",
     banners: "Site Content — Banners",
     footer: "Site Content — Footer",
+    pages: "Site Content — Pages",
     settings: "Settings",
   };
 
@@ -1282,7 +1287,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <button
               id="admin-tab-site-content"
               onClick={() => handleSectionClick("siteContent", "menus")}
-              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer"].includes(activeTab) ? "active" : ""}`}
+              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer", "pages"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
               <div className="tab-icon-box">
@@ -1295,9 +1300,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
                 <ChevronDown size={15} />
               </span>
-              {["menus", "hero", "categories", "banners", "footer"].includes(activeTab) && (
-                <div className="active-glow-indicator"></div>
-              )}
+              {["menus", "hero", "categories", "banners", "footer", "pages"].includes(
+                activeTab
+              ) && <div className="active-glow-indicator"></div>}
             </button>
           )}
           {canManageSiteContent && expandedMenus.siteContent && (
@@ -1351,6 +1356,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               >
                 <ClipboardList size={14} />
                 <span>Footer</span>
+              </button>
+              <button
+                id="admin-tab-site-content-pages"
+                onClick={() => {
+                  setActiveTab("pages");
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
+              >
+                <FileText size={14} />
+                <span>Pages</span>
               </button>
             </div>
           )}
@@ -2613,7 +2628,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
 
-        {/* TAB 11: SETTINGS — the store's own configuration */}
+        {/* TAB 11: SITE CONTENT > PAGES — the CMS page builder */}
+        {activeTab === "pages" && canManageSiteContent && <PagesEditor />}
+
+        {/* TAB 12: SETTINGS — the store's own configuration */}
         {activeTab === "settings" && <SettingsEditor />}
       </main>
 
