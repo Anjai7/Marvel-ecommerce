@@ -13,6 +13,7 @@ import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 import ConfirmDialog from "./ConfirmDialog";
 import SectionConfigForm from "./SectionConfigForm";
 import { SECTION_STYLE_FIELDS, SECTION_TYPES } from "../../../server/lib/sectionTypes.js";
+import "./admin-content.css";
 
 /**
  * The ordered section list of a page.
@@ -148,6 +149,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
     onChange?.([...sections, created]);
     setAdding(false);
     setAnnouncement(`${typeLabel(type)} added at position ${sections.length + 1}.`);
+    focusCard(created.uid);
   };
 
   const handleApplyEdit = () => {
@@ -292,16 +294,18 @@ export default function SectionListEditor({ sections = [], onChange }) {
             <DialogTitle>Add section</DialogTitle>
             <DialogDescription>Pick the type to append to the end of the page.</DialogDescription>
           </DialogHeader>
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="section-picker-grid">
             {Object.entries(SECTION_TYPES).map(([type, definition]) => (
-              <div key={type}>
-                <button type="button" className="chart-pill-btn" onClick={() => handleAdd(type)}>
-                  {definition.label}
-                </button>
-                <p className="text-sm text-muted" style={{ margin: "4px 0 0" }}>
-                  {definition.description}
-                </p>
-              </div>
+              <button
+                key={type}
+                type="button"
+                aria-label={definition.label}
+                className="section-picker-option"
+                onClick={() => handleAdd(type)}
+              >
+                <span className="section-picker-title">{definition.label}</span>
+                <span className="section-picker-desc">{definition.description}</span>
+              </button>
             ))}
           </div>
           <DialogFooter>
