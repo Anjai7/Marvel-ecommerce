@@ -127,6 +127,7 @@ function AppMain() {
             onMenuOpen={() => setMobileOpen(true)}
             onSelectProduct={handleSelectProduct}
             onNavigateCart={() => navigateTo("cart")}
+            onNavigateRoute={(route) => navigateTo(route)}
           />
 
           {/* Dynamic & Hover Navigation Bars */}

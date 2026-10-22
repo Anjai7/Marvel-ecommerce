@@ -46,6 +46,7 @@ export default function Header({
   onMenuOpen,
   onSelectProduct,
   onNavigateCart = () => {},
+  onNavigateRoute,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { addToast } = useToast();
@@ -175,56 +176,115 @@ export default function Header({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                {/* Role Workspace Link */}
+                {/* 1. SUPER ADMIN: can go anywhere (Super Admin, Admin, Vendor, Storefront) */}
                 {userRole === "super_admin" && (
-                  <DropdownMenuItem
-                    icon={<Zap size={16} color="#d97706" />}
-                    onClick={onNavigateAdmin}
-                    style={{ fontWeight: 700, color: "#b45309" }}
-                  >
-                    Super Admin Hub
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      icon={<Zap size={16} color="#d97706" />}
+                      onClick={() =>
+                        onNavigateRoute ? onNavigateRoute("super-admin") : onNavigateAdmin()
+                      }
+                      style={{ fontWeight: 700, color: "#b45309" }}
+                    >
+                      Super Admin System
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<ShieldCheck size={16} color="#0284c7" />}
+                      onClick={() =>
+                        onNavigateRoute ? onNavigateRoute("admin") : onNavigateAdmin()
+                      }
+                      style={{ fontWeight: 700, color: "#0369a1" }}
+                    >
+                      Admin Panel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<Store size={16} color="#7c3aed" />}
+                      onClick={() =>
+                        onNavigateRoute ? onNavigateRoute("vendor") : onNavigateAdmin()
+                      }
+                      style={{ fontWeight: 700, color: "#6b21a8" }}
+                    >
+                      Vendor Portal
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      onClick={onNavigateHome}
+                      style={{ fontWeight: 600 }}
+                    >
+                      Storefront
+                    </DropdownMenuItem>
+                  </>
                 )}
 
+                {/* 2. ADMIN: only navigate store and admin panel, no vendor, no customer orders/wishlist */}
                 {userRole === "admin" && (
-                  <DropdownMenuItem
-                    icon={<ShieldCheck size={16} color="#0284c7" />}
-                    onClick={onNavigateAdmin}
-                    style={{ fontWeight: 700, color: "#0369a1" }}
-                  >
-                    Admin Operations Console
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      icon={<ShieldCheck size={16} color="#0284c7" />}
+                      onClick={() =>
+                        onNavigateRoute ? onNavigateRoute("admin") : onNavigateAdmin()
+                      }
+                      style={{ fontWeight: 700, color: "#0369a1" }}
+                    >
+                      Admin Panel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      onClick={onNavigateHome}
+                      style={{ fontWeight: 600 }}
+                    >
+                      Storefront
+                    </DropdownMenuItem>
+                  </>
                 )}
 
+                {/* 3. VENDOR: Vendor Portal & Storefront */}
                 {userRole === "vendor" && (
-                  <DropdownMenuItem
-                    icon={<Store size={16} color="#7c3aed" />}
-                    onClick={onNavigateAdmin}
-                    style={{ fontWeight: 700, color: "#6b21a8" }}
-                  >
-                    Vendor Store Hub
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem
+                      icon={<Store size={16} color="#7c3aed" />}
+                      onClick={() =>
+                        onNavigateRoute ? onNavigateRoute("vendor") : onNavigateAdmin()
+                      }
+                      style={{ fontWeight: 700, color: "#6b21a8" }}
+                    >
+                      Vendor Portal
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      onClick={onNavigateHome}
+                      style={{ fontWeight: 600 }}
+                    >
+                      Storefront
+                    </DropdownMenuItem>
+                  </>
                 )}
 
-                <DropdownMenuItem
-                  icon={<Package size={16} color="#2563eb" />}
-                  onClick={onNavigateCustomerPortal}
-                  style={{ fontWeight: 600 }}
-                >
-                  My Orders & Deliveries
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  icon={<Heart size={16} color="#ef4444" />}
-                  onClick={onNavigateCustomerPortal}
-                  style={{ fontWeight: 600 }}
-                >
-                  Saved Wishlist
-                </DropdownMenuItem>
-
-                <DropdownMenuItem icon={<Settings size={16} />} onClick={onNavigateCustomerPortal}>
-                  Account Settings
-                </DropdownMenuItem>
+                {/* 4. CUSTOMER / USER: My Orders, Wishlist, Account Settings */}
+                {userRole !== "admin" && userRole !== "super_admin" && userRole !== "vendor" && (
+                  <>
+                    <DropdownMenuItem
+                      icon={<Package size={16} color="#2563eb" />}
+                      onClick={onNavigateCustomerPortal}
+                      style={{ fontWeight: 600 }}
+                    >
+                      My Orders & Deliveries
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<Heart size={16} color="#ef4444" />}
+                      onClick={onNavigateCustomerPortal}
+                      style={{ fontWeight: 600 }}
+                    >
+                      Saved Wishlist
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      icon={<Settings size={16} />}
+                      onClick={onNavigateCustomerPortal}
+                    >
+                      Account Settings
+                    </DropdownMenuItem>
+                  </>
+                )}
 
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

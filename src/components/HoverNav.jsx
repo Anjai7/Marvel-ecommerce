@@ -2,15 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { LiveMegaMenu } from "./navigation/DynamicMenu";
 import { useContent } from "../context/ContentContext";
-import {
-  Menu,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Store,
-  ShieldCheck,
-  Zap,
-} from "lucide-react";
+import { Menu, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 const byOrder = (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0);
 
@@ -373,73 +365,6 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
                 </div>
               );
             })}
-
-            {/* Dynamic Role Navigation Portals */}
-            {(userRole === "vendor" || userRole === "admin" || userRole === "super_admin") && (
-              <button
-                onClick={() => onDynamicNavigate && onDynamicNavigate("/vendor-dashboard")}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: "rgba(124, 58, 237, 0.1)",
-                  color: "#7c3aed",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Store size={14} /> Vendor Store
-              </button>
-            )}
-
-            {(userRole === "admin" || userRole === "super_admin") && (
-              <button
-                onClick={() => onDynamicNavigate && onDynamicNavigate("/admin-dashboard")}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: "rgba(37, 99, 235, 0.1)",
-                  color: "#2563eb",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <ShieldCheck size={14} /> Admin Console
-              </button>
-            )}
-
-            {userRole === "super_admin" && (
-              <button
-                onClick={() => onDynamicNavigate && onDynamicNavigate("/superadmin-dashboard")}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  border: "none",
-                  background: "rgba(217, 119, 6, 0.1)",
-                  color: "#d97706",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <Zap size={14} /> Super Admin
-              </button>
-            )}
           </div>
 
           {/* Scroll Right Button */}
