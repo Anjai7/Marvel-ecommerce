@@ -29,6 +29,12 @@ export const apiFetchPageBySlug = (slug, { preview } = {}) =>
   apiFetch(`${PAGES}/slug/${enc(slug)}${query({ preview: preview ? 1 : "" })}`);
 
 /**
+ * Lightweight version check for a page (returns { slug, updatedAt }).
+ */
+export const apiFetchPageVersion = (slug, { preview } = {}) =>
+  apiFetch(`${PAGES}/slug/${enc(slug)}/version${query({ preview: preview ? 1 : "" })}`);
+
+/**
  * The page bound to one category, or `null` when the category has none.
  *
  * A category without a custom page is a normal case and not a failure, so

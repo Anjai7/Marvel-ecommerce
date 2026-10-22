@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { SectionRenderer } from "../../content/SectionRenderer";
 import Footer from "../Footer";
-import { apiFetchPageBySlug, normalisePagePayload } from "../../api/pagesApi";
+import { apiFetchPageBySlug, apiFetchPageVersion, normalisePagePayload } from "../../api/pagesApi";
 import { apiFetchProducts } from "../../api/backendApi";
 import { apiFetchCategoryTree } from "../../api/contentApi";
 import SeoHead from "./SeoHead";
@@ -213,18 +213,17 @@ export default function CmsPage({ slug, onNavigate }) {
     else if (typeof window !== "undefined") window.location.hash = "#/";
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    const preview = isPreviewRequest();
+  const lastUpdatedAtRef = useRef(null);
 
-    if (!slug) return undefined;
+  const loadPageData = useCallback(
+    async (isBackgroundSync = false, isCancelled = () => false) => {
+      const preview = isPreviewRequest();
+      if (!slug) return;
 
-    apiFetchPageBySlug(slug, { preview })
-      .then(async (payload) => {
+      try {
+        const payload = await apiFetchPageBySlug(slug, { preview });
         const { page, sections } = normalisePagePayload(payload);
 
-        // The page is worth showing even when the catalogues are unreachable:
-        // a section that has no products simply renders nothing.
         let references = { products: [], categories: [] };
         try {
           references = await resolveReferences(sections);
@@ -232,11 +231,16 @@ export default function CmsPage({ slug, onNavigate }) {
           console.warn("[content] could not resolve the page references:", error);
         }
 
-        if (cancelled) return;
+        if (isCancelled()) return;
+        lastUpdatedAtRef.current = page?.updated_at || page?.published_at || null;
         setLoaded({ key: slug, status: "ready", page, sections, preview, ...references });
-      })
-      .catch((error) => {
-        if (cancelled) return;
+      } catch (error) {
+        if (isCancelled()) return;
+        if (isBackgroundSync) {
+          // If a background sync fails, do not wipe the already rendered page
+          console.warn("[content] background auto-sync failed:", error?.message);
+          return;
+        }
         if (error?.status === 404) {
           setLoaded({ key: slug, status: "missing" });
           return;
@@ -246,12 +250,68 @@ export default function CmsPage({ slug, onNavigate }) {
           status: "error",
           message: messageOf(error, "Could not load this page."),
         });
-      });
+      }
+    },
+    [slug]
+  );
+
+  // Initial load when slug changes
+  useEffect(() => {
+    let cancelled = false;
+    lastUpdatedAtRef.current = null;
+
+    loadPageData(false, () => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, loadPageData]);
+
+  // Real-time auto-sync: checks for backend updates periodically & on tab focus
+  useEffect(() => {
+    if (!slug || typeof window === "undefined") return undefined;
+
+    const preview = isPreviewRequest();
+    let isChecking = false;
+
+    const checkVersion = async () => {
+      if (isChecking || document.visibilityState === "hidden") return;
+      isChecking = true;
+      try {
+        const data = await apiFetchPageVersion(slug, { preview });
+        const currentVersion = lastUpdatedAtRef.current;
+        const newVersion = data?.updatedAt || null;
+
+        // If a valid previous version exists and the version changed, reload data smoothly
+        if (currentVersion && newVersion && newVersion !== currentVersion) {
+          await loadPageData(true);
+        } else if (!currentVersion && newVersion) {
+          lastUpdatedAtRef.current = newVersion;
+        }
+      } catch {
+        // Silently skip if network or temporary hiccup
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    // Poll every 15 seconds while user is actively viewing
+    const interval = setInterval(checkVersion, 15000);
+
+    // Also check immediately when user switches tabs back to this page
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkVersion();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [slug, loadPageData]);
 
   const state =
     loaded.key === (slug || "")

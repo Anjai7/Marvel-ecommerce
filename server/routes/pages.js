@@ -293,6 +293,45 @@ router.get("/slug/:slug", async (req, res) => {
 });
 
 /**
+ * GET /api/pages/slug/:slug/version — lightweight version check.
+ *
+ * Answers with { updatedAt: ISOString } or 404. Used by browsers to detect
+ * when an admin publishes or edits a page, without having to fetch the full
+ * payload or database sections.
+ */
+router.get("/slug/:slug/version", async (req, res) => {
+  const slug = String(req.params.slug ?? "")
+    .trim()
+    .toLowerCase();
+  const privileged = wantsPreview(req) ? await hasAdminToken(req) : false;
+
+  try {
+    const { data: page, error } = await supabase
+      .from("pages")
+      .select("id, slug, status, updated_at, published_at, scheduled_at, expired_at")
+      .ilike("slug", escapeLike(slug))
+      .maybeSingle();
+
+    if (error) {
+      console.error("Supabase pages version check error:", error.message);
+      return res.status(500).json({ error: READ_ERROR });
+    }
+
+    if (!page || (!privileged && !isPublicPageRow(page))) {
+      return res.status(404).json({ error: NOT_FOUND });
+    }
+
+    return res.json({
+      slug: page.slug,
+      updatedAt: page.updated_at || page.published_at || null,
+    });
+  } catch (thrown) {
+    console.error("Supabase pages version check exception:", thrown.message);
+    return res.status(500).json({ error: READ_ERROR });
+  }
+});
+
+/**
  * GET /api/pages/category/:categoryId — the page bound to one category.
  *
  * A category without a custom page is a normal case, not an error: the answer
@@ -616,6 +655,10 @@ router.put("/:id/sections", ...adminGuards, async (req, res) => {
       }
       saved.push(data ?? { id: null, page_id: id, ...row });
     }
+
+    // Touch the parent page's updated_at timestamp so clients observing version changes
+    // detect section alterations immediately.
+    await supabase.from("pages").update({ updated_at: new Date().toISOString() }).eq("id", id);
 
     return res.json({ message: SECTIONS_SAVED_MESSAGE, sections: saved });
   } catch (thrown) {

@@ -546,9 +546,7 @@ describe("pages API", () => {
     // The row was updated, not inserted again.
     expect(calls.insert).toEqual([]);
     expect(calls.update.length).toBeGreaterThan(0);
-    expect(calls.update[calls.update.length - 1]).toEqual(
-      expect.objectContaining({ type: "hero", position: 0 })
-    );
+    expect(calls.update).toContainEqual(expect.objectContaining({ type: "hero", position: 0 }));
     expect(calls.eq).toContainEqual(["id", "sec-1"]);
   });
 
@@ -684,5 +682,26 @@ describe("pages API", () => {
 
     expect(res.status).toBe(200);
     expect(calls.update).toEqual([{ title: "New title" }]);
+  });
+
+  it("GET /api/pages/slug/:slug/version returns lightweight updatedAt timestamp", async () => {
+    makeDb({
+      maybeSingle: () => ({
+        data: page({
+          slug: "live-page",
+          status: "published",
+          updated_at: "2026-10-22T12:00:00.000Z",
+        }),
+        error: null,
+      }),
+    });
+
+    const res = await get("/api/pages/slug/live-page/version");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({
+      slug: "live-page",
+      updatedAt: "2026-10-22T12:00:00.000Z",
+    });
   });
 });
