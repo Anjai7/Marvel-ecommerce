@@ -369,4 +369,17 @@ describe("CategoryPage", () => {
     // The default listing is not rendered any more.
     expect(container.querySelector(".category-listing")).toBeNull();
   });
+
+  it("passes the category's listing control flags to the listing", async () => {
+    content.value = contextValue({
+      categoryTree: treeWith({
+        ...MOBILES,
+        listing_show_sort: true,
+      }),
+    });
+    renderPage("electronics/mobiles");
+
+    expect(await screen.findByLabelText("Sort by")).toBeVisible();
+    expect(screen.queryByLabelText("In stock only")).toBeNull();
+  });
 });

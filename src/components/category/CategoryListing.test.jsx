@@ -97,4 +97,52 @@ describe("CategoryListing", () => {
       expect.objectContaining({ path: "electronics/mobiles", sort: "price_asc" })
     );
   });
+
+  it("hides the sort control unless showSort is true", async () => {
+    apiFetchCategoryProducts.mockResolvedValue(listing({ items: [PRODUCT_A] }));
+    const { rerender } = renderListing({ config: {} });
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+    expect(screen.queryByLabelText("Sort by")).toBeNull();
+
+    rerender(
+      <ToastProvider>
+        <CartProvider>
+          <CategoryListing path="electronics/mobiles" config={{ showSort: true }} />
+        </CartProvider>
+      </ToastProvider>
+    );
+    expect(screen.getByLabelText("Sort by")).toBeVisible();
+  });
+
+  it("hides the filter controls unless showFilters is true", async () => {
+    apiFetchCategoryProducts.mockResolvedValue(listing({ items: [PRODUCT_A] }));
+    const { rerender } = renderListing({ config: {} });
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+    expect(screen.queryByLabelText("In stock only")).toBeNull();
+    expect(screen.queryByLabelText("Min price")).toBeNull();
+
+    rerender(
+      <ToastProvider>
+        <CartProvider>
+          <CategoryListing path="electronics/mobiles" config={{ showFilters: true }} />
+        </CartProvider>
+      </ToastProvider>
+    );
+    expect(screen.getByLabelText("In stock only")).toBeVisible();
+  });
+
+  it("renders the list layout when config.layout is list", async () => {
+    apiFetchCategoryProducts.mockResolvedValue(listing({ items: [PRODUCT_A] }));
+    const { container } = renderListing({ config: { layout: "list" } });
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+    expect(container.querySelector(".product-grid--list")).not.toBeNull();
+  });
+
+  it("renders the grid layout when config.layout is grid", async () => {
+    apiFetchCategoryProducts.mockResolvedValue(listing({ items: [PRODUCT_A] }));
+    const { container } = renderListing({ config: { layout: "grid" } });
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+    expect(container.querySelector(".product-grid")).not.toBeNull();
+    expect(container.querySelector(".product-grid--list")).toBeNull();
+  });
 });

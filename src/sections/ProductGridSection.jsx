@@ -61,6 +61,7 @@ export default function ProductGridSection({
   show_price,
   style,
   products,
+  onNavigate,
 }) {
   const items = selectProducts(products, { product_ids, source_category_id, limit });
   const count = Number(columns);
@@ -87,7 +88,7 @@ export default function ProductGridSection({
             className="section-product-grid__item"
             key={product?.id ?? `${product?.title ?? "product"}-${index}`}
           >
-            <ProductCard product={product} />
+            <ProductCard product={product} onNavigate={onNavigate} />
           </div>
         ))}
       </div>

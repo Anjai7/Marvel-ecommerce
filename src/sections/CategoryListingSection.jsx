@@ -65,6 +65,7 @@ export default function CategoryListingSection({
   max_price,
   style,
   products,
+  onNavigate,
 }) {
   const items = selectListing(products, {
     sort,
@@ -85,7 +86,7 @@ export default function CategoryListingSection({
             className="section-listing__item"
             key={product?.id ?? `${product?.title ?? "product"}-${index}`}
           >
-            <ProductCard product={product} />
+            <ProductCard product={product} onNavigate={onNavigate} />
           </div>
         ))}
       </div>

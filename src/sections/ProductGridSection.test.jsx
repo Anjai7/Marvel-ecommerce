@@ -5,7 +5,15 @@ import ProductGridSection from "./ProductGridSection";
 // The product card needs the cart context, so it is mocked: the grid's own
 // behaviour is what this file is about.
 vi.mock("../components/ProductCard", () => ({
-  default: ({ product }) => <div data-testid="product-card">{product?.title}</div>,
+  default: ({ product, onNavigate }) => (
+    <div
+      data-testid="product-card"
+      tabIndex={onNavigate ? 0 : undefined}
+      onClick={() => onNavigate?.(product)}
+    >
+      {product?.title}
+    </div>
+  ),
 }));
 
 const PRODUCTS = [
@@ -36,5 +44,21 @@ describe("the product grid section", () => {
     render(<ProductGridSection limit={2} products={PRODUCTS} />);
 
     expect(screen.getAllByTestId("product-card")).toHaveLength(2);
+  });
+
+  it("renders a product card that is clickable", () => {
+    const handleNavigate = vi.fn();
+    render(<ProductGridSection products={PRODUCTS} onNavigate={handleNavigate} />);
+
+    const cards = screen.getAllByTestId("product-card");
+    cards[0].click();
+    expect(handleNavigate).toHaveBeenCalledWith(PRODUCTS[0]);
+  });
+
+  it("a product card without onNavigate is not focusable", () => {
+    render(<ProductGridSection products={PRODUCTS} />);
+
+    const cards = screen.getAllByTestId("product-card");
+    expect(cards[0]).not.toHaveAttribute("tabindex");
   });
 });

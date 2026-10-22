@@ -327,6 +327,7 @@ export default function CmsPage({ slug, onNavigate }) {
           section={section}
           products={products}
           categories={categories}
+          onNavigate={onNavigate}
         />
       ))}
 

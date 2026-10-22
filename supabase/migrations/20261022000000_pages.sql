@@ -88,6 +88,8 @@ alter table public.categories add column if not exists canonical_url text;
 alter table public.categories add column if not exists listing_layout text;
 alter table public.categories add column if not exists listing_sort text;
 alter table public.categories add column if not exists listing_page_size int;
+alter table public.categories add column if not exists listing_show_sort boolean;
+alter table public.categories add column if not exists listing_show_filters boolean;
 
 -- ─── 4. indexes ───
 -- The slug is the URL, so it is case-insensitively unique.

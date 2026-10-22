@@ -5,7 +5,11 @@ import { SectionRenderer, SilentUnknownSection, UnknownSection } from "./Section
 // The section components are mocked so the test does not depend on their
 // internals: it is the renderer that is under test, not the sections.
 vi.mock("../sections/HeroSection", () => ({
-  default: ({ heading }) => <div data-testid="hero">{heading}</div>,
+  default: ({ heading, onNavigate }) => (
+    <div data-testid="hero" onClick={onNavigate}>
+      {heading}
+    </div>
+  ),
 }));
 vi.mock("../sections/RichTextSection", () => ({
   default: () => <div data-testid="richtext" />,
@@ -94,5 +98,18 @@ describe("the section renderer", () => {
     // must be able to see that a section is broken.
     render(<UnknownSection type="hero" />);
     expect(screen.getByTestId("section-fallback")).toBeVisible();
+  });
+
+  it("forwards onNavigate to the section component", () => {
+    const handleNavigate = vi.fn();
+    render(
+      <SectionRenderer
+        section={{ type: "hero", data: { heading: "Welcome" } }}
+        onNavigate={handleNavigate}
+      />
+    );
+
+    screen.getByTestId("hero").click();
+    expect(handleNavigate).toHaveBeenCalled();
   });
 });

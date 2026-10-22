@@ -87,6 +87,8 @@ function listingConfigOf(category) {
     layout: category?.listing_layout ?? "grid",
     sort: category?.listing_sort ?? "newest",
     pageSize: category?.listing_page_size ?? 0,
+    showSort: category?.listing_show_sort === true,
+    showFilters: category?.listing_show_filters === true,
   };
 }
 
@@ -354,6 +356,7 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
           section={section}
           products={current.products}
           categories={categories}
+          onNavigate={onSelectProduct || onNavigate}
         />
       ))}
 

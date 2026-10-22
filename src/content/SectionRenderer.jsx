@@ -51,7 +51,7 @@ export function SilentUnknownSection() {
  * fills in the defaults of every field the admin left out. The component
  * therefore never receives `undefined` for an optional field.
  */
-export function SectionRenderer({ section, products, categories }) {
+export function SectionRenderer({ section, products, categories, onNavigate }) {
   const Component = resolveSection(section?.type);
   if (!Component) return <UnknownSection type={section?.type} />;
 
@@ -74,6 +74,7 @@ export function SectionRenderer({ section, products, categories }) {
       style={normalized.style}
       products={products}
       categories={categories}
+      onNavigate={onNavigate}
     />
   );
 }

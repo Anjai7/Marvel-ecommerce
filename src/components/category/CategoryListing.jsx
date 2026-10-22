@@ -68,10 +68,11 @@ function readSettings(config) {
   const pageSize = Number(source.pageSize);
 
   return {
+    layout: source.layout === "list" ? "list" : "grid",
     sort: SORT_OPTIONS.some((option) => option.value === sort) ? sort : DEFAULT_SORT,
     pageSize: Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 0,
-    showSort: source.showSort !== false,
-    showFilters: source.showFilters !== false,
+    showSort: source.showSort === true,
+    showFilters: source.showFilters === true,
   };
 }
 
@@ -280,7 +281,9 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
       ) : listing.items.length === 0 ? (
         <p style={{ fontSize: 14, color: "#64748b" }}>No products in this category yet.</p>
       ) : (
-        <div className="product-grid">
+        <div
+          className={`product-grid ${settings.layout === "list" ? "product-grid--list" : ""}`.trim()}
+        >
           {listing.items.map((product) => (
             <ProductCard key={product.id} product={product} onNavigate={onSelectProduct} />
           ))}
