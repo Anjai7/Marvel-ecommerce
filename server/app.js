@@ -6,6 +6,8 @@ import authRoutes from "./routes/auth.js";
 import menuRoutes from "./routes/menu.js";
 import contentRoutes, { bannerRoutes, footerRoutes } from "./routes/content.js";
 import categoriesRoutes from "./routes/categories.js";
+import pagesRoutes from "./routes/pages.js";
+import { robotsRouter, sitemapRouter } from "./routes/sitemap.js";
 import userRoutes from "./routes/users.js";
 import productRoutes from "./routes/products.js";
 import productDetailsRoutes from "./routes/productDetails.js";
@@ -74,6 +76,15 @@ app.use("/api/content", contentRoutes);
 app.use("/api/content/banners", bannerRoutes);
 app.use("/api/content/footer", footerRoutes);
 app.use("/api/categories", categoriesRoutes);
+app.use("/api/pages", pagesRoutes);
+// The sitemap routers are mounted twice on purpose. `app.use` strips the
+// mount path, so a router that serves "/" answers the request; `app.get`
+// leaves the path alone, so a router that serves the full path answers it.
+// Whichever shape the router uses, the file is served exactly once.
+app.use("/api/sitemap.xml", sitemapRouter);
+app.get("/api/sitemap.xml", sitemapRouter);
+app.use("/api/robots.txt", robotsRouter);
+app.get("/api/robots.txt", robotsRouter);
 app.use("/api/users", userRoutes);
 app.use("/api/settings", settingsRoutes);
 // Mounted before productRoutes so `/:id/details` wins over the generic read.
