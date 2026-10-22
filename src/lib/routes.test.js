@@ -1,7 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   getHashRoute,
-  menuPathToCategoryPath,
   resolveMenuNavigation,
   getDashboardRouteForRole,
   getAuthRedirectRoute,
@@ -9,6 +8,8 @@ import {
   isAdminRoute,
   isSuperAdminRoute,
   isStandaloneAdminView,
+  isPageRoute,
+  pageSlugFromPath,
 } from "./routes";
 
 describe("routes module", () => {
@@ -23,6 +24,32 @@ describe("routes module", () => {
         page: "product",
         id: "p-100",
       });
+    });
+
+    it("reads a page route", () => {
+      expect(getHashRoute("#/pages/diwali-sale")).toMatchObject({
+        page: "pages",
+        id: "diwali-sale",
+      });
+    });
+
+    it("reads a clean page path when there is no hash", () => {
+      const pathname = vi
+        .spyOn(window.location, "pathname", "get")
+        .mockReturnValue("/pages/diwali-sale");
+      try {
+        expect(getHashRoute("")).toMatchObject({ page: "pages", id: "diwali-sale" });
+        expect(pageSlugFromPath("/pages/diwali-sale")).toBe("diwali-sale");
+        expect(pageSlugFromPath("/pages/diwali-sale/")).toBe("diwali-sale");
+        expect(pageSlugFromPath("/category/electronics")).toBeNull();
+        expect(pageSlugFromPath("/")).toBeNull();
+
+        // An explicit "#/" is a navigation to the home page and wins over the
+        // clean path.
+        expect(getHashRoute("#/")).toMatchObject({ page: "home", id: null });
+      } finally {
+        pathname.mockRestore();
+      }
     });
   });
 
@@ -60,6 +87,27 @@ describe("routes module", () => {
       });
       expect(resolveMenuNavigation("unknown", false)).toEqual({ route: "" });
     });
+
+    it("maps a page path to the pages route", () => {
+      expect(resolveMenuNavigation("pages/diwali-sale", true)).toEqual({
+        route: "pages/diwali-sale",
+      });
+    });
+
+    it("maps a hash page path to the pages route", () => {
+      expect(resolveMenuNavigation("#/pages/diwali-sale", true)).toEqual({
+        route: "pages/diwali-sale",
+      });
+    });
+
+    it("still maps a category path to the category route", () => {
+      expect(resolveMenuNavigation("category/electronics", true)).toEqual({
+        route: "category/electronics",
+      });
+      expect(resolveMenuNavigation("#/category/electronics", true)).toEqual({
+        route: "category/electronics",
+      });
+    });
   });
 
   describe("getDashboardRouteForRole", () => {
@@ -96,6 +144,17 @@ describe("routes module", () => {
       expect(isStandaloneAdminView("admin")).toBe(true);
       expect(isStandaloneAdminView("super-admin")).toBe(true);
       expect(isStandaloneAdminView("home")).toBe(false);
+    });
+
+    it("isPageRoute is true for pages and page", () => {
+      expect(isPageRoute("pages")).toBe(true);
+      expect(isPageRoute("page")).toBe(true);
+    });
+
+    it("isPageRoute is false for category and product", () => {
+      expect(isPageRoute("category")).toBe(false);
+      expect(isPageRoute("product")).toBe(false);
+      expect(isPageRoute("home")).toBe(false);
     });
   });
 });

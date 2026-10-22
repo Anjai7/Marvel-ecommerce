@@ -9,6 +9,7 @@ import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
 import ProductViewPage from "./components/product/ProductViewPage";
 import CategoryPage from "./components/category/CategoryPage";
+import CmsPage from "./components/pages/CmsPage";
 import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -33,6 +34,7 @@ import {
   getAuthRedirectRoute,
   isStorefrontRoute,
   isCategoryRoute,
+  isPageRoute,
   isProductRoute,
   isAccountRoute,
   isVendorRoute,
@@ -42,6 +44,7 @@ import {
 } from "./lib/routes";
 
 // Re-export for backward-compatibility with tests
+// oxlint-disable-next-line react/only-export-components
 export { getHashRoute, menuPathToCategoryPath };
 
 function AppMain() {
@@ -152,6 +155,10 @@ function AppMain() {
           onSelectProduct={handleSelectProduct}
         />
       )}
+
+      {/* 2b. CMS PAGE — the page builder's public route. The footer lives
+          inside the page, because the storefront home owns its own copy. */}
+      {isPageRoute(page) && <CmsPage slug={currentRoute.id} onNavigate={handleDynamicMenuClick} />}
 
       {/* 3. AUTHENTICATION (LOGIN & SIGNUP) */}
       {page === "login" && (

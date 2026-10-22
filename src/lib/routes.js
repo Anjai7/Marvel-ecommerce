@@ -3,6 +3,20 @@
  */
 
 /**
+ * The slug of a clean CMS page URL: `/pages/<slug>`.
+ *
+ * The slug is one segment of lowercase letters, numbers and hyphens. A
+ * trailing slash is allowed, because a crawler may ask for `/pages/sale/`.
+ *
+ * @param {string} [pathname] - A pathname such as `/pages/diwali-sale`
+ * @returns {string|null} The slug, or null when the path is not a page URL
+ */
+export function pageSlugFromPath(pathname) {
+  const match = /^\/pages\/([a-z0-9]+(?:-[a-z0-9]+)*)\/?$/i.exec(String(pathname ?? ""));
+  return match ? match[1] : null;
+}
+
+/**
  * Real hash routing. `#/product/:id` keeps its single id; `category/*` carries
  * the whole ancestor path because slugs are unique only per parent, so the
  * last segment alone cannot identify a category.
@@ -18,7 +32,22 @@ export function getHashRoute(hashOverride) {
         : "";
 
   const raw = hash.replace(/^#\/?/, "").trim();
-  if (!raw) return { page: "home", id: null, path: null, full: "" };
+  if (!raw) {
+    // A clean path is a real page URL: the sitemap and the canonical URL both
+    // point at `/pages/<slug>`, so the router understands it as well as the
+    // hash form. Without a hash and without a page path, this is the home
+    // page.
+    //
+    // The fallback applies only when there is **no hash at all**. An explicit
+    // `#/` is a navigation to the home page, and it has to win over the clean
+    // path — otherwise a visitor on `/pages/sale` could never leave.
+    const slug =
+      hash === ""
+        ? pageSlugFromPath(typeof window !== "undefined" ? window.location.pathname : "")
+        : null;
+    if (slug) return { page: "pages", id: slug, path: null, full: slug };
+    return { page: "home", id: null, path: null, full: "" };
+  }
 
   const parts = raw.split("?")[0].split("/");
   const page = (parts[0] || "home").toLowerCase();
@@ -95,6 +124,13 @@ export function resolveMenuNavigation(path, isLoggedIn) {
     return { route: "product" };
   }
 
+  // A CMS page is a route of its own: `pages/<slug>` is neither a category
+  // nor a dashboard. The branch runs before the category one, because a page
+  // path is not a category path and must not fall through to the homepage.
+  if (cleanPath === "pages" || cleanPath.startsWith("pages/")) {
+    return { route: cleanPath };
+  }
+
   if (categoryPath !== null) {
     return { route: `category/${categoryPath}` };
   }
@@ -137,6 +173,11 @@ export function isStorefrontRoute(page) {
 
 export function isCategoryRoute(page) {
   return page === "category";
+}
+
+/** True for the CMS page routes: `pages` and its `page` alias. */
+export function isPageRoute(page) {
+  return page === "pages" || page === "page";
 }
 
 export function isProductRoute(page) {
