@@ -75,9 +75,10 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
                 alignItems: "center",
                 gap: 6,
                 padding: "4px 8px",
-                background: "var(--card-bg, #1e293b)",
-                borderRadius: 4,
-                border: "1px solid var(--border-color, #334155)",
+                background: "#f1f5f9",
+                borderRadius: 6,
+                border: "1px solid #cbd5e1",
+                color: "#0f172a",
                 fontSize: 12,
               }}
             >
@@ -129,14 +130,14 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
           className="product-picker-results"
           style={{
             margin: 0,
-            padding: 0,
             listStyle: "none",
             display: "grid",
             gap: 6,
             maxHeight: 240,
             overflowY: "auto",
-            border: "1px solid var(--border-color, #334155)",
+            border: "1px solid #e2e8f0",
             borderRadius: 6,
+            background: "#ffffff",
             padding: 6,
           }}
         >

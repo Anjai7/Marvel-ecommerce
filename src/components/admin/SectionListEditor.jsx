@@ -289,7 +289,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
           its description, so the choice is made from the catalogue and not
           from a hard-coded list. */}
       <Dialog open={adding} onOpenChange={setAdding}>
-        <DialogContent>
+        <DialogContent style={{ maxWidth: 520 }}>
           <DialogHeader>
             <DialogTitle>Add section</DialogTitle>
             <DialogDescription>Pick the type to append to the end of the page.</DialogDescription>
@@ -324,7 +324,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
         }}
       >
         {editing && (
-          <DialogContent>
+          <DialogContent style={{ maxWidth: 640 }}>
             <DialogHeader>
               <DialogTitle>{`Edit ${typeLabel(editing.type)}`}</DialogTitle>
               <DialogDescription>{typeDescription(editing.type)}</DialogDescription>
