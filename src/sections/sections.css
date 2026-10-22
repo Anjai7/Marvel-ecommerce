@@ -1,0 +1,607 @@
+/* The CMS section styles.
+ *
+ * A component-scoped stylesheet, plain CSS, built on the design tokens of
+ * `src/index.css`. Every rule is prefixed with `section-` so it cannot
+ * collide with the storefront or the admin console.
+ *
+ * The `bg-*`, `pt-*`, `pb-*` and `mw-*` modifier classes are written by
+ * `SectionShell` from the section's `style` block; the rest of the file
+ * styles the individual section types.
+ */
+
+/* ─── The shared shell ────────────────────────────────────── */
+.section-shell {
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.section-shell.bg-none {
+  background: transparent;
+}
+.section-shell.bg-surface {
+  background: var(--white);
+}
+.section-shell.bg-muted {
+  background: var(--gray-100);
+}
+.section-shell.bg-primary {
+  background: var(--navy);
+  color: var(--white);
+}
+.section-shell.bg-dark {
+  background: var(--gray-900);
+  color: var(--white);
+}
+
+.section-shell.pt-none {
+  padding-top: 0;
+}
+.section-shell.pt-sm {
+  padding-top: 12px;
+}
+.section-shell.pt-md {
+  padding-top: 24px;
+}
+.section-shell.pt-lg {
+  padding-top: 40px;
+}
+.section-shell.pt-xl {
+  padding-top: 64px;
+}
+
+.section-shell.pb-none {
+  padding-bottom: 0;
+}
+.section-shell.pb-sm {
+  padding-bottom: 12px;
+}
+.section-shell.pb-md {
+  padding-bottom: 24px;
+}
+.section-shell.pb-lg {
+  padding-bottom: 40px;
+}
+.section-shell.pb-xl {
+  padding-bottom: 64px;
+}
+
+.section-shell.mw-full {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+.section-shell.mw-content {
+  max-width: 1380px;
+  padding-left: clamp(16px, 3vw, 32px);
+  padding-right: clamp(16px, 3vw, 32px);
+}
+.section-shell.mw-narrow {
+  max-width: 860px;
+  padding-left: clamp(16px, 3vw, 32px);
+  padding-right: clamp(16px, 3vw, 32px);
+}
+
+/* ─── The hero ────────────────────────────────────────────── */
+.section-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: center;
+}
+
+.section-hero__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.section-hero__eyebrow {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin: 0;
+}
+
+.section-hero__heading {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: -0.6px;
+  color: var(--gray-900);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.section-hero__subheading {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--gray-600);
+  margin: 0;
+  max-width: 60ch;
+}
+
+.section-hero__media img {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  object-fit: cover;
+  box-shadow: var(--shadow-md);
+}
+
+.section-hero--dark .section-hero__heading,
+.section-hero--gradient .section-hero__heading {
+  color: var(--white);
+}
+.section-hero--dark .section-hero__subheading,
+.section-hero--gradient .section-hero__subheading {
+  color: rgba(255, 255, 255, 0.85);
+}
+.section-hero--gradient {
+  background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 55%, var(--orange) 160%);
+  color: var(--white);
+}
+.section-hero--gradient .section-hero__eyebrow {
+  color: var(--white);
+}
+
+@media (min-width: 900px) {
+  .section-hero {
+    grid-template-columns: 1.1fr 1fr;
+  }
+}
+
+/* ─── The prose (rich text) ───────────────────────────────── */
+.section-prose {
+  color: var(--gray-700);
+  font-size: 15.5px;
+  line-height: 1.7;
+}
+
+.section-prose--center {
+  text-align: center;
+}
+.section-prose--right {
+  text-align: right;
+}
+
+.section-prose-h1,
+.section-prose-h2,
+.section-prose-h3 {
+  color: var(--gray-900);
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 12px;
+  text-wrap: balance;
+}
+
+.section-prose-h1 {
+  font-size: 30px;
+}
+.section-prose-h2 {
+  font-size: 24px;
+}
+.section-prose-h3 {
+  font-size: 19px;
+}
+
+.section-prose-p {
+  margin: 0 0 14px;
+}
+
+.section-prose-list {
+  margin: 0 0 14px;
+  padding-left: 22px;
+  list-style: disc;
+}
+
+.section-prose-list--ordered {
+  list-style: decimal;
+}
+
+.section-prose-list li {
+  margin-bottom: 6px;
+}
+
+.section-prose code {
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.section-prose-link {
+  color: var(--navy);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.section-prose-link:hover {
+  color: var(--navy-dark);
+}
+
+.section-prose-quote {
+  margin: 0 0 14px;
+  padding: 12px 18px;
+  border-left: 4px solid var(--navy);
+  background: var(--navy-bg);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--gray-700);
+}
+
+.section-prose-quote .section-prose-p:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── The image ───────────────────────────────────────────── */
+.section-image__frame {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.section-image__link {
+  display: block;
+}
+
+.section-image img {
+  width: 100%;
+  object-fit: cover;
+}
+
+/* ─── The gallery ─────────────────────────────────────────── */
+.section-gallery__track {
+  display: grid;
+  gap: 14px;
+}
+
+.section-gallery__track.is-grid {
+  grid-template-columns: repeat(var(--section-gallery-columns, 3), minmax(0, 1fr));
+}
+
+.section-gallery__track.is-carousel {
+  display: flex;
+  grid-template-columns: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.section-gallery__track.is-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.section-gallery__item {
+  margin: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--gray-100);
+  box-shadow: var(--shadow-xs);
+}
+
+.section-gallery__track.is-carousel .section-gallery__item {
+  flex: 0 0 min(320px, 78vw);
+  scroll-snap-align: start;
+}
+
+.section-gallery__item img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.section-gallery__item:hover img {
+  transform: scale(1.03);
+}
+
+/* ─── The product grid ────────────────────────────────────── */
+.section-product-grid__items {
+  display: grid;
+  grid-template-columns: repeat(var(--section-product-columns, 4), minmax(0, 1fr));
+  gap: 16px;
+}
+
+.section-product-grid--list .section-product-grid__items {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.section-product-grid--carousel .section-product-grid__items {
+  display: flex;
+  grid-template-columns: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.section-product-grid--carousel .section-product-grid__item {
+  flex: 0 0 min(280px, 78vw);
+  scroll-snap-align: start;
+}
+
+.section-product-grid.is-no-price .product-price-row {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .section-product-grid__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .section-product-grid__items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ─── The category grid ───────────────────────────────────── */
+.section-category-grid__items {
+  display: grid;
+  grid-template-columns: repeat(var(--section-category-columns, 3), minmax(0, 1fr));
+  gap: 16px;
+}
+
+.section-category-grid__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  text-align: center;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.section-category-grid__link:hover {
+  transform: translateY(-3px);
+  border-color: rgba(40, 116, 240, 0.4);
+  box-shadow: var(--shadow-md);
+}
+
+.section-category-grid__media {
+  display: block;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--gray-100);
+  border: 2px solid var(--gray-200);
+}
+
+.section-category-grid__media--empty {
+  background: var(--gray-100);
+}
+
+.section-category-grid__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.section-category-grid__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+@media (max-width: 768px) {
+  .section-category-grid__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ─── The promotional banner ──────────────────────────────── */
+.section-promo {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 26px;
+  border-radius: var(--radius-lg);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-promo__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.section-promo__title {
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.section-promo__subtitle {
+  font-size: 14px;
+  color: var(--gray-600);
+  margin: 0;
+}
+
+.section-promo__media img {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.section-promo--dark {
+  background: var(--gray-900);
+  border-color: var(--gray-800);
+}
+
+.section-promo--dark .section-promo__title {
+  color: var(--white);
+}
+
+.section-promo--dark .section-promo__subtitle {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.section-promo--primary {
+  background: var(--navy);
+  border-color: var(--navy-dark);
+}
+
+.section-promo--primary .section-promo__title {
+  color: var(--white);
+}
+
+.section-promo--primary .section-promo__subtitle {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@media (min-width: 820px) {
+  .section-promo {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+/* ─── The call to action ──────────────────────────────────── */
+.section-cta {
+  text-align: center;
+}
+
+.section-cta__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.section-cta__inner--left {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.section-cta__inner--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.section-cta__heading {
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 900;
+  color: var(--gray-900);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.section-cta__body {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--gray-600);
+  margin: 0;
+  max-width: 62ch;
+  white-space: pre-line;
+}
+
+/* ─── The FAQ ─────────────────────────────────────────────── */
+.section-faq__list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.section-faq__item {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.section-faq__question {
+  font-weight: 700;
+}
+
+.section-faq__answer {
+  color: var(--gray-600);
+  font-size: 14.5px;
+}
+
+/* ─── The video ───────────────────────────────────────────── */
+.section-video__player {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  border-radius: var(--radius-lg);
+  background: #090d16;
+}
+
+/* ─── The category listing ────────────────────────────────── */
+.section-listing__items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.section-listing--list .section-listing__items {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .section-listing__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .section-listing__items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ─── The spacer ──────────────────────────────────────────── */
+/* A spacer is only the gap it asks for: the shell's own padding is dropped,
+   which is why this rule is more specific than the `pt-*`/`pb-*` modifiers. */
+.section-shell.section-spacer {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.section-spacer__gap {
+  width: 100%;
+}
+
+/* ─── The fallback of an unsupported section ───────────────── */
+.section-fallback {
+  margin: 0 auto 24px;
+  max-width: 1380px;
+  padding: 14px 18px;
+  border: 1px dashed var(--orange);
+  border-radius: var(--radius-md);
+  background: var(--orange-light);
+  color: var(--gray-700);
+  font-size: 13.5px;
+}
+
+.section-fallback code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--orange-dark);
+}
+
+.section-fallback ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  list-style: disc;
+}
