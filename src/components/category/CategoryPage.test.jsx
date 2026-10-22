@@ -1,11 +1,12 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CategoryPage from "./CategoryPage";
 import { ToastProvider } from "../ui/Toast";
 import { CartProvider } from "../../context/CartContext";
 import { apiFetchCategoryByPath } from "../../api/contentApi";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts, apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryPage } from "../../api/pagesApi";
 
 const content = vi.hoisted(() => ({ value: null }));
 
@@ -19,6 +20,14 @@ vi.mock("../../api/contentApi", () => ({
 
 vi.mock("../../api/backendApi", () => ({
   apiFetchProducts: vi.fn(),
+  apiFetchCategoryProducts: vi.fn(),
+}));
+
+// Only the request is mocked: the normaliser of the payload is real code and
+// the page reads the page through it.
+vi.mock("../../api/pagesApi", async (importOriginal) => ({
+  ...(await importOriginal()),
+  apiFetchCategoryPage: vi.fn(),
 }));
 
 const SMARTPHONES = {
@@ -81,6 +90,39 @@ const PRODUCT = {
   image_url: "https://example.com/galaxy.jpg",
 };
 
+/** The answer of the listing endpoint: every product, no pagination. */
+const listing = (overrides = {}) => ({
+  items: [PRODUCT],
+  total: 1,
+  page: 1,
+  pageSize: 0,
+  hasMore: false,
+  ...overrides,
+});
+
+/** A published page with the given sections. */
+const customPage = (sections) => ({
+  id: "pg1",
+  title: "Mobiles",
+  slug: "mobiles",
+  kind: "category",
+  status: "published",
+  seo: {},
+  sections,
+});
+
+const HERO_SECTION = {
+  id: "s1",
+  type: "hero",
+  data: { heading: "Mobiles for every budget" },
+};
+
+const LISTING_SECTION = {
+  id: "s2",
+  type: "category_listing",
+  data: { layout: "grid", sort: "newest", page_size: 0 },
+};
+
 const contextValue = (overrides = {}) => ({
   hero: [],
   banners: [],
@@ -93,6 +135,14 @@ const contextValue = (overrides = {}) => ({
   refresh: vi.fn(),
   ...overrides,
 });
+
+/** The tree of a category that carries its own configuration. */
+const treeWith = (category) => [
+  {
+    ...ELECTRONICS,
+    children: [category],
+  },
+];
 
 const renderPage = (path, props = {}) =>
   render(
@@ -108,11 +158,18 @@ describe("CategoryPage", () => {
     vi.clearAllMocks();
     content.value = contextValue();
     apiFetchProducts.mockResolvedValue([PRODUCT]);
+    apiFetchCategoryProducts.mockResolvedValue(listing());
     apiFetchCategoryByPath.mockResolvedValue({
       category: { name: "Footwear", slug: "footwear", level: 2, description: "" },
       ancestors: [{ name: "Fashion", slug: "fashion" }],
       descendants: [],
     });
+    // A category without a custom page is the normal case.
+    apiFetchCategoryPage.mockResolvedValue(null);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("resolves the path against the tree without a path lookup and renders name, breadcrumb, chips and products", async () => {
@@ -129,7 +186,9 @@ describe("CategoryPage", () => {
     expect(await screen.findByText("Galaxy S24")).toBeVisible();
 
     expect(apiFetchCategoryByPath).not.toHaveBeenCalled();
-    expect(apiFetchProducts).toHaveBeenCalledWith({ categoryPath: "electronics/mobiles" });
+    expect(apiFetchCategoryProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "electronics/mobiles" })
+    );
   });
 
   it("resolves a three-level path to the nested category instead of a same-named root", async () => {
@@ -142,9 +201,9 @@ describe("CategoryPage", () => {
 
     expect(screen.queryByText("Watches")).toBeNull();
     expect(apiFetchCategoryByPath).not.toHaveBeenCalled();
-    expect(apiFetchProducts).toHaveBeenCalledWith({
-      categoryPath: "electronics/mobiles/smartphones",
-    });
+    expect(apiFetchCategoryProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "electronics/mobiles/smartphones" })
+    );
   });
 
   it("navigates a subcategory chip to the child's full ancestor path, not its bare slug", async () => {
@@ -166,7 +225,7 @@ describe("CategoryPage", () => {
   });
 
   it("shows a distinct empty state when the category has no products", async () => {
-    apiFetchProducts.mockResolvedValue([]);
+    apiFetchCategoryProducts.mockResolvedValue(listing({ items: [], total: 0 }));
     renderPage("electronics/mobiles");
 
     expect(await screen.findByText("No products in this category yet.")).toBeVisible();
@@ -174,7 +233,7 @@ describe("CategoryPage", () => {
   });
 
   it("shows the product error state when the product fetch rejects", async () => {
-    apiFetchProducts.mockRejectedValue(new Error("offline"));
+    apiFetchCategoryProducts.mockRejectedValue(new Error("offline"));
     renderPage("electronics/mobiles");
 
     expect(await screen.findByText("Could not load products.")).toBeVisible();
@@ -223,5 +282,91 @@ describe("CategoryPage", () => {
 
     expect(screen.getByText("Loading category…")).toBeVisible();
     expect(apiFetchCategoryByPath).not.toHaveBeenCalled();
+  });
+
+  it("renders the default category content when the category has no custom page", async () => {
+    apiFetchCategoryPage.mockResolvedValue(null);
+    renderPage("electronics/mobiles");
+
+    expect(await screen.findByRole("heading", { name: "Mobiles" })).toBeVisible();
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumb).toHaveTextContent(/Home.*Electronics.*Mobiles/);
+
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+
+    // A category without a custom page shows no section at all.
+    expect(screen.queryByTestId("section-fallback")).toBeNull();
+    expect(apiFetchCategoryPage).toHaveBeenCalledWith("c3");
+  });
+
+  it("renders the custom sections of the category page above the product listing", async () => {
+    apiFetchCategoryPage.mockResolvedValue(customPage([HERO_SECTION]));
+    const { container } = renderPage("electronics/mobiles");
+
+    expect(await screen.findByRole("heading", { name: "Mobiles for every budget" })).toBeVisible();
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+
+    // The section sits above the default content of the category.
+    const order = container.textContent;
+    const heroAt = order.indexOf("Mobiles for every budget");
+    const productAt = order.indexOf("Galaxy S24");
+    expect(heroAt).toBeGreaterThanOrEqual(0);
+    expect(productAt).toBeGreaterThan(heroAt);
+  });
+
+  it("renders the default product listing when the custom page has no listing section", async () => {
+    apiFetchCategoryPage.mockResolvedValue(customPage([HERO_SECTION]));
+    renderPage("electronics/mobiles");
+
+    expect(await screen.findByRole("heading", { name: "Mobiles for every budget" })).toBeVisible();
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+  });
+
+  it("uses the category's own listing layout and sort when there is no custom page", async () => {
+    content.value = contextValue({
+      categoryTree: treeWith({
+        ...MOBILES,
+        listing_layout: "list",
+        listing_sort: "price_asc",
+      }),
+    });
+    renderPage("electronics/mobiles");
+
+    await waitFor(() => expect(apiFetchCategoryProducts).toHaveBeenCalled());
+    expect(apiFetchCategoryProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "electronics/mobiles", sort: "price_asc", pageSize: 0 })
+    );
+  });
+
+  it("uses the category's own SEO title when there is no custom page", async () => {
+    content.value = contextValue({
+      categoryTree: treeWith({ ...MOBILES, meta_title: "Smartphones" }),
+    });
+    renderPage("electronics/mobiles");
+
+    await waitFor(() => expect(document.title).toBe("Smartphones"));
+  });
+
+  it("falls back to the default content when the custom page request fails", async () => {
+    // The failure is reported on purpose.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    apiFetchCategoryPage.mockRejectedValue(new Error("offline"));
+    renderPage("electronics/mobiles");
+
+    expect(await screen.findByRole("heading", { name: "Mobiles" })).toBeVisible();
+    expect(await screen.findByText("Galaxy S24")).toBeVisible();
+    expect(screen.queryByTestId("section-fallback")).toBeNull();
+  });
+
+  it("renders the listing section of the custom page instead of the default listing", async () => {
+    apiFetchCategoryPage.mockResolvedValue(customPage([LISTING_SECTION]));
+    const { container } = renderPage("electronics/mobiles");
+
+    // The section renders the products of the category itself.
+    await waitFor(() => expect(container.querySelector(".section-listing")).not.toBeNull());
+    expect(screen.getByText("Galaxy S24")).toBeVisible();
+    // The default listing is not rendered any more.
+    expect(container.querySelector(".category-listing")).toBeNull();
   });
 });

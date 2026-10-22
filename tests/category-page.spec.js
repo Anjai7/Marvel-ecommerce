@@ -122,6 +122,21 @@ async function stubContent(page, { tree = TREE, products = PRODUCTS } = {}) {
   await page.route("**/api/products**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(products) })
   );
+  // The category listing reads its own endpoint, which answers the shape of
+  // the listing and not a bare array.
+  await page.route("**/api/categories/products**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        items: products,
+        total: products.length,
+        page: 1,
+        pageSize: 0,
+        hasMore: false,
+      }),
+    })
+  );
 }
 
 test.describe("category landing page", () => {
