@@ -63,11 +63,13 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const isDown = useRef(false);
   const startX = useRef(0);
   const scrollLeftPos = useRef(0);
   const wasDragging = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
+  const autoSlideTimer = useRef(null);
 
   const checkScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -75,6 +77,39 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
     setCanScrollLeft(el.scrollLeft > 6);
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
   }, []);
+
+  const slideNext = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollWidth <= el.clientWidth + 10) return;
+
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 15) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: 240, behavior: "smooth" });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    if (isHovered || isDragging || activeMenu || browseOpen) {
+      if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+      return;
+    }
+
+    autoSlideTimer.current = setInterval(slideNext, 3500);
+
+    return () => {
+      if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+    };
+  }, [isHovered, isDragging, activeMenu, browseOpen, slideNext]);
 
   useEffect(() => {
     checkScroll();
@@ -137,6 +172,12 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollBy({ left: dir === "left" ? -280 : 280, behavior: "smooth" });
+    if (autoSlideTimer.current) {
+      clearInterval(autoSlideTimer.current);
+      if (!isHovered && !isDragging && !activeMenu && !browseOpen) {
+        autoSlideTimer.current = setInterval(slideNext, 4000);
+      }
+    }
   };
 
   const navEnter = (name) => {
@@ -229,6 +270,14 @@ export default function HoverNav({ userRole = "user", onDynamicNavigate }) {
           className={`hover-nav-slider-wrapper ${canScrollLeft ? "can-scroll-left" : ""} ${
             canScrollRight ? "can-scroll-right" : ""
           }`}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onFocus={() => setIsHovered(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) {
+              setIsHovered(false);
+            }
+          }}
         >
           {/* Scroll Left Button */}
           {canScrollLeft && (
