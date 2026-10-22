@@ -1389,17 +1389,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
             {activeTab === "settings" && <div className="active-glow-indicator"></div>}
           </button>
+        </nav>
 
-          {/* LIVE STORE QUICK LINK */}
+        {/* PINNED BOTTOM ACTION: VIEW LIVE STORE */}
+        <div className="sidebar-pinned-footer">
           <a
             href="#/"
-            className="sidebar-live-store-link"
+            className="sidebar-live-store-pinned-btn"
             title="Open customer-facing storefront in new or current tab"
           >
-            <ExternalLink size={14} />
+            <ExternalLink size={15} />
             <span>View Live Store</span>
           </a>
-        </nav>
+        </div>
       </aside>
 
       {/* ==================================================== */}

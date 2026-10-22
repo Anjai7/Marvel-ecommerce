@@ -147,31 +147,51 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
           overflow: "hidden",
         }}
       >
-        {/* Left Side: Clean Brand Panel */}
+        {/* Left Side: Brand & Hero Showcase Panel */}
         <div
           style={{
-            background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
+            position: "relative",
+            overflow: "hidden",
+            background:
+              "linear-gradient(180deg, rgba(15, 23, 42, 0.74) 0%, rgba(15, 23, 42, 0.92) 100%), url('/login-hero.jpg') center/cover no-repeat",
             color: "#ffffff",
-            padding: "clamp(24px, 5vw, 44px) clamp(20px, 4vw, 36px)",
+            padding: "clamp(28px, 5vw, 44px) clamp(22px, 4vw, 36px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
           }}
         >
-          <div>
+          {/* Subtle Ambient Glow Effect */}
+          <div
+            style={{
+              position: "absolute",
+              top: -60,
+              right: -60,
+              width: 180,
+              height: 180,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          <div style={{ position: "relative", zIndex: 1 }}>
             <div
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
-                background: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(8px)",
+                background: "rgba(255, 255, 255, 0.14)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
                 padding: "6px 14px",
                 borderRadius: 30,
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: "0.5px",
                 marginBottom: 24,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
               }}
             >
               <Sparkles size={14} color="#ffd700" /> Marvel Premium Tech
@@ -184,6 +204,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                 marginBottom: 12,
                 color: "#ffffff",
                 lineHeight: 1.3,
+                textShadow: "0 2px 12px rgba(0, 0, 0, 0.45)",
               }}
             >
               Smart Tech for Smarter Living
@@ -191,37 +212,47 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             <p
               style={{
                 fontSize: 14,
-                color: "rgba(255, 255, 255, 0.85)",
+                color: "rgba(255, 255, 255, 0.88)",
                 marginBottom: 32,
                 lineHeight: 1.6,
+                textShadow: "0 1px 6px rgba(0, 0, 0, 0.35)",
               }}
             >
               Access your personalized recommendations, track your active shipments, and manage your
               wishlist.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 14,
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#ffffff",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
                 }}
               >
                 <div
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     borderRadius: 10,
-                    background: "rgba(255,255,255,0.18)",
+                    background: "rgba(37, 99, 235, 0.35)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <Award size={18} />
+                  <Award size={18} color="#93c5fd" />
                 </div>
                 <span>
                   <strong>Curated Catalog</strong> — 100% Genuine, tested devices
@@ -234,21 +265,30 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                   alignItems: "center",
                   gap: 14,
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#ffffff",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
                 }}
               >
                 <div
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     borderRadius: 10,
-                    background: "rgba(255,255,255,0.18)",
+                    background: "rgba(37, 99, 235, 0.35)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <Truck size={18} />
+                  <Truck size={18} color="#93c5fd" />
                 </div>
                 <span>
                   <strong>Express Delivery</strong> — Real-time live shipment tracking
@@ -261,21 +301,30 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                   alignItems: "center",
                   gap: 14,
                   fontSize: 13,
-                  color: "rgba(255,255,255,0.9)",
+                  color: "#ffffff",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  border: "1px solid rgba(255, 255, 255, 0.14)",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
                 }}
               >
                 <div
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     borderRadius: 10,
-                    background: "rgba(255,255,255,0.18)",
+                    background: "rgba(37, 99, 235, 0.35)",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    flexShrink: 0,
                   }}
                 >
-                  <ShieldCheck size={18} />
+                  <ShieldCheck size={18} color="#93c5fd" />
                 </div>
                 <span>
                   <strong>Buyer Protection</strong> — 2-Year comprehensive warranty
@@ -284,7 +333,15 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             </div>
           </div>
 
-          <div style={{ marginTop: 36, fontSize: 12, color: "rgba(255, 255, 255, 0.75)" }}>
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              marginTop: 36,
+              fontSize: 12,
+              color: "rgba(255, 255, 255, 0.75)",
+            }}
+          >
             {settings?.footer?.copyright || ""}
           </div>
         </div>

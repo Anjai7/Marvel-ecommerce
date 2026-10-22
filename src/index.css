@@ -7157,10 +7157,46 @@ input:focus:not(:focus-visible) {
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
 }
 
-/* The profile, the storefront shortcut and the sign-out button used to live in
-   a sidebar footer. They are in the header now: the notification bell and the
-   profile menu (settings, sign out) sit top right, so the rules that styled
-   the old footer are gone. */
+/* Pinned bottom footer for live store quick link */
+.sidebar-pinned-footer {
+  margin-top: auto;
+  flex-shrink: 0;
+  padding: 14px 16px;
+  background: rgba(10, 30, 80, 0.45);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+}
+
+.sidebar-live-store-pinned-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.sidebar-live-store-pinned-btn:hover {
+  background: #ffffff;
+  color: #1b5bc7;
+  border-color: #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
 
 /* ─────────────────────────────────────────────────────────────
    2. MAIN CONTENT VIEWPORT
@@ -7946,13 +7982,15 @@ input:focus:not(:focus-visible) {
   overflow-x: auto;
 }
 
-.admin-data-table {
+.admin-data-table,
+.editor-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
 
-.admin-data-table th {
+.admin-data-table th,
+.editor-table th {
   padding: 14px 18px;
   font-size: 11px;
   font-weight: 800;
@@ -7963,11 +8001,26 @@ input:focus:not(:focus-visible) {
   text-transform: uppercase;
 }
 
-.admin-data-table td {
+.admin-data-table td,
+.editor-table td {
   padding: 16px 18px;
   border-bottom: 1px solid #f1f5f9;
   font-size: 13.5px;
   vertical-align: middle;
+}
+
+.editor-table tbody tr:hover td {
+  background: #f8fafc;
+}
+
+.editor-table tbody tr.selected-row td,
+.editor-table tbody tr[aria-current="true"] td {
+  background: #eff6ff !important;
+}
+
+.editor-table tbody tr.selected-row td:first-child,
+.editor-table tbody tr[aria-current="true"] td:first-child {
+  border-left: 3px solid #2563eb;
 }
 
 .user-table-row:hover {

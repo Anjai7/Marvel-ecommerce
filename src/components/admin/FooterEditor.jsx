@@ -447,92 +447,154 @@ export default function FooterEditor() {
         <p className="chart-subtitle">Loading footer content...</p>
       ) : (
         <div className="footer-editor-layout" style={{ display: "grid", gap: 24 }}>
-          <div>
-            <h4 className="chart-title">Sections</h4>
+          <div className="admin-content-card">
+            <div className="admin-content-card-header">
+              <div>
+                <h4 className="admin-content-card-title">Sections</h4>
+                <p className="admin-content-card-meta">
+                  Footer column sections — click any section to view and manage its links
+                </p>
+              </div>
+              <Button onClick={openSectionCreate} className="quick-add-user-btn">
+                <Plus size={16} />
+                <span>Add Section</span>
+              </Button>
+            </div>
             {sections.length === 0 ? (
-              <p className="chart-subtitle">No footer sections yet. Add the first one.</p>
+              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+                <p className="chart-subtitle">No footer sections yet. Add the first one.</p>
+              </div>
             ) : (
-              <table className="editor-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Heading</th>
-                    <th scope="col">Type</th>
-                    <th scope="col">Column</th>
-                    <th scope="col">Order</th>
-                    <th scope="col">Active</th>
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sections.map((section, index) => (
-                    <tr
-                      key={section.id}
-                      data-testid={`footer-section-${section.id}`}
-                      aria-current={section.id === selectedId ? "true" : undefined}
-                    >
-                      <td>
-                        <button
-                          type="button"
-                          aria-pressed={section.id === selectedId}
-                          onClick={() => setSelectedId(section.id)}
-                          className="chart-pill-btn"
-                        >
-                          {section.heading}
-                        </button>
-                      </td>
-                      <td>{section.section_type}</td>
-                      <td>{section.column_index}</td>
-                      <td>
-                        <OrderControls
-                          index={index}
-                          total={sections.length}
-                          label={section.heading}
-                          disabled={busy}
-                          onMove={(from, to) => handleMoveSection(section, from, to)}
-                        />
-                      </td>
-                      <td>
-                        <ActiveToggle
-                          active={section.is_active !== false}
-                          label={section.heading}
-                          onChange={(active) => handleToggleSection(section, active)}
-                        />
-                      </td>
-                      <td>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Edit section ${section.heading}`}
-                          onClick={() => openSectionEdit(section)}
-                        >
-                          <Edit2 size={15} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Delete section ${section.heading}`}
-                          disabled={busy}
-                          onClick={() => setDeleteTarget({ kind: "section", item: section })}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
-                      </td>
+              <div className="table-responsive">
+                <table className="editor-table admin-data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Heading</th>
+                      <th scope="col">Type</th>
+                      <th scope="col">Column</th>
+                      <th scope="col">Order</th>
+                      <th scope="col">Active</th>
+                      <th scope="col">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {sections.map((section, index) => {
+                      const isSelected = section.id === selectedId;
+                      return (
+                        <tr
+                          key={section.id}
+                          data-testid={`footer-section-${section.id}`}
+                          aria-current={isSelected ? "true" : undefined}
+                          className={isSelected ? "selected-row" : ""}
+                        >
+                          <td>
+                            <button
+                              type="button"
+                              aria-pressed={isSelected}
+                              onClick={() => setSelectedId(section.id)}
+                              className="chart-pill-btn"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "6px 14px",
+                                borderRadius: 8,
+                                border: isSelected ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
+                                background: isSelected ? "#2563eb" : "#ffffff",
+                                color: isSelected ? "#ffffff" : "#1e293b",
+                                fontWeight: 700,
+                                fontSize: 13,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              {section.heading}
+                            </button>
+                          </td>
+                          <td>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                fontSize: 11.5,
+                                fontWeight: 700,
+                                background:
+                                  section.section_type === "links" ? "#eff6ff" : "#f1f5f9",
+                                color: section.section_type === "links" ? "#2563eb" : "#475569",
+                                border:
+                                  section.section_type === "links"
+                                    ? "1px solid #bfdbfe"
+                                    : "1px solid #e2e8f0",
+                              }}
+                            >
+                              {section.section_type}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ fontWeight: 600, color: "#475569" }}>
+                              Col {Number(section.column_index ?? 0) + 1}
+                            </span>
+                          </td>
+                          <td>
+                            <OrderControls
+                              index={index}
+                              total={sections.length}
+                              label={section.heading}
+                              disabled={busy}
+                              onMove={(from, to) => handleMoveSection(section, from, to)}
+                            />
+                          </td>
+                          <td>
+                            <ActiveToggle
+                              active={section.is_active !== false}
+                              label={section.heading}
+                              onChange={(active) => handleToggleSection(section, active)}
+                            />
+                          </td>
+                          <td>
+                            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Edit section ${section.heading}`}
+                                onClick={() => openSectionEdit(section)}
+                              >
+                                <Edit2 size={15} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Delete section ${section.heading}`}
+                                disabled={busy}
+                                onClick={() => setDeleteTarget({ kind: "section", item: section })}
+                              >
+                                <Trash2 size={15} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
-          <div>
-            <div className="chart-card-header">
+          <div className="admin-content-card">
+            <div className="admin-content-card-header">
               <div>
-                <h4 className="chart-title">
+                <h4 className="admin-content-card-title">
                   Links{selectedSection ? ` — ${selectedSection.heading}` : ""}
                 </h4>
-                <p className="chart-subtitle">Links are scoped to the selected section</p>
+                <p className="admin-content-card-meta">
+                  {selectedSection
+                    ? `Navigation links inside "${selectedSection.heading}" column`
+                    : "Select a section above to view and manage its links"}
+                </p>
               </div>
               <Button
                 onClick={openLinkCreate}
@@ -545,66 +607,87 @@ export default function FooterEditor() {
             </div>
 
             {!selectedSection ? (
-              <p className="chart-subtitle">Select a section to edit its links.</p>
+              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+                <p className="chart-subtitle">Select a section to edit its links.</p>
+              </div>
             ) : links.length === 0 ? (
-              <p className="chart-subtitle">No links in this section yet.</p>
+              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+                <p className="chart-subtitle">No links in this section yet.</p>
+              </div>
             ) : (
-              <table className="editor-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Label</th>
-                    <th scope="col">Href</th>
-                    <th scope="col">Order</th>
-                    <th scope="col">Active</th>
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {links.map((link, index) => (
-                    <tr key={link.id} data-testid={`footer-link-${link.id}`}>
-                      <td>{link.label}</td>
-                      <td>{link.href}</td>
-                      <td>
-                        <OrderControls
-                          index={index}
-                          total={links.length}
-                          label={link.label}
-                          disabled={busy}
-                          onMove={(from, to) => handleMoveLink(link, from, to)}
-                        />
-                      </td>
-                      <td>
-                        <ActiveToggle
-                          active={link.is_active !== false}
-                          label={link.label}
-                          onChange={(active) => handleToggleLink(link, active)}
-                        />
-                      </td>
-                      <td>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Edit link ${link.label}`}
-                          onClick={() => openLinkEdit(link)}
-                        >
-                          <Edit2 size={15} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Delete link ${link.label}`}
-                          disabled={busy}
-                          onClick={() => setDeleteTarget({ kind: "link", item: link })}
-                        >
-                          <Trash2 size={15} />
-                        </Button>
-                      </td>
+              <div className="table-responsive">
+                <table className="editor-table admin-data-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Label</th>
+                      <th scope="col">Href</th>
+                      <th scope="col">Order</th>
+                      <th scope="col">Active</th>
+                      <th scope="col">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {links.map((link, index) => (
+                      <tr key={link.id} data-testid={`footer-link-${link.id}`}>
+                        <td style={{ fontWeight: 600, color: "#0f172a" }}>{link.label}</td>
+                        <td>
+                          <code
+                            style={{
+                              background: "#f1f5f9",
+                              padding: "3px 8px",
+                              borderRadius: 6,
+                              fontSize: 12,
+                              color: "#0f172a",
+                              border: "1px solid #e2e8f0",
+                            }}
+                          >
+                            {link.href}
+                          </code>
+                        </td>
+                        <td>
+                          <OrderControls
+                            index={index}
+                            total={links.length}
+                            label={link.label}
+                            disabled={busy}
+                            onMove={(from, to) => handleMoveLink(link, from, to)}
+                          />
+                        </td>
+                        <td>
+                          <ActiveToggle
+                            active={link.is_active !== false}
+                            label={link.label}
+                            onChange={(active) => handleToggleLink(link, active)}
+                          />
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Edit link ${link.label}`}
+                              onClick={() => openLinkEdit(link)}
+                            >
+                              <Edit2 size={15} />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Delete link ${link.label}`}
+                              disabled={busy}
+                              onClick={() => setDeleteTarget({ kind: "link", item: link })}
+                            >
+                              <Trash2 size={15} />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
