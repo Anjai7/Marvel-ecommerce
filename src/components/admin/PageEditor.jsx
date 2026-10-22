@@ -5,8 +5,10 @@ import {
   Eye,
   EyeOff,
   Monitor,
+  RotateCw,
   Smartphone,
   Sparkles,
+  Tablet,
   Trash2,
 } from "lucide-react";
 import { Badge, Button, Input, useToast } from "../ui";
@@ -23,6 +25,7 @@ import {
 } from "../../api/pagesApi";
 import { PAGE_KINDS, PAGE_TEMPLATES } from "../../../server/lib/pageRules.js";
 import { validateSection } from "../../../server/lib/sectionTypes.js";
+import "./admin-content.css";
 
 /**
  * The editor of one CMS page.
@@ -224,8 +227,12 @@ export default function PageEditor({ pageId, onClose }) {
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [showLivePreview, setShowLivePreview] = useState(false);
+  const [showLivePreview, setShowLivePreview] = useState(
+    () =>
+      typeof window !== "undefined" && !/jsdom|HappyDOM/i.test(window.navigator?.userAgent || "")
+  );
   const [previewViewport, setPreviewViewport] = useState("desktop");
+  const [previewEmbed, setPreviewEmbed] = useState(true);
   const [previewNonce, setPreviewNonce] = useState(1);
   // Synchronous guard: a state update is too late to stop a double-click that
   // lands in the same tick, so every write checks this ref first.
@@ -496,7 +503,7 @@ export default function PageEditor({ pageId, onClose }) {
 
   return (
     <div className="dashboard-tab-view animate-fade-in">
-      <div className="chart-card-header">
+      <div className="chart-card-header" style={{ marginBottom: 20 }}>
         <div>
           <h3 className="chart-title">{page.title}</h3>
           <p className="chart-subtitle">
@@ -509,12 +516,12 @@ export default function PageEditor({ pageId, onClose }) {
             Back to pages
           </Button>
 
-          {/* Toggle inline live preview pane */}
+          {/* Toggle side-by-side live preview pane */}
           <Button
             type="button"
             variant={showLivePreview ? "primary" : "outline"}
             onClick={() => setShowLivePreview((v) => !v)}
-            title="Toggle interactive live preview without leaving the editor"
+            title="Toggle side-by-side interactive live preview"
           >
             {showLivePreview ? <EyeOff size={15} /> : <Eye size={15} />}
             <span>{showLivePreview ? "Hide Preview" : "Live Preview"}</span>
@@ -544,325 +551,337 @@ export default function PageEditor({ pageId, onClose }) {
         </div>
       </div>
 
-      <form onSubmit={handleSave} noValidate style={{ display: "grid", gap: 16 }}>
-        <div className="form-group-row">
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-title">
-              Title *
-            </label>
-            <Input
-              id="page-title"
-              type="text"
-              value={form.title}
-              onChange={(event) => setField("title", event.target.value)}
-            />
+      <div className={`page-editor-split ${showLivePreview ? "has-preview" : ""}`}>
+        {/* Left Column: Page Settings & Sections */}
+        <div className="page-editor-controls">
+          <div className="admin-content-card" style={{ padding: 20 }}>
+            <h4 style={{ margin: "0 0 16px 0", fontSize: 16, fontWeight: 800, color: "#0f172a" }}>
+              Page Settings
+            </h4>
+            <form onSubmit={handleSave} noValidate style={{ display: "grid", gap: 16 }}>
+              <div className="form-group-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="page-title">
+                    Title *
+                  </label>
+                  <Input
+                    id="page-title"
+                    type="text"
+                    value={form.title}
+                    onChange={(event) => setField("title", event.target.value)}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="page-slug">
+                    Slug *
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Input
+                      id="page-slug"
+                      type="text"
+                      value={form.slug}
+                      onChange={(event) => setField("slug", event.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setField("slug", slugify(form.title))}
+                    >
+                      Regenerate from title
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {form.slug !== form.originalSlug && (
+                <p className="form-hint" style={{ margin: 0 }}>
+                  Changing the slug changes the page&apos;s address to {pageUrl(form.slug)}. Links
+                  to the old address stop resolving.
+                </p>
+              )}
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="page-description">
+                  Description
+                </label>
+                <textarea
+                  id="page-description"
+                  className="ui-input"
+                  rows={2}
+                  value={form.description}
+                  onChange={(event) => setField("description", event.target.value)}
+                />
+              </div>
+
+              <div className="form-group-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="page-kind">
+                    Kind
+                  </label>
+                  <select
+                    id="page-kind"
+                    className="form-select-field"
+                    value={form.kind}
+                    onChange={(event) => setField("kind", event.target.value)}
+                  >
+                    <option value="">Not set</option>
+                    {PAGE_KINDS.map((kind) => (
+                      <option key={kind} value={kind}>
+                        {kind}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="page-template">
+                    Template
+                  </label>
+                  <select
+                    id="page-template"
+                    className="form-select-field"
+                    value={form.template}
+                    onChange={(event) => setField("template", event.target.value)}
+                  >
+                    <option value="">Not set</option>
+                    {PAGE_TEMPLATES.map((template) => (
+                      <option key={template} value={template}>
+                        {template}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Collapsible SEO & Schedule Block */}
+              <details
+                style={{
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  background: "#f8fafc",
+                }}
+              >
+                <summary
+                  style={{
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    color: "#334155",
+                    outline: "none",
+                  }}
+                >
+                  SEO & Publishing Schedule (Optional)
+                </summary>
+                <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="page-seo-title">
+                        SEO title
+                      </label>
+                      <Input
+                        id="page-seo-title"
+                        type="text"
+                        value={form.seoTitle}
+                        onChange={(event) => setField("seoTitle", event.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="page-seo-canonical">
+                        SEO canonical
+                      </label>
+                      <Input
+                        id="page-seo-canonical"
+                        type="text"
+                        inputMode="url"
+                        value={form.seoCanonical}
+                        onChange={(event) => setField("seoCanonical", event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="page-seo-description">
+                      SEO description
+                    </label>
+                    <textarea
+                      id="page-seo-description"
+                      className="ui-input"
+                      rows={2}
+                      value={form.seoDescription}
+                      onChange={(event) => setField("seoDescription", event.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="page-scheduled-at">
+                        Scheduled at
+                      </label>
+                      <Input
+                        id="page-scheduled-at"
+                        type="datetime-local"
+                        value={form.scheduledAt}
+                        onChange={(event) => setField("scheduledAt", event.target.value)}
+                      />
+                      <span className="form-hint text-sm">
+                        A future moment holds the page back; it goes live on its own.
+                      </span>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="page-expired-at">
+                        Expired at
+                      </label>
+                      <Input
+                        id="page-expired-at"
+                        type="datetime-local"
+                        value={form.expiredAt}
+                        onChange={(event) => setField("expiredAt", event.target.value)}
+                      />
+                      <span className="form-hint text-sm">A past moment hides the page again.</span>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              {formError && (
+                <p role="alert" className="form-error">
+                  {formError}
+                </p>
+              )}
+
+              <div className="modal-actions-footer">
+                <Button type="submit" disabled={busy} className="submit-primary-btn">
+                  {busy ? "Saving..." : "Save"}
+                </Button>
+                <Button type="button" variant="primary" disabled={busy} onClick={handlePublish}>
+                  Publish
+                </Button>
+                <Button type="button" variant="outline" disabled={busy} onClick={handleUnpublish}>
+                  Unpublish
+                </Button>
+              </div>
+            </form>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-slug">
-              Slug *
-            </label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Input
-                id="page-slug"
-                type="text"
-                value={form.slug}
-                onChange={(event) => setField("slug", event.target.value)}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setField("slug", slugify(form.title))}
-              >
-                Regenerate from title
+          {/* Sections List Card */}
+          <div className="admin-content-card" style={{ padding: 20 }}>
+            <div className="chart-card-header" style={{ marginBottom: 16 }}>
+              <div>
+                <h4 className="chart-title">Sections</h4>
+                <p className="chart-subtitle">
+                  The order of the list is the order of the page. Saving the page saves the sections
+                  too.
+                </p>
+              </div>
+              <Button type="button" onClick={handleSaveSections} disabled={busy}>
+                Save Sections
               </Button>
             </div>
-          </div>
-        </div>
 
-        {form.slug !== form.originalSlug && (
-          <p className="form-hint" style={{ margin: 0 }}>
-            Changing the slug changes the page&apos;s address to {pageUrl(form.slug)}. Links to the
-            old address stop resolving.
-          </p>
-        )}
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="page-description">
-            Description
-          </label>
-          <textarea
-            id="page-description"
-            className="ui-input"
-            rows={3}
-            value={form.description}
-            onChange={(event) => setField("description", event.target.value)}
-          />
-        </div>
-
-        <div className="form-group-row">
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-kind">
-              Kind
-            </label>
-            <select
-              id="page-kind"
-              className="form-select-field"
-              value={form.kind}
-              onChange={(event) => setField("kind", event.target.value)}
-            >
-              <option value="">Not set</option>
-              {PAGE_KINDS.map((kind) => (
-                <option key={kind} value={kind}>
-                  {kind}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-template">
-              Template
-            </label>
-            <select
-              id="page-template"
-              className="form-select-field"
-              value={form.template}
-              onChange={(event) => setField("template", event.target.value)}
-            >
-              <option value="">Not set</option>
-              {PAGE_TEMPLATES.map((template) => (
-                <option key={template} value={template}>
-                  {template}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="form-group-row">
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-seo-title">
-              SEO title
-            </label>
-            <Input
-              id="page-seo-title"
-              type="text"
-              value={form.seoTitle}
-              onChange={(event) => setField("seoTitle", event.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-seo-canonical">
-              SEO canonical
-            </label>
-            <Input
-              id="page-seo-canonical"
-              type="text"
-              inputMode="url"
-              value={form.seoCanonical}
-              onChange={(event) => setField("seoCanonical", event.target.value)}
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label" htmlFor="page-seo-description">
-            SEO description
-          </label>
-          <textarea
-            id="page-seo-description"
-            className="ui-input"
-            rows={2}
-            value={form.seoDescription}
-            onChange={(event) => setField("seoDescription", event.target.value)}
-          />
-        </div>
-
-        <div className="form-group-row">
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-scheduled-at">
-              Scheduled at
-            </label>
-            <Input
-              id="page-scheduled-at"
-              type="datetime-local"
-              value={form.scheduledAt}
-              onChange={(event) => setField("scheduledAt", event.target.value)}
-            />
-            <span className="form-hint text-sm">
-              A future moment holds the page back; it goes live on its own.
-            </span>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label" htmlFor="page-expired-at">
-              Expired at
-            </label>
-            <Input
-              id="page-expired-at"
-              type="datetime-local"
-              value={form.expiredAt}
-              onChange={(event) => setField("expiredAt", event.target.value)}
-            />
-            <span className="form-hint text-sm">A past moment hides the page again.</span>
-          </div>
-        </div>
-
-        {formError && (
-          <p role="alert" className="form-error">
-            {formError}
-          </p>
-        )}
-
-        <div className="modal-actions-footer">
-          <Button type="submit" disabled={busy} className="submit-primary-btn">
-            {busy ? "Saving..." : "Save"}
-          </Button>
-          <Button type="button" variant="primary" disabled={busy} onClick={handlePublish}>
-            Publish
-          </Button>
-          <Button type="button" variant="outline" disabled={busy} onClick={handleUnpublish}>
-            Unpublish
-          </Button>
-        </div>
-      </form>
-
-      <div style={{ marginTop: 24, display: "grid", gap: 12 }}>
-        <div className="chart-card-header">
-          <div>
-            <h4 className="chart-title">Sections</h4>
-            <p className="chart-subtitle">
-              The order of the list is the order of the page. Saving the page saves the sections
-              too.
-            </p>
-          </div>
-          <Button type="button" onClick={handleSaveSections} disabled={busy}>
-            Save Sections
-          </Button>
-        </div>
-
-        {sectionError && (
-          <p role="alert" className="form-error">
-            {sectionError}
-          </p>
-        )}
-
-        <SectionListEditor sections={sections} onChange={setSections} />
-      </div>
-
-      {/* Embedded Live Preview Panel */}
-      {showLivePreview && (
-        <div
-          className="admin-content-card"
-          style={{
-            marginTop: 24,
-            padding: 16,
-            background: "#f8fafc",
-            border: "1.5px solid #cbd5e1",
-            borderRadius: 16,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 12,
-              marginBottom: 14,
-            }}
-          >
-            <div>
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-                Interactive Live Preview
-              </h4>
-              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
-                Previewing: {pageUrl(form?.slug || page.slug)} (Draft & published sections)
+            {sectionError && (
+              <p role="alert" className="form-error">
+                {sectionError}
               </p>
-            </div>
+            )}
 
-            {/* Viewport switch: Desktop vs Mobile */}
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <button
-                type="button"
-                onClick={() => setPreviewViewport("desktop")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  background: previewViewport === "desktop" ? "#2563eb" : "#ffffff",
-                  color: previewViewport === "desktop" ? "#ffffff" : "#475569",
-                  border: "1px solid #cbd5e1",
-                }}
-              >
-                <Monitor size={14} /> Desktop
-              </button>
-              <button
-                type="button"
-                onClick={() => setPreviewViewport("mobile")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  background: previewViewport === "mobile" ? "#2563eb" : "#ffffff",
-                  color: previewViewport === "mobile" ? "#ffffff" : "#475569",
-                  border: "1px solid #cbd5e1",
-                }}
-              >
-                <Smartphone size={14} /> Mobile (390px)
-              </button>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              background: "#0f172a",
-              borderRadius: 12,
-              padding: previewViewport === "mobile" ? "20px 0" : "0",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                width: previewViewport === "mobile" ? 390 : "100%",
-                height: 640,
-                borderRadius: previewViewport === "mobile" ? 24 : 0,
-                boxShadow: previewViewport === "mobile" ? "0 12px 36px rgba(0,0,0,0.4)" : "none",
-                overflow: "hidden",
-                border: previewViewport === "mobile" ? "4px solid #334155" : "none",
-                background: "#ffffff",
-                transition: "width 0.25s ease",
-              }}
-            >
-              <iframe
-                title="Page Live Preview"
-                key={`${form?.slug || page.slug}-${previewNonce}`}
-                src={`${pagePreviewUrl(form?.slug || page.slug)}&t=${previewNonce}`}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "none",
-                }}
-              />
-            </div>
+            <SectionListEditor sections={sections} onChange={setSections} />
           </div>
         </div>
-      )}
+
+        {/* Right Column: Sticky Interactive Live Preview Canvas */}
+        {showLivePreview && (
+          <div className="page-editor-preview-column">
+            <div className="page-editor-preview-sticky">
+              <div className="page-editor-preview-panel">
+                <div className="page-editor-preview-toolbar">
+                  <div className="page-editor-preview-title-box">
+                    <span className="page-editor-preview-badge">Live Preview</span>
+                    <span
+                      className="page-editor-preview-slug"
+                      title={pageUrl(form?.slug || page.slug)}
+                    >
+                      {pageUrl(form?.slug || page.slug)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewNonce((n) => n + 1)}
+                      title="Refresh live preview"
+                      className="page-editor-vbtn"
+                      style={{ padding: "4px 8px" }}
+                    >
+                      <RotateCw size={12} />
+                    </button>
+                  </div>
+
+                  <div className="page-editor-preview-actions">
+                    <button
+                      type="button"
+                      className={`page-editor-vbtn ${previewViewport === "desktop" ? "active" : ""}`}
+                      onClick={() => setPreviewViewport("desktop")}
+                      title="Desktop preview"
+                    >
+                      <Monitor size={13} /> Desktop
+                    </button>
+                    <button
+                      type="button"
+                      className={`page-editor-vbtn ${previewViewport === "tablet" ? "active" : ""}`}
+                      onClick={() => setPreviewViewport("tablet")}
+                      title="Tablet preview (768px)"
+                    >
+                      <Tablet size={13} /> Tablet
+                    </button>
+                    <button
+                      type="button"
+                      className={`page-editor-vbtn ${previewViewport === "mobile" ? "active" : ""}`}
+                      onClick={() => setPreviewViewport("mobile")}
+                      title="Mobile preview (390px)"
+                    >
+                      <Smartphone size={13} /> Mobile
+                    </button>
+                    <button
+                      type="button"
+                      className={`page-editor-vbtn ${previewEmbed ? "active" : ""}`}
+                      onClick={() => setPreviewEmbed((v) => !v)}
+                      title="Toggle storefront header/footer in preview canvas"
+                    >
+                      {previewEmbed ? "Page Only" : "Full Site"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="page-editor-preview-canvas">
+                  <div
+                    className={`page-editor-device-frame page-editor-device-frame--${previewViewport}`}
+                  >
+                    {previewViewport === "desktop" && (
+                      <div className="page-editor-browser-chrome">
+                        <span className="page-editor-browser-dot page-editor-browser-dot--red" />
+                        <span className="page-editor-browser-dot page-editor-browser-dot--yellow" />
+                        <span className="page-editor-browser-dot page-editor-browser-dot--green" />
+                        <span className="page-editor-browser-url">
+                          {pageUrl(form?.slug || page.slug)}
+                        </span>
+                      </div>
+                    )}
+                    {previewViewport === "mobile" && <div className="page-editor-mobile-speaker" />}
+                    <iframe
+                      title="Page Live Preview"
+                      key={`${form?.slug || page.slug}-${previewNonce}-${previewEmbed}`}
+                      src={`${pagePreviewUrl(form?.slug || page.slug)}${previewEmbed ? "&embed=1" : ""}&t=${previewNonce}`}
+                      className="page-editor-iframe"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <ConfirmDialog
         open={deleteOpen}

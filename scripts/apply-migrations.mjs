@@ -125,9 +125,9 @@ async function postgresExecutor() {
       : user;
     client = await tryConnect(directHost, userForHost);
   } catch (err) {
-    if (err.code === "ENETUNREACH" && !env.SUPABASE_DB_HOST) {
-      // Local ISP does not support IPv6 routing to direct Supabase host; fall back to IPv4 pooler
-      console.log("direct IPv6 unreachable; falling back to Supabase IPv4 connection pooler...");
+    if (["ENETUNREACH", "ENOTFOUND", "EAI_AGAIN"].includes(err.code) && !env.SUPABASE_DB_HOST) {
+      // Local DNS or routing cannot reach direct db host; fall back to Supabase IPv4 connection pooler
+      console.log(`direct host (${err.code}); falling back to Supabase IPv4 connection pooler...`);
       const poolerHost = "aws-0-ap-south-1.pooler.supabase.com";
       client = await tryConnect(poolerHost, `postgres.${projectRef}`);
     } else {

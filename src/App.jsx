@@ -102,6 +102,10 @@ function AppMain() {
   const page = currentRoute.page;
   const isStorefront = isStorefrontRoute(page);
   const isStandaloneAdmin = isStandaloneAdminView(page);
+  const isEmbed =
+    typeof window !== "undefined" &&
+    (/[?&]embed=1\b/.test(window.location.hash || "") ||
+      /[?&]embed=1\b/.test(window.location.search || ""));
 
   return (
     <div className="app">
@@ -112,7 +116,7 @@ function AppMain() {
         onLogin={() => navigateTo("login")}
       />
 
-      {!isStandaloneAdmin && (
+      {!isStandaloneAdmin && !isEmbed && (
         <div className="sticky-header-wrapper">
           <Header
             currentUser={user}

@@ -49,6 +49,14 @@ function isPreviewRequest() {
   return /[?&]preview=1\b/.test(hash) || /[?&]preview=1\b/.test(search);
 }
 
+/** True when the page is being embedded without outer site chrome. */
+function isEmbedRequest() {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+  return /[?&]embed=1\b/.test(hash) || /[?&]embed=1\b/.test(search);
+}
+
 /**
  * Flatten the category tree and give every node its full path.
  *
@@ -356,7 +364,7 @@ export default function CmsPage({ slug, onNavigate }) {
             No page matches the address <code>{slug}</code>.
           </p>
         </StateBlock>
-        <Footer />
+        {!isEmbedRequest() && <Footer />}
       </>
     );
   }
@@ -370,12 +378,13 @@ export default function CmsPage({ slug, onNavigate }) {
         >
           <p style={{ fontSize: 14, color: "#64748b" }}>{state.message}</p>
         </StateBlock>
-        <Footer />
+        {!isEmbedRequest() && <Footer />}
       </>
     );
   }
 
   const { page, sections, products, categories } = state;
+  const hideFooter = isEmbedRequest();
 
   return (
     <div id="cms-page">
@@ -391,7 +400,7 @@ export default function CmsPage({ slug, onNavigate }) {
         />
       ))}
 
-      <Footer />
+      {!hideFooter && <Footer />}
     </div>
   );
 }
