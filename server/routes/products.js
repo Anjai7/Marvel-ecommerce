@@ -5,7 +5,7 @@ import { getSignedCloudinaryUrl } from "../services/cloudinary.js";
 const router = express.Router();
 
 // Helper to format product data with signed Cloudinary CDN image URLs
-function formatProduct(p) {
+export function formatProduct(p) {
   let displayImage = p.image_url;
 
   // If product has a Cloudinary public ID, ensure a freshly signed URL is generated
@@ -63,7 +63,7 @@ const CATEGORY_COLUMNS = "id, parent_id, level, slug";
  * Load the active taxonomy once. The public category routes resolve against
  * active rows only; product filtering follows the same rule.
  */
-async function loadActiveCategories() {
+export async function loadActiveCategories() {
   const { data, error } = await supabase
     .from("categories")
     .select(CATEGORY_COLUMNS)
@@ -77,7 +77,7 @@ async function loadActiveCategories() {
  * technique `server/routes/categories.js` uses for GET /path. A bare slug is
  * never an identifier: the full ancestor path is.
  */
-function resolveCategoryPath(rows, rawPath) {
+export function resolveCategoryPath(rows, rawPath) {
   const segments = String(rawPath).split("/");
   if (segments.length === 0 || segments.length > 3 || segments.some((s) => s === "")) {
     return null;
@@ -91,7 +91,7 @@ function resolveCategoryPath(rows, rawPath) {
 }
 
 /** The resolved category plus every row below it, capped at the schema depth. */
-function collectCategoryIds(row, rows) {
+export function collectCategoryIds(row, rows) {
   const ids = [row.id];
   const seen = new Set(ids);
   let frontier = [row.id];

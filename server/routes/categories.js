@@ -10,6 +10,14 @@ import {
   ORDER_INTEGER_MESSAGE,
 } from "../lib/guards.js";
 import { validateCategory, validateDepth } from "../lib/validation.js";
+// The taxonomy resolution and the product shape are owned by the product
+// routes; the category listing reuses them instead of keeping a copy.
+import {
+  collectCategoryIds,
+  formatProduct,
+  loadActiveCategories,
+  resolveCategoryPath,
+} from "./products.js";
 
 const adminOnly = adminGuards;
 
@@ -262,6 +270,150 @@ router.get("/path", async (req, res) => {
   if (!current) return res.status(404).json(missing);
   // An exact path is an identity, so `ambiguous` is never set on this route.
   return res.json(lookupResponse(current, rows));
+});
+
+/* -------------------------------------------------------------------------- */
+/* Category listing: sort, filter, paginate                                   */
+/* -------------------------------------------------------------------------- */
+
+const LISTING_ERROR = "Could not load products.";
+
+/** A price filter: a finite number, or `null` when it is absent or unusable. */
+function parsePrice(raw) {
+  if (raw === undefined || raw === null || raw === "") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * The listing query string. `pageSize` is the only strict parameter: a
+ * non-numeric or negative value is a client error, because silently reading it
+ * as "no pagination" would show every product. `page` is forgiving and falls
+ * back to the first page.
+ */
+function parseListingQuery(query) {
+  const rawPageSize = query.pageSize;
+  let pageSize = 0;
+  if (rawPageSize !== undefined && rawPageSize !== null && rawPageSize !== "") {
+    const value = Number(rawPageSize);
+    if (!Number.isInteger(value) || value < 0) {
+      return { error: "pageSize must be a non-negative integer." };
+    }
+    pageSize = value;
+  }
+
+  const rawPage = query.page;
+  let page = 1;
+  if (rawPage !== undefined && rawPage !== null && rawPage !== "") {
+    const value = Number(rawPage);
+    if (Number.isInteger(value) && value >= 1) page = value;
+  }
+
+  return {
+    pageSize,
+    page,
+    inStock: query.inStock === "true",
+    minPrice: parsePrice(query.minPrice),
+    maxPrice: parsePrice(query.maxPrice),
+  };
+}
+
+/** The one sort per documented value; anything unknown reads as "newest". */
+function applyListingSort(query, sort) {
+  switch (sort) {
+    case "featured":
+      return query
+        .order("is_featured", { ascending: false })
+        .order("created_at", { ascending: false });
+    case "price_asc":
+      return query.order("price", { ascending: true });
+    case "price_desc":
+      return query.order("price", { ascending: false });
+    case "rating":
+      return query.order("rating", { ascending: false });
+    case "newest":
+    default:
+      return query.order("created_at", { ascending: false });
+  }
+}
+
+/** The same filters on both the page query and the count query. */
+function applyListingFilters(query, filters) {
+  let next = query.in("category_id", filters.ids);
+  if (filters.inStock) next = next.gt("stock", 0);
+  if (filters.minPrice !== null) next = next.gte("price", filters.minPrice);
+  if (filters.maxPrice !== null) next = next.lte("price", filters.maxPrice);
+  return next;
+}
+
+/**
+ * GET /api/categories/products — the products of one category, sorted,
+ * filtered and (optionally) paginated.
+ *
+ * `pageSize=0` (the default) applies no range and returns every product, so
+ * the default listing matches the plain category page exactly.
+ */
+router.get("/products", async (req, res) => {
+  const rawPath = req.query.path;
+  if (typeof rawPath !== "string") {
+    return res.status(400).json({ error: "The 'path' query parameter is required." });
+  }
+
+  const parsed = parseListingQuery(req.query);
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
+  try {
+    const loaded = await loadActiveCategories();
+    if (loaded.error) {
+      // The shared helper reports the failure as a flag, not as a message.
+      console.error("Supabase category listing taxonomy error: could not load the categories.");
+      return res.status(500).json({ error: LISTING_ERROR });
+    }
+
+    const row = resolveCategoryPath(loaded.rows, rawPath);
+    // An unknown path is not an error: the category has no products.
+    if (!row) {
+      return res.json({ items: [], total: 0, page: 1, pageSize: 0, hasMore: false });
+    }
+
+    const filters = { ...parsed, ids: collectCategoryIds(row, loaded.rows) };
+
+    let pageQuery = applyListingFilters(supabase.from("products").select("*"), filters);
+    pageQuery = applyListingSort(pageQuery, req.query.sort);
+    if (filters.pageSize > 0) {
+      pageQuery = pageQuery.range(
+        (filters.page - 1) * filters.pageSize,
+        filters.page * filters.pageSize - 1
+      );
+    }
+
+    const { data, error } = await pageQuery;
+    if (error) {
+      console.error("Supabase category listing query error:", error.message);
+      return res.status(500).json({ error: LISTING_ERROR });
+    }
+
+    const items = (data ?? []).map(formatProduct);
+
+    const countQuery = applyListingFilters(
+      supabase.from("products").select("id", { count: "exact", head: true }),
+      filters
+    );
+    const { count, error: countError } = await countQuery;
+    if (countError) {
+      console.error("Supabase category listing count error:", countError.message);
+      return res.status(500).json({ error: LISTING_ERROR });
+    }
+
+    const total = typeof count === "number" ? count : items.length;
+    const hasMore = filters.pageSize > 0 && filters.page * filters.pageSize < total;
+    return res.json({ items, total, page: filters.page, pageSize: filters.pageSize, hasMore });
+  } catch (thrown) {
+    console.error("Supabase category listing exception:", thrown.message);
+    return res.status(500).json({ error: LISTING_ERROR });
+  }
 });
 
 router.get("/slug/:slug", async (req, res) => {

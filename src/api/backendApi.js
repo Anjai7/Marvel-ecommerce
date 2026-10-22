@@ -114,6 +114,21 @@ export async function apiFetchProducts(params = {}) {
   return apiFetch(`/products${query ? `?${query}` : ""}`);
 }
 
+/**
+ * The category listing: one page of products for a category path, sorted and
+ * filtered. `pageSize` 0 (the default) returns every product, like the plain
+ * product list. Resolves `{ items, total, page, pageSize, hasMore }`.
+ */
+export async function apiFetchCategoryProducts(params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    search.set(key, String(value));
+  }
+  const query = search.toString();
+  return apiFetch(`/categories/products${query ? `?${query}` : ""}`);
+}
+
 export async function apiFetchProductById(id) {
   return apiFetch(`/products/${encodeURIComponent(id)}`);
 }

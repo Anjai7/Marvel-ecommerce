@@ -18,7 +18,13 @@ function makeDb(handlers = {}) {
   const calls = {
     tables: [],
     select: [],
+    selectOptions: [],
     eq: [],
+    in: [],
+    gt: [],
+    gte: [],
+    lte: [],
+    range: [],
     order: [],
     upsert: [],
     update: [],
@@ -29,17 +35,39 @@ function makeDb(handlers = {}) {
   mockFrom.mockReset();
   mockFrom.mockImplementation((table) => {
     calls.tables.push(table);
-    const state = { op: null, columns: null };
+    const state = { op: null, columns: null, options: null };
 
     const query = {
-      select(columns) {
+      select(columns, options) {
         if (state.op === null) state.op = "select";
         state.columns = columns;
+        state.options = options ?? null;
         calls.select.push(columns);
+        calls.selectOptions.push(options ?? null);
         return query;
       },
       eq(column, value) {
         calls.eq.push([column, value]);
+        return query;
+      },
+      in(column, values) {
+        calls.in.push([column, values]);
+        return query;
+      },
+      gt(column, value) {
+        calls.gt.push([column, value]);
+        return query;
+      },
+      gte(column, value) {
+        calls.gte.push([column, value]);
+        return query;
+      },
+      lte(column, value) {
+        calls.lte.push([column, value]);
+        return query;
+      },
+      range(from, to) {
+        calls.range.push([from, to]);
         return query;
       },
       order(column, options) {
@@ -157,6 +185,32 @@ const allCategories = [
   electronics,
   accessoriesRoot,
 ];
+
+const productAlpha = {
+  id: "prod-alpha",
+  title: "Alpha Phone",
+  price: "999.00",
+  original_price: "1299.00",
+  stock: 5,
+  rating: "4.5",
+  reviews_count: 12,
+  category_id: mobiles.id,
+  is_featured: true,
+  created_at: "2026-02-01T00:00:00.000Z",
+  image_url: "https://example.test/alpha.jpg",
+};
+const productBeta = {
+  id: "prod-beta",
+  title: "Beta Phone",
+  price: "499.00",
+  stock: 0,
+  rating: "4.1",
+  reviews_count: 3,
+  category_id: smartphones.id,
+  is_featured: false,
+  created_at: "2026-01-01T00:00:00.000Z",
+  image_url: "https://example.test/beta.jpg",
+};
 
 describe("categories API", () => {
   let server;
@@ -550,6 +604,118 @@ describe("categories API", () => {
         expect(calls.eq.map(([column]) => column)).not.toContain("is_active");
       }
     );
+  });
+
+  describe("GET /api/categories/products", () => {
+    const listingPath = "/api/categories/products?path=electronics/mobiles";
+
+    /**
+     * The listing reads the taxonomy from "categories" and the products from
+     * "products"; the count query is the one that selects with `head`.
+     */
+    const listingDb = () =>
+      makeDb({
+        select: (state, table) => {
+          if (table !== "products") return { data: allCategories, error: null };
+          if (state.options?.head) return { data: null, count: 2, error: null };
+          return { data: [productAlpha, productBeta], error: null };
+        },
+      });
+
+    it("GET /api/categories/products returns the items and the total", async () => {
+      listingDb();
+
+      const res = await get(listingPath);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.items.map((item) => item.id)).toEqual([productAlpha.id, productBeta.id]);
+      expect(body.items[0].price).toBe(999);
+      expect(body.items[0].stock).toBe(5);
+      expect(body.total).toBe(2);
+      expect(body.page).toBe(1);
+      expect(body.pageSize).toBe(0);
+      expect(body.hasMore).toBe(false);
+    });
+
+    it("GET /api/categories/products with no pageSize returns every item", async () => {
+      const calls = listingDb();
+
+      const res = await get(listingPath);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.items).toHaveLength(2);
+      expect(calls.range).toEqual([]);
+      expect(body.hasMore).toBe(false);
+    });
+
+    it("GET /api/categories/products with a pageSize sets the range", async () => {
+      const calls = listingDb();
+
+      const res = await get(`${listingPath}&pageSize=24&page=1`);
+
+      expect(res.status).toBe(200);
+      expect(calls.range).toEqual([[0, 23]]);
+      expect((await res.json()).pageSize).toBe(24);
+    });
+
+    it("GET /api/categories/products applies the requested sort", async () => {
+      const calls = listingDb();
+
+      const res = await get(`${listingPath}&sort=price_asc`);
+
+      expect(res.status).toBe(200);
+      expect(calls.order).toEqual([["price", { ascending: true }]]);
+    });
+
+    it("GET /api/categories/products filters on inStock", async () => {
+      const calls = listingDb();
+
+      const res = await get(`${listingPath}&inStock=true`);
+
+      expect(res.status).toBe(200);
+      // Once on the page query and once on the count query.
+      expect(calls.gt).toEqual([
+        ["stock", 0],
+        ["stock", 0],
+      ]);
+    });
+
+    it("GET /api/categories/products with an unknown sort falls back to newest", async () => {
+      const calls = listingDb();
+
+      const res = await get(`${listingPath}&sort=banana`);
+
+      expect(res.status).toBe(200);
+      expect(calls.order).toEqual([["created_at", { ascending: false }]]);
+    });
+
+    it("GET /api/categories/products with an unknown path returns an empty result", async () => {
+      const calls = listingDb();
+
+      const res = await get("/api/categories/products?path=ghost/ghost");
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 0,
+        hasMore: false,
+      });
+      expect(calls.tables).toEqual(["categories"]);
+    });
+
+    it("GET /api/categories/products rejects a non-numeric pageSize", async () => {
+      const calls = listingDb();
+
+      const res = await get(`${listingPath}&pageSize=many`);
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toEqual(expect.any(String));
+      expect(calls.tables).toEqual([]);
+    });
   });
 
   it("POST /api/categories rejects a null display_order instead of coercing it to 0", async () => {
