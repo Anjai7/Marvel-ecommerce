@@ -10,6 +10,7 @@ import {
 } from "../../api/contentApi";
 import ConfirmDialog from "./ConfirmDialog";
 import { ActiveToggle, cellValue, ImageField, OrderControls } from "./ContentEditorKit";
+import "./banners-editor.css";
 
 const CONTENT_EVENT = "marvel_content_updated";
 
@@ -429,21 +430,21 @@ export default function BannersEditor() {
   );
 
   return (
-    <div className="dashboard-tab-view animate-fade-in">
-      <div className="chart-card-header">
+    <div className="dashboard-tab-view banners-editor animate-fade-in">
+      <div className="chart-card-header banners-editor-header">
         <div>
           <h3 className="chart-title">Banners &amp; Promo Surfaces</h3>
           <p className="chart-subtitle">
             Home layout, promo carousel and promo strip — add, reorder, edit, or hide
           </p>
         </div>
-        <Button onClick={openCreate} className="quick-add-user-btn">
+        <Button onClick={openCreate} className="quick-add-user-btn banners-add-btn">
           <Plus size={16} />
           <span>Add Banner</span>
         </Button>
       </div>
 
-      <div role="tablist" aria-label="Banner placement" style={{ display: "flex", gap: 8 }}>
+      <div role="tablist" aria-label="Banner placement" className="banners-placement-tabs">
         {PLACEMENTS.map((option) => (
           <Button
             key={option.value}
@@ -464,8 +465,8 @@ export default function BannersEditor() {
       ) : banners.length === 0 ? (
         <p className="chart-subtitle">No banners for this placement yet. Add the first one.</p>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="editor-table">
+        <div className="table-responsive-wrapper banners-table-wrapper">
+          <table className="editor-table admin-data-table banners-table">
             <thead>
               <tr>
                 {COLUMNS[placement].map((column) => (
@@ -476,12 +477,18 @@ export default function BannersEditor() {
             </thead>
             <tbody>
               {banners.map((row, index) => (
-                <tr key={row.id} data-testid={`editor-row-${row.id}`}>
+                <tr key={row.id} data-testid={`editor-row-${row.id}`} className="banners-table-row">
                   {COLUMNS[placement].map((column) => (
-                    <td key={column}>{cellValue(row[column])}</td>
+                    <td
+                      key={column}
+                      data-label={column.replaceAll("_", " ")}
+                      className="banners-table-cell"
+                    >
+                      {cellValue(row[column])}
+                    </td>
                   ))}
-                  <td>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <td data-label="Actions" className="banners-table-cell banners-actions-cell">
+                    <div className="banners-actions-wrapper">
                       <OrderControls
                         index={index}
                         total={banners.length}
@@ -524,14 +531,14 @@ export default function BannersEditor() {
       )}
 
       {editing && (
-        <div className="modal-backdrop-overlay">
+        <div className="modal-backdrop-overlay banners-modal-overlay">
           <div
-            className="modal-content-container animate-scale-up"
+            className="modal-content-container banners-modal-container animate-scale-up"
             role="dialog"
             aria-modal="true"
             aria-label="Banner editor"
           >
-            <div className="modal-header">
+            <div className="modal-header banners-modal-header">
               <div>
                 <h3 className="modal-title">{editing.id ? "Edit Banner" : "Add Banner"}</h3>
                 <p className="modal-subtitle">Fields save to the banners API</p>
@@ -546,7 +553,7 @@ export default function BannersEditor() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="modal-form">
+            <form onSubmit={handleSave} className="modal-form banners-modal-form">
               <div className="form-group">
                 <label className="form-label" htmlFor="banner-placement">
                   Placement
@@ -673,7 +680,7 @@ export default function BannersEditor() {
                   <div className="form-group">
                     <span className="form-label">Gallery</span>
                     {(editing.gallery ?? []).map((url, index) => (
-                      <div key={`gallery-${index}`} style={{ marginBottom: 8 }}>
+                      <div key={`gallery-${index}`} className="banners-gallery-item">
                         <ImageField
                           label={`Gallery image ${index + 1}`}
                           value={url}
@@ -764,7 +771,7 @@ export default function BannersEditor() {
               <div className="form-group-row">
                 <div className="form-group">
                   <span className="form-label">Display order</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div className="banners-order-wrapper">
                     <OrderControls
                       index={formPosition}
                       total={formTotal}
@@ -792,7 +799,7 @@ export default function BannersEditor() {
                 </p>
               )}
 
-              <div className="modal-actions-footer">
+              <div className="modal-actions-footer banners-modal-footer">
                 <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                   Cancel
                 </Button>

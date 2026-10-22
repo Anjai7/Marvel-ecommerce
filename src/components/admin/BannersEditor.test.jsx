@@ -321,4 +321,28 @@ describe("BannersEditor", () => {
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Banner title is required.");
     expect(apiFetchBanners).toHaveBeenCalledTimes(1);
   });
+
+  it("renders responsive mobile data-labels on table cells and responsive layout classes", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Big Sale");
+    const row = screen.getByTestId("editor-row-b1");
+    expect(row).toHaveClass("banners-table-row");
+
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[0]).toHaveAttribute("data-label", "title");
+    expect(cells[1]).toHaveAttribute("data-label", "variant");
+    expect(cells[2]).toHaveAttribute("data-label", "display order");
+    expect(cells[3]).toHaveAttribute("data-label", "Actions");
+
+    const tablist = screen.getByRole("tablist", { name: "Banner placement" });
+    expect(tablist).toHaveClass("banners-placement-tabs");
+
+    await user.click(screen.getByRole("button", { name: "Add Banner" }));
+    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    expect(dialog).toHaveClass("banners-modal-container");
+    expect(dialog.querySelector(".banners-modal-form")).toBeInTheDocument();
+    expect(dialog.querySelector(".banners-modal-footer")).toBeInTheDocument();
+  });
 });
