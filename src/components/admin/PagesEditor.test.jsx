@@ -369,4 +369,51 @@ describe("PagesEditor", () => {
     expect(await screen.findByText("Save Failed")).toBeVisible();
     expect(broadcast).not.toHaveBeenCalled();
   });
+
+  it("shows the real status of each page", async () => {
+    renderEditor();
+
+    const rows = await screen.findAllByTestId(/^editor-row-/);
+    expect(within(rows[0]).getByText("Published")).toBeVisible();
+    expect(within(rows[1]).getByText("Draft")).toBeVisible();
+  });
+
+  it("shows an Archived page as Archived", async () => {
+    const archivedPage = {
+      ...PAGE_B,
+      id: "p-archived",
+      title: "Old Campaign",
+      slug: "old-campaign",
+      status: "archived",
+    };
+    apiFetchPages.mockResolvedValueOnce({ pages: [archivedPage] });
+    renderEditor();
+
+    const rows = await screen.findAllByTestId(/^editor-row-/);
+    expect(within(rows[0]).getByText("Old Campaign")).toBeVisible();
+    expect(within(rows[0]).getByText("Archived")).toBeVisible();
+    expect(within(rows[0]).queryByText("Published")).toBeNull();
+  });
+
+  it("publishes a page from the list", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findAllByTestId(/^editor-row-/);
+    const publishButton = screen.getByRole("button", { name: "Publish Shipping Policy" });
+    await user.click(publishButton);
+
+    await waitFor(() => expect(apiPublishPage).toHaveBeenCalledWith("p2", {}));
+  });
+
+  it("unpublishes a page from the list", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findAllByTestId(/^editor-row-/);
+    const unpublishButton = screen.getByRole("button", { name: "Unpublish Diwali Sale" });
+    await user.click(unpublishButton);
+
+    await waitFor(() => expect(apiUnpublishPage).toHaveBeenCalledWith("p1"));
+  });
 });

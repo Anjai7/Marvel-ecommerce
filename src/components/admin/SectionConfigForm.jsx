@@ -2,6 +2,8 @@ import { useId } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, Input } from "../ui";
 import { ImageField } from "./ContentEditorKit";
+import ProductPicker from "./ProductPicker";
+import CategoryPicker from "./CategoryPicker";
 import {
   SECTION_STYLE_FIELDS,
   SECTION_TYPES,
@@ -133,6 +135,16 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
     switch (rule.type) {
       case "string":
+        if (name === "source_parent_id") {
+          return (
+            <CategoryPicker
+              id={fieldId}
+              value={value || null}
+              emptyLabel="— Root (all categories) —"
+              onChange={(nextId) => update(name, nextId || "")}
+            />
+          );
+        }
         return (
           <Input
             id={fieldId}
@@ -242,52 +254,65 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
       case "uuid_list": {
         const ids = listOf(value);
-        return (
-          <div style={{ display: "grid", gap: 8 }}>
-            {ids.map((id, index) => (
-              <div key={`${fieldId}-${index}`} style={{ display: "flex", gap: 8 }}>
-                <Input
-                  type="text"
-                  aria-label={`${label} ${index + 1}`}
-                  value={textOf(id)}
-                  onChange={(event) => {
-                    const next = [...ids];
-                    next[index] = event.target.value;
-                    update(name, next);
-                  }}
-                />
+        if (name === "category_ids") {
+          return (
+            <div style={{ display: "grid", gap: 8 }}>
+              {ids.map((id, index) => (
+                <div
+                  key={`${fieldId}-${index}`}
+                  style={{ display: "flex", gap: 8, alignItems: "center" }}
+                >
+                  <CategoryPicker
+                    id={`${fieldId}-${index}`}
+                    value={id}
+                    onChange={(nextId) => {
+                      const next = [...ids];
+                      if (nextId) {
+                        next[index] = nextId;
+                      } else {
+                        next.splice(index, 1);
+                      }
+                      update(name, next);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${label} ${index + 1}`}
+                    onClick={() =>
+                      update(
+                        name,
+                        ids.filter((_, at) => at !== index)
+                      )
+                    }
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
+              ))}
+              <div>
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${label} ${index + 1}`}
-                  onClick={() =>
-                    update(
-                      name,
-                      ids.filter((_, at) => at !== index)
-                    )
-                  }
+                  variant="outline"
+                  size="sm"
+                  aria-label={`Add ${label}`}
+                  onClick={() => update(name, [...ids, ""])}
                 >
-                  <Trash2 size={15} />
+                  <Plus size={15} />
+                  <span>Add</span>
                 </Button>
               </div>
-            ))}
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label={`Add ${label}`}
-                onClick={() => update(name, [...ids, ""])}
-              >
-                <Plus size={15} />
-                <span>Add</span>
-              </Button>
             </div>
-            <span className="form-hint text-sm">
-              The id is copied from the product or category picker — it is a lowercase UUID.
-            </span>
-          </div>
+          );
+        }
+        return (
+          <ProductPicker
+            id={fieldId}
+            value={ids}
+            max={rule.max || 24}
+            onChange={(next) => update(name, next)}
+          />
         );
       }
 

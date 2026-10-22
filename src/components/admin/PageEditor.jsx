@@ -32,26 +32,8 @@ import { validateSection } from "../../../server/lib/sectionTypes.js";
 
 const CONTENT_EVENT = "marvel_content_updated";
 
-/**
- * The status label of a page, derived from its own timestamps.
- *
- * `draft` → Draft; published with a future `scheduled_at` → Scheduled;
- * published with a past `expired_at` → Expired; otherwise → Published.
- */
-export function pageStatusLabel(page, now = new Date()) {
-  const status = typeof page?.status === "string" ? page.status : "";
-  if (status === "draft") return "Draft";
-
-  if (status === "published") {
-    const at = now.getTime();
-    const scheduled = Date.parse(page?.scheduled_at ?? "");
-    if (!Number.isNaN(scheduled) && scheduled > at) return "Scheduled";
-    const expired = Date.parse(page?.expired_at ?? "");
-    if (!Number.isNaN(expired) && expired <= at) return "Expired";
-  }
-
-  return "Published";
-}
+import { pageStatusLabel } from "./pageStatus";
+export { pageStatusLabel };
 
 /** The public address of a page. */
 export const pageUrl = (slug) => `#/pages/${slug ?? ""}`;
