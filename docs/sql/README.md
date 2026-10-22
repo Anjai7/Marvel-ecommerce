@@ -39,6 +39,38 @@ outstanding, and verifies the result. It needs a DDL credential — a
 `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in `.env` are data-plane only and
 cannot run DDL.
 
+### Pending — `20261022000000_pages.sql`
+
+| Version          | File                                           | What it does                                                       |
+| ---------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| `20261022000000` | `supabase/migrations/20261022000000_pages.sql` | the `pages` and `page_sections` tables behind the CMS page builder |
+
+This migration has **not** been applied: the machine that wrote it has no DDL credential,
+so it is a hand-off only. It creates `public.pages` (one CMS page — slug, lifecycle, SEO,
+optional category binding) and `public.page_sections` (the ordered, type-tagged sections
+of a page), and adds six nullable category-configuration columns (`meta_title`,
+`meta_description`, `canonical_url`, `listing_layout`, `listing_sort`,
+`listing_page_size` — a null means "not configured").
+
+**Apply it** with `npm run db:apply` (needs a `SUPABASE_ACCESS_TOKEN` or a
+`SUPABASE_DB_PASSWORD`), or paste the whole file into the Supabase **SQL Editor**. The
+migration is additive and re-runnable: every table, column and index is created
+`if not exists` and every policy is dropped before it is created, so pasting it twice is
+harmless. It removes nothing.
+
+**Verify:**
+
+```sql
+select count(*) from public.pages;
+select status, count(*) from public.pages group by status;
+select id, type, position from public.page_sections order by page_id, position;
+```
+
+**Expected:** `pages` is empty on a fresh database; every `page_sections` row has a `type`
+in the twelve-type allowlist (`hero`, `richtext`, `image`, `gallery`, `product_grid`,
+`category_grid`, `promo_banner`, `cta`, `faq`, `video`, `category_listing`, `spacer`) and a
+dense 0-based `position` within its page.
+
 ---
 
 ## 0. Before anything: check `JWT_SECRET`
