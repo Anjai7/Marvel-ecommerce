@@ -26,6 +26,7 @@ import {
   Sparkles,
   Check,
   X,
+  Menu,
   ExternalLink,
   Copy,
   Lock,
@@ -187,6 +188,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // Time Range for Dashboard Charts
   const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d"
 
+  // Mobile drawer state
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   // Sidebar submenu expansion + per-tab sub-views. The sidebar is an accordion:
   // at most one section is open, and the open section follows the active tab.
   const [expandedMenus, setExpandedMenus] = useState({ dashboard: true });
@@ -342,6 +346,38 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     if (onOpen) onOpen();
     setActiveTab(tab);
   };
+
+  /**
+   * Closes the mobile navigation drawer whenever an action or navigation
+   * item is selected on mobile screens.
+   */
+  const handleNavSelect = (action) => {
+    action?.();
+    setMobileNavOpen(false);
+  };
+
+  // Mobile drawer keyboard dismiss (Escape) & background scroll lock
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
 
   // ----------------------------------------------------
   // PRODUCTS MANAGEMENT HANDLERS (Admin Catalog)
@@ -1002,10 +1038,23 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   return (
     <div className="admin-app-layout">
+      {/* Mobile Drawer Backdrop */}
+      {mobileNavOpen && (
+        <div
+          className="admin-sidebar-backdrop"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ==================================================== */}
       {/* 1. LEFT SIDEBAR                                      */}
       {/* ==================================================== */}
-      <aside className="admin-sidebar">
+      <aside
+        id="admin-sidebar"
+        className={`admin-sidebar ${mobileNavOpen ? "mobile-open" : ""}`}
+        aria-label="Admin Navigation"
+      >
         {/* LOGO ON LEFT TOP */}
         <div className="sidebar-brand-header">
           <div className="brand-logo-wrapper">
@@ -1024,6 +1073,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            className="admin-sidebar-close-btn"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* ALL TABS ON LEFT SIDE */}
@@ -1055,10 +1112,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-dashboard-overview"
-                onClick={() => {
-                  setActiveTab("dashboard");
-                  setDashboardView("overview");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("dashboard");
+                    setDashboardView("overview");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "overview" ? "active" : ""}`}
               >
                 <BarChart3 size={14} />
@@ -1066,10 +1125,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-dashboard-sales"
-                onClick={() => {
-                  setActiveTab("dashboard");
-                  setDashboardView("sales");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("dashboard");
+                    setDashboardView("sales");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "dashboard" && dashboardView === "sales" ? "active" : ""}`}
               >
                 <Wallet size={14} />
@@ -1102,10 +1163,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-orders-all"
-                onClick={() => {
-                  setActiveTab("orders");
-                  setOrdersView("all");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("orders");
+                    setOrdersView("all");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === "all" ? "active" : ""}`}
               >
                 <ClipboardList size={14} />
@@ -1118,10 +1181,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <button
                     key={status}
                     id={`admin-tab-orders-${status}`}
-                    onClick={() => {
-                      setActiveTab("orders");
-                      setOrdersView(status);
-                    }}
+                    onClick={() =>
+                      handleNavSelect(() => {
+                        setActiveTab("orders");
+                        setOrdersView(status);
+                      })
+                    }
                     className={`sidebar-submenu-btn ${activeTab === "orders" && ordersView === status ? "active" : ""}`}
                   >
                     <StatusIcon size={14} />
@@ -1159,10 +1224,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-products-list"
-                onClick={() => {
-                  setActiveTab("products");
-                  setProductsView("list");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("products");
+                    setProductsView("list");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
               >
                 <Package size={14} />
@@ -1171,10 +1238,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-products-add"
-                onClick={() => {
-                  setActiveTab("products");
-                  handleOpenAddProduct();
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("products");
+                    handleOpenAddProduct();
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
               >
                 <Plus size={14} />
@@ -1209,10 +1278,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-customers-all"
-                onClick={() => {
-                  setActiveTab("customers");
-                  setCustomersView("all");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("customers");
+                    setCustomersView("all");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "all" ? "active" : ""}`}
               >
                 <Users size={14} />
@@ -1220,10 +1291,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-customers-repeat"
-                onClick={() => {
-                  setActiveTab("customers");
-                  setCustomersView("repeat");
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("customers");
+                    setCustomersView("repeat");
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "customers" && customersView === "repeat" ? "active" : ""}`}
               >
                 <Repeat size={14} />
@@ -1257,10 +1330,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-users-list"
-                onClick={() => {
-                  setActiveTab("users");
-                  setShowAddUserModal(false);
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("users");
+                    setShowAddUserModal(false);
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "users" && !showAddUserModal ? "active" : ""}`}
               >
                 <Eye size={14} />
@@ -1269,10 +1344,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-users-add"
-                onClick={() => {
-                  setActiveTab("users");
-                  setShowAddUserModal(true);
-                }}
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("users");
+                    setShowAddUserModal(true);
+                  })
+                }
                 className={`sidebar-submenu-btn ${activeTab === "users" && showAddUserModal ? "active" : ""}`}
               >
                 <Plus size={14} />
@@ -1309,9 +1386,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="sidebar-submenu">
               <button
                 id="admin-tab-site-content-menus"
-                onClick={() => {
-                  setActiveTab("menus");
-                }}
+                onClick={() => handleNavSelect(() => setActiveTab("menus"))}
                 className={`sidebar-submenu-btn ${activeTab === "menus" ? "active" : ""}`}
               >
                 <Layers size={14} />
@@ -1319,9 +1394,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-site-content-hero"
-                onClick={() => {
-                  setActiveTab("hero");
-                }}
+                onClick={() => handleNavSelect(() => setActiveTab("hero"))}
                 className={`sidebar-submenu-btn ${activeTab === "hero" ? "active" : ""}`}
               >
                 <Sparkles size={14} />
@@ -1329,9 +1402,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-site-content-categories"
-                onClick={() => {
-                  setActiveTab("categories");
-                }}
+                onClick={() => handleNavSelect(() => setActiveTab("categories"))}
                 className={`sidebar-submenu-btn ${activeTab === "categories" ? "active" : ""}`}
               >
                 <Star size={14} />
@@ -1339,9 +1410,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-site-content-banners"
-                onClick={() => {
-                  setActiveTab("banners");
-                }}
+                onClick={() => handleNavSelect(() => setActiveTab("banners"))}
                 className={`sidebar-submenu-btn ${activeTab === "banners" ? "active" : ""}`}
               >
                 <Boxes size={14} />
@@ -1349,9 +1418,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
               <button
                 id="admin-tab-site-content-footer"
-                onClick={() => {
-                  setActiveTab("footer");
-                }}
+                onClick={() => handleNavSelect(() => setActiveTab("footer"))}
                 className={`sidebar-submenu-btn ${activeTab === "footer" ? "active" : ""}`}
               >
                 <ClipboardList size={14} />
@@ -1361,9 +1428,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               {false && (
                 <button
                   id="admin-tab-site-content-pages"
-                  onClick={() => {
-                    setActiveTab("pages");
-                  }}
+                  onClick={() => handleNavSelect(() => setActiveTab("pages"))}
                   className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
                 >
                   <FileText size={14} />
@@ -1377,7 +1442,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           <div className="nav-section-label">CONFIGURATION</div>
           <button
             id="admin-tab-settings"
-            onClick={() => setActiveTab("settings")}
+            onClick={() => handleNavSelect(() => setActiveTab("settings"))}
             className={`sidebar-tab-button ${activeTab === "settings" ? "active" : ""}`}
           >
             <div className="tab-icon-box">
@@ -1397,6 +1462,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             href="#/"
             className="sidebar-live-store-pinned-btn"
             title="Open customer-facing storefront in new or current tab"
+            onClick={() => setMobileNavOpen(false)}
           >
             <ExternalLink size={15} />
             <span>View Live Store</span>
@@ -1411,6 +1477,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TOP STATUS & ACTION BAR */}
         <header className="main-top-navbar">
           <div className="navbar-title-block">
+            <button
+              type="button"
+              className="admin-mobile-menu-toggle"
+              onClick={() => setMobileNavOpen((prev) => !prev)}
+              aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-expanded={mobileNavOpen}
+              aria-controls="admin-sidebar"
+            >
+              <Menu size={20} />
+            </button>
             <div className="navbar-breadcrumb">
               <span>Marvel</span>
               <ChevronRight size={14} />
