@@ -574,4 +574,75 @@ describe("UnifiedAdminConsole", () => {
       within(screen.getByRole("main")).getByRole("button", { name: "Pending (0)" })
     ).toBeVisible();
   });
+
+  it("toggles the mobile sidebar drawer, manages ARIA attributes, and closes via close button", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const toggleBtn = await screen.findByRole("button", { name: "Open navigation menu" });
+    const sidebar = screen.getByRole("complementary", { name: "Admin Navigation" });
+
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+    expect(sidebar).not.toHaveClass("mobile-open");
+
+    // Open drawer
+    await user.click(toggleBtn);
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "true");
+    expect(sidebar).toHaveClass("mobile-open");
+
+    // Close via close button in drawer header
+    const closeBtn = within(sidebar).getByRole("button", { name: "Close sidebar" });
+    await user.click(closeBtn);
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+    expect(sidebar).not.toHaveClass("mobile-open");
+  });
+
+  it("closes the mobile sidebar drawer on backdrop click and Escape key", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<UnifiedAdminConsole />);
+
+    const toggleBtn = await screen.findByRole("button", { name: "Open navigation menu" });
+    const sidebar = screen.getByRole("complementary", { name: "Admin Navigation" });
+
+    // Open drawer
+    await user.click(toggleBtn);
+    expect(sidebar).toHaveClass("mobile-open");
+
+    // Backdrop click
+    const backdrop = container.querySelector(".admin-sidebar-backdrop");
+    expect(backdrop).not.toBeNull();
+    await user.click(backdrop);
+    expect(sidebar).not.toHaveClass("mobile-open");
+
+    // Open again and close with Escape key
+    await user.click(toggleBtn);
+    expect(sidebar).toHaveClass("mobile-open");
+    await user.keyboard("{Escape}");
+    expect(sidebar).not.toHaveClass("mobile-open");
+  });
+
+  it("automatically closes the mobile sidebar drawer when a navigation sub-item or direct tab is selected", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const toggleBtn = await screen.findByRole("button", { name: "Open navigation menu" });
+    const sidebar = screen.getByRole("complementary", { name: "Admin Navigation" });
+    const nav = within(sidebar).getByRole("navigation");
+
+    // Open drawer
+    await user.click(toggleBtn);
+    expect(sidebar).toHaveClass("mobile-open");
+
+    // Selecting a submenu item (e.g., Sales Report) closes the drawer
+    const salesReportBtn = within(nav).getByRole("button", { name: "Sales Report" });
+    await user.click(salesReportBtn);
+    expect(sidebar).not.toHaveClass("mobile-open");
+
+    // Open drawer again and select Settings tab
+    await user.click(toggleBtn);
+    expect(sidebar).toHaveClass("mobile-open");
+    const settingsBtn = within(nav).getByRole("button", { name: /Settings Store/ });
+    await user.click(settingsBtn);
+    expect(sidebar).not.toHaveClass("mobile-open");
+  });
 });
