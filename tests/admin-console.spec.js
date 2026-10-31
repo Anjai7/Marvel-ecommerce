@@ -47,4 +47,21 @@ test.describe("admin console", () => {
     await expect(page.getByRole("heading", { name: "Pages", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "New page" })).toBeVisible();
   });
+
+  test("mobile side panel opens as drawer and navigates smoothly", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const toggle = page.getByRole("button", { name: "Open navigation menu" });
+    await expect(toggle).toBeVisible();
+
+    const sidebar = page.locator("#admin-sidebar");
+    await expect(sidebar).not.toHaveClass(/mobile-open/);
+
+    await toggle.click();
+    await expect(sidebar).toHaveClass(/mobile-open/);
+
+    // Clicking an item closes drawer and navigates
+    await page.locator("#admin-tab-dashboard-sales").click();
+    await expect(sidebar).not.toHaveClass(/mobile-open/);
+    await expect(page.getByText("Today Orders")).toBeVisible();
+  });
 });
