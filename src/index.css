@@ -7289,7 +7289,7 @@ input:focus:not(:focus-visible) {
   min-width: 0;
   height: 100vh;
   max-height: 100vh;
-  padding: 28px 36px;
+  padding: 0 36px 28px 36px;
   overflow-y: auto;
   overflow-x: hidden;
   background-color: #f8fafc;
@@ -7297,14 +7297,23 @@ input:focus:not(:focus-visible) {
 
 /* Main Top Navbar */
 .main-top-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(248, 250, 252, 0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-left: -36px;
+  margin-right: -36px;
+  padding: 18px 36px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e2e8f0;
   flex-wrap: wrap;
   gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .navbar-title-block {

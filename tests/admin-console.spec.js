@@ -64,4 +64,23 @@ test.describe("admin console", () => {
     await expect(sidebar).not.toHaveClass(/mobile-open/);
     await expect(page.getByText("Today Orders")).toBeVisible();
   });
+
+  test("main top navbar remains fixed and sticky when scrolling the viewport", async ({ page }) => {
+    const navbar = page.locator(".main-top-navbar");
+    await expect(navbar).toBeVisible();
+
+    const initialBox = await navbar.boundingBox();
+    expect(initialBox).not.toBeNull();
+    expect(initialBox.y).toBe(0);
+
+    // Scroll down inside the admin-main-viewport
+    await page.locator(".admin-main-viewport").evaluate((el) => el.scrollTo({ top: 400 }));
+    await page.waitForTimeout(100);
+
+    const scrolledBox = await navbar.boundingBox();
+    expect(scrolledBox).not.toBeNull();
+    // Navbar y position remains 0 (fixed/sticky at top)
+    expect(scrolledBox.y).toBe(0);
+    await expect(navbar).toBeVisible();
+  });
 });
