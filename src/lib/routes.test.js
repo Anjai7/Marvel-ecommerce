@@ -102,6 +102,21 @@ describe("routes module", () => {
       }
     });
 
+    it("rewrites /login#/admin to /#/admin to prevent pathname collision after login", () => {
+      const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+      const pathnameSpy = vi.spyOn(window.location, "pathname", "get").mockReturnValue("/login");
+      const hashSpy = vi.spyOn(window.location, "hash", "get").mockReturnValue("#/admin");
+      try {
+        const route = getHashRoute();
+        expect(route).toMatchObject({ page: "admin" });
+        expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/#/admin");
+      } finally {
+        pathnameSpy.mockRestore();
+        hashSpy.mockRestore();
+        replaceStateSpy.mockRestore();
+      }
+    });
+
     it("navigateToPath updates browser history or hash cleanly", () => {
       const pushSpy = vi.spyOn(window.history, "pushState");
       try {

@@ -81,6 +81,23 @@ export function getHashRoute(hashOverride) {
       } catch {}
       return { page: "login", id: null, path: null, full: "login" };
     }
+
+    // If browser is at /login#/something (e.g. /login#/admin after auth redirect), strip lingering /login
+    const pathname = window.location.pathname || "";
+    if (pathname === "/login" || pathname === "/login/") {
+      if (
+        rawHash &&
+        rawHash !== "#/login" &&
+        rawHash !== "#login" &&
+        !rawHash.startsWith("#/login?")
+      ) {
+        try {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, "", `/${rawHash}`);
+          }
+        } catch {}
+      }
+    }
   }
 
   // If hashOverride was passed as a clean path (e.g. "/login"), handle it directly

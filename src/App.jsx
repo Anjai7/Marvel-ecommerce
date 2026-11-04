@@ -111,10 +111,24 @@ function AppMain() {
       return;
     }
 
-    // For other routes (e.g. cart, products), use hash navigation to maintain compatibility
+    // For other routes (e.g. cart, products, admin), use hash navigation to maintain compatibility
     const path = clean.startsWith("#") ? clean.replace(/^#\/?/, "") : clean.replace(/^\/+/, "");
     if (typeof window !== "undefined") {
-      window.location.hash = `#/${path}`;
+      const targetHash = path ? `#/${path}` : "#/";
+      // If currently on /login (or any non-root pathname), navigating to a hash route must reset pathname to /
+      // so the browser address bar displays /#/admin instead of /login#/admin
+      if (window.location.pathname && window.location.pathname !== "/") {
+        try {
+          if (window.history && window.history.pushState) {
+            window.history.pushState({ route: path }, "", `/${targetHash}`);
+            const newRoute = getHashRoute();
+            setCurrentRoute(newRoute);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
+        } catch {}
+      }
+      window.location.hash = targetHash;
       const newRoute = getHashRoute();
       setCurrentRoute(newRoute);
       window.scrollTo({ top: 0, behavior: "smooth" });
