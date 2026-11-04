@@ -61,11 +61,6 @@ function AppMain() {
   useEffect(() => {
     const handleRouteChange = () => {
       const newRoute = getHashRoute();
-      if (newRoute.page === "login" && typeof window !== "undefined" && window.location.hash) {
-        try {
-          window.history.replaceState(null, "", "/login");
-        } catch {}
-      }
       setCurrentRoute(newRoute);
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
@@ -81,57 +76,23 @@ function AppMain() {
   const navigateTo = (route, role = "user") => {
     if (route === "login") setLoginDefaultRole(role);
     const clean = String(route ?? "").trim();
-    const isLogin = clean === "login" || clean === "/login" || clean === "#/login";
-    const isHome = clean === "" || clean === "/" || clean === "#/" || clean === "#";
+    const path = clean.startsWith("#") ? clean.replace(/^#\/?/, "") : clean.replace(/^\/+/, "");
+    const targetPath = path ? `/${path}` : "/";
 
-    if (isLogin) {
-      if (typeof window !== "undefined") {
-        if (window.history?.pushState) {
-          window.history.pushState({ route: "login" }, "", "/login");
-        }
+    if (typeof window !== "undefined") {
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ route: path }, "", targetPath);
         if (window.location.hash) {
           try {
-            window.history.replaceState(null, "", "/login");
+            window.history.replaceState({ route: path }, "", targetPath);
           } catch {}
         }
-        setCurrentRoute({ page: "login", categoryPath: null });
+        const newRoute = getHashRoute();
+        setCurrentRoute(newRoute);
         window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
       }
-      return;
-    }
-
-    if (isHome) {
-      if (typeof window !== "undefined") {
-        if (window.history?.pushState) {
-          window.history.pushState({ route: "" }, "", "/");
-        }
-        setCurrentRoute({ page: "home", categoryPath: null });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      return;
-    }
-
-    // For other routes (e.g. cart, products, admin), use hash navigation to maintain compatibility
-    const path = clean.startsWith("#") ? clean.replace(/^#\/?/, "") : clean.replace(/^\/+/, "");
-    if (typeof window !== "undefined") {
-      const targetHash = path ? `#/${path}` : "#/";
-      // If currently on /login (or any non-root pathname), navigating to a hash route must reset pathname to /
-      // so the browser address bar displays /#/admin instead of /login#/admin
-      if (window.location.pathname && window.location.pathname !== "/") {
-        try {
-          if (window.history && window.history.pushState) {
-            window.history.pushState({ route: path }, "", `/${targetHash}`);
-            const newRoute = getHashRoute();
-            setCurrentRoute(newRoute);
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            return;
-          }
-        } catch {}
-      }
-      window.location.hash = targetHash;
-      const newRoute = getHashRoute();
-      setCurrentRoute(newRoute);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.location.pathname = targetPath;
     }
   };
 

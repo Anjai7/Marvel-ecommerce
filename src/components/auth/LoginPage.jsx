@@ -17,6 +17,7 @@ import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
+import { navigateToPath } from "../../lib/routes";
 
 export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
   const [email, setEmail] = useState("");
@@ -62,10 +63,10 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
         onLoginSuccess(user);
       } else {
         // Automatically route to user's authorized workspace based on database role
-        if (user.role === "vendor") window.location.hash = "#/vendor";
-        else if (user.role === "admin") window.location.hash = "#/admin";
-        else if (user.role === "super_admin") window.location.hash = "#/super-admin";
-        else window.location.hash = "#/";
+        if (user.role === "vendor") navigateToPath("/vendor");
+        else if (user.role === "admin") navigateToPath("/admin");
+        else if (user.role === "super_admin") navigateToPath("/super-admin");
+        else navigateToPath("/");
       }
     } catch (err) {
       // Generic error message - zero metadata disclosure
@@ -530,7 +531,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                 type="button"
                 onClick={() => {
                   if (onNavigateSignUp) onNavigateSignUp();
-                  else window.location.hash = "#/signup";
+                  else navigateToPath("/signup");
                 }}
                 style={{
                   background: "none",

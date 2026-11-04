@@ -167,9 +167,9 @@ describe("PagesEditor", () => {
     renderEditor();
 
     const rows = await screen.findAllByTestId(/^editor-row-/);
-    expect(within(rows[0]).getByText("#/pages/diwali-sale")).toBeVisible();
+    expect(within(rows[0]).getByText("/pages/diwali-sale")).toBeVisible();
     // A draft has no public address to show.
-    expect(within(rows[1]).queryByText("#/pages/shipping-policy")).toBeNull();
+    expect(within(rows[1]).queryByText("/pages/shipping-policy")).toBeNull();
   });
 
   it("the New page action creates a draft and opens the editor", async () => {

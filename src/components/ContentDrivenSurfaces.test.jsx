@@ -291,8 +291,8 @@ describe("storefront surfaces read the content context", () => {
 
     await user.click(screen.getByRole("button", { name: /Shop the sale/ }));
 
-    // A stored link is a hash route; a bare path is normalised into one (§4.1).
-    expect(onNavigate).toHaveBeenCalledWith("#/category/electronics");
+    // A stored link is a clean route without hash.
+    expect(onNavigate).toHaveBeenCalledWith("/category/electronics");
   });
 
   it("renders only homepage categories and navigates to the full category path", async () => {
@@ -305,7 +305,7 @@ describe("storefront surfaces read the content context", () => {
     expect(screen.queryByText("Hidden Category")).toBeNull();
 
     await user.click(screen.getByRole("button", { name: /Electronics/ }));
-    expect(window.location.hash).toBe("#/category/electronics");
+    expect(window.location.pathname).toBe("/category/electronics");
   });
 
   it("joins level-2 and level-3 ancestors from the tree so the click cannot collapse to a slug", async () => {
@@ -313,10 +313,10 @@ describe("storefront surfaces read the content context", () => {
     render(<CategorySlider />);
 
     await user.click(screen.getByRole("button", { name: /Mobiles/ }));
-    expect(window.location.hash).toBe("#/category/electronics/mobiles");
+    expect(window.location.pathname).toBe("/category/electronics/mobiles");
 
     await user.click(screen.getByRole("button", { name: /Smartphones/ }));
-    expect(window.location.hash).toBe("#/category/electronics/mobiles/smartphones");
+    expect(window.location.pathname).toBe("/category/electronics/mobiles/smartphones");
   });
 
   it("renders one large and two small home_banner_layout banners", () => {
@@ -381,9 +381,8 @@ describe("storefront surfaces read the content context", () => {
     expect(screen.queryByText("Popular Searches:")).toBeNull();
   });
 
-  it("normalises a stored footer link into a hash route", () => {
-    // A bare path is not a route in this hash-routed app: it would cause a full
-    // page load and a 404, so the Footer renders it as `#/…`.
+  it("normalises a stored footer link into a clean route", () => {
+    // A stored link is rendered as a clean in-app path.
     content.value = contentValue({
       footer: {
         sections: [
@@ -400,7 +399,7 @@ describe("storefront surfaces read the content context", () => {
     render(<Footer />);
 
     const link = screen.getByText("Track My Order").closest("a");
-    expect(link).toHaveAttribute("href", "#/help");
+    expect(link).toHaveAttribute("href", "/help");
   });
 
   it("renders the value props, social block, payment chips and copyright from the settings context", () => {

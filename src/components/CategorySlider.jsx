@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useContent } from "../context/ContentContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { navigateToPath } from "../lib/routes";
 
 /** Find a category's full ancestor path by walking the nested tree. */
 function pathInTree(nodes, id, trail = []) {
@@ -43,9 +44,8 @@ export default function CategorySlider({ onNavigate }) {
     if (!category.path) return;
     setActiveCat(category.name);
     const target = `/category/${category.path}`;
-    // The callback takes router paths, while a bare hash assignment needs `#`.
     if (onNavigate) onNavigate(target);
-    else window.location.hash = `#${target}`;
+    else navigateToPath(target);
   };
 
   return (

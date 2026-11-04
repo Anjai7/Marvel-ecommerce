@@ -124,6 +124,6 @@ test("header cart badge reflects the real cart and links to the cart page", asyn
   await expect(page.locator(".cart-badge")).toHaveText("3");
   await page.locator("#cart-btn").click();
   await page.getByRole("button", { name: "View Cart" }).click();
-  await expect(page).toHaveURL(/#\/cart/);
+  await expect(page).toHaveURL(/(#\/|\/)cart/);
   await expect(page.getByRole("heading", { name: "Your Cart" })).toBeVisible();
 });

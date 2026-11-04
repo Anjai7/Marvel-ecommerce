@@ -244,7 +244,7 @@ describe("FooterEditor", () => {
     });
   });
 
-  it("steers admins to hash routes in the href hint", async () => {
+  it("steers admins to clean routes in the href hint", async () => {
     const user = userEvent.setup();
     renderEditor();
 
@@ -252,7 +252,7 @@ describe("FooterEditor", () => {
     await user.click(screen.getByRole("button", { name: "Edit link Help Center" }));
 
     const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
-    expect(within(dialog).getByText(/#\/category\/electronics/)).toBeVisible();
+    expect(within(dialog).getByText(/\/category\/electronics/)).toBeVisible();
     expect(within(dialog).getByText(/leaves the app/i)).toBeVisible();
   });
 

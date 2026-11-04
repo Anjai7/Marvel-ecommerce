@@ -795,8 +795,8 @@ export default function FooterEditor() {
                       onChange={(event) => setField("href", event.target.value)}
                     />
                     <p className="form-hint">
-                      Use a hash route such as <code>#/category/electronics</code>, or an https URL.
-                      A bare path like <code>/help</code> leaves the app and will not resolve.
+                      Use a route such as <code>/category/electronics</code>, or an https URL. A
+                      bare path like <code>/help</code> leaves the app and will not resolve.
                     </p>
                   </div>
                 </>

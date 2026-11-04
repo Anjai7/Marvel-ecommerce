@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Clock, Search, X, ArrowRight } from "lucide-react";
 import { toAppHref } from "../ui/linkTarget";
+import { navigateToPath } from "../../lib/routes";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
 
@@ -56,7 +57,7 @@ export default function RecentSearchesSection({ onNavigate, onSearchSelect }) {
     } else if (onNavigate) {
       onNavigate(toAppHref(`/products?search=${encodeURIComponent(term)}`));
     } else if (typeof window !== "undefined") {
-      window.location.hash = `#/products?search=${encodeURIComponent(term)}`;
+      navigateToPath(`/products?search=${encodeURIComponent(term)}`);
     }
   };
 

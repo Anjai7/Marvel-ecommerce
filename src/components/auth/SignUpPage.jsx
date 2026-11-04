@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
+import { navigateToPath } from "../../lib/routes";
 
 export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
   const [role, setRole] = useState("user"); // Strictly "user" or "vendor"
@@ -70,8 +71,8 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
       if (onSignUpSuccess) {
         onSignUpSuccess(newUser);
       } else {
-        if (newUser.role === "vendor") window.location.hash = "#/vendor";
-        else window.location.hash = "#/";
+        if (newUser.role === "vendor") navigateToPath("/vendor");
+        else navigateToPath("/");
       }
     } catch (err) {
       setErrorMsg(err.message || "Failed to create account. Please try again.");

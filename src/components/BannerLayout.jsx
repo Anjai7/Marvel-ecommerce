@@ -3,12 +3,13 @@ import { Button, Badge } from "./ui";
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { toAppHref } from "./ui/linkTarget";
+import { navigateToPath } from "../lib/routes";
 
-/** cta_path is a hash route or an absolute https URL (§4.1). */
+/** cta_path is a site route or an absolute https URL. */
 function followCta(path) {
   if (!path) return;
   if (/^https:\/\//.test(path)) window.location.href = path;
-  else window.location.hash = toAppHref(path);
+  else navigateToPath(toAppHref(path));
 }
 
 function imageOf(banner) {

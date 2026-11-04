@@ -4,6 +4,7 @@ import { useSettings } from "../context/SettingsContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
+import { navigateToPath } from "../lib/routes";
 
 /** Map a DB hero_slides row to the render shape used by the carousel. */
 function toRenderSlide(row) {
@@ -102,7 +103,7 @@ export default function HeroBanner({ onNavigate }) {
     setTouchStart(null);
   };
 
-  /** btn_path is a hash route or an absolute https URL (§4.1). */
+  /** btn_path is a site route or an absolute https URL. */
   const followCta = (path) => {
     if (!path) return;
     // An external URL never belongs on the in-app router.
@@ -114,7 +115,7 @@ export default function HeroBanner({ onNavigate }) {
       onNavigate(toAppHref(path));
       return;
     }
-    window.location.hash = toAppHref(path);
+    navigateToPath(toAppHref(path));
   };
 
   return (

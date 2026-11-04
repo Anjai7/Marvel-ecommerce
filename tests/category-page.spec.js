@@ -167,27 +167,27 @@ test.describe("category landing page", () => {
 
   test("a subcategory chip navigates to the child's full ancestor path", async ({ page }) => {
     await stubContent(page);
-    await page.goto("/#/category/electronics/accessories");
+    await page.goto("/category/electronics/accessories");
 
     await page.getByRole("button", { name: /Watches/ }).click();
 
-    await expect(page).toHaveURL(/#\/category\/electronics\/accessories\/watches$/);
+    await expect(page).toHaveURL(/(#\/|\/)category\/electronics\/accessories\/watches$/);
   });
 
   test("the product grid renders the products for that category", async ({ page }) => {
     await stubContent(page);
-    await page.goto("/#/category/electronics/accessories");
+    await page.goto("/category/electronics/accessories");
 
     await expect(page.getByText("Braided Cable")).toBeVisible();
   });
 
   test("an unknown path shows the not-found state, not the homepage", async ({ page }) => {
     await stubContent(page);
-    await page.goto("/#/category/electronics/nope");
+    await page.goto("/category/electronics/nope");
 
     await expect(page.getByText("Category not found.")).toBeVisible();
     // It must not have bounced back to the storefront.
-    await expect(page).toHaveURL(/#\/category\/electronics\/nope$/);
+    await expect(page).toHaveURL(/(#\/|\/)category\/electronics\/nope$/);
   });
 
   test("a navigation link to a category path lands on the category page", async ({ page }) => {
@@ -236,7 +236,7 @@ test.describe("category landing page", () => {
       .getByRole("menuitem", { name: /Accessories/ })
       .click();
 
-    await expect(page).toHaveURL(/#\/category\/electronics\/accessories$/);
+    await expect(page).toHaveURL(/(#\/|\/)category\/electronics\/accessories$/);
     await expect(page.getByText("Accessories under Electronics.")).toBeVisible();
   });
 });

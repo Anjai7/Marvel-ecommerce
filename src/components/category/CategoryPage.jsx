@@ -7,6 +7,7 @@ import { apiFetchCategoryPage, normalisePagePayload } from "../../api/pagesApi";
 import { SectionRenderer } from "../../content/SectionRenderer";
 import CategoryListing from "./CategoryListing";
 import SeoHead from "../pages/SeoHead";
+import { navigateToPath } from "../../lib/routes";
 
 /**
  * The category page: the category's own content, the custom page an editor
@@ -261,13 +262,13 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
 
   const goHome = () => {
     if (onNavigate) onNavigate("");
-    else window.location.hash = "#/";
+    else navigateToPath("/");
   };
 
   const openChild = (child) => {
     const childPath = `${path}/${child.slug}`.replace(/^\/+/, "");
     if (onNavigate) onNavigate(`/category/${childPath}`);
-    else window.location.hash = `#/category/${childPath}`;
+    else navigateToPath(`/category/${childPath}`);
   };
 
   if (resolution.status === "loading") {

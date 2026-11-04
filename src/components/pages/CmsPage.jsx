@@ -6,6 +6,7 @@ import { apiFetchPageBySlug, apiFetchPageVersion, normalisePagePayload } from ".
 import { apiFetchProducts } from "../../api/backendApi";
 import { apiFetchCategoryTree } from "../../api/contentApi";
 import SeoHead from "./SeoHead";
+import { navigateToPath } from "../../lib/routes";
 
 /**
  * The public CMS page: one slug, one page, its sections and the footer.
@@ -210,7 +211,7 @@ export default function CmsPage({ slug, onNavigate }) {
 
   const goHome = () => {
     if (onNavigate) onNavigate("");
-    else if (typeof window !== "undefined") window.location.hash = "#/";
+    else if (typeof window !== "undefined") navigateToPath("/");
   };
 
   const lastUpdatedAtRef = useRef(null);

@@ -204,7 +204,7 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
               onChange={(event) => update(name, event.target.value)}
             />
             <span className="form-hint text-sm">
-              Hash routes are accepted — #/category/electronics, #/products.
+              Site routes are accepted — /category/electronics, /products.
             </span>
           </div>
         );

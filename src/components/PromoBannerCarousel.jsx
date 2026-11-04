@@ -3,12 +3,13 @@ import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
+import { navigateToPath } from "../lib/routes";
 
-/** cta_path is a hash route or an absolute https URL (§4.1). */
+/** cta_path is a site route or an absolute https URL. */
 function followCta(path) {
   if (!path) return;
   if (/^https:\/\//.test(path)) window.location.href = path;
-  else window.location.hash = toAppHref(path);
+  else navigateToPath(toAppHref(path));
 }
 
 /** A real countdown from `ends_at`; a banner without one gets no timer at all. */

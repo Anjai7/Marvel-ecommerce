@@ -45,10 +45,10 @@ import { pageStatusLabel } from "./pageStatus";
 export { pageStatusLabel };
 
 /** The public address of a page. */
-export const pageUrl = (slug) => `#/pages/${slug ?? ""}`;
+export const pageUrl = (slug) => `/pages/${slug ?? ""}`;
 
 /** The preview address of a page — the draft, revealed to an admin. */
-const pagePreviewUrl = (slug) => `#/pages/${slug ?? ""}?preview=1`;
+const pagePreviewUrl = (slug) => `/pages/${slug ?? ""}?preview=1`;
 
 /** An ISO timestamp, or null for anything that is not a date. */
 function toIso(value) {

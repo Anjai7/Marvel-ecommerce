@@ -48,11 +48,12 @@ export function parseRouteSegments(raw) {
 }
 
 /**
- * Real hash routing & clean browser path routing. `#/product/:id` keeps its single id; `category/*` carries
+ * Clean browser path routing & backward-compatible hash route parser.
+ * `#/product/:id` or `/product/:id` keeps its single id; `category/*` carries
  * the whole ancestor path because slugs are unique only per parent, so the
  * last segment alone cannot identify a category.
  *
- * @param {string} [hashOverride] - Optional hash or path string (defaults to window.location.hash)
+ * @param {string} [hashOverride] - Optional hash or path string (defaults to browser location)
  */
 export function getHashRoute(hashOverride) {
   let hash = "";
@@ -64,7 +65,7 @@ export function getHashRoute(hashOverride) {
     hash = window.location.hash || "";
   }
 
-  // If user arrives with #/login in URL, immediately strip the hash and replace address with clean /login
+  // 1. If user arrives with #/login in URL, immediately strip the hash and replace address with clean /login
   if (!isOverride && typeof window !== "undefined") {
     const rawHash = window.location.hash || "";
     if (
@@ -82,7 +83,7 @@ export function getHashRoute(hashOverride) {
       return { page: "login", id: null, path: null, full: "login" };
     }
 
-    // If browser is at /login#/something (e.g. /login#/admin after auth redirect), strip lingering /login
+    // 2. If pathname is /login and hash is present (e.g. /login#/admin), rewrite to clean route /admin
     const pathname = window.location.pathname || "";
     if (pathname === "/login" || pathname === "/login/") {
       if (
@@ -91,16 +92,19 @@ export function getHashRoute(hashOverride) {
         rawHash !== "#login" &&
         !rawHash.startsWith("#/login?")
       ) {
+        const cleanFromHash = rawHash.replace(/^#\/?/, "").trim();
+        const cleanPath = cleanFromHash ? `/${cleanFromHash}` : "/";
         try {
           if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, "", `/${rawHash}`);
+            window.history.replaceState(null, "", cleanPath);
           }
         } catch {}
+        return parseRouteSegments(cleanFromHash);
       }
     }
   }
 
-  // If hashOverride was passed as a clean path (e.g. "/login"), handle it directly
+  // If hashOverride was passed as a clean path (e.g. "/login", "/admin"), handle it directly
   if (isOverride && hash && !hash.startsWith("#")) {
     const rawClean = hash.replace(/^\/+|\/+$/g, "").trim();
     if (!rawClean) return { page: "home", id: null, path: null, full: "" };
@@ -111,14 +115,7 @@ export function getHashRoute(hashOverride) {
 
   const raw = hash.replace(/^#\/?/, "").trim();
   if (!raw) {
-    // A clean path is a real page URL: the sitemap and the canonical URL both
-    // point at `/pages/<slug>`, so the router understands it as well as the
-    // hash form. Without a hash and without a page path, this is the home
-    // page.
-    //
-    // The fallback applies only when there is **no hash at all** (hash === ""). An explicit
-    // `#/` is a navigation to the home page, and it has to win over the clean
-    // path — otherwise a visitor on `/pages/sale` could never leave.
+    // When there is no hash, resolve from window.location.pathname
     if (hash === "") {
       const pathname = typeof window !== "undefined" ? window.location.pathname : "";
       const slug = pageSlugFromPath(pathname);
@@ -135,10 +132,12 @@ export function getHashRoute(hashOverride) {
   return parseRouteSegments(raw);
 }
 
+export const getAppRoute = getHashRoute;
+
 /**
- * Clean path navigation supporting browser history alongside hash routes.
+ * Clean path navigation using the HTML5 browser History API.
  *
- * @param {string} target - Internal route or path, e.g. "login", "/login", or "#/login"
+ * @param {string} target - Internal route or path, e.g. "login", "/login", or "admin"
  */
 export function navigateToPath(target) {
   if (typeof window === "undefined") return;
@@ -163,12 +162,7 @@ export function navigateToPath(target) {
     // fallback if pushState throws or is restricted
   }
 
-  if (path === "login") {
-    window.location.pathname = "/login";
-    return;
-  }
-
-  window.location.hash = path ? `#/${path}` : "#/";
+  window.location.pathname = fullPath;
 }
 
 /**
