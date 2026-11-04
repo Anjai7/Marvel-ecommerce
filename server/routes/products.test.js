@@ -355,6 +355,8 @@ describe("products API category binding", () => {
     const res = await send("POST", "/api/products", {
       title: "Aurora Phone",
       price: 49999,
+      description: "Flagship phone",
+      image_url: "https://example.com/phone.jpg",
       category_id: mobiles.id,
     });
 
@@ -366,6 +368,8 @@ describe("products API category binding", () => {
       title: "Aurora Phone",
       category: "Mobiles",
       category_id: mobiles.id,
+      description: "Flagship phone",
+      image_url: "https://example.com/phone.jpg",
     });
   });
 
@@ -378,6 +382,8 @@ describe("products API category binding", () => {
     const res = await send("POST", "/api/products", {
       title: "Aurora Phone",
       price: 49999,
+      description: "Flagship phone",
+      image_url: "https://example.com/phone.jpg",
       category: "Phones",
       category_id: mobiles.id,
     });
@@ -392,12 +398,89 @@ describe("products API category binding", () => {
     const res = await send("POST", "/api/products", {
       title: "Aurora Phone",
       price: 49999,
+      description: "Flagship phone",
+      image_url: "https://example.com/phone.jpg",
       category_id: "ghost-category",
     });
 
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Category not found." });
     expect(calls.insert).toEqual([]);
+  });
+
+  it("POST /api/products validates mandatory title, price, description, and image_url", async () => {
+    const calls = makeDb({});
+
+    // Missing description
+    let res = await send("POST", "/api/products", {
+      title: "Aurora Phone",
+      price: 49999,
+      image_url: "https://example.com/phone.jpg",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product description is required." });
+
+    // Empty description after trim
+    res = await send("POST", "/api/products", {
+      title: "Aurora Phone",
+      price: 49999,
+      description: "   ",
+      image_url: "https://example.com/phone.jpg",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product description is required." });
+
+    // Missing image_url
+    res = await send("POST", "/api/products", {
+      title: "Aurora Phone",
+      price: 49999,
+      description: "Flagship phone",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product image is required." });
+
+    // Empty image_url after trim
+    res = await send("POST", "/api/products", {
+      title: "Aurora Phone",
+      price: 49999,
+      description: "Flagship phone",
+      image_url: "   ",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product image is required." });
+
+    // Missing title
+    res = await send("POST", "/api/products", {
+      price: 49999,
+      description: "Flagship phone",
+      image_url: "https://example.com/phone.jpg",
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product title and price are required." });
+
+    expect(calls.insert).toEqual([]);
+  });
+
+  it("PUT /api/products/:id validates that title, price, description, image_url cannot be set to empty", async () => {
+    const calls = makeDb({});
+
+    let res = await send("PUT", "/api/products/prod-1", { title: "   " });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product title cannot be empty." });
+
+    res = await send("PUT", "/api/products/prod-1", { price: "" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product price cannot be empty." });
+
+    res = await send("PUT", "/api/products/prod-1", { description: "   " });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product description cannot be empty." });
+
+    res = await send("PUT", "/api/products/prod-1", { image_url: "   " });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Product image cannot be empty." });
+
+    expect(calls.update).toEqual([]);
   });
 
   it("PUT /api/products/:id fills category from category_id when no label is sent", async () => {

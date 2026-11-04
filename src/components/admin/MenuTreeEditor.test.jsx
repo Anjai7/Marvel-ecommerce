@@ -782,4 +782,79 @@ describe("MenuTreeEditor", () => {
       });
     });
   });
+
+  describe("search and pagination", () => {
+    it("filters menu items by title and preserves 3-level hierarchy", async () => {
+      const user = userEvent.setup();
+      renderEditor();
+
+      await screen.findByText("Shop");
+      expect(screen.getByText("Deals")).toBeVisible();
+
+      const searchInput = screen.getByRole("searchbox", { name: "Search menu items" });
+      await user.type(searchInput, "Phones");
+
+      // Grandchild matches: Shop and Electronics are kept as ancestors
+      expect(screen.getByText("Shop")).toBeVisible();
+      expect(screen.getByText("Electronics")).toBeVisible();
+      expect(screen.getByText("Phones")).toBeVisible();
+      // Deals does not match and should be hidden
+      expect(screen.queryByText("Deals")).not.toBeInTheDocument();
+
+      // Clear search
+      await user.click(screen.getByRole("button", { name: "Clear search" }));
+      expect(await screen.findByText("Deals")).toBeVisible();
+    });
+
+    it("shows empty state when no items match search query", async () => {
+      const user = userEvent.setup();
+      renderEditor();
+
+      await screen.findByText("Shop");
+
+      const searchInput = screen.getByRole("searchbox", { name: "Search menu items" });
+      await user.type(searchInput, "NonexistentMenu123");
+
+      expect(await screen.findByText("No matching menu items")).toBeVisible();
+      expect(screen.queryByText("Shop")).not.toBeInTheDocument();
+      expect(screen.queryByText("Deals")).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Clear Search" }));
+      expect(await screen.findByText("Shop")).toBeVisible();
+    });
+
+    it("paginates top-level items according to page size", async () => {
+      const manyRoots = Array.from({ length: 12 }, (_, i) => ({
+        id: `root-${i + 1}`,
+        title: `Menu Item ${i + 1}`,
+        path: `/item-${i + 1}`,
+        level: 1,
+        order_index: i,
+        is_active: true,
+        children: [],
+      }));
+
+      apiFetchMenuItems.mockResolvedValueOnce({ menu: manyRoots });
+      const user = userEvent.setup();
+      renderEditor();
+
+      await screen.findByText("Menu Item 1");
+      expect(screen.getByText("Menu Item 10")).toBeVisible();
+      // Default page size is 10, so Menu Item 11 and 12 are on page 2
+      expect(screen.queryByText("Menu Item 11")).not.toBeInTheDocument();
+
+      // Numbered pagination buttons appear
+      const page2Btn = screen.getByRole("button", { name: "Page 2" });
+      expect(page2Btn).toBeVisible();
+
+      await user.click(page2Btn);
+      expect(await screen.findByText("Menu Item 11")).toBeVisible();
+      expect(screen.getByText("Menu Item 12")).toBeVisible();
+      expect(screen.queryByText("Menu Item 1")).not.toBeInTheDocument();
+
+      // Click Previous to return to page 1
+      await user.click(screen.getByRole("button", { name: "Previous page" }));
+      expect(await screen.findByText("Menu Item 1")).toBeVisible();
+    });
+  });
 });

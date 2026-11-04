@@ -42,6 +42,7 @@ import {
   Wallet,
   Boxes,
   FileText,
+  LogOut,
   Settings as SettingsIcon,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
@@ -110,6 +111,7 @@ import {
 } from "./modals";
 import OperationsHub from "./OperationsHub";
 import { formatAmount, formatCurrency } from "../../lib/currency";
+import useInactivityTimeout from "./useInactivityTimeout";
 
 /* Sidebar icon per order stage, keyed by the `order_status` enum value. */
 const ORDER_STATUS_ICONS = {
@@ -172,6 +174,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // Active Tab State (Dashboard, Products, Orders, Customers, Users)
   const [activeTab, setActiveTabState] = useState("dashboard"); // "dashboard" | "products" | "orders" | "customers" | "users"
 
+  // 5-minute inactivity session timeout for admin portal
+  useInactivityTimeout();
+
   // Global Loading and Sync States
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,6 +210,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [editingProduct, setEditingProduct] = useState(null);
   const [productSaving, setProductSaving] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(10);
+  const [productErrors, setProductErrors] = useState({});
   const [productForm, setProductForm] = useState({
     title: "",
     price: "",
@@ -301,6 +309,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   // Handle Sign Out
   const handleSignOut = () => {
+    try {
+      localStorage.removeItem("marvel_admin_last_activity");
+    } catch {}
     logout();
     addToast({
       title: "Signed Out",
@@ -310,7 +321,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     if (onNavigateHome) {
       onNavigateHome();
     } else {
-      window.location.hash = "#/login";
+      if (typeof window !== "undefined") {
+        try {
+          if (window.history && window.history.pushState) {
+            window.history.pushState(null, "", "/login");
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            return;
+          }
+        } catch {}
+        window.location.hash = "#/login";
+      }
     }
   };
 
@@ -382,8 +402,18 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // ----------------------------------------------------
   // PRODUCTS MANAGEMENT HANDLERS (Admin Catalog)
   // ----------------------------------------------------
+  const clearProductError = (field) => {
+    setProductErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const handleOpenAddProduct = () => {
     setEditingProduct(null);
+    setProductErrors({});
     setProductForm({
       title: "",
       price: "",
@@ -403,6 +433,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     try {
       const data = await apiUploadImage(file, "marvel_products");
       setProductForm((prev) => ({ ...prev, image_url: data.url || "" }));
+      clearProductError("image_url");
     } catch (err) {
       addToast({ title: "Image Upload Failed", message: err.message, type: "error" });
     }
@@ -410,6 +441,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   const handleOpenEditProduct = (prod) => {
     setEditingProduct(prod);
+    setProductErrors({});
     setProductForm({
       title: prod.title || "",
       price: prod.price !== undefined && prod.price !== null ? String(prod.price) : "",
@@ -428,14 +460,42 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   const handleSaveProduct = async (e) => {
     e.preventDefault();
-    if (!productForm.title.trim() || !productForm.price) {
+    const errors = {};
+    if (!productForm.title || !productForm.title.trim()) {
+      errors.title = "Product title is required.";
+    }
+    if (
+      productForm.price === "" ||
+      productForm.price === null ||
+      productForm.price === undefined ||
+      isNaN(parseFloat(productForm.price)) ||
+      parseFloat(productForm.price) < 0
+    ) {
+      errors.price = "Valid product price is required.";
+    }
+    if (!productForm.description || !productForm.description.trim()) {
+      errors.description = "Product description is required.";
+    }
+    if (!productForm.image_url || !productForm.image_url.trim()) {
+      errors.image_url = "Product image is required.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setProductErrors(errors);
       addToast({
         title: "Missing Information",
-        message: "Product title and price are required.",
+        message: "Please fill in all mandatory fields highlighted in red.",
         type: "error",
       });
+      const firstField = Object.keys(errors)[0];
+      const el = document.getElementById(`product-form-${firstField}`);
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
+
     setProductSaving(true);
     try {
       const payload = {
@@ -628,9 +688,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     if (!q) return products;
     return products.filter(
       (p) =>
-        (p.title || "").toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q)
+        (p.title || "").toLowerCase().includes(q) ||
+        (p.category || "").toLowerCase().includes(q) ||
+        (p.sku || "").toLowerCase().includes(q)
     );
   }, [products, productSearch]);
+
+  const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / productPageSize));
+  const validProductPage = Math.min(Math.max(1, productPage), totalProductPages);
+  const productStartIndex = (validProductPage - 1) * productPageSize;
+  const paginatedProducts = filteredProducts.slice(
+    productStartIndex,
+    productStartIndex + productPageSize
+  );
 
   const filteredOrders = useMemo(() => {
     if (ordersView === "all") return orders;
@@ -1237,11 +1307,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <span className="sidebar-submenu-count">{products.length}</span>
               </button>
               <button
+                id="admin-tab-products-view"
+                onClick={() => {
+                  setActiveTab("products");
+                  setProductsView("list");
+                }}
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
+              >
+                <Eye size={14} />
+                <span>View Product</span>
+              </button>
+              <button
                 id="admin-tab-products-add"
                 onClick={() =>
                   handleNavSelect(() => {
                     setActiveTab("products");
-                    handleOpenAddProduct();
+                    setProductsView("add");
+                    setEditingProduct(null);
+                    setProductFormData({
+                      title: "",
+                      price: "",
+                      category_id: "",
+                      stock: "",
+                      image_url: "",
+                      description: "",
+                      colors: "",
+                    });
                   })
                 }
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
@@ -1364,7 +1455,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <button
               id="admin-tab-site-content"
               onClick={() => handleSectionClick("siteContent", "menus")}
-              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer"].includes(activeTab) ? "active" : ""}`}
+              className={`sidebar-tab-button ${["menus", "hero", "categories", "banners", "footer", "pages"].includes(activeTab) ? "active" : ""}`}
               aria-expanded={!!expandedMenus.siteContent}
             >
               <div className="tab-icon-box">
@@ -1377,9 +1468,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className={`sidebar-parent-chevron ${expandedMenus.siteContent ? "open" : ""}`}>
                 <ChevronDown size={15} />
               </span>
-              {["menus", "hero", "categories", "banners", "footer"].includes(activeTab) && (
-                <div className="active-glow-indicator"></div>
-              )}
+              {["menus", "hero", "categories", "banners", "footer", "pages"].includes(
+                activeTab
+              ) && <div className="active-glow-indicator"></div>}
             </button>
           )}
           {canManageSiteContent && expandedMenus.siteContent && (
@@ -1424,17 +1515,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <ClipboardList size={14} />
                 <span>Footer</span>
               </button>
-              {/* Pages tab is hidden on main; available on admin-managed-pages branch */}
-              {false && (
-                <button
-                  id="admin-tab-site-content-pages"
-                  onClick={() => handleNavSelect(() => setActiveTab("pages"))}
-                  className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
-                >
-                  <FileText size={14} />
-                  <span>Pages</span>
-                </button>
-              )}
+              <button
+                id="admin-tab-site-content-pages"
+                onClick={() => handleNavSelect(() => setActiveTab("pages"))}
+                className={`sidebar-submenu-btn ${activeTab === "pages" ? "active" : ""}`}
+              >
+                <FileText size={14} />
+                <span>Pages</span>
+              </button>
             </div>
           )}
 
@@ -1456,17 +1544,20 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           </button>
         </nav>
 
-        {/* PINNED BOTTOM ACTION: VIEW LIVE STORE */}
+        {/* PINNED BOTTOM ACTION: LOGOUT */}
         <div className="sidebar-pinned-footer">
-          <a
-            href="#/"
-            className="sidebar-live-store-pinned-btn"
-            title="Open customer-facing storefront in new or current tab"
-            onClick={() => setMobileNavOpen(false)}
+          <button
+            id="sidebar-logout-btn"
+            onClick={() => {
+              setMobileNavOpen(false);
+              handleSignOut();
+            }}
+            className="sidebar-logout-pinned-btn"
+            title="Sign out of admin console"
           >
-            <ExternalLink size={15} />
-            <span>View Live Store</span>
-          </a>
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
 
@@ -1499,6 +1590,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           </div>
 
           <div className="navbar-actions-block">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="navbar-live-store-btn"
+              title="Open customer storefront in a new tab"
+            >
+              <ExternalLink size={15} />
+              <span>Live Store</span>
+            </a>
             <AdminNotifications alerts={alerts} onOpenTab={handleOpenAlertTab} />
             <AdminProfileMenu
               user={currentUser}
@@ -2150,17 +2251,70 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {!dataUnavailable && activeTab === "products" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="products-toolbar">
-              <div className="search-input-wrapper">
+              <div className="search-input-wrapper" style={{ position: "relative" }}>
                 <Search size={18} className="search-icon" />
                 <input
                   type="text"
-                  placeholder="Search catalog by title or category..."
+                  placeholder="Search catalog by title, category, or SKU..."
                   value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
+                  onChange={(e) => {
+                    setProductSearch(e.target.value);
+                    setProductPage(1);
+                  }}
                   className="users-search-field"
+                  style={{ paddingRight: "36px" }}
                 />
+                {productSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductSearch("");
+                      setProductPage(1);
+                    }}
+                    className="search-clear-btn"
+                    aria-label="Clear product search"
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "#94a3b8",
+                      cursor: "pointer",
+                      padding: "2px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
-              {productsView === "add" && (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}
+                >
+                  <label htmlFor="product-page-size" className="text-muted font-medium">
+                    Show:
+                  </label>
+                  <select
+                    id="product-page-size"
+                    value={productPageSize}
+                    onChange={(e) => {
+                      setProductPageSize(Number(e.target.value));
+                      setProductPage(1);
+                    }}
+                    className="form-select-field"
+                    style={{ padding: "4px 8px", fontSize: "13px", height: "34px", width: "auto" }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
                 <Button
                   id="admin-add-product-button"
                   onClick={handleOpenAddProduct}
@@ -2169,7 +2323,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <Plus size={16} />
                   <span>Add Product</span>
                 </Button>
-              )}
+              </div>
             </div>
 
             {productsView === "add" && (
@@ -2177,6 +2331,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 className="modal-backdrop-overlay"
                 onClick={() => {
                   setEditingProduct(null);
+                  setProductErrors({});
                   setProductsView("list");
                 }}
               >
@@ -2200,6 +2355,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <button
                       onClick={() => {
                         setEditingProduct(null);
+                        setProductErrors({});
                         setProductsView("list");
                       }}
                       className="modal-close-btn"
@@ -2208,19 +2364,37 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       <X size={18} />
                     </button>
                   </div>
-                  <form onSubmit={handleSaveProduct} className="modal-form">
+                  <form onSubmit={handleSaveProduct} className="modal-form" noValidate>
                     <div className="form-group-row">
                       <div className="form-group">
-                        <label className="form-label">Product Title *</label>
+                        <label className="form-label" htmlFor="product-form-title">
+                          Product Title *
+                        </label>
                         <Input
+                          id="product-form-title"
                           required
                           type="text"
                           placeholder="e.g. Aurora Wireless Speaker"
                           value={productForm.title}
-                          onChange={(e) =>
-                            setProductForm((prev) => ({ ...prev, title: e.target.value }))
-                          }
+                          style={productErrors.title ? { borderColor: "#ef4444" } : {}}
+                          onChange={(e) => {
+                            setProductForm((prev) => ({ ...prev, title: e.target.value }));
+                            clearProductError("title");
+                          }}
                         />
+                        {productErrors.title && (
+                          <span
+                            className="field-error-text"
+                            style={{
+                              color: "#ef4444",
+                              fontSize: "12px",
+                              marginTop: "4px",
+                              display: "block",
+                            }}
+                          >
+                            {productErrors.title}
+                          </span>
+                        )}
                       </div>
                       <div className="form-group">
                         <label className="form-label">Category</label>
@@ -2239,18 +2413,36 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </div>
                     <div className="form-group-row">
                       <div className="form-group">
-                        <label className="form-label">Price (₹) *</label>
+                        <label className="form-label" htmlFor="product-form-price">
+                          Price (₹) *
+                        </label>
                         <Input
+                          id="product-form-price"
                           required
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder="e.g. 4999"
                           value={productForm.price}
-                          onChange={(e) =>
-                            setProductForm((prev) => ({ ...prev, price: e.target.value }))
-                          }
+                          style={productErrors.price ? { borderColor: "#ef4444" } : {}}
+                          onChange={(e) => {
+                            setProductForm((prev) => ({ ...prev, price: e.target.value }));
+                            clearProductError("price");
+                          }}
                         />
+                        {productErrors.price && (
+                          <span
+                            className="field-error-text"
+                            style={{
+                              color: "#ef4444",
+                              fontSize: "12px",
+                              marginTop: "4px",
+                              display: "block",
+                            }}
+                          >
+                            {productErrors.price}
+                          </span>
+                        )}
                       </div>
                       <div className="form-group">
                         <label className="form-label">Original Price (₹)</label>
@@ -2283,31 +2475,109 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Product Image</label>
+                      <label className="form-label" htmlFor="product-form-image_url">
+                        Product Image *
+                      </label>
                       <input
+                        id="product-form-image_url"
                         type="file"
                         accept="image/*"
                         onChange={handleProductImageUpload}
                         className="form-select-field"
+                        style={productErrors.image_url ? { borderColor: "#ef4444" } : {}}
                       />
+                      {productErrors.image_url && (
+                        <span
+                          className="field-error-text"
+                          style={{
+                            color: "#ef4444",
+                            fontSize: "12px",
+                            marginTop: "4px",
+                            display: "block",
+                          }}
+                        >
+                          {productErrors.image_url}
+                        </span>
+                      )}
+                      {productForm.image_url && (
+                        <div
+                          style={{
+                            marginTop: "8px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          <img
+                            src={productForm.image_url}
+                            alt="Product preview"
+                            style={{
+                              width: "52px",
+                              height: "52px",
+                              objectFit: "cover",
+                              borderRadius: "6px",
+                              border: "1px solid #e2e8f0",
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setProductForm((prev) => ({ ...prev, image_url: "" }));
+                              setProductErrors((prev) => ({
+                                ...prev,
+                                image_url: "Product image is required.",
+                              }));
+                            }}
+                            className="btn-cancel-red"
+                            style={{
+                              fontSize: "12px",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Remove Image
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Description</label>
+                      <label className="form-label" htmlFor="product-form-description">
+                        Description *
+                      </label>
                       <Input
+                        id="product-form-description"
                         type="text"
-                        placeholder="Short product description"
+                        placeholder="Product description is required"
                         value={productForm.description}
-                        onChange={(e) =>
-                          setProductForm((prev) => ({ ...prev, description: e.target.value }))
-                        }
+                        style={productErrors.description ? { borderColor: "#ef4444" } : {}}
+                        onChange={(e) => {
+                          setProductForm((prev) => ({ ...prev, description: e.target.value }));
+                          clearProductError("description");
+                        }}
                       />
+                      {productErrors.description && (
+                        <span
+                          className="field-error-text"
+                          style={{
+                            color: "#ef4444",
+                            fontSize: "12px",
+                            marginTop: "4px",
+                            display: "block",
+                          }}
+                        >
+                          {productErrors.description}
+                        </span>
+                      )}
                     </div>
                     <div className="modal-actions-footer">
                       <Button
                         type="button"
                         variant="outline"
+                        className="btn-cancel-red"
                         onClick={() => {
                           setEditingProduct(null);
+                          setProductErrors({});
                           setProductsView("list");
                         }}
                       >
@@ -2332,11 +2602,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             )}
 
             <div className="users-table-card">
-              <div className="table-card-top-info">
+              <div
+                className="table-card-top-info"
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
                 <span className="results-count">
-                  Showing <strong>{filteredProducts.length}</strong> of{" "}
-                  <strong>{products.length}</strong> catalog items
+                  Showing{" "}
+                  <strong>
+                    {filteredProducts.length > 0 ? productStartIndex + 1 : 0}–
+                    {Math.min(productStartIndex + productPageSize, filteredProducts.length)}
+                  </strong>{" "}
+                  of <strong>{filteredProducts.length}</strong> catalog items{" "}
+                  {filteredProducts.length !== products.length && `(Total: ${products.length})`}
                 </span>
+                {totalProductPages > 1 && (
+                  <span className="text-muted text-sm">
+                    Page <strong>{validProductPage}</strong> of <strong>{totalProductPages}</strong>
+                  </span>
+                )}
               </div>
               <div className="table-responsive-wrapper">
                 <table className="admin-data-table">
@@ -2351,15 +2634,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.length === 0 ? (
+                    {paginatedProducts.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="empty-table-cell">
                           <Package size={28} className="empty-icon" />
-                          <p>No products found. Add your first product to the catalog.</p>
+                          <p>
+                            {productSearch
+                              ? `No products match "${productSearch}".`
+                              : "No products found. Add your first product to the catalog."}
+                          </p>
+                          {productSearch && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setProductSearch("");
+                                setProductPage(1);
+                              }}
+                              style={{ marginTop: "8px" }}
+                            >
+                              Clear Search
+                            </Button>
+                          )}
                         </td>
                       </tr>
                     ) : (
-                      filteredProducts.map((prod) => {
+                      paginatedProducts.map((prod) => {
                         const stockCount = parseInt(prod.stock, 10) || 0;
                         return (
                           <tr key={prod.id}>
@@ -2449,6 +2749,60 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </tbody>
                 </table>
               </div>
+
+              {totalProductPages > 1 && (
+                <div
+                  className="table-pagination-footer"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "14px 18px",
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div className="text-sm text-muted">
+                    Showing{" "}
+                    <strong>
+                      {productStartIndex + 1}–
+                      {Math.min(productStartIndex + productPageSize, filteredProducts.length)}
+                    </strong>{" "}
+                    of <strong>{filteredProducts.length}</strong> items
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validProductPage <= 1}
+                      onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      {Array.from({ length: totalProductPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          className={`menu-page-number-btn ${pageNum === validProductPage ? "active" : ""}`}
+                          onClick={() => setProductPage(pageNum)}
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={pageNum === validProductPage ? "page" : undefined}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validProductPage >= totalProductPages}
+                      onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2710,7 +3064,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
 
         {/* TAB 11: SITE CONTENT > PAGES — the CMS page builder (enabled on admin-managed-pages branch) */}
-        {false && activeTab === "pages" && canManageSiteContent && <PagesEditor />}
+        {activeTab === "pages" && canManageSiteContent && <PagesEditor />}
 
         {/* TAB 12: SETTINGS — the store's own configuration */}
         {activeTab === "settings" && <SettingsEditor />}

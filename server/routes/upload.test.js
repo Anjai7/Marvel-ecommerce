@@ -135,4 +135,36 @@ describe("upload error handling", () => {
     expect(await res.json()).toEqual({ error: "Only image files are allowed." });
     expect(mockUpload).not.toHaveBeenCalled();
   });
+
+  it("returns a JSON 400 when an unsupported image mime type is uploaded", async () => {
+    const form = new FormData();
+    form.append("image", new Blob(["bmp content"], { type: "image/bmp" }), "pixel.bmp");
+
+    const res = await fetch(`${base}/api/upload`, {
+      method: "POST",
+      headers: headersFor("admin"),
+      body: form,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Only image files are allowed." });
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("returns a JSON 400 when file size exceeds 5MB", async () => {
+    const form = new FormData();
+    // 5MB + 1KB
+    const largeBuffer = Buffer.alloc(5 * 1024 * 1024 + 1024);
+    form.append("image", new Blob([largeBuffer], { type: "image/png" }), "large.png");
+
+    const res = await fetch(`${base}/api/upload`, {
+      method: "POST",
+      headers: headersFor("admin"),
+      body: form,
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Image file size must not exceed 5MB." });
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
 });

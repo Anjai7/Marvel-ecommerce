@@ -13,6 +13,7 @@ function toRenderSlide(row) {
     subtitle: row.subtitle || "",
     btn: row.btn_text || "Shop Now",
     btnPath: row.btn_path || "/products",
+    btnEnabled: row.btn_enabled !== false,
     bgImage: row.bg_image_url || "",
     image: row.bg_image_url || row.product_image_url || "",
     bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
@@ -173,16 +174,18 @@ export default function HeroBanner({ onNavigate }) {
               <p className="hero-sub">{slide.subtitle}</p>
 
               <div className="hero-actions-row">
-                <Button
-                  variant="accent"
-                  size="lg"
-                  className="hero-cta"
-                  id={`hero-cta-${i}`}
-                  rightIcon={<ArrowRight size={18} />}
-                  onClick={() => followCta(slide.btnPath)}
-                >
-                  {slide.btn}
-                </Button>
+                {slide.btnEnabled !== false && slide.btn && (
+                  <Button
+                    variant="accent"
+                    size="lg"
+                    className="hero-cta"
+                    id={`hero-cta-${i}`}
+                    rightIcon={<ArrowRight size={18} />}
+                    onClick={() => followCta(slide.btnPath)}
+                  >
+                    {slide.btn}
+                  </Button>
+                )}
                 {slide.price && (
                   <span className="hero-price-pill">
                     <Sparkles size={13} color="#f59e0b" />

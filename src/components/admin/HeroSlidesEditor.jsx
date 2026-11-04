@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit2, Plus, Trash2, X } from "lucide-react";
+import { Edit2, Eye, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
+import "./admin-content.css";
 import {
   apiDeleteHeroSlide,
   apiFetchHeroSlides,
@@ -26,6 +27,7 @@ function blankForm(order) {
     subtitle: "",
     btnText: "",
     btnPath: "/products",
+    btnEnabled: true,
     bgImageUrl: "",
     productImageUrl: "",
     fallbackImageUrl: "",
@@ -46,6 +48,7 @@ function editForm(slide) {
     subtitle: slide.subtitle ?? "",
     btnText: slide.btn_text ?? "",
     btnPath: slide.btn_path ?? "/products",
+    btnEnabled: slide.btn_enabled !== false,
     bgImageUrl: slide.bg_image_url ?? "",
     productImageUrl: slide.product_image_url ?? "",
     fallbackImageUrl: slide.fallback_image_url ?? "",
@@ -66,6 +69,7 @@ function toPayload(form) {
     subtitle: trimOrNull(form.subtitle),
     btn_text: trimOrNull(form.btnText),
     btn_path: trimOrNull(form.btnPath) || "/products",
+    btn_enabled: Boolean(form.btnEnabled),
     // ImageField's Clear button reports null, so trim behind a null guard.
     bg_image_url: trimOrNull(form.bgImageUrl),
     product_image_url: trimOrNull(form.productImageUrl),
@@ -87,6 +91,8 @@ function storedValue(slide, key) {
       return Number(slide.order_index ?? 0);
     case "is_active":
       return slide.is_active !== false;
+    case "btn_enabled":
+      return slide.btn_enabled !== false;
     default:
       return slide[key] || null;
   }
@@ -105,6 +111,7 @@ export default function HeroSlidesEditor() {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const [formError, setFormError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -306,12 +313,40 @@ export default function HeroSlidesEditor() {
                 <span className="menu-tree-title">{slide.title}</span>
                 {slide.badge && <span className="role-pill admin">{slide.badge}</span>}
                 <span className="text-muted text-sm menu-tree-path">#{slide.order_index ?? 0}</span>
-                <span
-                  className={`status-pill ${slide.is_active === false ? "inactive" : "active"}`}
+                <div
+                  className="hero-status-radio-group"
+                  role="radiogroup"
+                  aria-label={`Status for ${slide.title}`}
                 >
-                  <span className="status-dot"></span>
-                  {slide.is_active === false ? "Hidden" : "Active"}
-                </span>
+                  <label
+                    className={`hero-status-radio-label ${slide.is_active !== false ? "active" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name={`hero-status-${slide.id}`}
+                      value="active"
+                      checked={slide.is_active !== false}
+                      disabled={busy}
+                      onChange={() => handleToggleActive(slide, true)}
+                      aria-label={`Activate ${slide.title}`}
+                    />
+                    <span>Active</span>
+                  </label>
+                  <label
+                    className={`hero-status-radio-label ${slide.is_active === false ? "inactive" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name={`hero-status-${slide.id}`}
+                      value="inactive"
+                      checked={slide.is_active === false}
+                      disabled={busy}
+                      onChange={() => handleToggleActive(slide, false)}
+                      aria-label={`Deactivate ${slide.title}`}
+                    />
+                    <span>Inactive</span>
+                  </label>
+                </div>
                 <div className="menu-tree-actions">
                   <OrderControls
                     index={index}
@@ -320,11 +355,16 @@ export default function HeroSlidesEditor() {
                     disabled={busy}
                     onMove={(from, to) => handleMove(slide, from, to)}
                   />
-                  <ActiveToggle
-                    active={slide.is_active !== false}
-                    label={slide.title}
-                    onChange={(active) => handleToggleActive(slide, active)}
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`View ${slide.title}`}
+                    disabled={busy}
+                    onClick={() => setViewing(slide)}
+                  >
+                    <Eye size={15} />
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -425,6 +465,41 @@ export default function HeroSlidesEditor() {
                 />
               </div>
 
+              <div className="form-group" style={{ marginBottom: "8px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <label className="form-label" htmlFor="hero-cta-toggle" style={{ margin: 0 }}>
+                    CTA Button
+                  </label>
+                  <label
+                    className="toggle-switch-label"
+                    style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+                  >
+                    <input
+                      id="hero-cta-toggle"
+                      type="checkbox"
+                      checked={editing.btnEnabled}
+                      onChange={(event) => setField("btnEnabled", event.target.checked)}
+                      aria-label="Enable CTA button"
+                    />
+                    <span
+                      className="text-sm font-medium"
+                      style={{ color: editing.btnEnabled ? "#2563eb" : "#64748b" }}
+                    >
+                      {editing.btnEnabled ? "Enabled" : "Disabled"}
+                    </span>
+                  </label>
+                </div>
+                <p
+                  className="form-hint"
+                  style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0" }}
+                >
+                  When disabled, the button is hidden on the storefront while retaining configured
+                  text and link.
+                </p>
+              </div>
+
               <div className="form-group-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="hero-btn-text">
@@ -433,6 +508,7 @@ export default function HeroSlidesEditor() {
                   <Input
                     id="hero-btn-text"
                     type="text"
+                    placeholder="e.g. Shop Now"
                     value={editing.btnText}
                     onChange={(event) => setField("btnText", event.target.value)}
                   />
@@ -444,6 +520,7 @@ export default function HeroSlidesEditor() {
                   <Input
                     id="hero-btn-path"
                     type="text"
+                    placeholder="e.g. /products"
                     value={editing.btnPath}
                     onChange={(event) => setField("btnPath", event.target.value)}
                   />
@@ -525,7 +602,7 @@ export default function HeroSlidesEditor() {
                   <strong>{editing.title}</strong>
                   {editing.subtitle && <p className="chart-subtitle">{editing.subtitle}</p>}
                   {editing.priceText && <span>{editing.priceText}</span>}
-                  {editing.btnText && <span>{editing.btnText}</span>}
+                  {editing.btnEnabled && editing.btnText && <span>{editing.btnText}</span>}
                   {editing.ribbonText && <span>{editing.ribbonText}</span>}
                   {previewImage(editing) && (
                     <img
@@ -546,7 +623,12 @@ export default function HeroSlidesEditor() {
               )}
 
               <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="btn-cancel-red"
+                  onClick={() => setEditing(null)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saving} className="submit-primary-btn">
@@ -554,6 +636,124 @@ export default function HeroSlidesEditor() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {viewing && (
+        <div className="modal-backdrop-overlay" onClick={() => setViewing(null)}>
+          <div
+            className="modal-content-container animate-scale-up"
+            role="dialog"
+            aria-modal="true"
+            aria-label="View Hero Slide"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "560px" }}
+          >
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">{viewing.title}</h3>
+                <p className="modal-subtitle">Hero slide details & storefront preview</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewing(null)}
+                className="modal-close-btn"
+                aria-label="Close view modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              className="modal-form"
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
+            >
+              <div
+                className="hero-preview"
+                aria-label="Slide preview details"
+                style={viewing.bg_gradient ? { background: viewing.bg_gradient } : undefined}
+              >
+                {viewing.badge && <span className="role-pill admin">{viewing.badge}</span>}
+                <strong>{viewing.title}</strong>
+                {viewing.subtitle && <p className="chart-subtitle">{viewing.subtitle}</p>}
+                {viewing.price_text && <span>{viewing.price_text}</span>}
+                {viewing.btn_enabled !== false && viewing.btn_text && (
+                  <span style={{ fontWeight: 600, color: "#2563eb" }}>{viewing.btn_text}</span>
+                )}
+                {viewing.ribbon_text && <span>{viewing.ribbon_text}</span>}
+                {(viewing.product_image_url ||
+                  viewing.bg_image_url ||
+                  viewing.fallback_image_url) && (
+                  <img
+                    src={
+                      viewing.product_image_url ||
+                      viewing.bg_image_url ||
+                      viewing.fallback_image_url
+                    }
+                    alt={viewing.title}
+                    width={96}
+                    height={64}
+                    style={{ objectFit: "cover", borderRadius: 4 }}
+                  />
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "10px",
+                  fontSize: "13px",
+                }}
+              >
+                <div>
+                  <strong>Order:</strong> #{viewing.order_index ?? 0}
+                </div>
+                <div>
+                  <strong>Status:</strong>{" "}
+                  {viewing.is_active === false ? "Inactive / Hidden" : "Active"}
+                </div>
+                <div>
+                  <strong>Tag:</strong> {viewing.tag || "None"}
+                </div>
+                <div>
+                  <strong>Price:</strong> {viewing.price_text || "None"}
+                </div>
+                <div>
+                  <strong>CTA Status:</strong>{" "}
+                  {viewing.btn_enabled === false ? "Disabled" : "Enabled"}
+                </div>
+                <div>
+                  <strong>CTA Destination:</strong> {viewing.btn_path || "/products"}
+                </div>
+              </div>
+
+              <div
+                className="modal-actions-footer"
+                style={{ padding: "12px 0 0 0", borderTop: "1px solid #e2e8f0" }}
+              >
+                <Button type="button" variant="outline" onClick={() => setViewing(null)}>
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  className="submit-primary-btn"
+                  onClick={() => {
+                    const toEdit = viewing;
+                    setViewing(null);
+                    openEdit(toEdit);
+                  }}
+                >
+                  Edit Slide
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}

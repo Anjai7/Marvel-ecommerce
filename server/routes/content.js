@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import { supabase } from "../db.js";
 import { createCrudRouter, applyReorder } from "../lib/crudRouter.js";
 import {
@@ -30,6 +30,7 @@ const HERO_FIELDS = [
   "subtitle",
   "btn_text",
   "btn_path",
+  "btn_enabled",
   "bg_image_url",
   "product_image_url",
   "fallback_image_url",

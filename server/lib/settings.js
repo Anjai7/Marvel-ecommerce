@@ -15,6 +15,7 @@ export const SETTINGS_KEYS = [
   "trust",
   "reviews",
   "hero_fallback",
+  "recent_products_slider",
 ];
 
 /** The group each key is filed under, for the settings screen. */
@@ -27,4 +28,5 @@ export const SETTINGS_GROUPS = {
   trust: "chrome",
   reviews: "commerce",
   hero_fallback: "chrome",
+  recent_products_slider: "content",
 };

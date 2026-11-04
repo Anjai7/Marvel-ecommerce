@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { apiLogin, apiSignUp, apiGetMe, clearStoredToken } from "../api/backendApi";
 import { getStoredToken, setStoredToken, onUnauthorized } from "../api/client";
+import {
+  getHashRoute,
+  isAdminRoute,
+  isSuperAdminRoute,
+  isVendorRoute,
+  isAccountRoute,
+} from "../lib/routes";
+
+const ADMIN_INACTIVITY_KEY = "marvel_admin_last_activity";
+const DEFAULT_INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
 const AuthContext = createContext(null);
 
@@ -23,12 +33,45 @@ export function AuthProvider({ children }) {
       setLoading(true);
       const verifiedUser = await apiGetMe();
       if (verifiedUser) {
+        // Prevent resurrecting expired admin session after prolonged inactivity
+        if (
+          (verifiedUser.role === "admin" || verifiedUser.role === "super_admin") &&
+          typeof localStorage !== "undefined"
+        ) {
+          const lastActiveStr = localStorage.getItem(ADMIN_INACTIVITY_KEY);
+          if (lastActiveStr) {
+            const lastActive = parseInt(lastActiveStr, 10);
+            const timeoutMs =
+              (typeof window !== "undefined" && window.__ADMIN_INACTIVITY_TIMEOUT_MS__) ||
+              DEFAULT_INACTIVITY_TIMEOUT_MS;
+            if (!isNaN(lastActive) && Date.now() - lastActive >= timeoutMs) {
+              clearStoredToken();
+              localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+              setUser(null);
+              setToken("");
+              if (typeof window !== "undefined") {
+                try {
+                  if (window.history && window.history.pushState) {
+                    window.history.pushState(null, "", "/login");
+                    window.dispatchEvent(new PopStateEvent("popstate"));
+                  }
+                } catch {}
+                window.location.hash = "#/login";
+              }
+              return null;
+            }
+          }
+        }
+
         setUser(verifiedUser);
         setAuthError(null);
         return verifiedUser;
       } else {
         // Token was invalid or expired
         clearStoredToken();
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+        }
         setUser(null);
         setToken("");
         return null;
@@ -36,6 +79,9 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("AuthContext refresh error:", err);
       clearStoredToken();
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+      }
       setUser(null);
       setToken("");
       return null;
@@ -44,15 +90,38 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // The app's only global 401 handler: a revoked or expired token logs out.
-  // Registered before the session restore below so that first call is covered.
+  // The app's global 401 handler:
+  // A guest user on the homepage must NOT be redirected to /login.
+  // Only redirect to /login if user had a token (session revoked) or is on a protected route.
   useEffect(() => {
     return onUnauthorized(() => {
-      setStoredToken(null);
+      const hadToken = Boolean(getStoredToken());
+      clearStoredToken();
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+      }
       setToken("");
       setUser(null);
       setAuthError(null);
-      window.location.hash = "#/login";
+
+      const currentRoute = getHashRoute();
+      const isProtected =
+        isAdminRoute(currentRoute.page) ||
+        isSuperAdminRoute(currentRoute.page) ||
+        isVendorRoute(currentRoute.page) ||
+        isAccountRoute(currentRoute.page);
+
+      if (hadToken || isProtected) {
+        if (typeof window !== "undefined") {
+          try {
+            if (window.history && window.history.pushState) {
+              window.history.pushState(null, "", "/login");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }
+          } catch {}
+          window.location.hash = "#/login";
+        }
+      }
     });
   }, []);
 
@@ -71,6 +140,12 @@ export function AuthProvider({ children }) {
       }
       if (data.user) {
         setUser(data.user);
+        if (
+          (data.user.role === "admin" || data.user.role === "super_admin") &&
+          typeof localStorage !== "undefined"
+        ) {
+          localStorage.setItem(ADMIN_INACTIVITY_KEY, String(Date.now()));
+        }
       }
       return data.user;
     } catch (err) {
@@ -104,10 +179,29 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     clearStoredToken();
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+    }
     setToken("");
     setUser(null);
     setAuthError(null);
-    window.location.hash = "#/";
+    if (typeof window !== "undefined") {
+      try {
+        if (window.history && window.history.pushState) {
+          window.history.pushState(null, "", "/login");
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        } else {
+          window.location.pathname = "/login";
+        }
+      } catch {
+        window.location.hash = "#/login";
+      }
+      if (window.location.hash && window.location.hash !== "#/login") {
+        try {
+          window.location.hash = "";
+        } catch {}
+      }
+    }
   };
 
   const value = {

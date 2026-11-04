@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Edit2,
   Layers,
   MoreHorizontal,
   Plus,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -78,6 +80,68 @@ function sortNodes(nodes = []) {
   return [...nodes]
     .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
     .map((node) => ({ ...node, children: sortNodes(node.children ?? []) }));
+}
+
+/**
+ * Filter 3-level tree by menu item title, URL/path, or parent menu name.
+ * Strictly preserves the 3-level hierarchy (root -> children -> grandchildren).
+ * When a search matches a child, its ancestor path is preserved.
+ * When a root matches, its children are preserved.
+ */
+function filterTreeNodes(nodes = [], rawQuery = "") {
+  const query = rawQuery.trim().toLowerCase();
+  if (!query) return nodes;
+
+  const matchesItem = (item, parentTitle = "") => {
+    const titleMatch = Boolean(item.title && item.title.toLowerCase().includes(query));
+    const pathMatch = Boolean(item.path && item.path.toLowerCase().includes(query));
+    const badgeMatch = Boolean(item.badge && item.badge.toLowerCase().includes(query));
+    const parentMatch = Boolean(parentTitle && parentTitle.toLowerCase().includes(query));
+    return titleMatch || pathMatch || badgeMatch || parentMatch;
+  };
+
+  const filterRoot = (root) => {
+    const rootMatches = matchesItem(root, "");
+    const rootChildren = root.children ?? [];
+
+    const filteredChildren = [];
+    for (const child of rootChildren) {
+      const childMatches = matchesItem(child, root.title);
+      const childGrandchildren = child.children ?? [];
+
+      const filteredGrandchildren = childGrandchildren.filter((gc) => matchesItem(gc, child.title));
+
+      if (childMatches) {
+        filteredChildren.push({
+          ...child,
+          children: childGrandchildren,
+        });
+      } else if (filteredGrandchildren.length > 0) {
+        filteredChildren.push({
+          ...child,
+          children: filteredGrandchildren,
+        });
+      }
+    }
+
+    if (rootMatches) {
+      return {
+        ...root,
+        children: rootChildren,
+      };
+    }
+
+    if (filteredChildren.length > 0) {
+      return {
+        ...root,
+        children: filteredChildren,
+      };
+    }
+
+    return null;
+  };
+
+  return nodes.map(filterRoot).filter(Boolean);
 }
 
 /**
@@ -420,6 +484,9 @@ export default function MenuTreeEditor({ role = "admin" }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   // Synchronous guard: state updates are too late to stop a double-click that
   // lands in the same tick, so every write checks this ref first.
   const requestInFlight = useRef(false);
@@ -665,7 +732,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
     const parent = findParent(tree, item.id);
     const siblings = siblingsFor(tree, parent?.id ?? null);
     const index = siblings.findIndex((sibling) => sibling.id === item.id);
-    const isOpen = !collapsed[item.id];
+    const isSearchActive = Boolean(searchQuery.trim());
+    const isOpen = isSearchActive ? true : !collapsed[item.id];
 
     return (
       <div key={item.id} className="menu-tree-node" data-level={depth}>
@@ -795,6 +863,13 @@ export default function MenuTreeEditor({ role = "admin" }) {
     : null;
   const categoryOfferOn = editing?.createCategoryPage !== false;
 
+  const filteredTree = useMemo(() => filterTreeNodes(tree, searchQuery), [tree, searchQuery]);
+  const totalRoots = filteredTree.length;
+  const totalPages = Math.max(1, Math.ceil(totalRoots / pageSize));
+  const validPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validPage - 1) * pageSize;
+  const paginatedTree = filteredTree.slice(startIndex, startIndex + pageSize);
+
   return (
     <div className="dashboard-tab-view animate-fade-in">
       <div className="admin-page-header">
@@ -825,11 +900,64 @@ export default function MenuTreeEditor({ role = "admin" }) {
             <h3 className="admin-content-card-title">Menu structure</h3>
             {tree.length > 0 && (
               <p className="admin-content-card-meta">
-                {tree.length} top-level · {countNodes(tree)} total
+                {searchQuery
+                  ? `${totalRoots} top-level matches · ${countNodes(filteredTree)} items`
+                  : `${tree.length} top-level · ${countNodes(tree)} total`}
               </p>
             )}
           </div>
         </div>
+
+        <div className="menu-tree-toolbar">
+          <div className="menu-search-wrapper">
+            <Search size={16} className="menu-search-icon" aria-hidden="true" />
+            <Input
+              type="search"
+              placeholder="Search menus by title, path, or parent..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="menu-search-input"
+              aria-label="Search menu items"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="menu-search-clear-btn"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="menu-page-size-selector">
+            <label htmlFor="menu-page-size" className="text-sm font-medium text-muted">
+              Items per page:
+            </label>
+            <select
+              id="menu-page-size"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="menu-page-size-select"
+              aria-label="Items per page"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+            </select>
+          </div>
+        </div>
+
         <div className="admin-content-card-body">
           {loading ? (
             <output
@@ -858,8 +986,78 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 Add Top-Level Item
               </Button>
             </div>
+          ) : filteredTree.length === 0 ? (
+            <div className="menu-tree-empty" style={{ padding: "32px 16px" }}>
+              <span className="menu-tree-empty-icon" aria-hidden="true">
+                <Search size={22} />
+              </span>
+              <h4 className="menu-tree-empty-title">No matching menu items</h4>
+              <p className="menu-tree-empty-text">
+                No menu items match &quot;{searchQuery}&quot;. Try a different search term or clear
+                the filter.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+              >
+                Clear Search
+              </Button>
+            </div>
           ) : (
-            <div className="menu-tree">{tree.map((item) => renderNode(item, 1))}</div>
+            <>
+              <div className="menu-tree">{paginatedTree.map((item) => renderNode(item, 1))}</div>
+              {totalPages > 1 && (
+                <div className="menu-pagination-bar" role="navigation" aria-label="Menu pagination">
+                  <div className="menu-pagination-info">
+                    Showing{" "}
+                    <strong>
+                      {startIndex + 1}–{Math.min(startIndex + pageSize, totalRoots)}
+                    </strong>{" "}
+                    of <strong>{totalRoots}</strong> top-level items
+                  </div>
+                  <div className="menu-pagination-controls">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={validPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={14} /> Previous
+                    </Button>
+                    <div className="menu-pagination-numbers">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          className={`menu-page-number-btn ${pageNum === validPage ? "active" : ""}`}
+                          onClick={() => setCurrentPage(pageNum)}
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={pageNum === validPage ? "page" : undefined}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={validPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      aria-label="Next page"
+                    >
+                      Next <ChevronRight size={14} />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

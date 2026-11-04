@@ -42,3 +42,7 @@ creds.txt
 *.sw?
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Local documents
+*.pdf
+

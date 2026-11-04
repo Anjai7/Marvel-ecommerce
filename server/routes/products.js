@@ -223,8 +223,8 @@ router.post("/", async (req, res) => {
       original_price,
       category,
       stock = 10,
-      description = "",
-      image_url = "",
+      description,
+      image_url,
       cloudinary_public_id = "",
       access_type = "authenticated",
       vendor_id,
@@ -232,8 +232,23 @@ router.post("/", async (req, res) => {
       is_featured = false,
     } = body;
 
-    if (!title || !price) {
+    if (
+      !title ||
+      (typeof title === "string" && !title.trim()) ||
+      price === undefined ||
+      price === null ||
+      price === ""
+    ) {
       return res.status(400).json({ error: "Product title and price are required." });
+    }
+    if (isNaN(parseFloat(price)) || parseFloat(price) < 0) {
+      return res.status(400).json({ error: "Product title and price are required." });
+    }
+    if (!description || typeof description !== "string" || !description.trim()) {
+      return res.status(400).json({ error: "Product description is required." });
+    }
+    if (!image_url || typeof image_url !== "string" || !image_url.trim()) {
+      return res.status(400).json({ error: "Product image is required." });
     }
 
     let categoryLabel = category;
@@ -254,7 +269,7 @@ router.post("/", async (req, res) => {
     }
 
     const newProductRecord = {
-      title,
+      title: title.trim(),
       price: parseFloat(price),
       original_price: original_price ? parseFloat(original_price) : parseFloat(price) * 1.25,
       category: categoryLabel,
@@ -262,10 +277,10 @@ router.post("/", async (req, res) => {
       stock: parseInt(stock, 10) || 10,
       rating: 4.9,
       reviews_count: 1,
-      image_url: image_url || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800",
+      image_url: image_url.trim(),
       cloudinary_public_id: cloudinary_public_id || undefined,
       access_type,
-      description,
+      description: description.trim(),
       vendor_id: vendor_id || null,
       vendor_name,
       moderation_status: "approved",
@@ -298,6 +313,36 @@ router.put("/:id", async (req, res) => {
     const body = req.body && typeof req.body === "object" ? req.body : {};
     const updates = { ...body };
 
+    if (updates.title !== undefined) {
+      if (typeof updates.title !== "string" || !updates.title.trim()) {
+        return res.status(400).json({ error: "Product title cannot be empty." });
+      }
+      updates.title = updates.title.trim();
+    }
+    if (updates.price !== undefined) {
+      if (
+        updates.price === null ||
+        updates.price === "" ||
+        isNaN(parseFloat(updates.price)) ||
+        parseFloat(updates.price) < 0
+      ) {
+        return res.status(400).json({ error: "Product price cannot be empty." });
+      }
+      updates.price = parseFloat(updates.price);
+    }
+    if (updates.description !== undefined) {
+      if (typeof updates.description !== "string" || !updates.description.trim()) {
+        return res.status(400).json({ error: "Product description cannot be empty." });
+      }
+      updates.description = updates.description.trim();
+    }
+    if (updates.image_url !== undefined) {
+      if (typeof updates.image_url !== "string" || !updates.image_url.trim()) {
+        return res.status(400).json({ error: "Product image cannot be empty." });
+      }
+      updates.image_url = updates.image_url.trim();
+    }
+
     if (Object.hasOwn(updates, "category_id") && updates.category_id != null) {
       const found = await findCategory(updates.category_id);
       if (found.error) {
@@ -311,7 +356,6 @@ router.put("/:id", async (req, res) => {
       }
     }
 
-    if (updates.price !== undefined) updates.price = parseFloat(updates.price);
     if (updates.original_price !== undefined)
       updates.original_price = parseFloat(updates.original_price);
     if (updates.stock !== undefined) updates.stock = parseInt(updates.stock, 10);

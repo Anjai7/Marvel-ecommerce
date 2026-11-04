@@ -58,10 +58,11 @@ vi.mock("../../api/contentApi", () => ({
   apiUploadImage: vi.fn(),
 }));
 
+const mockLogout = vi.fn();
 vi.mock("../../context/AuthContext", () => ({
   useAuth: () => ({
     user: { full_name: "Admin User", email: "admin@example.com" },
-    logout: vi.fn(),
+    logout: mockLogout,
     role: "admin",
   }),
 }));
@@ -98,9 +99,10 @@ describe("UnifiedAdminConsole", () => {
 
     const nav = await screen.findByRole("navigation");
     await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
-    await user.click(within(nav).getByRole("button", { name: "Add Product" }));
+    await expect(within(nav).getByRole("button", { name: "View Product" })).toBeVisible();
 
     const main = screen.getByRole("main");
+    await user.click(within(main).getByRole("button", { name: "Add Product" }));
     await expect(within(main).getByRole("button", { name: "Publish Product" })).toBeVisible();
   });
 
@@ -156,7 +158,8 @@ describe("UnifiedAdminConsole", () => {
 
     const nav = await screen.findByRole("navigation");
     await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
-    await user.click(within(nav).getByRole("button", { name: "Add Product" }));
+    const main = screen.getByRole("main");
+    await user.click(within(main).getByRole("button", { name: "Add Product" }));
 
     // An empty number input reports null through toHaveValue; the point is it is
     // not a fabricated "15".
@@ -644,5 +647,24 @@ describe("UnifiedAdminConsole", () => {
     const settingsBtn = within(nav).getByRole("button", { name: /Settings Store/ });
     await user.click(settingsBtn);
     expect(sidebar).not.toHaveClass("mobile-open");
+  });
+
+  it("renders a pinned logout button in the sidebar footer and signs out on click", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const logoutBtn = await screen.findByRole("button", { name: "Logout" });
+    expect(logoutBtn).toHaveAttribute("id", "sidebar-logout-btn");
+    await user.click(logoutBtn);
+    expect(mockLogout).toHaveBeenCalled();
+  });
+
+  it("renders the Live Store button in the top navbar header", async () => {
+    render(<UnifiedAdminConsole />);
+
+    const liveStoreLink = await screen.findByRole("link", { name: "Live Store" });
+    expect(liveStoreLink).toHaveAttribute("href", "/");
+    expect(liveStoreLink).toHaveAttribute("target", "_blank");
+    expect(liveStoreLink).toHaveClass("navbar-live-store-btn");
   });
 });

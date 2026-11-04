@@ -4,6 +4,8 @@ import BannerLayout from "../BannerLayout";
 import TrendingProducts from "../TrendingProducts";
 import PromoBannerCarousel from "../PromoBannerCarousel";
 import FeaturedProducts from "../FeaturedProducts";
+import RecentProductsSlider from "./RecentProductsSlider";
+import RecentSearchesSection from "./RecentSearchesSection";
 import Footer from "../Footer";
 
 /**
@@ -13,7 +15,7 @@ export default function StorefrontHome({ onNavigate, onSelectProduct, onQuickVie
   return (
     <>
       <HeroBanner onNavigate={onNavigate} />
-      <CategorySlider />
+      <CategorySlider onNavigate={onNavigate} />
       <BannerLayout />
       <TrendingProducts
         onQuickView={onQuickView}
@@ -26,6 +28,12 @@ export default function StorefrontHome({ onNavigate, onSelectProduct, onQuickVie
         onNavigate={onSelectProduct}
         onSelectProduct={onSelectProduct}
       />
+      <RecentProductsSlider
+        onQuickView={onQuickView}
+        onNavigate={onSelectProduct}
+        onSelectProduct={onSelectProduct}
+      />
+      <RecentSearchesSection onNavigate={onNavigate} />
       <Footer />
     </>
   );

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   getHashRoute,
+  navigateToPath,
   resolveMenuNavigation,
   getDashboardRouteForRole,
   getAuthRedirectRoute,
@@ -49,6 +50,55 @@ describe("routes module", () => {
         expect(getHashRoute("#/")).toMatchObject({ page: "home", id: null });
       } finally {
         pathname.mockRestore();
+      }
+    });
+
+    it("resolves clean browser routes without hash requirement", () => {
+      expect(getHashRoute("/login")).toMatchObject({ page: "login", id: null });
+      expect(getHashRoute("/signup")).toMatchObject({ page: "signup", id: null });
+      expect(getHashRoute("/admin")).toMatchObject({ page: "admin", id: null });
+      expect(getHashRoute("/vendor")).toMatchObject({ page: "vendor", id: null });
+      expect(getHashRoute("/account")).toMatchObject({ page: "account", id: null });
+      expect(getHashRoute("/cart")).toMatchObject({ page: "cart", id: null });
+      expect(getHashRoute("/product/101")).toMatchObject({ page: "product", id: "101" });
+      expect(getHashRoute("/category/electronics/phones")).toMatchObject({
+        page: "category",
+        path: "electronics/phones",
+      });
+    });
+
+    it("resolves clean routes from window.location.pathname when hash is empty", () => {
+      const pathnameSpy = vi.spyOn(window.location, "pathname", "get");
+      try {
+        pathnameSpy.mockReturnValue("/login");
+        expect(getHashRoute("")).toMatchObject({ page: "login" });
+
+        pathnameSpy.mockReturnValue("/admin");
+        expect(getHashRoute("")).toMatchObject({ page: "admin" });
+
+        pathnameSpy.mockReturnValue("/cart");
+        expect(getHashRoute("")).toMatchObject({ page: "cart" });
+
+        pathnameSpy.mockReturnValue("/product/55");
+        expect(getHashRoute("")).toMatchObject({ page: "product", id: "55" });
+
+        pathnameSpy.mockReturnValue("/");
+        expect(getHashRoute("")).toMatchObject({ page: "home" });
+      } finally {
+        pathnameSpy.mockRestore();
+      }
+    });
+
+    it("navigateToPath updates browser history or hash cleanly", () => {
+      const pushSpy = vi.spyOn(window.history, "pushState");
+      try {
+        navigateToPath("/login");
+        expect(pushSpy).toHaveBeenCalledWith({ route: "login" }, "", "/login");
+
+        navigateToPath("cart");
+        expect(pushSpy).toHaveBeenCalledWith({ route: "cart" }, "", "/cart");
+      } finally {
+        pushSpy.mockRestore();
       }
     });
   });

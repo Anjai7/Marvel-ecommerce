@@ -57,7 +57,7 @@ const SAMPLE_PRODUCTS = [
 
 test.describe("storefront CMS pages", () => {
   test("a published page renders at its URL", async ({ page }) => {
-    await page.route("**/api/pages/diwali-sale*", (route) =>
+    await page.route("**/api/pages/**diwali-sale*", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -79,7 +79,7 @@ test.describe("storefront CMS pages", () => {
   });
 
   test("an unpublished page is not visible to a customer", async ({ page }) => {
-    await page.route("**/api/pages/secret-draft*", (route) =>
+    await page.route("**/api/pages/**secret-draft*", (route) =>
       route.fulfill({
         status: 404,
         contentType: "application/json",
@@ -94,7 +94,7 @@ test.describe("storefront CMS pages", () => {
   });
 
   test("a draft page is visible in preview to an admin", async ({ page }) => {
-    await page.route("**/api/pages/secret-draft*", (route) => {
+    await page.route("**/api/pages/**secret-draft*", (route) => {
       const url = new URL(route.request().url());
       if (url.searchParams.get("preview") === "1" || url.searchParams.get("preview") === "true") {
         return route.fulfill({
@@ -128,7 +128,7 @@ test.describe("storefront CMS pages", () => {
   test("an unknown section type renders the fallback and does not break the page", async ({
     page,
   }) => {
-    await page.route("**/api/pages/broken-page*", (route) =>
+    await page.route("**/api/pages/**broken-page*", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -156,7 +156,7 @@ test.describe("storefront CMS pages", () => {
   });
 
   test("the page has a title and a meta description", async ({ page }) => {
-    await page.route("**/api/pages/diwali-sale*", (route) =>
+    await page.route("**/api/pages/**diwali-sale*", (route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -180,29 +180,55 @@ test.describe("storefront CMS pages", () => {
 });
 
 test.describe("admin page builder flows", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/orders**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.route("**/api/users**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.route("**/api/products**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(SAMPLE_PRODUCTS),
+      })
+    );
+    await page.route("**/api/menu/**", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) })
+    );
+    await page.route("**/api/categories/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ categories: [] }),
+      })
+    );
+    await page.route("**/api/hero/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ slides: [] }),
+      })
+    );
+    await page.route("**/api/banners/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ banners: [] }),
+      })
+    );
+    await page.route("**/api/footer/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ sections: [], links: [] }),
+      })
+    );
+  });
+
   test("an admin can create a page and see it in the list", async ({ page }) => {
     let pages = [SAMPLE_PAGE];
-
-    await page.route("**/api/auth/login", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          token: "mock-token",
-          user: { id: "u1", email: "admin@marvel.com", role: "admin", full_name: "Admin User" },
-        }),
-      })
-    );
-
-    await page.route("**/api/auth/me", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: { id: "u1", email: "admin@marvel.com", role: "admin", full_name: "Admin User" },
-        }),
-      })
-    );
 
     await page.route("**/api/pages**", (route) => {
       if (route.request().method() === "POST") {
@@ -262,27 +288,6 @@ test.describe("admin page builder flows", () => {
   test("an admin can add a section, reorder it and save", async ({ page }) => {
     let sections = [SAMPLE_SECTIONS[0]];
 
-    await page.route("**/api/auth/login", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          token: "mock-token",
-          user: { id: "u1", email: "admin@marvel.com", role: "admin", full_name: "Admin User" },
-        }),
-      })
-    );
-
-    await page.route("**/api/auth/me", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: { id: "u1", email: "admin@marvel.com", role: "admin", full_name: "Admin User" },
-        }),
-      })
-    );
-
     await page.route("**/api/pages**", (route) =>
       route.fulfill({
         status: 200,
@@ -333,6 +338,6 @@ test.describe("admin page builder flows", () => {
     await typeDialog.getByRole("button", { name: "Spacer" }).click();
 
     await page.getByRole("button", { name: "Save Sections" }).click();
-    await expect(page.getByText("Sections Saved")).toBeVisible();
+    await expect(page.getByText("Sections Saved", { exact: true })).toBeVisible();
   });
 });

@@ -89,13 +89,15 @@ beforeEach(() => {
 });
 
 describe("HeroSlidesEditor", () => {
-  it("renders slides list with edit and delete actions", async () => {
+  it("renders slides list with view, edit, and delete actions", async () => {
     renderEditor();
 
     expect(await screen.findByText("Summer Sale")).toBeVisible();
     expect(screen.getByText("Winter Drop")).toBeVisible();
+    expect(screen.getByRole("button", { name: "View Summer Sale" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit Summer Sale" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Delete Summer Sale" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "View Winter Drop" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Edit Winter Drop" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Delete Winter Drop" })).toBeVisible();
   });
@@ -184,22 +186,20 @@ describe("HeroSlidesEditor", () => {
     renderEditor();
 
     await screen.findByText("Summer Sale");
-    await user.click(screen.getByRole("button", { name: "Deactivate Summer Sale" }));
+    await user.click(screen.getByRole("radio", { name: "Deactivate Summer Sale" }));
 
     await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
     expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s1", { id: "s1", is_active: false });
     expect(apiSaveHeroSlide).not.toHaveBeenCalled();
   });
 
-  it("activates a hidden slide using the value the toggle computed", async () => {
+  it("activates a hidden slide using the radio control", async () => {
     const user = userEvent.setup();
     renderEditor();
 
     await screen.findByText("Winter Drop");
-    await user.click(screen.getByRole("button", { name: "Activate Winter Drop" }));
+    await user.click(screen.getByRole("radio", { name: "Activate Winter Drop" }));
 
-    // The kit's ActiveToggle hands the next state to onChange; the editor must
-    // write that value instead of re-deriving it from the stale row.
     await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
     expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s2", { id: "s2", is_active: true });
     expect(apiSaveHeroSlide).not.toHaveBeenCalled();
@@ -237,5 +237,43 @@ describe("HeroSlidesEditor", () => {
 
     await waitFor(() => expect(apiDeleteHeroSlide).toHaveBeenCalledTimes(1));
     expect(apiDeleteHeroSlide).toHaveBeenCalledWith("s1");
+  });
+
+  it("opens view modal with slide details and can close it", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Summer Sale");
+    await user.click(screen.getByRole("button", { name: "View Summer Sale" }));
+
+    expect(await screen.findByRole("dialog", { name: "View Hero Slide" })).toBeVisible();
+    expect(screen.getByText("Hero slide details & storefront preview")).toBeVisible();
+    expect(screen.getByText("CTA Destination:")).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "View Hero Slide" })).not.toBeInTheDocument();
+    });
+  });
+
+  it("toggles CTA enable/disable in edit modal", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Summer Sale");
+    await user.click(screen.getByRole("button", { name: "Edit Summer Sale" }));
+
+    const ctaToggle = screen.getByRole("checkbox", { name: "Enable CTA button" });
+    expect(ctaToggle).toBeChecked();
+
+    await user.click(ctaToggle);
+    expect(ctaToggle).not.toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Save Slide" }));
+    await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
+    expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s1", {
+      id: "s1",
+      btn_enabled: false,
+    });
   });
 });

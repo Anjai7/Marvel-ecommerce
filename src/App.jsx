@@ -29,6 +29,7 @@ import SuperAdminDashboard from "./components/superadmin/SuperAdminDashboard";
 import {
   getHashRoute,
   menuPathToCategoryPath,
+  navigateToPath,
   resolveMenuNavigation,
   getDashboardRouteForRole,
   getAuthRedirectRoute,
@@ -45,7 +46,7 @@ import {
 
 // Re-export for backward-compatibility with tests
 // oxlint-disable-next-line react/only-export-components
-export { getHashRoute, menuPathToCategoryPath };
+export { getHashRoute, menuPathToCategoryPath, navigateToPath };
 
 function AppMain() {
   const { user, isLoggedIn, role: userRole, logout } = useAuth();
@@ -58,25 +59,67 @@ function AppMain() {
   const [loginDefaultRole, setLoginDefaultRole] = useState("user");
 
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleRouteChange = () => {
       const newRoute = getHashRoute();
       setCurrentRoute(newRoute);
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener("hashchange", handleRouteChange);
+    window.addEventListener("popstate", handleRouteChange);
+    return () => {
+      window.removeEventListener("hashchange", handleRouteChange);
+      window.removeEventListener("popstate", handleRouteChange);
+    };
   }, []);
 
   const navigateTo = (route, role = "user") => {
     if (route === "login") setLoginDefaultRole(role);
-    window.location.hash = `#/${route}`;
+    const clean = String(route ?? "").trim();
+    const isLogin = clean === "login" || clean === "/login" || clean === "#/login";
+    const isHome = clean === "" || clean === "/" || clean === "#/" || clean === "#";
+
+    if (isLogin) {
+      if (typeof window !== "undefined") {
+        if (window.history?.pushState) {
+          window.history.pushState({ route: "login" }, "", "/login");
+        }
+        if (window.location.hash) {
+          try {
+            window.history.replaceState(null, "", "/login");
+          } catch {}
+        }
+        setCurrentRoute({ page: "login", categoryPath: null });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
+    if (isHome) {
+      if (typeof window !== "undefined") {
+        if (window.history?.pushState) {
+          window.history.pushState({ route: "" }, "", "/");
+        }
+        setCurrentRoute({ page: "home", categoryPath: null });
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+      return;
+    }
+
+    // For other routes (e.g. cart, products), use hash navigation to maintain compatibility
+    const path = clean.startsWith("#") ? clean.replace(/^#\/?/, "") : clean.replace(/^\/+/, "");
+    if (typeof window !== "undefined") {
+      window.location.hash = `#/${path}`;
+      const newRoute = getHashRoute();
+      setCurrentRoute(newRoute);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleSelectProduct = (product) => {
     if (product && product.id) {
       setSelectedProduct(product);
-      window.location.hash = `#/product/${product.id}`;
+      navigateTo(`product/${product.id}`);
     } else {
       navigateTo("product");
     }

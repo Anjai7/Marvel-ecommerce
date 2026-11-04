@@ -63,4 +63,48 @@ describe("AuthProvider", () => {
     await waitFor(() => expect(screen.getByTestId("auth")).toHaveTextContent("user:good-token"));
     expect(window.location.hash).toBe("#/");
   });
+
+  it("does not redirect an unauthenticated guest visitor on the storefront homepage when receiving 401", async () => {
+    // No stored token, visitor is on home page
+    window.location.hash = "#/";
+    const pushSpy = vi.spyOn(window.history, "pushState");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      })
+    );
+
+    renderAuth();
+
+    expect(await screen.findByTestId("auth")).toHaveTextContent("anon:");
+    expect(window.location.hash).toBe("#/");
+    expect(pushSpy).not.toHaveBeenCalledWith(expect.anything(), "", "/login");
+
+    pushSpy.mockRestore();
+  });
+
+  it("does not resurrect an expired admin session after prolonged inactivity", async () => {
+    localStorage.setItem("marvel_jwt_token", "admin-token");
+    // Set last active timestamp to 10 minutes ago
+    localStorage.setItem("marvel_admin_last_activity", String(Date.now() - 10 * 60 * 1000));
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ user: { id: "u-admin", role: "admin" } }),
+      })
+    );
+
+    renderAuth();
+
+    await waitFor(() => expect(localStorage.getItem("marvel_jwt_token")).toBeNull());
+    expect(localStorage.getItem("marvel_admin_last_activity")).toBeNull();
+    expect(window.location.hash).toBe("#/login");
+  });
 });

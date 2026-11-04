@@ -21,13 +21,15 @@ function resolveFolder(requested) {
     : DEFAULT_FOLDER;
 }
 
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
 // Configure Multer storage in memory
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB maximum file size
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB maximum file size
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
+    if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
       // A client mistake, not a server fault: the terminal handler answers with
@@ -44,7 +46,19 @@ router.post(
   "/",
   verifyToken,
   requireRole(["admin", "super_admin", "vendor"]),
-  upload.single("image"),
+  (req, res, next) => {
+    upload.single("image")(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: "Image file size must not exceed 5MB." });
+        }
+        return res
+          .status(err.status || 400)
+          .json({ error: err.message || "Failed to process image." });
+      }
+      next();
+    });
+  },
   async (req, res) => {
     try {
       if (!req.file) {

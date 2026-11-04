@@ -23,29 +23,8 @@ export function pageSlugFromPath(pathname) {
  *
  * @param {string} [hashOverride] - Optional hash string (defaults to window.location.hash)
  */
-export function getHashRoute(hashOverride) {
-  const hash =
-    typeof hashOverride === "string"
-      ? hashOverride
-      : typeof window !== "undefined"
-        ? window.location.hash
-        : "";
-
-  const raw = hash.replace(/^#\/?/, "").trim();
+export function parseRouteSegments(raw) {
   if (!raw) {
-    // A clean path is a real page URL: the sitemap and the canonical URL both
-    // point at `/pages/<slug>`, so the router understands it as well as the
-    // hash form. Without a hash and without a page path, this is the home
-    // page.
-    //
-    // The fallback applies only when there is **no hash at all**. An explicit
-    // `#/` is a navigation to the home page, and it has to win over the clean
-    // path — otherwise a visitor on `/pages/sale` could never leave.
-    const slug =
-      hash === ""
-        ? pageSlugFromPath(typeof window !== "undefined" ? window.location.pathname : "")
-        : null;
-    if (slug) return { page: "pages", id: slug, path: null, full: slug };
     return { page: "home", id: null, path: null, full: "" };
   }
 
@@ -66,6 +45,84 @@ export function getHashRoute(hashOverride) {
   }
 
   return { page, id: parts[1] || null, path: null, full: raw };
+}
+
+/**
+ * Real hash routing & clean browser path routing. `#/product/:id` keeps its single id; `category/*` carries
+ * the whole ancestor path because slugs are unique only per parent, so the
+ * last segment alone cannot identify a category.
+ *
+ * @param {string} [hashOverride] - Optional hash or path string (defaults to window.location.hash)
+ */
+export function getHashRoute(hashOverride) {
+  let hash = "";
+  const isOverride = typeof hashOverride === "string";
+
+  if (isOverride) {
+    hash = hashOverride;
+  } else if (typeof window !== "undefined") {
+    hash = window.location.hash || "";
+  }
+
+  // If hashOverride was passed as a clean path (e.g. "/login"), handle it directly
+  if (isOverride && hash && !hash.startsWith("#")) {
+    const rawClean = hash.replace(/^\/+|\/+$/g, "").trim();
+    if (!rawClean) return { page: "home", id: null, path: null, full: "" };
+    const slug = pageSlugFromPath(hash);
+    if (slug) return { page: "pages", id: slug, path: null, full: slug };
+    return parseRouteSegments(rawClean);
+  }
+
+  const raw = hash.replace(/^#\/?/, "").trim();
+  if (!raw) {
+    // A clean path is a real page URL: the sitemap and the canonical URL both
+    // point at `/pages/<slug>`, so the router understands it as well as the
+    // hash form. Without a hash and without a page path, this is the home
+    // page.
+    //
+    // The fallback applies only when there is **no hash at all** (hash === ""). An explicit
+    // `#/` is a navigation to the home page, and it has to win over the clean
+    // path — otherwise a visitor on `/pages/sale` could never leave.
+    if (hash === "") {
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+      const slug = pageSlugFromPath(pathname);
+      if (slug) return { page: "pages", id: slug, path: null, full: slug };
+
+      const cleanPath = pathname.replace(/^\/+|\/+$/g, "").trim();
+      if (cleanPath) {
+        return parseRouteSegments(cleanPath);
+      }
+    }
+    return { page: "home", id: null, path: null, full: "" };
+  }
+
+  return parseRouteSegments(raw);
+}
+
+/**
+ * Clean path navigation supporting browser history alongside hash routes.
+ *
+ * @param {string} target - Internal route or path, e.g. "login", "/login", or "#/login"
+ */
+export function navigateToPath(target) {
+  if (typeof window === "undefined") return;
+
+  const clean = String(target ?? "").trim();
+  const path = clean.startsWith("#") ? clean.replace(/^#\/?/, "") : clean.replace(/^\/+/, "");
+
+  const fullPath = path ? `/${path}` : "/";
+
+  try {
+    if (window.history && window.history.pushState) {
+      window.history.pushState({ route: path }, "", fullPath);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      return;
+    }
+  } catch {
+    // fallback if pushState throws or is restricted
+  }
+
+  window.location.hash = path ? `#/${path}` : "#/";
 }
 
 /**

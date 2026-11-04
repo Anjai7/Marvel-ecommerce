@@ -1322,6 +1322,16 @@ const SITE_SETTINGS = [
       bg_gradient: "linear-gradient(135deg, #091322 0%, #172a45 100%)",
     },
   },
+  {
+    key: "recent_products_slider",
+    group_name: "content",
+    value: {
+      enabled: true,
+      title: "Recent Arrivals & Drops",
+      subtitle: "Handpicked additions directly from the Marvel collection",
+      product_ids: [],
+    },
+  },
 ];
 
 /**
