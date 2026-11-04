@@ -89,6 +89,19 @@ describe("routes module", () => {
       }
     });
 
+    it("strips hashtag from #/login and replaces URL with clean /login", () => {
+      const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+      const hashSpy = vi.spyOn(window.location, "hash", "get").mockReturnValue("#/login");
+      try {
+        const route = getHashRoute();
+        expect(route).toMatchObject({ page: "login" });
+        expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/login");
+      } finally {
+        hashSpy.mockRestore();
+        replaceStateSpy.mockRestore();
+      }
+    });
+
     it("navigateToPath updates browser history or hash cleanly", () => {
       const pushSpy = vi.spyOn(window.history, "pushState");
       try {

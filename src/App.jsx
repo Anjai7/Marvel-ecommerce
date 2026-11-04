@@ -61,6 +61,11 @@ function AppMain() {
   useEffect(() => {
     const handleRouteChange = () => {
       const newRoute = getHashRoute();
+      if (newRoute.page === "login" && typeof window !== "undefined" && window.location.hash) {
+        try {
+          window.history.replaceState(null, "", "/login");
+        } catch {}
+      }
       setCurrentRoute(newRoute);
       window.scrollTo({ top: 0, behavior: "smooth" });
     };

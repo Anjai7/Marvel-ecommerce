@@ -65,10 +65,14 @@ export function useInactivityTimeout(options = {}) {
       try {
         if (window.history && window.history.pushState) {
           window.history.pushState(null, "", "/login");
+          if (window.location.hash) {
+            window.history.replaceState(null, "", "/login");
+          }
           window.dispatchEvent(new PopStateEvent("popstate"));
+          return;
         }
       } catch {}
-      window.location.hash = "#/login";
+      window.location.pathname = "/login";
     }
   }, [logout, addToast, onTimeout]);
 

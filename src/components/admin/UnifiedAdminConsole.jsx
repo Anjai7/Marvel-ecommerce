@@ -325,11 +325,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         try {
           if (window.history && window.history.pushState) {
             window.history.pushState(null, "", "/login");
+            if (window.location.hash) {
+              window.history.replaceState(null, "", "/login");
+            }
             window.dispatchEvent(new PopStateEvent("popstate"));
             return;
           }
         } catch {}
-        window.location.hash = "#/login";
+        window.location.pathname = "/login";
       }
     }
   };

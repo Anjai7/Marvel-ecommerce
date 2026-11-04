@@ -43,7 +43,8 @@ describe("AuthProvider", () => {
 
     await waitFor(() => expect(localStorage.getItem("marvel_jwt_token")).toBeNull());
 
-    expect(window.location.hash).toBe("#/login");
+    expect(window.location.pathname).toBe("/login");
+    expect(window.location.hash).toBe("");
     expect(await screen.findByTestId("auth")).toHaveTextContent("anon:");
   });
 
@@ -105,6 +106,7 @@ describe("AuthProvider", () => {
 
     await waitFor(() => expect(localStorage.getItem("marvel_jwt_token")).toBeNull());
     expect(localStorage.getItem("marvel_admin_last_activity")).toBeNull();
-    expect(window.location.hash).toBe("#/login");
+    expect(window.location.pathname).toBe("/login");
+    expect(window.location.hash).toBe("");
   });
 });

@@ -88,7 +88,8 @@ describe("useInactivityTimeout", () => {
         type: "warning",
       })
     );
-    expect(window.location.hash).toBe("#/login");
+    expect(window.location.pathname).toBe("/login");
+    expect(window.location.hash).toBe("");
   });
 
   it("cleans up event listeners and interval on unmount", () => {

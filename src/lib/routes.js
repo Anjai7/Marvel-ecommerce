@@ -64,6 +64,25 @@ export function getHashRoute(hashOverride) {
     hash = window.location.hash || "";
   }
 
+  // If user arrives with #/login in URL, immediately strip the hash and replace address with clean /login
+  if (!isOverride && typeof window !== "undefined") {
+    const rawHash = window.location.hash || "";
+    if (
+      rawHash === "#/login" ||
+      rawHash === "#login" ||
+      rawHash.startsWith("#/login?") ||
+      rawHash.startsWith("#/login/")
+    ) {
+      try {
+        if (window.history && window.history.replaceState) {
+          const search = rawHash.includes("?") ? rawHash.slice(rawHash.indexOf("?")) : "";
+          window.history.replaceState(null, "", `/login${search}`);
+        }
+      } catch {}
+      return { page: "login", id: null, path: null, full: "login" };
+    }
+  }
+
   // If hashOverride was passed as a clean path (e.g. "/login"), handle it directly
   if (isOverride && hash && !hash.startsWith("#")) {
     const rawClean = hash.replace(/^\/+|\/+$/g, "").trim();
@@ -115,11 +134,21 @@ export function navigateToPath(target) {
   try {
     if (window.history && window.history.pushState) {
       window.history.pushState({ route: path }, "", fullPath);
+      if (window.location.hash) {
+        try {
+          window.history.replaceState({ route: path }, "", fullPath);
+        } catch {}
+      }
       window.dispatchEvent(new PopStateEvent("popstate"));
       return;
     }
   } catch {
     // fallback if pushState throws or is restricted
+  }
+
+  if (path === "login") {
+    window.location.pathname = "/login";
+    return;
   }
 
   window.location.hash = path ? `#/${path}` : "#/";

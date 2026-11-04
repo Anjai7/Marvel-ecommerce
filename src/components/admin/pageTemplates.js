@@ -42,7 +42,7 @@ export const PAGE_STARTER_PRESETS = [
           badge: "Special Offer",
           subtitle: "Use code MARVEL20 at checkout for instant member savings.",
           cta_label: "Join Free",
-          cta_href: "#/login",
+          cta_href: "/login",
           theme: "primary",
         },
       },

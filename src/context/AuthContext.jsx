@@ -53,10 +53,15 @@ export function AuthProvider({ children }) {
                 try {
                   if (window.history && window.history.pushState) {
                     window.history.pushState(null, "", "/login");
+                    if (window.location.hash) {
+                      window.history.replaceState(null, "", "/login");
+                    }
                     window.dispatchEvent(new PopStateEvent("popstate"));
+                    return null;
                   }
                 } catch {}
-                window.location.hash = "#/login";
+                window.location.pathname = "/login";
+                return null;
               }
               return null;
             }
@@ -116,10 +121,14 @@ export function AuthProvider({ children }) {
           try {
             if (window.history && window.history.pushState) {
               window.history.pushState(null, "", "/login");
+              if (window.location.hash) {
+                window.history.replaceState(null, "", "/login");
+              }
               window.dispatchEvent(new PopStateEvent("popstate"));
+              return;
             }
           } catch {}
-          window.location.hash = "#/login";
+          window.location.pathname = "/login";
         }
       }
     });
@@ -189,17 +198,15 @@ export function AuthProvider({ children }) {
       try {
         if (window.history && window.history.pushState) {
           window.history.pushState(null, "", "/login");
+          if (window.location.hash) {
+            window.history.replaceState(null, "", "/login");
+          }
           window.dispatchEvent(new PopStateEvent("popstate"));
         } else {
           window.location.pathname = "/login";
         }
       } catch {
-        window.location.hash = "#/login";
-      }
-      if (window.location.hash && window.location.hash !== "#/login") {
-        try {
-          window.location.hash = "";
-        } catch {}
+        window.location.pathname = "/login";
       }
     }
   };
