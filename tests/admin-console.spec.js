@@ -40,6 +40,38 @@ test.describe("admin console", () => {
     await expect(page.getByRole("button", { name: "Publish Product" })).toBeVisible();
   });
 
+  test("products submenu has only View Product and Add Product, no in-page extra button, and form validates mandatory fields with red indication", async ({
+    page,
+  }) => {
+    await page.locator("#admin-tab-products").click();
+    await expect(page.locator("#admin-tab-products-list")).toContainText("View Product");
+    await expect(page.locator("#admin-tab-products-add")).toContainText("Add Product");
+    await expect(page.getByText("All Products")).toHaveCount(0);
+
+    // Verify there is no extra in-page add button inside the page
+    await page.locator("#admin-tab-products-list").click();
+    await expect(page.locator("#admin-add-product-button")).toHaveCount(0);
+
+    // Open add product modal from sidebar
+    await page.locator("#admin-tab-products-add").click();
+    await expect(page.getByRole("button", { name: "Publish Product" })).toBeVisible();
+
+    // Verify (Mandatory) indicators
+    await expect(page.getByText("Product Title * (Mandatory)")).toBeVisible();
+    await expect(page.getByText("Price (₹) * (Mandatory)")).toBeVisible();
+    await expect(page.getByText("Product Image * (Mandatory)")).toBeVisible();
+    await expect(page.getByText("Description * (Mandatory)")).toBeVisible();
+
+    // Click Publish Product without filling fields to trigger validation
+    await page.getByRole("button", { name: "Publish Product" }).click();
+
+    // Verify red errors show up for mandatory fields
+    await expect(page.getByText("Product title is required.")).toBeVisible();
+    await expect(page.getByText("Valid product price is required.")).toBeVisible();
+    await expect(page.getByText("Product image is required.")).toBeVisible();
+    await expect(page.getByText("Product description is required.")).toBeVisible();
+  });
+
   test("sidebar exposes the Pages editor", async ({ page }) => {
     await page.locator("#admin-tab-site-content").click();
     await expect(page.locator("#admin-tab-site-content-pages")).toBeVisible();

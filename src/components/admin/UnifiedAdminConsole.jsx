@@ -13,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  AlertCircle,
   TrendingUp,
   IndianRupee,
   ShoppingBag,
@@ -415,6 +416,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   };
 
   const handleOpenAddProduct = () => {
+    setActiveTab("products");
     setEditingProduct(null);
     setProductErrors({});
     setProductForm({
@@ -1305,37 +1307,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 }
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
               >
-                <Package size={14} />
-                <span>All Products</span>
-                <span className="sidebar-submenu-count">{products.length}</span>
-              </button>
-              <button
-                id="admin-tab-products-view"
-                onClick={() => {
-                  setActiveTab("products");
-                  setProductsView("list");
-                }}
-                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "list" ? "active" : ""}`}
-              >
                 <Eye size={14} />
                 <span>View Product</span>
+                <span className="sidebar-submenu-count">{products.length}</span>
               </button>
               <button
                 id="admin-tab-products-add"
                 onClick={() =>
                   handleNavSelect(() => {
-                    setActiveTab("products");
-                    setProductsView("add");
-                    setEditingProduct(null);
-                    setProductFormData({
-                      title: "",
-                      price: "",
-                      category_id: "",
-                      stock: "",
-                      image_url: "",
-                      description: "",
-                      colors: "",
-                    });
+                    handleOpenAddProduct();
                   })
                 }
                 className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "add" ? "active" : ""}`}
@@ -2318,14 +2298,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <option value={50}>50</option>
                   </select>
                 </div>
-                <Button
-                  id="admin-add-product-button"
-                  onClick={handleOpenAddProduct}
-                  className="add-user-primary-btn"
-                >
-                  <Plus size={16} />
-                  <span>Add Product</span>
-                </Button>
               </div>
             </div>
 
@@ -2370,8 +2342,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <form onSubmit={handleSaveProduct} className="modal-form" noValidate>
                     <div className="form-group-row">
                       <div className="form-group">
-                        <label className="form-label" htmlFor="product-form-title">
-                          Product Title *
+                        <label
+                          className="form-label"
+                          htmlFor="product-form-title"
+                          style={{
+                            color: productErrors.title ? "#dc2626" : undefined,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Product Title <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: productErrors.title ? "#dc2626" : "#ef4444",
+                              fontWeight: 600,
+                            }}
+                          >
+                            (Mandatory)
+                          </span>
                         </label>
                         <Input
                           id="product-form-title"
@@ -2379,7 +2367,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           type="text"
                           placeholder="e.g. Aurora Wireless Speaker"
                           value={productForm.title}
-                          style={productErrors.title ? { borderColor: "#ef4444" } : {}}
+                          style={
+                            productErrors.title
+                              ? {
+                                  borderColor: "#ef4444",
+                                  borderWidth: "2px",
+                                  backgroundColor: "#fef2f2",
+                                  boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                                }
+                              : {}
+                          }
                           onChange={(e) => {
                             setProductForm((prev) => ({ ...prev, title: e.target.value }));
                             clearProductError("title");
@@ -2389,18 +2386,25 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           <span
                             className="field-error-text"
                             style={{
-                              color: "#ef4444",
+                              color: "#dc2626",
                               fontSize: "12px",
-                              marginTop: "4px",
-                              display: "block",
+                              fontWeight: 600,
+                              marginTop: "5px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
                             }}
                           >
+                            <AlertCircle size={13} color="#dc2626" />
                             {productErrors.title}
                           </span>
                         )}
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Category</label>
+                        <label className="form-label">
+                          Category{" "}
+                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                        </label>
                         <CategoryPicker
                           value={productForm.category_id}
                           label={productForm.category}
@@ -2416,8 +2420,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </div>
                     <div className="form-group-row">
                       <div className="form-group">
-                        <label className="form-label" htmlFor="product-form-price">
-                          Price (₹) *
+                        <label
+                          className="form-label"
+                          htmlFor="product-form-price"
+                          style={{
+                            color: productErrors.price ? "#dc2626" : undefined,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Price (₹) <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: productErrors.price ? "#dc2626" : "#ef4444",
+                              fontWeight: 600,
+                            }}
+                          >
+                            (Mandatory)
+                          </span>
                         </label>
                         <Input
                           id="product-form-price"
@@ -2427,7 +2447,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           step="0.01"
                           placeholder="e.g. 4999"
                           value={productForm.price}
-                          style={productErrors.price ? { borderColor: "#ef4444" } : {}}
+                          style={
+                            productErrors.price
+                              ? {
+                                  borderColor: "#ef4444",
+                                  borderWidth: "2px",
+                                  backgroundColor: "#fef2f2",
+                                  boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                                }
+                              : {}
+                          }
                           onChange={(e) => {
                             setProductForm((prev) => ({ ...prev, price: e.target.value }));
                             clearProductError("price");
@@ -2437,18 +2466,25 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           <span
                             className="field-error-text"
                             style={{
-                              color: "#ef4444",
+                              color: "#dc2626",
                               fontSize: "12px",
-                              marginTop: "4px",
-                              display: "block",
+                              fontWeight: 600,
+                              marginTop: "5px",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
                             }}
                           >
+                            <AlertCircle size={13} color="#dc2626" />
                             {productErrors.price}
                           </span>
                         )}
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Original Price (₹)</label>
+                        <label className="form-label">
+                          Original Price (₹){" "}
+                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                        </label>
                         <Input
                           type="number"
                           min="0"
@@ -2464,7 +2500,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Stock Units</label>
+                        <label className="form-label">
+                          Stock Units{" "}
+                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                        </label>
                         <Input
                           type="number"
                           min="0"
@@ -2478,8 +2517,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label" htmlFor="product-form-image_url">
-                        Product Image *
+                      <label
+                        className="form-label"
+                        htmlFor="product-form-image_url"
+                        style={{
+                          color: productErrors.image_url ? "#dc2626" : undefined,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Product Image <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: productErrors.image_url ? "#dc2626" : "#ef4444",
+                            fontWeight: 600,
+                          }}
+                        >
+                          (Mandatory)
+                        </span>
                       </label>
                       <input
                         id="product-form-image_url"
@@ -2487,18 +2542,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         accept="image/*"
                         onChange={handleProductImageUpload}
                         className="form-select-field"
-                        style={productErrors.image_url ? { borderColor: "#ef4444" } : {}}
+                        style={
+                          productErrors.image_url
+                            ? {
+                                borderColor: "#ef4444",
+                                borderWidth: "2px",
+                                borderStyle: "dashed",
+                                backgroundColor: "#fef2f2",
+                                boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                              }
+                            : {}
+                        }
                       />
                       {productErrors.image_url && (
                         <span
                           className="field-error-text"
                           style={{
-                            color: "#ef4444",
+                            color: "#dc2626",
                             fontSize: "12px",
-                            marginTop: "4px",
-                            display: "block",
+                            fontWeight: 600,
+                            marginTop: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
                           }}
                         >
+                          <AlertCircle size={13} color="#dc2626" />
                           {productErrors.image_url}
                         </span>
                       )}
@@ -2545,15 +2614,55 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       )}
                     </div>
                     <div className="form-group">
-                      <label className="form-label" htmlFor="product-form-description">
-                        Description *
+                      <label
+                        className="form-label"
+                        htmlFor="product-form-description"
+                        style={{
+                          color: productErrors.description ? "#dc2626" : undefined,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Description <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: productErrors.description ? "#dc2626" : "#ef4444",
+                            fontWeight: 600,
+                          }}
+                        >
+                          (Mandatory)
+                        </span>
                       </label>
-                      <Input
+                      <textarea
                         id="product-form-description"
-                        type="text"
+                        rows={3}
+                        className="form-select-field"
                         placeholder="Product description is required"
                         value={productForm.description}
-                        style={productErrors.description ? { borderColor: "#ef4444" } : {}}
+                        style={
+                          productErrors.description
+                            ? {
+                                borderColor: "#ef4444",
+                                borderWidth: "2px",
+                                backgroundColor: "#fef2f2",
+                                boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                                width: "100%",
+                                resize: "vertical",
+                                padding: "10px 12px",
+                                borderRadius: "8px",
+                                fontFamily: "inherit",
+                                fontSize: "14px",
+                              }
+                            : {
+                                width: "100%",
+                                resize: "vertical",
+                                padding: "10px 12px",
+                                borderRadius: "8px",
+                                fontFamily: "inherit",
+                                fontSize: "14px",
+                                border: "1px solid #e2e8f0",
+                              }
+                        }
                         onChange={(e) => {
                           setProductForm((prev) => ({ ...prev, description: e.target.value }));
                           clearProductError("description");
@@ -2563,12 +2672,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         <span
                           className="field-error-text"
                           style={{
-                            color: "#ef4444",
+                            color: "#dc2626",
                             fontSize: "12px",
-                            marginTop: "4px",
-                            display: "block",
+                            fontWeight: 600,
+                            marginTop: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
                           }}
                         >
+                          <AlertCircle size={13} color="#dc2626" />
                           {productErrors.description}
                         </span>
                       )}

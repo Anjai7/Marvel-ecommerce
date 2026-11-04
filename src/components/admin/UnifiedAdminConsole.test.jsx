@@ -99,10 +99,10 @@ describe("UnifiedAdminConsole", () => {
 
     const nav = await screen.findByRole("navigation");
     await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
-    await expect(within(nav).getByRole("button", { name: "View Product" })).toBeVisible();
+    await expect(within(nav).getByRole("button", { name: /View Product/ })).toBeVisible();
 
+    await user.click(within(nav).getByRole("button", { name: "Add Product" }));
     const main = screen.getByRole("main");
-    await user.click(within(main).getByRole("button", { name: "Add Product" }));
     await expect(within(main).getByRole("button", { name: "Publish Product" })).toBeVisible();
   });
 
@@ -158,8 +158,7 @@ describe("UnifiedAdminConsole", () => {
 
     const nav = await screen.findByRole("navigation");
     await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
-    const main = screen.getByRole("main");
-    await user.click(within(main).getByRole("button", { name: "Add Product" }));
+    await user.click(within(nav).getByRole("button", { name: "Add Product" }));
 
     // An empty number input reports null through toHaveValue; the point is it is
     // not a fabricated "15".
