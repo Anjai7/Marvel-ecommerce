@@ -123,7 +123,6 @@ const ORDER_STATUS_ICONS = {
   cancelled: XCircle,
 };
 
-/** How many order rows the table renders before it stops. */
 const ORDER_ROW_LIMIT = 20;
 
 /**
@@ -204,15 +203,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [productsView, setProductsView] = useState("list"); // "list" | "add"
   const [ordersView, setOrdersView] = useState("all"); // "all" | order status
   const [orderSearch, setOrderSearch] = useState("");
+  const [orderPage, setOrderPage] = useState(1);
+  const orderPageSize = 25;
   const [customersView, setCustomersView] = useState("all"); // "all" | "repeat"
   const [customerSearch, setCustomerSearch] = useState("");
+  const [customerPage, setCustomerPage] = useState(1);
+  const customerPageSize = 25;
 
   // Products management states
   const [editingProduct, setEditingProduct] = useState(null);
   const [productSaving, setProductSaving] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
-  const [productPageSize, setProductPageSize] = useState(10);
+  const [productPageSize, setProductPageSize] = useState(25);
   const [productErrors, setProductErrors] = useState({});
   const [productForm, setProductForm] = useState({
     title: "",
@@ -230,10 +233,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [userPage, setUserPage] = useState(1);
-  const usersPerPage = 8;
+  const usersPerPage = 25;
 
   // Modals States
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [addUserErrors, setAddUserErrors] = useState({});
   // Plan and billing are derived by the server from the role
   // (server/routes/users.js → formatUserProfile), so the form never invents one
   // and never sends an override.
@@ -769,6 +773,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     );
   }, [customerSegment, customerSearch, storeNameByUserId]);
 
+  const totalOrderPages = Math.max(1, Math.ceil(visibleOrders.length / orderPageSize));
+  const validOrderPage = Math.min(Math.max(1, orderPage), totalOrderPages);
+  const orderStartIndex = (validOrderPage - 1) * orderPageSize;
+  const paginatedOrders = visibleOrders.slice(orderStartIndex, orderStartIndex + orderPageSize);
+
+  const totalCustomerPages = Math.max(1, Math.ceil(visibleCustomers.length / customerPageSize));
+  const validCustomerPage = Math.min(Math.max(1, customerPage), totalCustomerPages);
+  const customerStartIndex = (validCustomerPage - 1) * customerPageSize;
+  const paginatedCustomers = visibleCustomers.slice(
+    customerStartIndex,
+    customerStartIndex + customerPageSize
+  );
+
   // ----------------------------------------------------
   // USER MANAGEMENT HANDLERS
   // ----------------------------------------------------
@@ -797,21 +814,32 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // Create User Account Handler
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!addUserForm.fullName.trim() || !addUserForm.email.trim() || !addUserForm.password.trim()) {
-      addToast({
-        title: "Missing Information",
-        message: "Full Name, Email, and Password are required.",
-        type: "error",
-      });
-      return;
+    const errors = {};
+    if (!addUserForm.fullName.trim()) {
+      errors.fullName = "Full name is required.";
+    }
+    if (!addUserForm.email.trim()) {
+      errors.email = "Email address is required.";
+    }
+    if (!addUserForm.password.trim()) {
+      errors.password = "Temporary password is required.";
+    } else if (addUserForm.password.length < 6) {
+      errors.password = "Password must be at least 6 characters long.";
+    }
+    if (addUserForm.role === "vendor" && !addUserForm.storeName.trim()) {
+      errors.storeName = "Store / Business name is required for vendor accounts.";
     }
 
-    if (addUserForm.password.length < 6) {
+    if (Object.keys(errors).length > 0) {
+      setAddUserErrors(errors);
       addToast({
-        title: "Weak Password",
-        message: "Password must be at least 6 characters long.",
-        type: "warning",
+        title: "Missing Information",
+        message: "Please fill in all mandatory fields highlighted in red.",
+        type: "error",
       });
+      const firstField = Object.keys(errors)[0];
+      const el = document.getElementById(`user-create-${firstField.toLowerCase()}`);
+      if (el) el.focus();
       return;
     }
 
@@ -827,6 +855,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       const created = await apiAdminCreateUser(payload);
       setUsers((prev) => [created, ...prev]);
       setShowAddUserModal(false);
+      setAddUserErrors({});
       setAddUserForm({
         fullName: "",
         email: "",
@@ -2292,10 +2321,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     className="form-select-field"
                     style={{ padding: "4px 8px", fontSize: "13px", height: "34px", width: "auto" }}
                   >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
+                    <option value={25}>25</option>
                     <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={10}>10</option>
                   </select>
                 </div>
               </div>
@@ -3003,7 +3032,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         </td>
                       </tr>
                     ) : (
-                      visibleOrders.slice(0, ORDER_ROW_LIMIT).map((order, idx) => (
+                      paginatedOrders.map((order, idx) => (
                         <tr key={order.id || idx}>
                           <td className="font-mono text-primary font-bold">{orderRef(order)}</td>
                           <td>
@@ -3050,6 +3079,55 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </tbody>
                 </table>
               </div>
+
+              {totalOrderPages > 1 && (
+                <div
+                  className="table-pagination-footer"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "14px 18px",
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div className="text-sm text-muted">
+                    Page <strong>{validOrderPage}</strong> of <strong>{totalOrderPages}</strong>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validOrderPage <= 1}
+                      onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          className={`menu-page-number-btn ${pageNum === validOrderPage ? "active" : ""}`}
+                          onClick={() => setOrderPage(pageNum)}
+                          aria-label={`Page ${pageNum}`}
+                          aria-current={pageNum === validOrderPage ? "page" : undefined}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validOrderPage >= totalOrderPages}
+                      onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -3125,7 +3203,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         </td>
                       </tr>
                     ) : (
-                      visibleCustomers.slice(0, 20).map((cust) => (
+                      paginatedCustomers.map((cust) => (
                         <tr key={cust.id || cust.email}>
                           <td>
                             <div className="user-profile-cell">
@@ -3156,6 +3234,58 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </tbody>
                 </table>
               </div>
+
+              {totalCustomerPages > 1 && (
+                <div
+                  className="table-pagination-footer"
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "14px 18px",
+                    borderTop: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div className="text-sm text-muted">
+                    Page <strong>{validCustomerPage}</strong> of{" "}
+                    <strong>{totalCustomerPages}</strong>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validCustomerPage <= 1}
+                      onClick={() => setCustomerPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      {Array.from({ length: totalCustomerPages }, (_, i) => i + 1).map(
+                        (pageNum) => (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            className={`menu-page-number-btn ${pageNum === validCustomerPage ? "active" : ""}`}
+                            onClick={() => setCustomerPage(pageNum)}
+                            aria-label={`Page ${pageNum}`}
+                            aria-current={pageNum === validCustomerPage ? "page" : undefined}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={validCustomerPage >= totalCustomerPages}
+                      onClick={() => setCustomerPage((p) => Math.min(totalCustomerPages, p + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -3192,7 +3322,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
       <CreateUserModal
         isOpen={showAddUserModal}
-        onClose={() => setShowAddUserModal(false)}
+        onClose={() => {
+          setShowAddUserModal(false);
+          setAddUserErrors({});
+        }}
         form={addUserForm}
         setForm={setAddUserForm}
         onSubmit={handleCreateUser}
@@ -3201,6 +3334,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         showPassword={showPassword}
         setShowPassword={setShowPassword}
         onGeneratePassword={generateRandomPassword}
+        errors={addUserErrors}
+        clearError={(field) => setAddUserErrors((prev) => ({ ...prev, [field]: undefined }))}
       />
 
       <ViewUserModal

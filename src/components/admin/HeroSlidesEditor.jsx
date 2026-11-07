@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit2, Eye, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Edit2, Eye, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import "./admin-content.css";
 import {
@@ -113,6 +113,7 @@ export default function HeroSlidesEditor() {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -144,11 +145,13 @@ export default function HeroSlidesEditor() {
 
   const openCreate = () => {
     setFormError("");
+    setFieldErrors({});
     setEditing(blankForm(slides.length));
   };
 
   const openEdit = (slide) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(editForm(slide));
   };
 
@@ -213,15 +216,26 @@ export default function HeroSlidesEditor() {
     requestInFlight.current = true;
     setSaving(true);
     setFormError("");
+    setFieldErrors({});
     try {
       const payload = toPayload(editing);
+      const errors = {};
       if (!payload.title) {
+        errors.title = "Hero slide title is required.";
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
         setFormError("Title is required.");
         addToast({
           title: "Missing Information",
           message: "Enter a title before saving the slide.",
           type: "error",
         });
+        const el = document.getElementById("hero-title");
+        if (el) el.focus();
+        requestInFlight.current = false;
+        setSaving(false);
         return;
       }
 
@@ -418,9 +432,18 @@ export default function HeroSlidesEditor() {
             <form onSubmit={handleSave} className="modal-form">
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-badge">
-                    Badge
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-badge">
+                      Badge
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-badge"
                     type="text"
@@ -429,9 +452,18 @@ export default function HeroSlidesEditor() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-tag">
-                    Tag
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-tag">
+                      Tag
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-tag"
                     type="text"
@@ -442,21 +474,78 @@ export default function HeroSlidesEditor() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="hero-title">
-                  Title *
-                </label>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <label
+                    className="form-label"
+                    htmlFor="hero-title"
+                    style={{
+                      color: fieldErrors.title ? "#dc2626" : undefined,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Title *
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: fieldErrors.title ? "#dc2626" : "#ef4444",
+                      fontWeight: 600,
+                    }}
+                  >
+                    (Mandatory)
+                  </span>
+                </div>
                 <Input
                   id="hero-title"
                   type="text"
                   value={editing.title}
-                  onChange={(event) => setField("title", event.target.value)}
+                  style={
+                    fieldErrors.title
+                      ? {
+                          borderColor: "#ef4444",
+                          borderWidth: "2px",
+                          backgroundColor: "#fef2f2",
+                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                        }
+                      : {}
+                  }
+                  onChange={(event) => {
+                    setField("title", event.target.value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                  }}
                 />
+                {fieldErrors.title && (
+                  <span
+                    className="field-error-text"
+                    style={{
+                      color: "#dc2626",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      marginTop: "5px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <AlertCircle size={13} color="#dc2626" />
+                    {fieldErrors.title}
+                  </span>
+                )}
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="hero-subtitle">
-                  Subtitle
-                </label>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <label className="form-label" htmlFor="hero-subtitle">
+                    Subtitle
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
                 <Input
                   id="hero-subtitle"
                   type="text"
@@ -502,9 +591,18 @@ export default function HeroSlidesEditor() {
 
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-btn-text">
-                    Button text
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-btn-text">
+                      Button text
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-btn-text"
                     type="text"
@@ -514,9 +612,18 @@ export default function HeroSlidesEditor() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-btn-path">
-                    Button path
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-btn-path">
+                      Button path
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-btn-path"
                     type="text"
@@ -548,9 +655,18 @@ export default function HeroSlidesEditor() {
 
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-bg-gradient">
-                    Background gradient
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-bg-gradient">
+                      Background gradient
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-bg-gradient"
                     type="text"
@@ -559,9 +675,18 @@ export default function HeroSlidesEditor() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="hero-price-text">
-                    Price text
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="hero-price-text">
+                      Price text
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="hero-price-text"
                     type="text"
@@ -572,9 +697,14 @@ export default function HeroSlidesEditor() {
               </div>
 
               <div className="form-group">
-                <label className="form-label" htmlFor="hero-ribbon">
-                  Ribbon text
-                </label>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <label className="form-label" htmlFor="hero-ribbon">
+                    Ribbon text
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
                 <Input
                   id="hero-ribbon"
                   type="text"
@@ -717,7 +847,17 @@ export default function HeroSlidesEditor() {
                 </div>
                 <div>
                   <strong>Status:</strong>{" "}
-                  {viewing.is_active === false ? "Inactive / Hidden" : "Active"}
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontWeight: 700,
+                      color: viewing.is_active === false ? "#64748b" : "#059669",
+                    }}
+                  >
+                    {viewing.is_active === false ? "OFF" : "ON"}
+                  </span>
                 </div>
                 <div>
                   <strong>Tag:</strong> {viewing.tag || "None"}

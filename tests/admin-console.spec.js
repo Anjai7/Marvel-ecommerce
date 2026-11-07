@@ -115,4 +115,59 @@ test.describe("admin console", () => {
     expect(scrolledBox.y).toBe(0);
     await expect(navbar).toBeVisible();
   });
+
+  test("main top navbar remains fixed at top when scrolling on tablet and mobile viewports", async ({
+    page,
+  }) => {
+    // 1. Tablet viewport (e.g. 815px width)
+    await page.setViewportSize({ width: 815, height: 1024 });
+    const navbar = page.locator(".main-top-navbar");
+    await expect(navbar).toBeVisible();
+
+    const initialTabletBox = await navbar.boundingBox();
+    expect(initialTabletBox).not.toBeNull();
+    expect(initialTabletBox.y).toBe(0);
+
+    // Scroll down inside the admin-main-viewport
+    await page.locator(".admin-main-viewport").evaluate((el) => el.scrollTo({ top: 400 }));
+    await page.waitForTimeout(100);
+
+    const scrolledTabletBox = await navbar.boundingBox();
+    expect(scrolledTabletBox).not.toBeNull();
+    expect(scrolledTabletBox.y).toBe(0);
+    await expect(navbar).toBeVisible();
+
+    // 2. Mobile viewport (e.g. 390px width)
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(navbar).toBeVisible();
+
+    const initialMobileBox = await navbar.boundingBox();
+    expect(initialMobileBox).not.toBeNull();
+    expect(initialMobileBox.y).toBe(0);
+
+    await page.locator(".admin-main-viewport").evaluate((el) => el.scrollTo({ top: 400 }));
+    await page.waitForTimeout(100);
+
+    const scrolledMobileBox = await navbar.boundingBox();
+    expect(scrolledMobileBox).not.toBeNull();
+    expect(scrolledMobileBox.y).toBe(0);
+    await expect(navbar).toBeVisible();
+  });
+
+  test("automatically logs out and redirects to /login on inactivity timeout", async ({ page }) => {
+    await expect(page.locator(".main-top-navbar")).toBeVisible();
+
+    // Simulate inactivity by setting timestamp to 6 minutes ago
+    await page.evaluate(() => {
+      const sixMinutesAgo = Date.now() - 6 * 60 * 1000;
+      localStorage.setItem("marvel_admin_last_activity", String(sixMinutesAgo));
+    });
+
+    // Wait for periodic check to trigger expiration
+    await page.waitForTimeout(1200);
+
+    // Verify redirected to /login with session expired notification
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByText("Session expired due to 5 minutes of inactivity")).toBeVisible();
+  });
 });

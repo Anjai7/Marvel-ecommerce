@@ -8778,10 +8778,11 @@ input:focus:not(:focus-visible) {
   .admin-app-layout {
     display: flex;
     flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-    max-height: none;
-    overflow-x: hidden;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
     position: relative;
   }
 
@@ -8823,10 +8824,16 @@ input:focus:not(:focus-visible) {
   }
 
   .admin-main-viewport {
-    height: auto;
-    max-height: none;
-    overflow-y: visible;
-    padding: 16px;
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 20px 16px;
     width: 100%;
     box-sizing: border-box;
   }
@@ -8834,13 +8841,14 @@ input:focus:not(:focus-visible) {
   .main-top-navbar {
     position: sticky;
     top: 0;
-    z-index: 30;
-    background: rgba(248, 250, 252, 0.95);
+    z-index: 40;
+    background: rgba(248, 250, 252, 0.96);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    margin: -16px -16px 16px -16px;
-    padding: 12px 16px;
+    margin: 0 -16px 16px -16px;
+    padding: 14px 16px;
     border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .admin-mobile-menu-toggle {

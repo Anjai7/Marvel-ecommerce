@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Edit2, FileText, Plus, Trash2, X } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  FileText,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
   apiDeleteCategory,
@@ -207,6 +216,7 @@ export default function CategoriesTreeEditor() {
   const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(null);
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -239,11 +249,13 @@ export default function CategoriesTreeEditor() {
 
   const openCreate = (parent = null) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(newForm(parent, siblingsFor(tree, parent?.id ?? null).length));
   };
 
   const openEdit = (node) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(editForm(node));
   };
 
@@ -282,17 +294,30 @@ export default function CategoriesTreeEditor() {
     requestInFlight.current = true;
     setSaving(true);
     setFormError("");
+    setFieldErrors({});
     try {
       // Payload construction belongs inside the try: a malformed value must
       // surface as the normal error toast, never escape the submit handler.
       const payload = toPayload(editing);
-      if (!payload.name) {
+      const errors = {};
+      if (!editing.id && !payload.name) {
+        errors.name = "Category name is required.";
+      } else if (editing.id && payload.name !== undefined && !payload.name) {
+        errors.name = "Category name is required.";
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
         setFormError("Category name is required.");
         addToast({
           title: "Missing Information",
           message: "Category name is required.",
           type: "error",
         });
+        const el = document.getElementById("category-name");
+        if (el) el.focus();
+        requestInFlight.current = false;
+        setSaving(false);
         return;
       }
 
@@ -569,26 +594,138 @@ export default function CategoriesTreeEditor() {
             <form onSubmit={handleSave} className="modal-form">
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="category-name">
-                    Name *
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label
+                      className="form-label"
+                      htmlFor="category-name"
+                      style={{
+                        color: fieldErrors.name ? "#dc2626" : undefined,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Name *
+                    </label>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: fieldErrors.name ? "#dc2626" : "#ef4444",
+                        fontWeight: 600,
+                      }}
+                    >
+                      (Mandatory)
+                    </span>
+                  </div>
                   <Input
                     id="category-name"
                     type="text"
                     value={editing.name}
-                    onChange={(event) => handleNameChange(event.target.value)}
+                    style={
+                      fieldErrors.name
+                        ? {
+                            borderColor: "#ef4444",
+                            borderWidth: "2px",
+                            backgroundColor: "#fef2f2",
+                            boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                          }
+                        : {}
+                    }
+                    onChange={(event) => {
+                      handleNameChange(event.target.value);
+                      if (fieldErrors.name) {
+                        setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                      }
+                    }}
                   />
+                  {fieldErrors.name && (
+                    <span
+                      className="field-error-text"
+                      style={{
+                        color: "#dc2626",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        marginTop: "5px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <AlertCircle size={13} color="#dc2626" />
+                      {fieldErrors.name}
+                    </span>
+                  )}
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="category-slug">
-                    Slug *
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label
+                      className="form-label"
+                      htmlFor="category-slug"
+                      style={{
+                        color: fieldErrors.slug ? "#dc2626" : undefined,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Slug *
+                    </label>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: fieldErrors.slug ? "#dc2626" : "#ef4444",
+                        fontWeight: 600,
+                      }}
+                    >
+                      (Mandatory)
+                    </span>
+                  </div>
                   <Input
                     id="category-slug"
                     type="text"
                     value={editing.slug}
-                    onChange={(event) => handleSlugChange(event.target.value)}
+                    style={
+                      fieldErrors.slug
+                        ? {
+                            borderColor: "#ef4444",
+                            borderWidth: "2px",
+                            backgroundColor: "#fef2f2",
+                            boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                          }
+                        : {}
+                    }
+                    onChange={(event) => {
+                      handleSlugChange(event.target.value);
+                      if (fieldErrors.slug) {
+                        setFieldErrors((prev) => ({ ...prev, slug: undefined }));
+                      }
+                    }}
                   />
+                  {fieldErrors.slug && (
+                    <span
+                      className="field-error-text"
+                      style={{
+                        color: "#dc2626",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        marginTop: "5px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <AlertCircle size={13} color="#dc2626" />
+                      {fieldErrors.slug}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -600,9 +737,14 @@ export default function CategoriesTreeEditor() {
               )}
 
               <div className="form-group">
-                <label className="form-label" htmlFor="category-parent">
-                  Parent category
-                </label>
+                <div
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <label className="form-label" htmlFor="category-parent">
+                    Parent category
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
                 <select
                   id="category-parent"
                   className="form-select-field"
@@ -621,9 +763,18 @@ export default function CategoriesTreeEditor() {
 
               <div className="form-group-row">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="category-icon">
-                    Icon
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="category-icon">
+                      Icon
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <Input
                     id="category-icon"
                     type="text"

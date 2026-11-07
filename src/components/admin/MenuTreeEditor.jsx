@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -480,6 +481,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
   const [collapsed, setCollapsed] = useState({});
   const [editing, setEditing] = useState(null);
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -541,11 +543,13 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
   const openCreate = (parent = null) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(newForm(parent, siblingsFor(tree, parent?.id ?? null).length));
   };
 
   const openEdit = (item) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(editForm(item, findParent(tree, item.id)?.id ?? null));
   };
 
@@ -647,12 +651,30 @@ export default function MenuTreeEditor({ role = "admin" }) {
     requestInFlight.current = true;
     setSaving(true);
     setFormError("");
+    setFieldErrors({});
     try {
       const payload = toPayload(editing);
-      if (!payload.title || !payload.path) {
-        const message = "Menu item title and path are required.";
-        setFormError(message);
-        addToast({ title: "Missing Information", message, type: "error" });
+      const errors = {};
+      if (!payload.title) {
+        errors.title = "Menu item title is required.";
+      }
+      if (!payload.path) {
+        errors.path = "Menu item path is required.";
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setFormError("Please fill in all mandatory fields highlighted in red.");
+        addToast({
+          title: "Missing Information",
+          message: "Please fill in all mandatory fields highlighted in red.",
+          type: "error",
+        });
+        const firstField = Object.keys(errors)[0];
+        const el = document.getElementById(`menu-${firstField}`);
+        if (el) el.focus();
+        requestInFlight.current = false;
+        setSaving(false);
         return;
       }
 
@@ -1095,33 +1117,154 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <h4 className="form-section-title">Basics</h4>
                 <div className="form-group-row">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-title">
-                      Title *
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label
+                        className="form-label"
+                        htmlFor="menu-title"
+                        style={{
+                          color: fieldErrors.title ? "#dc2626" : undefined,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Title *
+                      </label>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: fieldErrors.title ? "#dc2626" : "#ef4444",
+                          fontWeight: 600,
+                        }}
+                      >
+                        (Mandatory)
+                      </span>
+                    </div>
                     <Input
                       id="menu-title"
                       type="text"
                       value={editing.title}
-                      onChange={(event) => setField("title", event.target.value)}
+                      style={
+                        fieldErrors.title
+                          ? {
+                              borderColor: "#ef4444",
+                              borderWidth: "2px",
+                              backgroundColor: "#fef2f2",
+                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                            }
+                          : {}
+                      }
+                      onChange={(event) => {
+                        setField("title", event.target.value);
+                        if (fieldErrors.title) {
+                          setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                        }
+                      }}
                     />
+                    {fieldErrors.title && (
+                      <span
+                        className="field-error-text"
+                        style={{
+                          color: "#dc2626",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          marginTop: "5px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <AlertCircle size={13} color="#dc2626" />
+                        {fieldErrors.title}
+                      </span>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-path">
-                      Path *
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label
+                        className="form-label"
+                        htmlFor="menu-path"
+                        style={{
+                          color: fieldErrors.path ? "#dc2626" : undefined,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Path *
+                      </label>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: fieldErrors.path ? "#dc2626" : "#ef4444",
+                          fontWeight: 600,
+                        }}
+                      >
+                        (Mandatory)
+                      </span>
+                    </div>
                     <Input
                       id="menu-path"
                       type="text"
                       value={editing.path}
-                      onChange={(event) => setField("path", event.target.value)}
+                      style={
+                        fieldErrors.path
+                          ? {
+                              borderColor: "#ef4444",
+                              borderWidth: "2px",
+                              backgroundColor: "#fef2f2",
+                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                            }
+                          : {}
+                      }
+                      onChange={(event) => {
+                        setField("path", event.target.value);
+                        if (fieldErrors.path) {
+                          setFieldErrors((prev) => ({ ...prev, path: undefined }));
+                        }
+                      }}
                     />
+                    {fieldErrors.path && (
+                      <span
+                        className="field-error-text"
+                        style={{
+                          color: "#dc2626",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          marginTop: "5px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <AlertCircle size={13} color="#dc2626" />
+                        {fieldErrors.path}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="menu-category">
-                    Category
-                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <label className="form-label" htmlFor="menu-category">
+                      Category
+                    </label>
+                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                  </div>
                   <select
                     id="menu-category"
                     className="form-select-field"
@@ -1142,9 +1285,18 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
                 <div className="form-group-row">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-icon">
-                      Icon
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label className="form-label" htmlFor="menu-icon">
+                        Icon
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                    </div>
                     <Input
                       id="menu-icon"
                       type="text"
@@ -1153,9 +1305,18 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-order">
-                      Order index
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label className="form-label" htmlFor="menu-order">
+                        Order index
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                    </div>
                     <Input
                       id="menu-order"
                       type="number"
@@ -1167,9 +1328,18 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
                 <div className="form-group-row">
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-section">
-                      Section
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label className="form-label" htmlFor="menu-section">
+                        Section
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                    </div>
                     <Input
                       id="menu-section"
                       type="text"
@@ -1178,9 +1348,18 @@ export default function MenuTreeEditor({ role = "admin" }) {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="menu-section-icon">
-                      Section icon
-                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label className="form-label" htmlFor="menu-section-icon">
+                        Section icon
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                    </div>
                     <Input
                       id="menu-section-icon"
                       type="text"

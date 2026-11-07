@@ -119,7 +119,7 @@ export function OrderControls({ index, total, onMove, label, disabled = false })
   );
 }
 
-/** A toggle button whose pressed state is the row's `is_active`. */
+/** An on/off toggle button whose pressed state is the row's `is_active`. */
 export function ActiveToggle({ active, onChange, label }) {
   const isActive = Boolean(active);
   const suffix = label ? ` ${label}` : "";
@@ -131,8 +131,34 @@ export function ActiveToggle({ active, onChange, label }) {
       aria-pressed={isActive}
       aria-label={`${isActive ? "Deactivate" : "Activate"}${suffix}`}
       onClick={() => onChange?.(!isActive)}
+      className={`admin-active-toggle ${isActive ? "is-on" : "is-off"}`}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "4px 10px 4px 7px",
+        borderRadius: "9999px",
+        fontWeight: 700,
+        fontSize: "12px",
+        letterSpacing: "0.5px",
+        lineHeight: 1,
+        transition: "all 0.2s ease",
+        borderColor: isActive ? "#10b981" : "#cbd5e1",
+        backgroundColor: isActive ? "#ecfdf5" : "#f8fafc",
+        color: isActive ? "#065f46" : "#64748b",
+      }}
     >
-      {isActive ? "Active" : "Hidden"}
+      <span
+        style={{
+          display: "inline-block",
+          width: "8px",
+          height: "8px",
+          borderRadius: "50%",
+          backgroundColor: isActive ? "#10b981" : "#94a3b8",
+          boxShadow: isActive ? "0 0 5px #10b981" : "none",
+        }}
+      />
+      <span>{isActive ? "ON" : "OFF"}</span>
     </Button>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit2, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Edit2, Plus, Trash2, X } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
   apiDeleteBanner,
@@ -198,17 +198,67 @@ async function renumberPlacement(rowId, placement, position) {
   await apiReorderBanners(reordered.map((row, index) => ({ id: row.id, display_order: index })));
 }
 
-const textField = ({ id, label, value, onChange, type = "text" }) => (
+const textField = ({ id, label, value, onChange, type = "text", error, required }) => (
   <div className="form-group" key={id}>
-    <label className="form-label" htmlFor={id}>
-      {label}
-    </label>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <label
+        className="form-label"
+        htmlFor={id}
+        style={{
+          color: error ? "#dc2626" : undefined,
+          fontWeight: required ? 600 : undefined,
+          margin: 0,
+        }}
+      >
+        {label}
+      </label>
+      {required ? (
+        <span
+          style={{
+            fontSize: "11px",
+            color: error ? "#dc2626" : "#ef4444",
+            fontWeight: 600,
+          }}
+        >
+          (Mandatory)
+        </span>
+      ) : (
+        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+      )}
+    </div>
     <Input
       id={id}
       type={type}
       value={value ?? ""}
+      style={
+        error
+          ? {
+              borderColor: "#ef4444",
+              borderWidth: "2px",
+              backgroundColor: "#fef2f2",
+              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+            }
+          : {}
+      }
       onChange={(event) => onChange(event.target.value)}
     />
+    {error && (
+      <span
+        className="field-error-text"
+        style={{
+          color: "#dc2626",
+          fontSize: "12px",
+          fontWeight: 600,
+          marginTop: "5px",
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+        }}
+      >
+        <AlertCircle size={13} color="#dc2626" />
+        {error}
+      </span>
+    )}
   </div>
 );
 
@@ -219,6 +269,7 @@ export default function BannersEditor() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -257,11 +308,13 @@ export default function BannersEditor() {
 
   const openCreate = () => {
     setFormError("");
+    setFieldErrors({});
     setEditing(newForm(placement, banners.length));
   };
 
   const openEdit = (row) => {
     setFormError("");
+    setFieldErrors({});
     setEditing(editForm(row));
   };
 
@@ -353,15 +406,21 @@ export default function BannersEditor() {
     requestInFlight.current = true;
     setSaving(true);
     setFormError("");
+    setFieldErrors({});
     try {
       const payload = toPayload(editing);
       if (!payload.title) {
+        setFieldErrors({ title: "Banner title is required." });
         setFormError("Banner title is required.");
         addToast({
           title: "Missing Information",
-          message: "Banner title is required.",
+          message: "Please fill in all mandatory fields highlighted in red.",
           type: "error",
         });
+        const el = document.getElementById("banner-title");
+        if (el) el.focus();
+        requestInFlight.current = false;
+        setSaving(false);
         return;
       }
 
@@ -581,7 +640,14 @@ export default function BannersEditor() {
                     id: "banner-title",
                     label: "Title *",
                     value: editing.title,
-                    onChange: (value) => setField("title", value),
+                    required: true,
+                    error: fieldErrors.title,
+                    onChange: (value) => {
+                      setField("title", value);
+                      if (fieldErrors.title) {
+                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                      }
+                    },
                   })}
                   {textField({
                     id: "banner-subtitle",
@@ -645,7 +711,14 @@ export default function BannersEditor() {
                     id: "banner-title",
                     label: "Title *",
                     value: editing.title,
-                    onChange: (value) => setField("title", value),
+                    required: true,
+                    error: fieldErrors.title,
+                    onChange: (value) => {
+                      setField("title", value);
+                      if (fieldErrors.title) {
+                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                      }
+                    },
                   })}
                   {textField({
                     id: "banner-highlight",
@@ -721,7 +794,14 @@ export default function BannersEditor() {
                     id: "banner-title",
                     label: "Title *",
                     value: editing.title,
-                    onChange: (value) => setField("title", value),
+                    required: true,
+                    error: fieldErrors.title,
+                    onChange: (value) => {
+                      setField("title", value);
+                      if (fieldErrors.title) {
+                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                      }
+                    },
                   })}
                   {textField({
                     id: "banner-subtitle",

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../ui";
 import { clearStoredToken } from "../../api/backendApi";
+import { navigateToPath } from "../../lib/routes";
 
 export const ADMIN_INACTIVITY_KEY = "marvel_admin_last_activity";
 export const DEFAULT_INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 continuous minutes (300,000 ms)
@@ -63,14 +64,8 @@ export function useInactivityTimeout(options = {}) {
 
     if (typeof window !== "undefined") {
       try {
-        if (window.history && window.history.pushState) {
-          window.history.pushState(null, "", "/login");
-          if (window.location.hash) {
-            window.history.replaceState(null, "", "/login");
-          }
-          window.dispatchEvent(new PopStateEvent("popstate"));
-          return;
-        }
+        navigateToPath("/login");
+        return;
       } catch {}
       window.location.pathname = "/login";
     }
@@ -112,11 +107,17 @@ export function useInactivityTimeout(options = {}) {
       } catch {}
     };
 
-    // Track mousemove, mousedown, keydown, touchstart, scroll
+    // Track user interactions: mouse, keyboard, touch, wheel, and scroll
     const trackedEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
     trackedEvents.forEach((eventName) => {
       window.addEventListener(eventName, handleActivity, { passive: true });
     });
+    window.addEventListener("wheel", handleActivity, { passive: true });
+    window.addEventListener("touchmove", handleActivity, { passive: true });
+    window.addEventListener("pointerdown", handleActivity, { passive: true });
+    if (typeof document !== "undefined") {
+      document.addEventListener("scroll", handleActivity, { capture: true, passive: true });
+    }
 
     // Cross-tab synchronization via storage events
     const handleStorageChange = (e) => {
@@ -154,6 +155,12 @@ export function useInactivityTimeout(options = {}) {
       trackedEvents.forEach((eventName) => {
         window.removeEventListener(eventName, handleActivity);
       });
+      window.removeEventListener("wheel", handleActivity);
+      window.removeEventListener("touchmove", handleActivity);
+      window.removeEventListener("pointerdown", handleActivity);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("scroll", handleActivity, { capture: true });
+      }
       window.removeEventListener("storage", handleStorageChange);
       if (timerRef.current) {
         clearInterval(timerRef.current);
