@@ -2263,8 +2263,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {!dataUnavailable && activeTab === "products" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="products-toolbar">
-              <div className="search-input-wrapper" style={{ position: "relative" }}>
-                <Search size={18} className="search-icon" />
+              <div
+                className="search-input-wrapper products-search-wrapper"
+                style={{ position: "relative", maxWidth: "340px", flex: "0 1 340px" }}
+              >
+                <Search
+                  size={16}
+                  className="search-icon"
+                  style={{ left: "12px", width: "16px", height: "16px" }}
+                />
                 <input
                   type="text"
                   placeholder="Search catalog by title, category, or SKU..."
@@ -2273,8 +2280,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     setProductSearch(e.target.value);
                     setProductPage(1);
                   }}
-                  className="users-search-field"
-                  style={{ paddingRight: "36px" }}
+                  className="users-search-field products-search-input"
+                  style={{
+                    height: "38px",
+                    paddingLeft: "36px",
+                    paddingRight: "34px",
+                    fontSize: "13px",
+                  }}
                 />
                 {productSearch && (
                   <button
@@ -2287,7 +2299,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     aria-label="Clear product search"
                     style={{
                       position: "absolute",
-                      right: "12px",
+                      right: "10px",
                       top: "50%",
                       transform: "translateY(-50%)",
                       background: "none",
@@ -2300,7 +2312,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       justifyContent: "center",
                     }}
                   >
-                    <X size={16} />
+                    <X size={15} />
                   </button>
                 )}
               </div>

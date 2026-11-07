@@ -602,6 +602,26 @@
   margin-bottom: 16px;
 }
 
+.products-search-wrapper {
+  flex: 0 1 340px;
+  max-width: 340px;
+  min-width: 220px;
+}
+
+.products-search-input {
+  height: 38px;
+  font-size: 13px;
+  padding: 0 34px 0 36px;
+  border-radius: 8px;
+}
+
+@media (max-width: 640px) {
+  .products-search-wrapper {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+
 .product-form-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
