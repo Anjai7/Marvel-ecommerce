@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit2, Plus, Trash2, X } from "lucide-react";
+import { Edit2, Plus, Trash2 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
   apiDeleteFooterLink,
@@ -12,7 +12,8 @@ import {
   apiUpdateFooterLink,
   apiUpdateFooterSection,
 } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 
 const CONTENT_EVENT = "marvel_content_updated";
@@ -443,6 +444,128 @@ export default function FooterEditor() {
         </Button>
       </div>
 
+      {editing && (
+        <AdminInlinePanel
+          title={
+            isSectionForm
+              ? form.id
+                ? "Edit Footer Section"
+                : "Add Footer Section"
+              : form.id
+                ? "Edit Footer Link"
+                : "Add Footer Link"
+          }
+          subtitle={isSectionForm ? "A footer column or tag group" : selectedSection?.heading}
+          tone="amber"
+          onClose={() => setEditing(null)}
+          closeLabel="Close the footer editor"
+        >
+          <form onSubmit={handleSave} className="admin-inline-form">
+            {isSectionForm ? (
+              <>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="footer-heading">
+                    Heading *
+                  </label>
+                  <Input
+                    id="footer-heading"
+                    type="text"
+                    value={form.heading}
+                    onChange={(event) => setField("heading", event.target.value)}
+                  />
+                </div>
+                <div className="form-group-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="footer-section-type">
+                      Section type
+                    </label>
+                    <select
+                      id="footer-section-type"
+                      className="form-select-field"
+                      value={form.sectionType}
+                      onChange={(event) => setField("sectionType", event.target.value)}
+                    >
+                      {SECTION_TYPES.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="footer-column-index">
+                      Column index
+                    </label>
+                    <Input
+                      id="footer-column-index"
+                      type="number"
+                      value={form.columnIndex}
+                      onChange={(event) => setField("columnIndex", event.target.value)}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="footer-link-label">
+                    Label *
+                  </label>
+                  <Input
+                    id="footer-link-label"
+                    type="text"
+                    value={form.label}
+                    onChange={(event) => setField("label", event.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="footer-link-href">
+                    Href *
+                  </label>
+                  <Input
+                    id="footer-link-href"
+                    type="text"
+                    value={form.href}
+                    onChange={(event) => setField("href", event.target.value)}
+                  />
+                  <p className="form-hint">
+                    Use a route such as <code>/category/electronics</code>, or an https URL. A bare
+                    path like <code>/help</code> leaves the app and will not resolve.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Ordering lives in the row-level up/down controls, which
+                  renumber the complete sibling group; a raw form-level
+                  display_order could leave two rows sharing a position. */}
+            <div className="form-group">
+              <span className="form-label">Active</span>
+              <ActiveToggle
+                active={form.isActive}
+                label={isSectionForm ? form.heading || "this section" : form.label || "this link"}
+                onChange={(active) => setField("isActive", active)}
+              />
+            </div>
+
+            {formError && (
+              <p role="alert" className="form-error">
+                {formError}
+              </p>
+            )}
+
+            <div className="admin-inline-actions">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="submit-primary-btn">
+                {saving ? "Saving..." : isSectionForm ? "Save Section" : "Save Link"}
+              </Button>
+            </div>
+          </form>
+        </AdminInlinePanel>
+      )}
+
       {loading ? (
         <p className="chart-subtitle">Loading footer content...</p>
       ) : (
@@ -693,147 +816,7 @@ export default function FooterEditor() {
         </div>
       )}
 
-      {editing && (
-        <div className="modal-backdrop-overlay">
-          <div
-            className="modal-content-container animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label={isSectionForm ? "Footer section editor" : "Footer link editor"}
-          >
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">
-                  {isSectionForm
-                    ? form.id
-                      ? "Edit Footer Section"
-                      : "Add Footer Section"
-                    : form.id
-                      ? "Edit Footer Link"
-                      : "Add Footer Link"}
-                </h3>
-                <p className="modal-subtitle">
-                  {isSectionForm ? "A footer column or tag group" : selectedSection?.heading}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="modal-close-btn"
-                aria-label="Close editor"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="modal-form">
-              {isSectionForm ? (
-                <>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="footer-heading">
-                      Heading *
-                    </label>
-                    <Input
-                      id="footer-heading"
-                      type="text"
-                      value={form.heading}
-                      onChange={(event) => setField("heading", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group-row">
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="footer-section-type">
-                        Section type
-                      </label>
-                      <select
-                        id="footer-section-type"
-                        className="form-select-field"
-                        value={form.sectionType}
-                        onChange={(event) => setField("sectionType", event.target.value)}
-                      >
-                        {SECTION_TYPES.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="footer-column-index">
-                        Column index
-                      </label>
-                      <Input
-                        id="footer-column-index"
-                        type="number"
-                        value={form.columnIndex}
-                        onChange={(event) => setField("columnIndex", event.target.value)}
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="footer-link-label">
-                      Label *
-                    </label>
-                    <Input
-                      id="footer-link-label"
-                      type="text"
-                      value={form.label}
-                      onChange={(event) => setField("label", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="footer-link-href">
-                      Href *
-                    </label>
-                    <Input
-                      id="footer-link-href"
-                      type="text"
-                      value={form.href}
-                      onChange={(event) => setField("href", event.target.value)}
-                    />
-                    <p className="form-hint">
-                      Use a route such as <code>/category/electronics</code>, or an https URL. A
-                      bare path like <code>/help</code> leaves the app and will not resolve.
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Ordering lives in the row-level up/down controls, which
-                  renumber the complete sibling group; a raw form-level
-                  display_order could leave two rows sharing a position. */}
-              <div className="form-group">
-                <span className="form-label">Active</span>
-                <ActiveToggle
-                  active={form.isActive}
-                  label={isSectionForm ? form.heading || "this section" : form.label || "this link"}
-                  onChange={(active) => setField("isActive", active)}
-                />
-              </div>
-
-              {formError && (
-                <p role="alert" className="form-error">
-                  {formError}
-                </p>
-              )}
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="submit-primary-btn">
-                  {saving ? "Saving..." : isSectionForm ? "Save Section" : "Save Link"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={deleteTitle}
         message={

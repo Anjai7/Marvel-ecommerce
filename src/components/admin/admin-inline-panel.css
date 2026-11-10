@@ -1,0 +1,185 @@
+/* Inline admin panels — the in-page replacement for the modal popups.
+ *
+ * A panel sits in the normal flow of the page, so the list behind it stays
+ * visible while a form is open and the admin never loses their place.
+ * Imported by AdminInlinePanel and AdminConfirmStrip. */
+
+/* ── The panel ─────────────────────────────────────────── */
+.admin-inline-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px -20px rgba(15, 23, 42, 0.35);
+  margin-bottom: 20px;
+  overflow: hidden;
+  animation: adminInlinePanelIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-inline-panel:focus {
+  outline: none;
+}
+
+.admin-inline-panel:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@keyframes adminInlinePanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.admin-inline-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eef2f7;
+  background: #fafbfc;
+}
+
+.admin-inline-panel-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.admin-inline-panel-heading-text {
+  min-width: 0;
+}
+
+.admin-inline-panel-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.admin-inline-panel-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #475569;
+}
+
+.admin-inline-panel-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* A form inside the panel fills the body without the modal's own padding. */
+.admin-inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* A plain stack of blocks, for panels that hold content rather than a form. */
+.admin-inline-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* On a wide screen two short fields share a row, so a long form stays a
+ * panel instead of a tall column. Anything that carries its own layout — a
+ * row group, a hint, the action bar — stays full width. */
+@media (min-width: 900px) {
+  .admin-inline-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+    align-items: start;
+  }
+
+  .admin-inline-form > .form-group-row,
+  .admin-inline-form > .admin-inline-actions,
+  .admin-inline-form > .form-section,
+  .admin-inline-form > .form-hint,
+  .admin-inline-form > output,
+  .admin-inline-form > fieldset,
+  .admin-inline-form > textarea {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The panel body already pads the content, so a body block that brings its
+   own padding drops it. */
+.admin-inline-panel-body .view-user-body {
+  padding: 0;
+}
+
+.admin-inline-form .form-group-row {
+  gap: 14px;
+}
+
+/* The action row sits at the foot of the panel, separated by a rule. */
+.admin-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #eef2f7;
+}
+
+/* ── The confirmation strip ────────────────────────────── */
+.admin-confirm-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  border-radius: 12px;
+}
+
+.admin-confirm-strip.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.admin-confirm-strip-icon {
+  display: flex;
+  color: #2563eb;
+}
+
+.admin-confirm-strip.danger .admin-confirm-strip-icon {
+  color: #dc2626;
+}
+
+.admin-confirm-strip-text {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.admin-confirm-strip-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.admin-confirm-strip-message {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.admin-confirm-strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}

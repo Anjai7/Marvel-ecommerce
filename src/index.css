@@ -3391,6 +3391,23 @@ input:focus:not(:focus-visible) {
   color: var(--navy);
 }
 
+/* The row-level wrapper that pairs a switch with the visible ON/OFF word. */
+.admin-active-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.admin-active-toggle-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--gray-500);
+}
+.admin-active-toggle.is-on .admin-active-toggle-text {
+  color: var(--primary);
+}
+
 /* Popover */
 .ui-popover-content {
   z-index: 450;
@@ -8380,64 +8397,9 @@ input:focus:not(:focus-visible) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   5. MODAL POPUPS (Add User, View User, Edit User)
+   5. IN-PAGE ADMIN PANELS (the panel header, icon and close
+      button the inline panels reuse)
 ───────────────────────────────────────────────────────────── */
-.modal-backdrop-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content-container {
-  background: #ffffff;
-  border-radius: 18px;
-  width: 100%;
-  max-width: 540px;
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.animate-scale-up {
-  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes scaleUp {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid #f1f5f9;
-  background: #fafbfc;
-}
-
-.modal-title-with-icon {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .modal-icon-bubble {
   width: 42px;
   height: 42px;
@@ -8445,6 +8407,7 @@ input:focus:not(:focus-visible) {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .modal-icon-bubble.purple {
@@ -8468,19 +8431,6 @@ input:focus:not(:focus-visible) {
   color: #dc2626;
 }
 
-.modal-title {
-  font-size: 17px;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0;
-}
-
-.modal-subtitle {
-  font-size: 12px;
-  color: #64748b;
-  margin: 2px 0 0 0;
-}
-
 .modal-close-btn {
   width: 32px;
   height: 32px;
@@ -8498,13 +8448,6 @@ input:focus:not(:focus-visible) {
 .modal-close-btn:hover {
   background: #f1f5f9;
   color: #0f172a;
-}
-
-.modal-form {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
 }
 
 .form-group-row {
@@ -8586,14 +8529,6 @@ input:focus:not(:focus-visible) {
 
 .form-select-field:focus {
   border-color: #3b82f6;
-}
-
-.modal-actions-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 10px;
 }
 
 .submit-primary-btn {

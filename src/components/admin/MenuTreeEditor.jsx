@@ -33,7 +33,8 @@ import {
   apiSaveMenuItem,
   apiUpdateMenuItem,
 } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 
 const MENU_EVENT = "marvel_menu_updated";
@@ -981,6 +982,458 @@ export default function MenuTreeEditor({ role = "admin" }) {
         </div>
 
         <div className="admin-content-card-body">
+          {editing && (
+            <AdminInlinePanel
+              title={editing.id ? "Edit Menu Item" : "Add Menu Item"}
+              subtitle={`Level ${editing.level} — ${
+                editing.level === 1
+                  ? "a top-level item has no parent"
+                  : "a child of the selected parent"
+              }`}
+              tone="blue"
+              onClose={() => setEditing(null)}
+              closeLabel="Close the menu item editor"
+            >
+              <form onSubmit={handleSave} className="admin-inline-form">
+                <div className="form-section">
+                  <h4 className="form-section-title">Basics</h4>
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label
+                          className="form-label"
+                          htmlFor="menu-title"
+                          style={{
+                            color: fieldErrors.title ? "#dc2626" : undefined,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Title *
+                        </label>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: fieldErrors.title ? "#dc2626" : "#ef4444",
+                            fontWeight: 600,
+                          }}
+                        >
+                          (Mandatory)
+                        </span>
+                      </div>
+                      <Input
+                        id="menu-title"
+                        type="text"
+                        value={editing.title}
+                        style={
+                          fieldErrors.title
+                            ? {
+                                borderColor: "#ef4444",
+                                borderWidth: "2px",
+                                backgroundColor: "#fef2f2",
+                                boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                              }
+                            : {}
+                        }
+                        onChange={(event) => {
+                          setField("title", event.target.value);
+                          if (fieldErrors.title) {
+                            setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                          }
+                        }}
+                      />
+                      {fieldErrors.title && (
+                        <span
+                          className="field-error-text"
+                          style={{
+                            color: "#dc2626",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            marginTop: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <AlertCircle size={13} color="#dc2626" />
+                          {fieldErrors.title}
+                        </span>
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label
+                          className="form-label"
+                          htmlFor="menu-path"
+                          style={{
+                            color: fieldErrors.path ? "#dc2626" : undefined,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Path *
+                        </label>
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: fieldErrors.path ? "#dc2626" : "#ef4444",
+                            fontWeight: 600,
+                          }}
+                        >
+                          (Mandatory)
+                        </span>
+                      </div>
+                      <Input
+                        id="menu-path"
+                        type="text"
+                        value={editing.path}
+                        style={
+                          fieldErrors.path
+                            ? {
+                                borderColor: "#ef4444",
+                                borderWidth: "2px",
+                                backgroundColor: "#fef2f2",
+                                boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                              }
+                            : {}
+                        }
+                        onChange={(event) => {
+                          setField("path", event.target.value);
+                          if (fieldErrors.path) {
+                            setFieldErrors((prev) => ({ ...prev, path: undefined }));
+                          }
+                        }}
+                      />
+                      {fieldErrors.path && (
+                        <span
+                          className="field-error-text"
+                          style={{
+                            color: "#dc2626",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            marginTop: "5px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <AlertCircle size={13} color="#dc2626" />
+                          {fieldErrors.path}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <label className="form-label" htmlFor="menu-category">
+                        Category
+                      </label>
+                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                    </div>
+                    <select
+                      id="menu-category"
+                      className="form-select-field"
+                      value={editing.categoryId ?? ""}
+                      onChange={(event) => handleCategoryChange(event.target.value)}
+                    >
+                      <option value="">No category link</option>
+                      {categories.map((choice) => (
+                        <option key={choice.id} value={choice.id}>
+                          {choice.label}
+                        </option>
+                      ))}
+                    </select>
+                    <output className="form-hint">
+                      Choosing a category rewrites the path to its full ancestor path.
+                    </output>
+                  </div>
+
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label className="form-label" htmlFor="menu-icon">
+                          Icon
+                        </label>
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </div>
+                      <Input
+                        id="menu-icon"
+                        type="text"
+                        value={editing.icon}
+                        onChange={(event) => setField("icon", event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label className="form-label" htmlFor="menu-order">
+                          Order index
+                        </label>
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </div>
+                      <Input
+                        id="menu-order"
+                        type="number"
+                        value={editing.orderIndex}
+                        onChange={(event) => setField("orderIndex", event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label className="form-label" htmlFor="menu-section">
+                          Section
+                        </label>
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </div>
+                      <Input
+                        id="menu-section"
+                        type="text"
+                        value={editing.section}
+                        onChange={(event) => setField("section", event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <label className="form-label" htmlFor="menu-section-icon">
+                          Section icon
+                        </label>
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </div>
+                      <Input
+                        id="menu-section-icon"
+                        type="text"
+                        value={editing.sectionIcon}
+                        onChange={(event) => setField("sectionIcon", event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {categoryPlan && (
+                  <div className="form-section" data-testid="menu-create-category">
+                    <h4 className="form-section-title">Category page</h4>
+                    <p className="menu-create-page-text">
+                      {categoryPlan.action === "reuse" ? (
+                        <>
+                          The page already exists at <code>{categoryPlan.path}</code>. Saving links
+                          this menu item to it instead of creating a duplicate.
+                        </>
+                      ) : categoryPlan.action === "error" ? (
+                        categoryPlan.message
+                      ) : (
+                        <>
+                          <code>{editing.path}</code> has no category page yet. Saving can create{" "}
+                          <code>{categoryPlan.path}</code> and point this menu item at it.
+                        </>
+                      )}
+                    </p>
+
+                    {categoryPlan.action !== "error" && (
+                      <div className="form-group">
+                        <span className="form-label">Matching category page</span>
+                        <ActiveToggle
+                          active={categoryOfferOn}
+                          label="category page creation"
+                          onChange={(active) => setField("createCategoryPage", active)}
+                        />
+                        <output className="form-hint">
+                          {categoryOfferOn
+                            ? "On: saving writes the category page first, then links this item to it."
+                            : "Off: only the menu item is saved, so the path may not resolve."}
+                        </output>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="form-section">
+                  <h4 className="form-section-title">Badge, roles &amp; visibility</h4>
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-badge">
+                        Badge
+                      </label>
+                      <Input
+                        id="menu-badge"
+                        type="text"
+                        value={editing.badge}
+                        onChange={(event) => setField("badge", event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-badge-variant">
+                        Badge variant
+                      </label>
+                      <select
+                        id="menu-badge-variant"
+                        className="form-select-field"
+                        value={editing.badgeVariant}
+                        disabled={!badgeVariantSupported}
+                        onChange={(event) => setField("badgeVariant", event.target.value)}
+                      >
+                        {badgeVariantOptions.map((variant) => (
+                          <option key={variant} value={variant}>
+                            {variant}
+                          </option>
+                        ))}
+                      </select>
+                      {!badgeVariantSupported && (
+                        <output className="form-hint">
+                          This menu_items table has no badge_variant column, so a variant cannot be
+                          stored yet.
+                        </output>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-roles">
+                      Roles allowed (comma-separated)
+                    </label>
+                    <Input
+                      id="menu-roles"
+                      type="text"
+                      value={editing.rolesAllowed}
+                      onChange={(event) => setField("rolesAllowed", event.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <span className="form-label">Active</span>
+                    <ActiveToggle
+                      active={editing.isActive}
+                      label={editing.title || "this menu item"}
+                      onChange={(active) => setField("isActive", active)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h4 className="form-section-title">Promo block</h4>
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-promo-title">
+                        Promo title
+                      </label>
+                      <Input
+                        id="menu-promo-title"
+                        type="text"
+                        value={editing.promoTitle}
+                        onChange={(event) => setField("promoTitle", event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-promo-subtitle">
+                        Promo subtitle
+                      </label>
+                      <Input
+                        id="menu-promo-subtitle"
+                        type="text"
+                        value={editing.promoSubtitle}
+                        onChange={(event) => setField("promoSubtitle", event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="menu-promo-image">
+                      Promo image URL
+                    </label>
+                    <Input
+                      id="menu-promo-image"
+                      type="text"
+                      value={editing.promoImageUrl}
+                      onChange={(event) => setField("promoImageUrl", event.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group-row">
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-promo-cta-text">
+                        Promo CTA text
+                      </label>
+                      <Input
+                        id="menu-promo-cta-text"
+                        type="text"
+                        value={editing.promoCtaText}
+                        onChange={(event) => setField("promoCtaText", event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="menu-promo-cta-path">
+                        Promo CTA path
+                      </label>
+                      <Input
+                        id="menu-promo-cta-path"
+                        type="text"
+                        value={editing.promoCtaPath}
+                        onChange={(event) => setField("promoCtaPath", event.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {formError && (
+                  <p role="alert" className="form-error">
+                    {formError}
+                  </p>
+                )}
+
+                <div className="admin-inline-actions">
+                  <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saving} className="submit-primary-btn">
+                    {saving ? "Saving..." : "Save Menu Item"}
+                  </Button>
+                </div>
+              </form>
+            </AdminInlinePanel>
+          )}
+
           {loading ? (
             <output
               className="menu-tree-skeleton"
@@ -1084,476 +1537,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
         </div>
       </div>
 
-      {editing && (
-        <div className="modal-backdrop-overlay">
-          <div
-            className="modal-content-container menu-item-editor animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu item editor"
-          >
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">{editing.id ? "Edit Menu Item" : "Add Menu Item"}</h3>
-                <p className="modal-subtitle">
-                  Level {editing.level} —{" "}
-                  {editing.level === 1
-                    ? "a top-level item has no parent"
-                    : "a child of the selected parent"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="modal-close-btn"
-                aria-label="Close editor"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="modal-form">
-              <div className="form-section">
-                <h4 className="form-section-title">Basics</h4>
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label
-                        className="form-label"
-                        htmlFor="menu-title"
-                        style={{
-                          color: fieldErrors.title ? "#dc2626" : undefined,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Title *
-                      </label>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          color: fieldErrors.title ? "#dc2626" : "#ef4444",
-                          fontWeight: 600,
-                        }}
-                      >
-                        (Mandatory)
-                      </span>
-                    </div>
-                    <Input
-                      id="menu-title"
-                      type="text"
-                      value={editing.title}
-                      style={
-                        fieldErrors.title
-                          ? {
-                              borderColor: "#ef4444",
-                              borderWidth: "2px",
-                              backgroundColor: "#fef2f2",
-                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                            }
-                          : {}
-                      }
-                      onChange={(event) => {
-                        setField("title", event.target.value);
-                        if (fieldErrors.title) {
-                          setFieldErrors((prev) => ({ ...prev, title: undefined }));
-                        }
-                      }}
-                    />
-                    {fieldErrors.title && (
-                      <span
-                        className="field-error-text"
-                        style={{
-                          color: "#dc2626",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          marginTop: "5px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <AlertCircle size={13} color="#dc2626" />
-                        {fieldErrors.title}
-                      </span>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label
-                        className="form-label"
-                        htmlFor="menu-path"
-                        style={{
-                          color: fieldErrors.path ? "#dc2626" : undefined,
-                          fontWeight: 600,
-                        }}
-                      >
-                        Path *
-                      </label>
-                      <span
-                        style={{
-                          fontSize: "11px",
-                          color: fieldErrors.path ? "#dc2626" : "#ef4444",
-                          fontWeight: 600,
-                        }}
-                      >
-                        (Mandatory)
-                      </span>
-                    </div>
-                    <Input
-                      id="menu-path"
-                      type="text"
-                      value={editing.path}
-                      style={
-                        fieldErrors.path
-                          ? {
-                              borderColor: "#ef4444",
-                              borderWidth: "2px",
-                              backgroundColor: "#fef2f2",
-                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                            }
-                          : {}
-                      }
-                      onChange={(event) => {
-                        setField("path", event.target.value);
-                        if (fieldErrors.path) {
-                          setFieldErrors((prev) => ({ ...prev, path: undefined }));
-                        }
-                      }}
-                    />
-                    {fieldErrors.path && (
-                      <span
-                        className="field-error-text"
-                        style={{
-                          color: "#dc2626",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          marginTop: "5px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <AlertCircle size={13} color="#dc2626" />
-                        {fieldErrors.path}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="menu-category">
-                      Category
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <select
-                    id="menu-category"
-                    className="form-select-field"
-                    value={editing.categoryId ?? ""}
-                    onChange={(event) => handleCategoryChange(event.target.value)}
-                  >
-                    <option value="">No category link</option>
-                    {categories.map((choice) => (
-                      <option key={choice.id} value={choice.id}>
-                        {choice.label}
-                      </option>
-                    ))}
-                  </select>
-                  <output className="form-hint">
-                    Choosing a category rewrites the path to its full ancestor path.
-                  </output>
-                </div>
-
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label className="form-label" htmlFor="menu-icon">
-                        Icon
-                      </label>
-                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                    </div>
-                    <Input
-                      id="menu-icon"
-                      type="text"
-                      value={editing.icon}
-                      onChange={(event) => setField("icon", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label className="form-label" htmlFor="menu-order">
-                        Order index
-                      </label>
-                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                    </div>
-                    <Input
-                      id="menu-order"
-                      type="number"
-                      value={editing.orderIndex}
-                      onChange={(event) => setField("orderIndex", event.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label className="form-label" htmlFor="menu-section">
-                        Section
-                      </label>
-                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                    </div>
-                    <Input
-                      id="menu-section"
-                      type="text"
-                      value={editing.section}
-                      onChange={(event) => setField("section", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <label className="form-label" htmlFor="menu-section-icon">
-                        Section icon
-                      </label>
-                      <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                    </div>
-                    <Input
-                      id="menu-section-icon"
-                      type="text"
-                      value={editing.sectionIcon}
-                      onChange={(event) => setField("sectionIcon", event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {categoryPlan && (
-                <div className="form-section" data-testid="menu-create-category">
-                  <h4 className="form-section-title">Category page</h4>
-                  <p className="menu-create-page-text">
-                    {categoryPlan.action === "reuse" ? (
-                      <>
-                        The page already exists at <code>{categoryPlan.path}</code>. Saving links
-                        this menu item to it instead of creating a duplicate.
-                      </>
-                    ) : categoryPlan.action === "error" ? (
-                      categoryPlan.message
-                    ) : (
-                      <>
-                        <code>{editing.path}</code> has no category page yet. Saving can create{" "}
-                        <code>{categoryPlan.path}</code> and point this menu item at it.
-                      </>
-                    )}
-                  </p>
-
-                  {categoryPlan.action !== "error" && (
-                    <div className="form-group">
-                      <span className="form-label">Matching category page</span>
-                      <ActiveToggle
-                        active={categoryOfferOn}
-                        label="category page creation"
-                        onChange={(active) => setField("createCategoryPage", active)}
-                      />
-                      <output className="form-hint">
-                        {categoryOfferOn
-                          ? "On: saving writes the category page first, then links this item to it."
-                          : "Off: only the menu item is saved, so the path may not resolve."}
-                      </output>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="form-section">
-                <h4 className="form-section-title">Badge, roles &amp; visibility</h4>
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-badge">
-                      Badge
-                    </label>
-                    <Input
-                      id="menu-badge"
-                      type="text"
-                      value={editing.badge}
-                      onChange={(event) => setField("badge", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-badge-variant">
-                      Badge variant
-                    </label>
-                    <select
-                      id="menu-badge-variant"
-                      className="form-select-field"
-                      value={editing.badgeVariant}
-                      disabled={!badgeVariantSupported}
-                      onChange={(event) => setField("badgeVariant", event.target.value)}
-                    >
-                      {badgeVariantOptions.map((variant) => (
-                        <option key={variant} value={variant}>
-                          {variant}
-                        </option>
-                      ))}
-                    </select>
-                    {!badgeVariantSupported && (
-                      <output className="form-hint">
-                        This menu_items table has no badge_variant column, so a variant cannot be
-                        stored yet.
-                      </output>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-roles">
-                    Roles allowed (comma-separated)
-                  </label>
-                  <Input
-                    id="menu-roles"
-                    type="text"
-                    value={editing.rolesAllowed}
-                    onChange={(event) => setField("rolesAllowed", event.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <span className="form-label">Active</span>
-                  <ActiveToggle
-                    active={editing.isActive}
-                    label={editing.title || "this menu item"}
-                    onChange={(active) => setField("isActive", active)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-section">
-                <h4 className="form-section-title">Promo block</h4>
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-promo-title">
-                      Promo title
-                    </label>
-                    <Input
-                      id="menu-promo-title"
-                      type="text"
-                      value={editing.promoTitle}
-                      onChange={(event) => setField("promoTitle", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-promo-subtitle">
-                      Promo subtitle
-                    </label>
-                    <Input
-                      id="menu-promo-subtitle"
-                      type="text"
-                      value={editing.promoSubtitle}
-                      onChange={(event) => setField("promoSubtitle", event.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="menu-promo-image">
-                    Promo image URL
-                  </label>
-                  <Input
-                    id="menu-promo-image"
-                    type="text"
-                    value={editing.promoImageUrl}
-                    onChange={(event) => setField("promoImageUrl", event.target.value)}
-                  />
-                </div>
-
-                <div className="form-group-row">
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-promo-cta-text">
-                      Promo CTA text
-                    </label>
-                    <Input
-                      id="menu-promo-cta-text"
-                      type="text"
-                      value={editing.promoCtaText}
-                      onChange={(event) => setField("promoCtaText", event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="menu-promo-cta-path">
-                      Promo CTA path
-                    </label>
-                    <Input
-                      id="menu-promo-cta-path"
-                      type="text"
-                      value={editing.promoCtaPath}
-                      onChange={(event) => setField("promoCtaPath", event.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {formError && (
-                <p role="alert" className="form-error">
-                  {formError}
-                </p>
-              )}
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="submit-primary-btn">
-                  {saving ? "Saving..." : "Save Menu Item"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={deleteTitle}
         message={

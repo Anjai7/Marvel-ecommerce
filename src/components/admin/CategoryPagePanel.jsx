@@ -1,16 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  useToast,
-} from "../ui";
+import { Button, useToast } from "../ui";
 import { apiFetchCategoryPage, apiSavePage, normalisePagePayload } from "../../api/pagesApi";
+import AdminInlinePanel from "./AdminInlinePanel";
 import PageEditor from "./PageEditor";
 
 const CONTENT_EVENT = "marvel_content_updated";
@@ -113,93 +105,80 @@ export default function CategoryPagePanel({ category, onClose }) {
   const name = category.name || "this category";
 
   return (
-    <Dialog
+    <AdminInlinePanel
       open
-      onOpenChange={(next) => {
-        if (!next) onClose?.();
-      }}
+      title={editingPageId ? `Page for ${name}` : "Category page"}
+      subtitle={
+        editingPageId
+          ? "The page's own sections sit on top of the category. Publishing it replaces the default category template."
+          : `A custom page is optional. ${name} works without one.`
+      }
+      tone="blue"
+      onClose={onClose}
+      closeLabel="Close the category page panel"
     >
-      <DialogContent style={{ maxWidth: 760 }}>
-        {editingPageId ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>Page for {name}</DialogTitle>
-              <DialogDescription>
-                The page&apos;s own sections sit on top of the category. Publishing it replaces the
-                default category template.
-              </DialogDescription>
-            </DialogHeader>
-            <PageEditor pageId={editingPageId} onClose={handleEditorClose} />
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>Category page</DialogTitle>
-              <DialogDescription>
-                A custom page is optional. {name} works without one.
-              </DialogDescription>
-            </DialogHeader>
+      {editingPageId ? (
+        <PageEditor pageId={editingPageId} onClose={handleEditorClose} />
+      ) : (
+        <>
+          <p className="chart-subtitle" style={{ marginTop: 0 }}>
+            A category does <strong>not</strong> need a custom page. Without one the built-in
+            default category template is used: the category&apos;s own name, description and listing
+            settings. A custom page only adds sections on top of that — a hero, a rich text block, a
+            product grid — so creating one is never a step between an admin and a working category.
+          </p>
 
-            <p className="chart-subtitle" style={{ marginTop: 0 }}>
-              A category does <strong>not</strong> need a custom page. Without one the built-in
-              default category template is used: the category&apos;s own name, description and
-              listing settings. A custom page only adds sections on top of that — a hero, a rich
-              text block, a product grid — so creating one is never a step between an admin and a
-              working category.
-            </p>
-
-            {loading ? (
-              <p className="chart-subtitle">Loading the category page...</p>
-            ) : loadError ? (
-              <>
-                <p role="alert" className="form-error">
-                  {loadError}
-                </p>
-                <p className="chart-subtitle">
-                  The page could not be read. The category itself is unaffected and still uses the
-                  built-in default category template.
-                </p>
-                <Button type="button" variant="outline" onClick={load}>
-                  Try again
-                </Button>
-              </>
-            ) : page ? (
-              <>
-                <p className="chart-subtitle" style={{ marginTop: 0 }}>
-                  <strong>This category has a custom page.</strong> {page.title}
-                  {page.slug ? ` — ${page.slug}` : ""}
-                </p>
-                <Button type="button" onClick={() => setEditingPageId(page.id)}>
-                  <FileText size={15} />
-                  <span>Open page editor</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="chart-subtitle" style={{ marginTop: 0 }}>
-                  <strong>This category has no custom page.</strong> The built-in default category
-                  template is serving it.
-                </p>
-                {createError && (
-                  <p role="alert" className="form-error">
-                    {createError}
-                  </p>
-                )}
-                <Button type="button" disabled={creating} onClick={handleCreate}>
-                  <FileText size={15} />
-                  <span>Create page</span>
-                </Button>
-              </>
-            )}
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onClose?.()}>
-                Close
+          {loading ? (
+            <p className="chart-subtitle">Loading the category page...</p>
+          ) : loadError ? (
+            <>
+              <p role="alert" className="form-error">
+                {loadError}
+              </p>
+              <p className="chart-subtitle">
+                The page could not be read. The category itself is unaffected and still uses the
+                built-in default category template.
+              </p>
+              <Button type="button" variant="outline" onClick={load}>
+                Try again
               </Button>
-            </DialogFooter>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+            </>
+          ) : page ? (
+            <>
+              <p className="chart-subtitle" style={{ marginTop: 0 }}>
+                <strong>This category has a custom page.</strong> {page.title}
+                {page.slug ? ` — ${page.slug}` : ""}
+              </p>
+              <Button type="button" onClick={() => setEditingPageId(page.id)}>
+                <FileText size={15} />
+                <span>Open page editor</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="chart-subtitle" style={{ marginTop: 0 }}>
+                <strong>This category has no custom page.</strong> The built-in default category
+                template is serving it.
+              </p>
+              {createError && (
+                <p role="alert" className="form-error">
+                  {createError}
+                </p>
+              )}
+              <Button type="button" disabled={creating} onClick={handleCreate}>
+                <FileText size={15} />
+                <span>Create page</span>
+              </Button>
+            </>
+          )}
+
+          <div className="admin-inline-actions">
+            <Button type="button" variant="outline" onClick={() => onClose?.()}>
+              Close
+            </Button>
+          </div>
+        </>
+      )}
+    </AdminInlinePanel>
   );
 }

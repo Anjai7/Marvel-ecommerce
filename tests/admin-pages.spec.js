@@ -278,9 +278,9 @@ test.describe("admin page builder flows", () => {
     await expect(page.getByRole("heading", { name: "Pages", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "New page" }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Title *").fill("Autumn Sale");
-    await dialog.getByRole("button", { name: "Create page" }).click();
+    const panel = page.getByRole("region", { name: "New page" });
+    await panel.getByLabel("Title *").fill("Autumn Sale");
+    await panel.getByRole("button", { name: "Create page" }).click();
 
     await expect(page.getByRole("heading", { name: "Autumn Sale" })).toBeVisible();
   });
@@ -334,8 +334,8 @@ test.describe("admin page builder flows", () => {
     await expect(page.getByRole("heading", { name: "Diwali Sale" })).toBeVisible();
 
     await page.getByRole("button", { name: "Add section" }).click();
-    const typeDialog = page.getByRole("dialog");
-    await typeDialog.getByRole("button", { name: "Spacer" }).click();
+    const typePanel = page.getByRole("region", { name: "Add section" });
+    await typePanel.getByRole("button", { name: "Spacer" }).click();
 
     await page.getByRole("button", { name: "Save Sections" }).click();
     await expect(page.getByText("Sections Saved", { exact: true })).toBeVisible();

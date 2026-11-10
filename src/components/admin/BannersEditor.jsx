@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Edit2, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Edit2, Plus, Trash2 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
 import {
   apiDeleteBanner,
@@ -8,7 +8,8 @@ import {
   apiSaveBanner,
   apiUpdateBanner,
 } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, cellValue, ImageField, OrderControls } from "./ContentEditorKit";
 import "./banners-editor.css";
 
@@ -519,6 +520,293 @@ export default function BannersEditor() {
         ))}
       </div>
 
+      {editing && (
+        <AdminInlinePanel
+          title={editing.id ? "Edit Banner" : "Add Banner"}
+          subtitle="Fields save to the banners API"
+          tone="blue"
+          onClose={() => setEditing(null)}
+          closeLabel="Close the banner editor"
+        >
+          <form onSubmit={handleSave} className="admin-inline-form banners-modal-form">
+            <div className="form-group">
+              <label className="form-label" htmlFor="banner-placement">
+                Placement
+              </label>
+              <select
+                id="banner-placement"
+                className="form-select-field"
+                value={editing.placement}
+                onChange={(event) => {
+                  setField("placement", event.target.value);
+                  setPlacement(event.target.value);
+                }}
+              >
+                {PLACEMENTS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!isCarousel && !isStrip && (
+              <>
+                {textField({
+                  id: "banner-title",
+                  label: "Title *",
+                  value: editing.title,
+                  required: true,
+                  error: fieldErrors.title,
+                  onChange: (value) => {
+                    setField("title", value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                  },
+                })}
+                {textField({
+                  id: "banner-subtitle",
+                  label: "Subtitle",
+                  value: editing.subtitle,
+                  onChange: (value) => setField("subtitle", value),
+                })}
+                {textField({
+                  id: "banner-cta-text",
+                  label: "CTA text",
+                  value: editing.ctaText,
+                  onChange: (value) => setField("ctaText", value),
+                })}
+                {textField({
+                  id: "banner-cta-path",
+                  label: "CTA path",
+                  value: editing.ctaPath,
+                  onChange: (value) => setField("ctaPath", value),
+                })}
+                <ImageField
+                  label="Banner image"
+                  value={editing.imageUrl}
+                  onChange={(url) => setField("imageUrl", url)}
+                />
+                <div className="form-group">
+                  <label className="form-label" htmlFor="banner-variant">
+                    Variant
+                  </label>
+                  <select
+                    id="banner-variant"
+                    className="form-select-field"
+                    value={editing.variant}
+                    onChange={(event) => setField("variant", event.target.value)}
+                  >
+                    <option value="large">Large</option>
+                    <option value="small">Small</option>
+                  </select>
+                </div>
+                <output
+                  className="form-hint"
+                  data-testid="banner-preview"
+                  data-variant={editing.variant === "large" ? "large" : "small"}
+                  style={{ display: "block" }}
+                >
+                  {editing.variant === "large"
+                    ? "Renders in the large slot."
+                    : "Renders in a small slot — any variant other than large does."}
+                </output>
+              </>
+            )}
+
+            {isCarousel && (
+              <>
+                {textField({
+                  id: "banner-badge",
+                  label: "Badge",
+                  value: editing.badge,
+                  onChange: (value) => setField("badge", value),
+                })}
+                {textField({
+                  id: "banner-title",
+                  label: "Title *",
+                  value: editing.title,
+                  required: true,
+                  error: fieldErrors.title,
+                  onChange: (value) => {
+                    setField("title", value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                  },
+                })}
+                {textField({
+                  id: "banner-highlight",
+                  label: "Highlight",
+                  value: editing.highlight,
+                  onChange: (value) => setField("highlight", value),
+                })}
+                <div className="form-group">
+                  <label className="form-label" htmlFor="banner-description">
+                    Description
+                  </label>
+                  <textarea
+                    id="banner-description"
+                    className="ui-input"
+                    rows={3}
+                    value={editing.description}
+                    onChange={(event) => setField("description", event.target.value)}
+                  />
+                </div>
+                {textField({
+                  id: "banner-cta-text",
+                  label: "CTA text",
+                  value: editing.ctaText,
+                  onChange: (value) => setField("ctaText", value),
+                })}
+                {textField({
+                  id: "banner-cta-path",
+                  label: "CTA path",
+                  value: editing.ctaPath,
+                  onChange: (value) => setField("ctaPath", value),
+                })}
+                <div className="form-group">
+                  <span className="form-label">Gallery</span>
+                  {(editing.gallery ?? []).map((url, index) => (
+                    <div key={`gallery-${index}`} className="banners-gallery-item">
+                      <ImageField
+                        label={`Gallery image ${index + 1}`}
+                        value={url}
+                        onChange={(next) => setGalleryItem(index, next)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Remove gallery image ${index + 1}`}
+                        onClick={() => removeGalleryImage(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={addGalleryImage}>
+                    Add gallery image
+                  </Button>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="banner-ends-at">
+                    Ends at
+                  </label>
+                  <Input
+                    id="banner-ends-at"
+                    type="datetime-local"
+                    value={editing.endsAt}
+                    onChange={(event) => setField("endsAt", event.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            {isStrip && (
+              <>
+                {textField({
+                  id: "banner-title",
+                  label: "Title *",
+                  value: editing.title,
+                  required: true,
+                  error: fieldErrors.title,
+                  onChange: (value) => {
+                    setField("title", value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                    }
+                  },
+                })}
+                {textField({
+                  id: "banner-subtitle",
+                  label: "Subtitle",
+                  value: editing.subtitle,
+                  onChange: (value) => setField("subtitle", value),
+                })}
+                {textField({
+                  id: "banner-emoji",
+                  label: "Emoji",
+                  value: editing.emoji,
+                  onChange: (value) => setField("emoji", value),
+                })}
+                {textField({
+                  id: "banner-code",
+                  label: "Code",
+                  value: editing.code,
+                  onChange: (value) => setField("code", value),
+                })}
+                {textField({
+                  id: "banner-accent",
+                  label: "Accent",
+                  value: editing.accent,
+                  onChange: (value) => setField("accent", value),
+                })}
+                {textField({
+                  id: "banner-bg-color",
+                  label: "Background color",
+                  value: editing.bgColor,
+                  onChange: (value) => setField("bgColor", value),
+                })}
+                {textField({
+                  id: "banner-cta-text",
+                  label: "CTA text",
+                  value: editing.ctaText,
+                  onChange: (value) => setField("ctaText", value),
+                })}
+                {textField({
+                  id: "banner-cta-path",
+                  label: "CTA path",
+                  value: editing.ctaPath,
+                  onChange: (value) => setField("ctaPath", value),
+                })}
+              </>
+            )}
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <span className="form-label">Display order</span>
+                <div className="banners-order-wrapper">
+                  <OrderControls
+                    index={formPosition}
+                    total={formTotal}
+                    label="this banner"
+                    onMove={(_from, to) => setField("displayOrder", to)}
+                  />
+                  <span className="text-sm text-muted">
+                    Position {formPosition + 1} of {formTotal}
+                  </span>
+                </div>
+              </div>
+              <div className="form-group">
+                <span className="form-label">Active</span>
+                <ActiveToggle
+                  active={editing.isActive}
+                  label={editing.title || "this banner"}
+                  onChange={(active) => setField("isActive", active)}
+                />
+              </div>
+            </div>
+
+            {formError && (
+              <p role="alert" className="form-error">
+                {formError}
+              </p>
+            )}
+
+            <div className="admin-inline-actions banners-modal-footer">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="submit-primary-btn">
+                {saving ? "Saving..." : "Save Banner"}
+              </Button>
+            </div>
+          </form>
+        </AdminInlinePanel>
+      )}
+
       {loading ? (
         <p className="chart-subtitle">Loading banners...</p>
       ) : banners.length === 0 ? (
@@ -589,310 +877,7 @@ export default function BannersEditor() {
         </div>
       )}
 
-      {editing && (
-        <div className="modal-backdrop-overlay banners-modal-overlay">
-          <div
-            className="modal-content-container banners-modal-container animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Banner editor"
-          >
-            <div className="modal-header banners-modal-header">
-              <div>
-                <h3 className="modal-title">{editing.id ? "Edit Banner" : "Add Banner"}</h3>
-                <p className="modal-subtitle">Fields save to the banners API</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="modal-close-btn"
-                aria-label="Close editor"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="modal-form banners-modal-form">
-              <div className="form-group">
-                <label className="form-label" htmlFor="banner-placement">
-                  Placement
-                </label>
-                <select
-                  id="banner-placement"
-                  className="form-select-field"
-                  value={editing.placement}
-                  onChange={(event) => {
-                    setField("placement", event.target.value);
-                    setPlacement(event.target.value);
-                  }}
-                >
-                  {PLACEMENTS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {!isCarousel && !isStrip && (
-                <>
-                  {textField({
-                    id: "banner-title",
-                    label: "Title *",
-                    value: editing.title,
-                    required: true,
-                    error: fieldErrors.title,
-                    onChange: (value) => {
-                      setField("title", value);
-                      if (fieldErrors.title) {
-                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
-                      }
-                    },
-                  })}
-                  {textField({
-                    id: "banner-subtitle",
-                    label: "Subtitle",
-                    value: editing.subtitle,
-                    onChange: (value) => setField("subtitle", value),
-                  })}
-                  {textField({
-                    id: "banner-cta-text",
-                    label: "CTA text",
-                    value: editing.ctaText,
-                    onChange: (value) => setField("ctaText", value),
-                  })}
-                  {textField({
-                    id: "banner-cta-path",
-                    label: "CTA path",
-                    value: editing.ctaPath,
-                    onChange: (value) => setField("ctaPath", value),
-                  })}
-                  <ImageField
-                    label="Banner image"
-                    value={editing.imageUrl}
-                    onChange={(url) => setField("imageUrl", url)}
-                  />
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="banner-variant">
-                      Variant
-                    </label>
-                    <select
-                      id="banner-variant"
-                      className="form-select-field"
-                      value={editing.variant}
-                      onChange={(event) => setField("variant", event.target.value)}
-                    >
-                      <option value="large">Large</option>
-                      <option value="small">Small</option>
-                    </select>
-                  </div>
-                  <output
-                    className="form-hint"
-                    data-testid="banner-preview"
-                    data-variant={editing.variant === "large" ? "large" : "small"}
-                    style={{ display: "block" }}
-                  >
-                    {editing.variant === "large"
-                      ? "Renders in the large slot."
-                      : "Renders in a small slot — any variant other than large does."}
-                  </output>
-                </>
-              )}
-
-              {isCarousel && (
-                <>
-                  {textField({
-                    id: "banner-badge",
-                    label: "Badge",
-                    value: editing.badge,
-                    onChange: (value) => setField("badge", value),
-                  })}
-                  {textField({
-                    id: "banner-title",
-                    label: "Title *",
-                    value: editing.title,
-                    required: true,
-                    error: fieldErrors.title,
-                    onChange: (value) => {
-                      setField("title", value);
-                      if (fieldErrors.title) {
-                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
-                      }
-                    },
-                  })}
-                  {textField({
-                    id: "banner-highlight",
-                    label: "Highlight",
-                    value: editing.highlight,
-                    onChange: (value) => setField("highlight", value),
-                  })}
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="banner-description">
-                      Description
-                    </label>
-                    <textarea
-                      id="banner-description"
-                      className="ui-input"
-                      rows={3}
-                      value={editing.description}
-                      onChange={(event) => setField("description", event.target.value)}
-                    />
-                  </div>
-                  {textField({
-                    id: "banner-cta-text",
-                    label: "CTA text",
-                    value: editing.ctaText,
-                    onChange: (value) => setField("ctaText", value),
-                  })}
-                  {textField({
-                    id: "banner-cta-path",
-                    label: "CTA path",
-                    value: editing.ctaPath,
-                    onChange: (value) => setField("ctaPath", value),
-                  })}
-                  <div className="form-group">
-                    <span className="form-label">Gallery</span>
-                    {(editing.gallery ?? []).map((url, index) => (
-                      <div key={`gallery-${index}`} className="banners-gallery-item">
-                        <ImageField
-                          label={`Gallery image ${index + 1}`}
-                          value={url}
-                          onChange={(next) => setGalleryItem(index, next)}
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Remove gallery image ${index + 1}`}
-                          onClick={() => removeGalleryImage(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={addGalleryImage}>
-                      Add gallery image
-                    </Button>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="banner-ends-at">
-                      Ends at
-                    </label>
-                    <Input
-                      id="banner-ends-at"
-                      type="datetime-local"
-                      value={editing.endsAt}
-                      onChange={(event) => setField("endsAt", event.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {isStrip && (
-                <>
-                  {textField({
-                    id: "banner-title",
-                    label: "Title *",
-                    value: editing.title,
-                    required: true,
-                    error: fieldErrors.title,
-                    onChange: (value) => {
-                      setField("title", value);
-                      if (fieldErrors.title) {
-                        setFieldErrors((prev) => ({ ...prev, title: undefined }));
-                      }
-                    },
-                  })}
-                  {textField({
-                    id: "banner-subtitle",
-                    label: "Subtitle",
-                    value: editing.subtitle,
-                    onChange: (value) => setField("subtitle", value),
-                  })}
-                  {textField({
-                    id: "banner-emoji",
-                    label: "Emoji",
-                    value: editing.emoji,
-                    onChange: (value) => setField("emoji", value),
-                  })}
-                  {textField({
-                    id: "banner-code",
-                    label: "Code",
-                    value: editing.code,
-                    onChange: (value) => setField("code", value),
-                  })}
-                  {textField({
-                    id: "banner-accent",
-                    label: "Accent",
-                    value: editing.accent,
-                    onChange: (value) => setField("accent", value),
-                  })}
-                  {textField({
-                    id: "banner-bg-color",
-                    label: "Background color",
-                    value: editing.bgColor,
-                    onChange: (value) => setField("bgColor", value),
-                  })}
-                  {textField({
-                    id: "banner-cta-text",
-                    label: "CTA text",
-                    value: editing.ctaText,
-                    onChange: (value) => setField("ctaText", value),
-                  })}
-                  {textField({
-                    id: "banner-cta-path",
-                    label: "CTA path",
-                    value: editing.ctaPath,
-                    onChange: (value) => setField("ctaPath", value),
-                  })}
-                </>
-              )}
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <span className="form-label">Display order</span>
-                  <div className="banners-order-wrapper">
-                    <OrderControls
-                      index={formPosition}
-                      total={formTotal}
-                      label="this banner"
-                      onMove={(_from, to) => setField("displayOrder", to)}
-                    />
-                    <span className="text-sm text-muted">
-                      Position {formPosition + 1} of {formTotal}
-                    </span>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <span className="form-label">Active</span>
-                  <ActiveToggle
-                    active={editing.isActive}
-                    label={editing.title || "this banner"}
-                    onChange={(active) => setField("isActive", active)}
-                  />
-                </div>
-              </div>
-
-              {formError && (
-                <p role="alert" className="form-error">
-                  {formError}
-                </p>
-              )}
-
-              <div className="modal-actions-footer banners-modal-footer">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="submit-primary-btn">
-                  {saving ? "Saving..." : "Save Banner"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title="Delete this banner?"
         message={

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, vi } from "vitest";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
 import MenuTreeEditor from "./MenuTreeEditor";
 import { ToastProvider } from "../ui/Toast";
 import {
@@ -190,14 +190,14 @@ beforeEach(() => {
   apiReorderMenuItems.mockResolvedValue({ message: "reordered" });
 });
 
-describe("ConfirmDialog", () => {
+describe("AdminConfirmStrip", () => {
   it("renders and calls onConfirm exactly once on Delete click", async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
 
     render(
-      <ConfirmDialog
+      <AdminConfirmStrip
         open
         title="Delete 'Shop'?"
         message="This will remove the item."
@@ -215,7 +215,7 @@ describe("ConfirmDialog", () => {
 
   it("renders nothing when closed", () => {
     const { container } = render(
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={false}
         title="Delete?"
         message="..."
@@ -232,7 +232,13 @@ describe("ConfirmDialog", () => {
     const onCancel = vi.fn();
 
     const { rerender } = render(
-      <ConfirmDialog open title="Delete?" message="..." onCancel={onCancel} onConfirm={onConfirm} />
+      <AdminConfirmStrip
+        open
+        title="Delete?"
+        message="..."
+        onCancel={onCancel}
+        onConfirm={onConfirm}
+      />
     );
 
     await user.keyboard("{Escape}");
@@ -240,7 +246,7 @@ describe("ConfirmDialog", () => {
     expect(onConfirm).not.toHaveBeenCalled();
 
     rerender(
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={false}
         title="Delete?"
         message="..."
@@ -373,8 +379,8 @@ describe("MenuTreeEditor", () => {
     const menu = await openRowMenu(user, "Electronics");
     await user.click(within(menu).getByRole("menuitem", { name: "Edit Electronics" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
-    await user.click(within(dialog).getByRole("button", { name: "Deactivate Electronics" }));
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
+    await user.click(within(dialog).getByRole("switch", { name: "Electronics" }));
     await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
     await waitFor(() => expect(apiUpdateMenuItem).toHaveBeenCalledTimes(1));
@@ -389,7 +395,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Shop");
     await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.type(within(dialog).getByLabelText("Title *"), "New Arrivals");
     await user.clear(within(dialog).getByLabelText("Path *"));
     await user.type(within(dialog).getByLabelText("Path *"), "/new-arrivals");
@@ -438,7 +444,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Shop");
     await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.type(within(dialog).getByLabelText("Title *"), "Clearance");
     await user.selectOptions(within(dialog).getByLabelText("Badge variant"), "success");
     await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
@@ -454,7 +460,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Shop");
     await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     expect(within(dialog).getByLabelText("Badge variant")).toBeEnabled();
   });
 
@@ -466,7 +472,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Shop");
     await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     // The variant cannot be stored without the column, so the control is
     // disabled rather than letting the save fail.
     expect(within(dialog).getByLabelText("Badge variant")).toBeDisabled();
@@ -481,7 +487,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Shop");
     await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.type(within(dialog).getByLabelText("Title *"), "Still Saved");
     await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
@@ -521,7 +527,7 @@ describe("MenuTreeEditor", () => {
     const menu = await openRowMenu(user, "Phones");
     await user.click(within(menu).getByRole("menuitem", { name: "Edit Phones" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.selectOptions(within(dialog).getByLabelText("Category"), "c5");
 
     expect(within(dialog).getByLabelText("Path *")).toHaveValue(
@@ -545,7 +551,7 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Electronics");
     const menu = await openRowMenu(user, "Electronics");
     await user.click(within(menu).getByRole("menuitem", { name: "Edit Electronics" }));
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
     await waitFor(() => expect(apiUpdateMenuItem).toHaveBeenCalledTimes(1));
@@ -561,14 +567,14 @@ describe("MenuTreeEditor", () => {
     await screen.findByText("Electronics");
     const menu = await openRowMenu(user, "Electronics");
     await user.click(within(menu).getByRole("menuitem", { name: "Edit Electronics" }));
-    const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+    const dialog = await screen.findByRole("region", { name: /Menu Item/ });
     await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
     expect(await screen.findByText("Save Failed")).toBeVisible();
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "Menu item title and path are required."
     );
-    expect(screen.getByRole("dialog", { name: "Menu item editor" })).toBeVisible();
+    expect(screen.getByRole("region", { name: /Menu Item/ })).toBeVisible();
   });
 
   it("states the descendant count in the delete title", async () => {
@@ -594,7 +600,7 @@ describe("MenuTreeEditor", () => {
       renderEditor();
       await screen.findByText("Shop");
       await user.click(screen.getByRole("button", { name: "Add Top-Level Item" }));
-      return screen.findByRole("dialog", { name: "Menu item editor" });
+      return screen.findByRole("region", { name: /Menu Item/ });
     };
 
     /** Type a title and replace the item's path. */
@@ -651,9 +657,7 @@ describe("MenuTreeEditor", () => {
 
       await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
       // On by default: otherwise the save produces a dead link.
-      expect(
-        within(dialog).getByRole("button", { name: "Deactivate category page creation" })
-      ).toBeVisible();
+      expect(within(dialog).getByRole("switch", { name: "category page creation" })).toBeChecked();
 
       await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
@@ -686,7 +690,7 @@ describe("MenuTreeEditor", () => {
       const menu = await openRowMenu(user, "Electronics");
       await user.click(within(menu).getByRole("menuitem", { name: "Add child to Electronics" }));
 
-      const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+      const dialog = await screen.findByRole("region", { name: /Menu Item/ });
       await fillItem(user, dialog, { title: "Gadgets", path: "/category/gadgets" });
       await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
@@ -727,9 +731,7 @@ describe("MenuTreeEditor", () => {
       const dialog = await openCreateForm(user);
 
       await fillItem(user, dialog, { title: "Audio", path: "/category/audio" });
-      await user.click(
-        within(dialog).getByRole("button", { name: "Deactivate category page creation" })
-      );
+      await user.click(within(dialog).getByRole("switch", { name: "category page creation" }));
       await user.click(within(dialog).getByRole("button", { name: "Save Menu Item" }));
 
       await waitFor(() => expect(apiSaveMenuItem).toHaveBeenCalledTimes(1));
@@ -765,7 +767,7 @@ describe("MenuTreeEditor", () => {
       const menu = await openRowMenu(user, "Deals");
       await user.click(within(menu).getByRole("menuitem", { name: "Edit Deals" }));
 
-      const dialog = await screen.findByRole("dialog", { name: "Menu item editor" });
+      const dialog = await screen.findByRole("region", { name: /Menu Item/ });
       const pathInput = within(dialog).getByLabelText("Path *");
       await user.clear(pathInput);
       await user.type(pathInput, "/category/clearance");

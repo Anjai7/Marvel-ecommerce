@@ -133,7 +133,7 @@ describe("FooterEditor", () => {
     await screen.findByText("Customer Support");
     await user.click(screen.getByRole("button", { name: "Add Link" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    const dialog = screen.getByRole("region", { name: /Footer/ });
     await user.type(within(dialog).getByLabelText("Label *"), "Contact Us");
     await user.type(within(dialog).getByLabelText("Href *"), "#/contact");
     await user.click(within(dialog).getByRole("button", { name: "Save Link" }));
@@ -156,7 +156,7 @@ describe("FooterEditor", () => {
     await screen.findByText("Customer Support");
     await user.click(screen.getByRole("button", { name: "Add Link" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    const dialog = screen.getByRole("region", { name: /Footer/ });
     await user.type(within(dialog).getByLabelText("Label *"), "Contact Us");
     await user.type(within(dialog).getByLabelText("Href *"), "#/contact");
     await user.click(within(dialog).getByRole("button", { name: "Save Link" }));
@@ -227,7 +227,7 @@ describe("FooterEditor", () => {
     await screen.findByText("Help Center");
     await user.click(screen.getByRole("button", { name: "Edit link Help Center" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    const dialog = screen.getByRole("region", { name: /Footer/ });
     // The row-level up/down controls renumber the complete group; a raw
     // display_order in the form would leave two links on the same position.
     expect(within(dialog).queryByText("Display order")).not.toBeInTheDocument();
@@ -251,7 +251,7 @@ describe("FooterEditor", () => {
     await screen.findByText("Help Center");
     await user.click(screen.getByRole("button", { name: "Edit link Help Center" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    const dialog = screen.getByRole("region", { name: /Footer/ });
     expect(within(dialog).getByText(/\/category\/electronics/)).toBeVisible();
     expect(within(dialog).getByText(/leaves the app/i)).toBeVisible();
   });
@@ -298,7 +298,7 @@ describe("FooterEditor", () => {
     await user.click(screen.getByRole("button", { name: "Save Link" }));
 
     expect(await screen.findByText("Save Failed")).toBeVisible();
-    const dialog = screen.getByRole("dialog", { name: "Footer link editor" });
+    const dialog = screen.getByRole("region", { name: /Footer/ });
     expect(within(dialog).getByRole("alert")).toHaveTextContent(/must be an https URL/i);
     expect(apiFetchFooter).toHaveBeenCalledTimes(1);
   });

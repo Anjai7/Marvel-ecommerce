@@ -43,6 +43,9 @@ creds.txt
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
 
+# Local code index (machine-local, not part of the source)
+.codegraph/
+
 # Local documents
 *.pdf
 

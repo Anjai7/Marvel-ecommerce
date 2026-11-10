@@ -179,7 +179,7 @@ describe("PagesEditor", () => {
     await screen.findAllByTestId(/^editor-row-/);
     await user.click(screen.getByRole("button", { name: "New page" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "New page" });
     await user.type(within(dialog).getByLabelText("Title *"), "Autumn Sale");
     // The slug follows the title until the admin types one of their own.
     expect(within(dialog).getByLabelText("Slug *")).toHaveValue("autumn-sale");
@@ -205,13 +205,13 @@ describe("PagesEditor", () => {
     await screen.findAllByTestId(/^editor-row-/);
     await user.click(screen.getByRole("button", { name: "New page" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "New page" });
     await user.type(within(dialog).getByLabelText("Title *"), "Diwali Sale");
     await user.click(within(dialog).getByRole("button", { name: "Create page" }));
 
     expect(await within(dialog).findByText("A page with this slug already exists.")).toBeVisible();
     // The form stays open: the admin's input must survive a failed write.
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "New page" })).toBeInTheDocument();
     expect(apiSavePage).toHaveBeenCalledTimes(1);
   });
 
@@ -221,7 +221,7 @@ describe("PagesEditor", () => {
     await openEditor(user);
 
     await user.click(screen.getByRole("button", { name: "Add section" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Add section" });
     await user.click(within(dialog).getByRole("button", { name: "Spacer" }));
 
     await user.click(screen.getByRole("button", { name: "Save Sections" }));
@@ -274,7 +274,7 @@ describe("PagesEditor", () => {
     renderEditor();
     await openEditor(user);
 
-    await user.click(screen.getByRole("button", { name: "Deactivate Hero banner 1" }));
+    await user.click(screen.getByRole("switch", { name: "Hero banner 1" }));
     await user.click(screen.getByRole("button", { name: "Save Sections" }));
 
     await waitFor(() => expect(apiSavePageSections).toHaveBeenCalledTimes(1));
@@ -305,7 +305,7 @@ describe("PagesEditor", () => {
     await openEditor(user);
 
     await user.click(screen.getByRole("button", { name: "Add section" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Add section" });
     await user.click(within(dialog).getByRole("button", { name: "Hero banner" }));
 
     await user.click(screen.getByRole("button", { name: "Save Sections" }));

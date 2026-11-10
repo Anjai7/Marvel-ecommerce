@@ -85,7 +85,7 @@ describe("SectionListEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit Hero banner 1" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Edit Hero banner" });
     // The labels come from the field names: cta_label → "CTA Label".
     expect(within(dialog).getByLabelText("Heading *")).toBeVisible();
     expect(within(dialog).getByLabelText("Eyebrow")).toBeVisible();
@@ -103,7 +103,7 @@ describe("SectionListEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit Hero banner 1" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Edit Hero banner" });
     expect(within(dialog).getByRole("alert")).toHaveTextContent(
       "hero.mystery is not a known field."
     );
@@ -115,7 +115,7 @@ describe("SectionListEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "Add section" }));
 
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Add section" });
     for (const label of [
       "Hero banner",
       "Rich text",
@@ -160,7 +160,7 @@ describe("SectionListEditor", () => {
     renderList([HERO], onChange);
 
     await user.click(screen.getByRole("button", { name: "Add section" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("region", { name: "Add section" });
     await user.click(within(dialog).getByRole("button", { name: "Spacer" }));
 
     const next = onChange.mock.calls[0][0];

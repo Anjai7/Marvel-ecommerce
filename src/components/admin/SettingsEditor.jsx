@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RotateCcw, Save } from "lucide-react";
 import { apiFetchSettings, apiUpdateSettings } from "../../api/settingsApi";
 import { Button, Input, useToast } from "../ui";
+import Switch from "../ui/Switch";
 
 /** Read `a.b.c` out of an object. */
 const readPath = (object, path) =>
@@ -239,15 +240,15 @@ export default function SettingsEditor() {
               if (row.type === "checkbox") {
                 return (
                   <label key={row.path} className="settings-checkbox" htmlFor={id}>
-                    <input
+                    <Switch
                       id={id}
-                      type="checkbox"
                       checked={Boolean(value)}
                       onChange={(event) =>
                         setDraft((previous) =>
                           writePath({ ...previous }, row.path, event.target.checked)
                         )
                       }
+                      slotProps={{ input: { "aria-label": row.label } }}
                     />
                     <span>{row.label}</span>
                   </label>

@@ -1,8 +1,9 @@
 import { useId, useState } from "react";
 import { ArrowDown, ArrowUp, Edit2, Trash2 } from "lucide-react";
 import { Button, ImageUploadDropzone } from "../ui";
+import Switch from "../ui/Switch";
 import { apiUploadImage } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
 
 /**
  * Lowercase, collapse every run outside [a-z0-9] to "-", then trim "-".
@@ -119,47 +120,29 @@ export function OrderControls({ index, total, onMove, label, disabled = false })
   );
 }
 
-/** An on/off toggle button whose pressed state is the row's `is_active`. */
+/**
+ * An on/off switch whose state is the row's `is_active`.
+ *
+ * The switch is named after the thing it controls, so the state is announced
+ * as "Electronics, switch, on" rather than as a button that happens to be
+ * pressed. The visible ON/OFF text is decoration for the eye; the state a
+ * screen reader hears comes from `aria-checked`.
+ */
 export function ActiveToggle({ active, onChange, label }) {
   const isActive = Boolean(active);
-  const suffix = label ? ` ${label}` : "";
+  const itemName = String(label ?? "").trim() || "this item";
   return (
-    <Button
-      type="button"
-      variant={isActive ? "primary" : "outline"}
-      size="sm"
-      aria-pressed={isActive}
-      aria-label={`${isActive ? "Deactivate" : "Activate"}${suffix}`}
-      onClick={() => onChange?.(!isActive)}
-      className={`admin-active-toggle ${isActive ? "is-on" : "is-off"}`}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 10px 4px 7px",
-        borderRadius: "9999px",
-        fontWeight: 700,
-        fontSize: "12px",
-        letterSpacing: "0.5px",
-        lineHeight: 1,
-        transition: "all 0.2s ease",
-        borderColor: isActive ? "#10b981" : "#cbd5e1",
-        backgroundColor: isActive ? "#ecfdf5" : "#f8fafc",
-        color: isActive ? "#065f46" : "#64748b",
-      }}
-    >
-      <span
-        style={{
-          display: "inline-block",
-          width: "8px",
-          height: "8px",
-          borderRadius: "50%",
-          backgroundColor: isActive ? "#10b981" : "#94a3b8",
-          boxShadow: isActive ? "0 0 5px #10b981" : "none",
-        }}
+    <span className={`admin-active-toggle ${isActive ? "is-on" : "is-off"}`}>
+      <Switch
+        checked={isActive}
+        onChange={(event) => onChange?.(event.target.checked)}
+        slotProps={{ input: { "aria-label": itemName } }}
+        title={`${isActive ? "Deactivate" : "Activate"} ${itemName}`}
       />
-      <span>{isActive ? "ON" : "OFF"}</span>
-    </Button>
+      <span className="admin-active-toggle-text" aria-hidden="true">
+        {isActive ? "ON" : "OFF"}
+      </span>
+    </span>
   );
 }
 
@@ -175,7 +158,7 @@ const humanize = (column) =>
     .replace(/_/g, " ")
     .replace(/\b\w/g, (character) => character.toUpperCase());
 
-/** Compact table for the list-shaped editors; deletes go through ConfirmDialog. */
+/** Compact table for the list-shaped editors; deletes go through AdminConfirmStrip. */
 export function EditorTable({
   columns = [],
   rows = [],
@@ -237,7 +220,7 @@ export function EditorTable({
           })}
         </tbody>
       </table>
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={`Delete '${deleteTarget ? rowLabel(deleteTarget) : "item"}'?`}
         message="This action cannot be undone."

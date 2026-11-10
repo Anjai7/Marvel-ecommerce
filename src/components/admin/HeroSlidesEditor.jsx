@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Edit2, Eye, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Edit2, Eye, Plus, Trash2 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
+import Switch from "../ui/Switch";
 import "./admin-content.css";
 import {
   apiDeleteHeroSlide,
@@ -9,7 +10,8 @@ import {
   apiSaveHeroSlide,
   apiUpdateHeroSlide,
 } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, ImageField, OrderControls } from "./ContentEditorKit";
 
 const CONTENT_EVENT = "marvel_content_updated";
@@ -304,6 +306,455 @@ export default function HeroSlidesEditor() {
         </Button>
       </div>
 
+      {editing && (
+        <AdminInlinePanel
+          title={editing.id ? "Edit Hero Slide" : "Add Hero Slide"}
+          subtitle="Fields save to the content API"
+          tone="purple"
+          onClose={() => setEditing(null)}
+          closeLabel="Close the hero slide editor"
+        >
+          <form onSubmit={handleSave} className="admin-inline-form">
+            <div className="form-group-row">
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-badge">
+                    Badge
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-badge"
+                  type="text"
+                  value={editing.badge}
+                  onChange={(event) => setField("badge", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-tag">
+                    Tag
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-tag"
+                  type="text"
+                  value={editing.tag}
+                  onChange={(event) => setField("tag", event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <label
+                  className="form-label"
+                  htmlFor="hero-title"
+                  style={{
+                    color: fieldErrors.title ? "#dc2626" : undefined,
+                    fontWeight: 600,
+                  }}
+                >
+                  Title *
+                </label>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    color: fieldErrors.title ? "#dc2626" : "#ef4444",
+                    fontWeight: 600,
+                  }}
+                >
+                  (Mandatory)
+                </span>
+              </div>
+              <Input
+                id="hero-title"
+                type="text"
+                value={editing.title}
+                style={
+                  fieldErrors.title
+                    ? {
+                        borderColor: "#ef4444",
+                        borderWidth: "2px",
+                        backgroundColor: "#fef2f2",
+                        boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                      }
+                    : {}
+                }
+                onChange={(event) => {
+                  setField("title", event.target.value);
+                  if (fieldErrors.title) {
+                    setFieldErrors((prev) => ({ ...prev, title: undefined }));
+                  }
+                }}
+              />
+              {fieldErrors.title && (
+                <span
+                  className="field-error-text"
+                  style={{
+                    color: "#dc2626",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    marginTop: "5px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <AlertCircle size={13} color="#dc2626" />
+                  {fieldErrors.title}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <label className="form-label" htmlFor="hero-subtitle">
+                  Subtitle
+                </label>
+                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+              </div>
+              <Input
+                id="hero-subtitle"
+                type="text"
+                value={editing.subtitle}
+                onChange={(event) => setField("subtitle", event.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: "8px" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+              >
+                <label className="form-label" htmlFor="hero-cta-toggle" style={{ margin: 0 }}>
+                  CTA Button
+                </label>
+                <div className="hero-status-switch">
+                  <Switch
+                    id="hero-cta-toggle"
+                    checked={editing.btnEnabled}
+                    onChange={(event) => setField("btnEnabled", event.target.checked)}
+                    slotProps={{ input: { "aria-label": "Enable CTA button" } }}
+                  />
+                  <span className="hero-status-switch-text" aria-hidden="true">
+                    {editing.btnEnabled ? "Enabled" : "Disabled"}
+                  </span>
+                </div>
+              </div>
+              <p
+                className="form-hint"
+                style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0" }}
+              >
+                When disabled, the button is hidden on the storefront while retaining configured
+                text and link.
+              </p>
+            </div>
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-btn-text">
+                    Button text
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-btn-text"
+                  type="text"
+                  placeholder="e.g. Shop Now"
+                  value={editing.btnText}
+                  onChange={(event) => setField("btnText", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-btn-path">
+                    Button path
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-btn-path"
+                  type="text"
+                  placeholder="e.g. /products"
+                  value={editing.btnPath}
+                  onChange={(event) => setField("btnPath", event.target.value)}
+                />
+              </div>
+            </div>
+
+            <ImageField
+              label="Background image"
+              value={editing.bgImageUrl}
+              onChange={(url) => setField("bgImageUrl", url)}
+              folder="marvel_hero"
+            />
+            <ImageField
+              label="Product image"
+              value={editing.productImageUrl}
+              onChange={(url) => setField("productImageUrl", url)}
+              folder="marvel_hero"
+            />
+            <ImageField
+              label="Fallback image"
+              value={editing.fallbackImageUrl}
+              onChange={(url) => setField("fallbackImageUrl", url)}
+              folder="marvel_hero"
+            />
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-bg-gradient">
+                    Background gradient
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-bg-gradient"
+                  type="text"
+                  value={editing.bgGradient}
+                  onChange={(event) => setField("bgGradient", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="hero-price-text">
+                    Price text
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="hero-price-text"
+                  type="text"
+                  value={editing.priceText}
+                  onChange={(event) => setField("priceText", event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <label className="form-label" htmlFor="hero-ribbon">
+                  Ribbon text
+                </label>
+                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+              </div>
+              <Input
+                id="hero-ribbon"
+                type="text"
+                value={editing.ribbonText}
+                onChange={(event) => setField("ribbonText", event.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <span className="form-label">Active</span>
+              <ActiveToggle
+                active={editing.isActive}
+                label={editing.title || "this slide"}
+                onChange={(active) => setField("isActive", active)}
+              />
+            </div>
+
+            {editing.title.trim() && (
+              <div
+                className="hero-preview"
+                aria-label="Slide preview"
+                style={editing.bgGradient ? { background: editing.bgGradient } : undefined}
+              >
+                {editing.badge && <span className="role-pill admin">{editing.badge}</span>}
+                <strong>{editing.title}</strong>
+                {editing.subtitle && <p className="chart-subtitle">{editing.subtitle}</p>}
+                {editing.priceText && <span>{editing.priceText}</span>}
+                {editing.btnEnabled && editing.btnText && <span>{editing.btnText}</span>}
+                {editing.ribbonText && <span>{editing.ribbonText}</span>}
+                {previewImage(editing) && (
+                  <img
+                    src={previewImage(editing)}
+                    alt="Slide preview"
+                    width={96}
+                    height={64}
+                    style={{ objectFit: "cover", borderRadius: 4 }}
+                  />
+                )}
+              </div>
+            )}
+
+            {formError && (
+              <p role="alert" className="form-error">
+                {formError}
+              </p>
+            )}
+
+            <div className="admin-inline-actions">
+              <Button
+                type="button"
+                variant="outline"
+                className="btn-cancel-red"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="submit-primary-btn">
+                {saving ? "Saving..." : "Save Slide"}
+              </Button>
+            </div>
+          </form>
+        </AdminInlinePanel>
+      )}
+
+      {viewing && (
+        <AdminInlinePanel
+          title={viewing.title}
+          subtitle="Hero slide details & storefront preview"
+          tone="blue"
+          onClose={() => setViewing(null)}
+          closeLabel="Close the slide preview"
+        >
+          <div
+            className="admin-inline-stack"
+            style={{
+              padding: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            <div
+              className="hero-preview"
+              aria-label="Slide preview details"
+              style={viewing.bg_gradient ? { background: viewing.bg_gradient } : undefined}
+            >
+              {viewing.badge && <span className="role-pill admin">{viewing.badge}</span>}
+              <strong>{viewing.title}</strong>
+              {viewing.subtitle && <p className="chart-subtitle">{viewing.subtitle}</p>}
+              {viewing.price_text && <span>{viewing.price_text}</span>}
+              {viewing.btn_enabled !== false && viewing.btn_text && (
+                <span style={{ fontWeight: 600, color: "#2563eb" }}>{viewing.btn_text}</span>
+              )}
+              {viewing.ribbon_text && <span>{viewing.ribbon_text}</span>}
+              {(viewing.product_image_url ||
+                viewing.bg_image_url ||
+                viewing.fallback_image_url) && (
+                <img
+                  src={
+                    viewing.product_image_url || viewing.bg_image_url || viewing.fallback_image_url
+                  }
+                  alt={viewing.title}
+                  width={96}
+                  height={64}
+                  style={{ objectFit: "cover", borderRadius: 4 }}
+                />
+              )}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                fontSize: "13px",
+              }}
+            >
+              <div>
+                <strong>Order:</strong> #{viewing.order_index ?? 0}
+              </div>
+              <div>
+                <strong>Status:</strong>{" "}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontWeight: 700,
+                    color: viewing.is_active === false ? "#64748b" : "#059669",
+                  }}
+                >
+                  {viewing.is_active === false ? "OFF" : "ON"}
+                </span>
+              </div>
+              <div>
+                <strong>Tag:</strong> {viewing.tag || "None"}
+              </div>
+              <div>
+                <strong>Price:</strong> {viewing.price_text || "None"}
+              </div>
+              <div>
+                <strong>CTA Status:</strong>{" "}
+                {viewing.btn_enabled === false ? "Disabled" : "Enabled"}
+              </div>
+              <div>
+                <strong>CTA Destination:</strong> {viewing.btn_path || "/products"}
+              </div>
+            </div>
+
+            <div
+              className="admin-inline-actions"
+              style={{ padding: "12px 0 0 0", borderTop: "1px solid #e2e8f0" }}
+            >
+              <Button type="button" variant="outline" onClick={() => setViewing(null)}>
+                Close
+              </Button>
+              <Button
+                type="button"
+                className="submit-primary-btn"
+                onClick={() => {
+                  const toEdit = viewing;
+                  setViewing(null);
+                  openEdit(toEdit);
+                }}
+              >
+                Edit Slide
+              </Button>
+            </div>
+          </div>
+        </AdminInlinePanel>
+      )}
+
       {loading ? (
         <p className="chart-subtitle">Loading hero slides...</p>
       ) : slides.length === 0 ? (
@@ -327,39 +778,21 @@ export default function HeroSlidesEditor() {
                 <span className="menu-tree-title">{slide.title}</span>
                 {slide.badge && <span className="role-pill admin">{slide.badge}</span>}
                 <span className="text-muted text-sm menu-tree-path">#{slide.order_index ?? 0}</span>
-                <div
-                  className="hero-status-radio-group"
-                  role="radiogroup"
-                  aria-label={`Status for ${slide.title}`}
-                >
-                  <label
-                    className={`hero-status-radio-label ${slide.is_active !== false ? "active" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name={`hero-status-${slide.id}`}
-                      value="active"
-                      checked={slide.is_active !== false}
-                      disabled={busy}
-                      onChange={() => handleToggleActive(slide, true)}
-                      aria-label={`Activate ${slide.title}`}
-                    />
-                    <span>Active</span>
-                  </label>
-                  <label
-                    className={`hero-status-radio-label ${slide.is_active === false ? "inactive" : ""}`}
-                  >
-                    <input
-                      type="radio"
-                      name={`hero-status-${slide.id}`}
-                      value="inactive"
-                      checked={slide.is_active === false}
-                      disabled={busy}
-                      onChange={() => handleToggleActive(slide, false)}
-                      aria-label={`Deactivate ${slide.title}`}
-                    />
-                    <span>Inactive</span>
-                  </label>
+                <div className="hero-status-switch">
+                  <Switch
+                    checked={slide.is_active !== false}
+                    disabled={busy}
+                    onChange={(event) => handleToggleActive(slide, event.target.checked)}
+                    slotProps={{ input: { "aria-label": slide.title } }}
+                    title={
+                      slide.is_active !== false
+                        ? `Deactivate ${slide.title}`
+                        : `Activate ${slide.title}`
+                    }
+                  />
+                  <span className="hero-status-switch-text" aria-hidden="true">
+                    {slide.is_active !== false ? "Active" : "Inactive"}
+                  </span>
                 </div>
                 <div className="menu-tree-actions">
                   <OrderControls
@@ -406,499 +839,7 @@ export default function HeroSlidesEditor() {
         </div>
       )}
 
-      {editing && (
-        <div className="modal-backdrop-overlay">
-          <div
-            className="modal-content-container animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Hero slide editor"
-          >
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">{editing.id ? "Edit Hero Slide" : "Add Hero Slide"}</h3>
-                <p className="modal-subtitle">Fields save to the content API</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="modal-close-btn"
-                aria-label="Close editor"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="modal-form">
-              <div className="form-group-row">
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-badge">
-                      Badge
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-badge"
-                    type="text"
-                    value={editing.badge}
-                    onChange={(event) => setField("badge", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-tag">
-                      Tag
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-tag"
-                    type="text"
-                    value={editing.tag}
-                    onChange={(event) => setField("tag", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                >
-                  <label
-                    className="form-label"
-                    htmlFor="hero-title"
-                    style={{
-                      color: fieldErrors.title ? "#dc2626" : undefined,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Title *
-                  </label>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: fieldErrors.title ? "#dc2626" : "#ef4444",
-                      fontWeight: 600,
-                    }}
-                  >
-                    (Mandatory)
-                  </span>
-                </div>
-                <Input
-                  id="hero-title"
-                  type="text"
-                  value={editing.title}
-                  style={
-                    fieldErrors.title
-                      ? {
-                          borderColor: "#ef4444",
-                          borderWidth: "2px",
-                          backgroundColor: "#fef2f2",
-                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                        }
-                      : {}
-                  }
-                  onChange={(event) => {
-                    setField("title", event.target.value);
-                    if (fieldErrors.title) {
-                      setFieldErrors((prev) => ({ ...prev, title: undefined }));
-                    }
-                  }}
-                />
-                {fieldErrors.title && (
-                  <span
-                    className="field-error-text"
-                    style={{
-                      color: "#dc2626",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      marginTop: "5px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <AlertCircle size={13} color="#dc2626" />
-                    {fieldErrors.title}
-                  </span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                >
-                  <label className="form-label" htmlFor="hero-subtitle">
-                    Subtitle
-                  </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                </div>
-                <Input
-                  id="hero-subtitle"
-                  type="text"
-                  value={editing.subtitle}
-                  onChange={(event) => setField("subtitle", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group" style={{ marginBottom: "8px" }}>
-                <div
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <label className="form-label" htmlFor="hero-cta-toggle" style={{ margin: 0 }}>
-                    CTA Button
-                  </label>
-                  <label
-                    className="toggle-switch-label"
-                    style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
-                  >
-                    <input
-                      id="hero-cta-toggle"
-                      type="checkbox"
-                      checked={editing.btnEnabled}
-                      onChange={(event) => setField("btnEnabled", event.target.checked)}
-                      aria-label="Enable CTA button"
-                    />
-                    <span
-                      className="text-sm font-medium"
-                      style={{ color: editing.btnEnabled ? "#2563eb" : "#64748b" }}
-                    >
-                      {editing.btnEnabled ? "Enabled" : "Disabled"}
-                    </span>
-                  </label>
-                </div>
-                <p
-                  className="form-hint"
-                  style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0" }}
-                >
-                  When disabled, the button is hidden on the storefront while retaining configured
-                  text and link.
-                </p>
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-btn-text">
-                      Button text
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-btn-text"
-                    type="text"
-                    placeholder="e.g. Shop Now"
-                    value={editing.btnText}
-                    onChange={(event) => setField("btnText", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-btn-path">
-                      Button path
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-btn-path"
-                    type="text"
-                    placeholder="e.g. /products"
-                    value={editing.btnPath}
-                    onChange={(event) => setField("btnPath", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <ImageField
-                label="Background image"
-                value={editing.bgImageUrl}
-                onChange={(url) => setField("bgImageUrl", url)}
-                folder="marvel_hero"
-              />
-              <ImageField
-                label="Product image"
-                value={editing.productImageUrl}
-                onChange={(url) => setField("productImageUrl", url)}
-                folder="marvel_hero"
-              />
-              <ImageField
-                label="Fallback image"
-                value={editing.fallbackImageUrl}
-                onChange={(url) => setField("fallbackImageUrl", url)}
-                folder="marvel_hero"
-              />
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-bg-gradient">
-                      Background gradient
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-bg-gradient"
-                    type="text"
-                    value={editing.bgGradient}
-                    onChange={(event) => setField("bgGradient", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="hero-price-text">
-                      Price text
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="hero-price-text"
-                    type="text"
-                    value={editing.priceText}
-                    onChange={(event) => setField("priceText", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                >
-                  <label className="form-label" htmlFor="hero-ribbon">
-                    Ribbon text
-                  </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                </div>
-                <Input
-                  id="hero-ribbon"
-                  type="text"
-                  value={editing.ribbonText}
-                  onChange={(event) => setField("ribbonText", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <span className="form-label">Active</span>
-                <ActiveToggle
-                  active={editing.isActive}
-                  label={editing.title || "this slide"}
-                  onChange={(active) => setField("isActive", active)}
-                />
-              </div>
-
-              {editing.title.trim() && (
-                <div
-                  className="hero-preview"
-                  aria-label="Slide preview"
-                  style={editing.bgGradient ? { background: editing.bgGradient } : undefined}
-                >
-                  {editing.badge && <span className="role-pill admin">{editing.badge}</span>}
-                  <strong>{editing.title}</strong>
-                  {editing.subtitle && <p className="chart-subtitle">{editing.subtitle}</p>}
-                  {editing.priceText && <span>{editing.priceText}</span>}
-                  {editing.btnEnabled && editing.btnText && <span>{editing.btnText}</span>}
-                  {editing.ribbonText && <span>{editing.ribbonText}</span>}
-                  {previewImage(editing) && (
-                    <img
-                      src={previewImage(editing)}
-                      alt="Slide preview"
-                      width={96}
-                      height={64}
-                      style={{ objectFit: "cover", borderRadius: 4 }}
-                    />
-                  )}
-                </div>
-              )}
-
-              {formError && (
-                <p role="alert" className="form-error">
-                  {formError}
-                </p>
-              )}
-
-              <div className="modal-actions-footer">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="btn-cancel-red"
-                  onClick={() => setEditing(null)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="submit-primary-btn">
-                  {saving ? "Saving..." : "Save Slide"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {viewing && (
-        <div className="modal-backdrop-overlay" onClick={() => setViewing(null)}>
-          <div
-            className="modal-content-container animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label="View Hero Slide"
-            onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "560px" }}
-          >
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">{viewing.title}</h3>
-                <p className="modal-subtitle">Hero slide details & storefront preview</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewing(null)}
-                className="modal-close-btn"
-                aria-label="Close view modal"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div
-              className="modal-form"
-              style={{
-                padding: "20px 24px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-              }}
-            >
-              <div
-                className="hero-preview"
-                aria-label="Slide preview details"
-                style={viewing.bg_gradient ? { background: viewing.bg_gradient } : undefined}
-              >
-                {viewing.badge && <span className="role-pill admin">{viewing.badge}</span>}
-                <strong>{viewing.title}</strong>
-                {viewing.subtitle && <p className="chart-subtitle">{viewing.subtitle}</p>}
-                {viewing.price_text && <span>{viewing.price_text}</span>}
-                {viewing.btn_enabled !== false && viewing.btn_text && (
-                  <span style={{ fontWeight: 600, color: "#2563eb" }}>{viewing.btn_text}</span>
-                )}
-                {viewing.ribbon_text && <span>{viewing.ribbon_text}</span>}
-                {(viewing.product_image_url ||
-                  viewing.bg_image_url ||
-                  viewing.fallback_image_url) && (
-                  <img
-                    src={
-                      viewing.product_image_url ||
-                      viewing.bg_image_url ||
-                      viewing.fallback_image_url
-                    }
-                    alt={viewing.title}
-                    width={96}
-                    height={64}
-                    style={{ objectFit: "cover", borderRadius: 4 }}
-                  />
-                )}
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
-                  fontSize: "13px",
-                }}
-              >
-                <div>
-                  <strong>Order:</strong> #{viewing.order_index ?? 0}
-                </div>
-                <div>
-                  <strong>Status:</strong>{" "}
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      fontWeight: 700,
-                      color: viewing.is_active === false ? "#64748b" : "#059669",
-                    }}
-                  >
-                    {viewing.is_active === false ? "OFF" : "ON"}
-                  </span>
-                </div>
-                <div>
-                  <strong>Tag:</strong> {viewing.tag || "None"}
-                </div>
-                <div>
-                  <strong>Price:</strong> {viewing.price_text || "None"}
-                </div>
-                <div>
-                  <strong>CTA Status:</strong>{" "}
-                  {viewing.btn_enabled === false ? "Disabled" : "Enabled"}
-                </div>
-                <div>
-                  <strong>CTA Destination:</strong> {viewing.btn_path || "/products"}
-                </div>
-              </div>
-
-              <div
-                className="modal-actions-footer"
-                style={{ padding: "12px 0 0 0", borderTop: "1px solid #e2e8f0" }}
-              >
-                <Button type="button" variant="outline" onClick={() => setViewing(null)}>
-                  Close
-                </Button>
-                <Button
-                  type="button"
-                  className="submit-primary-btn"
-                  onClick={() => {
-                    const toEdit = viewing;
-                    setViewing(null);
-                    openEdit(toEdit);
-                  }}
-                >
-                  Edit Slide
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={`Delete '${deleteTarget?.title || "slide"}'?`}
         message="This will remove the hero slide from the homepage carousel. This cannot be undone."

@@ -7,9 +7,9 @@ import {
   FileText,
   Plus,
   Trash2,
-  X,
 } from "lucide-react";
 import { Button, Input, useToast } from "../ui";
+import Switch from "../ui/Switch";
 import {
   apiDeleteCategory,
   apiFetchCategoryTree,
@@ -17,7 +17,8 @@ import {
   apiSaveCategory,
   apiUpdateCategory,
 } from "../../api/contentApi";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, ImageField, OrderControls, slugify } from "./ContentEditorKit";
 import CategoryPagePanel from "./CategoryPagePanel";
 
@@ -544,16 +545,436 @@ export default function CategoriesTreeEditor() {
       <label
         className="form-label"
         htmlFor="category-show-hidden"
-        style={{ display: "flex", gap: 8 }}
+        style={{ display: "flex", gap: 10, alignItems: "center" }}
       >
-        <input
+        <Switch
           id="category-show-hidden"
-          type="checkbox"
           checked={showHidden}
           onChange={(event) => setShowHidden(event.target.checked)}
+          slotProps={{ input: { "aria-label": "Show hidden" } }}
         />
         Show hidden
       </label>
+
+      {editing && (
+        <AdminInlinePanel
+          title={editing.id ? "Edit Category" : "Add Category"}
+          subtitle={`Level ${editing.level} — ${
+            editing.level === 1
+              ? "a top-level category has no parent"
+              : "a child of the selected parent"
+          }`}
+          tone="emerald"
+          onClose={() => setEditing(null)}
+          closeLabel="Close the category editor"
+        >
+          <form onSubmit={handleSave} className="admin-inline-form">
+            <div className="form-group-row">
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label
+                    className="form-label"
+                    htmlFor="category-name"
+                    style={{
+                      color: fieldErrors.name ? "#dc2626" : undefined,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Name *
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: fieldErrors.name ? "#dc2626" : "#ef4444",
+                      fontWeight: 600,
+                    }}
+                  >
+                    (Mandatory)
+                  </span>
+                </div>
+                <Input
+                  id="category-name"
+                  type="text"
+                  value={editing.name}
+                  style={
+                    fieldErrors.name
+                      ? {
+                          borderColor: "#ef4444",
+                          borderWidth: "2px",
+                          backgroundColor: "#fef2f2",
+                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                        }
+                      : {}
+                  }
+                  onChange={(event) => {
+                    handleNameChange(event.target.value);
+                    if (fieldErrors.name) {
+                      setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                    }
+                  }}
+                />
+                {fieldErrors.name && (
+                  <span
+                    className="field-error-text"
+                    style={{
+                      color: "#dc2626",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      marginTop: "5px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <AlertCircle size={13} color="#dc2626" />
+                    {fieldErrors.name}
+                  </span>
+                )}
+              </div>
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label
+                    className="form-label"
+                    htmlFor="category-slug"
+                    style={{
+                      color: fieldErrors.slug ? "#dc2626" : undefined,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Slug *
+                  </label>
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: fieldErrors.slug ? "#dc2626" : "#ef4444",
+                      fontWeight: 600,
+                    }}
+                  >
+                    (Mandatory)
+                  </span>
+                </div>
+                <Input
+                  id="category-slug"
+                  type="text"
+                  value={editing.slug}
+                  style={
+                    fieldErrors.slug
+                      ? {
+                          borderColor: "#ef4444",
+                          borderWidth: "2px",
+                          backgroundColor: "#fef2f2",
+                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                        }
+                      : {}
+                  }
+                  onChange={(event) => {
+                    handleSlugChange(event.target.value);
+                    if (fieldErrors.slug) {
+                      setFieldErrors((prev) => ({ ...prev, slug: undefined }));
+                    }
+                  }}
+                />
+                {fieldErrors.slug && (
+                  <span
+                    className="field-error-text"
+                    style={{
+                      color: "#dc2626",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      marginTop: "5px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <AlertCircle size={13} color="#dc2626" />
+                    {fieldErrors.slug}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {editing.id && editing.slug !== editing.originalSlug && (
+              <output className="form-hint" style={{ display: "block", margin: 0 }}>
+                Changing this slug changes the category's path and every descendant's path. Existing
+                links to the old URL will stop resolving.
+              </output>
+            )}
+
+            <div className="form-group">
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <label className="form-label" htmlFor="category-parent">
+                  Parent category
+                </label>
+                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+              </div>
+              <select
+                id="category-parent"
+                className="form-select-field"
+                value={editing.parentId ?? ""}
+                onChange={(event) => handleParentChange(event.target.value)}
+                disabled={editing.level === 1}
+              >
+                <option value="">No parent (level 1)</option>
+                {parentOptions.map((candidate) => (
+                  <option key={candidate.id} value={candidate.id}>
+                    {candidate.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <label className="form-label" htmlFor="category-icon">
+                    Icon
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                </div>
+                <Input
+                  id="category-icon"
+                  type="text"
+                  value={editing.icon}
+                  onChange={(event) => setField("icon", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <span className="form-label">Display order</span>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <OrderControls
+                    index={editorIndex}
+                    total={editorTotal}
+                    label="this category"
+                    onMove={(_from, to) => setField("displayOrder", to)}
+                  />
+                  <span className="text-sm text-muted">
+                    Position {editorIndex + 1} of {editorTotal}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <ImageField
+              label="Category image"
+              value={editing.imageUrl}
+              onChange={(url) => setField("imageUrl", url)}
+            />
+            <ImageField
+              label="Banner image"
+              value={editing.bannerImageUrl}
+              onChange={(url) => setField("bannerImageUrl", url)}
+            />
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="category-description">
+                Description
+              </label>
+              <textarea
+                id="category-description"
+                className="ui-input"
+                rows={3}
+                value={editing.description}
+                onChange={(event) => setField("description", event.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <span className="form-label">Active</span>
+              <ActiveToggle
+                active={editing.isActive}
+                label={editing.name || "this category"}
+                onChange={(active) => setField("isActive", active)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label
+                className="form-label"
+                htmlFor="category-show-nav"
+                style={{ display: "flex", gap: 10, alignItems: "center" }}
+              >
+                <Switch
+                  id="category-show-nav"
+                  checked={editing.showInNav}
+                  onChange={(event) => setField("showInNav", event.target.checked)}
+                  slotProps={{ input: { "aria-label": "Show in navigation" } }}
+                />
+                Show in navigation
+              </label>
+            </div>
+            <div className="form-group">
+              <label
+                className="form-label"
+                htmlFor="category-show-homepage"
+                style={{ display: "flex", gap: 10, alignItems: "center" }}
+              >
+                <Switch
+                  id="category-show-homepage"
+                  checked={editing.showInHomepage}
+                  onChange={(event) => setField("showInHomepage", event.target.checked)}
+                  slotProps={{ input: { "aria-label": "Show on homepage" } }}
+                />
+                Show on homepage
+              </label>
+            </div>
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-meta-title">
+                  Meta title
+                </label>
+                <Input
+                  id="category-meta-title"
+                  type="text"
+                  value={editing.metaTitle}
+                  onChange={(event) => setField("metaTitle", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-canonical-url">
+                  Canonical URL
+                </label>
+                <Input
+                  id="category-canonical-url"
+                  type="text"
+                  value={editing.canonicalUrl}
+                  onChange={(event) => setField("canonicalUrl", event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="category-meta-description">
+                Meta description
+              </label>
+              <textarea
+                id="category-meta-description"
+                className="ui-input"
+                rows={2}
+                value={editing.metaDescription}
+                onChange={(event) => setField("metaDescription", event.target.value)}
+              />
+            </div>
+
+            <div className="form-group-row">
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-listing-layout">
+                  Listing layout
+                </label>
+                <select
+                  id="category-listing-layout"
+                  className="form-select-field"
+                  value={editing.listingLayout}
+                  onChange={(event) => setField("listingLayout", event.target.value)}
+                >
+                  <option value="">Default (Grid)</option>
+                  <option value="grid">Grid</option>
+                  <option value="list">List</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-listing-sort">
+                  Listing sort
+                </label>
+                <select
+                  id="category-listing-sort"
+                  className="form-select-field"
+                  value={editing.listingSort}
+                  onChange={(event) => setField("listingSort", event.target.value)}
+                >
+                  <option value="">Default (Featured)</option>
+                  <option value="featured">Featured</option>
+                  <option value="newest">Newest</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="rating">Rating</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="category-listing-page-size">
+                  Page size
+                </label>
+                <Input
+                  id="category-listing-page-size"
+                  type="number"
+                  min={0}
+                  value={editing.listingPageSize}
+                  onChange={(event) => setField("listingPageSize", event.target.value)}
+                  placeholder="0 = all"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label
+                className="form-label"
+                htmlFor="category-show-sort"
+                style={{ display: "flex", gap: 10, alignItems: "center" }}
+              >
+                <Switch
+                  id="category-show-sort"
+                  checked={Boolean(editing.listingShowSort)}
+                  onChange={(event) => setField("listingShowSort", event.target.checked)}
+                  slotProps={{ input: { "aria-label": "Show sort control" } }}
+                />
+                Show sort control
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label
+                className="form-label"
+                htmlFor="category-show-filters"
+                style={{ display: "flex", gap: 10, alignItems: "center" }}
+              >
+                <Switch
+                  id="category-show-filters"
+                  checked={Boolean(editing.listingShowFilters)}
+                  onChange={(event) => setField("listingShowFilters", event.target.checked)}
+                  slotProps={{ input: { "aria-label": "Show filter controls" } }}
+                />
+                Show filter controls
+              </label>
+            </div>
+
+            {formError && (
+              <p role="alert" className="form-error">
+                {formError}
+              </p>
+            )}
+
+            <div className="admin-inline-actions">
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving} className="submit-primary-btn">
+                {saving ? "Saving..." : "Save Category"}
+              </Button>
+            </div>
+          </form>
+        </AdminInlinePanel>
+      )}
 
       {loading ? (
         <p className="chart-subtitle">Loading category tree...</p>
@@ -563,436 +984,7 @@ export default function CategoriesTreeEditor() {
         <div className="menu-tree">{visible.map((node) => renderNode(node, 1))}</div>
       )}
 
-      {editing && (
-        <div className="modal-backdrop-overlay">
-          <div
-            className="modal-content-container animate-scale-up"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Category editor"
-          >
-            <div className="modal-header">
-              <div>
-                <h3 className="modal-title">{editing.id ? "Edit Category" : "Add Category"}</h3>
-                <p className="modal-subtitle">
-                  Level {editing.level} —{" "}
-                  {editing.level === 1
-                    ? "a top-level category has no parent"
-                    : "a child of the selected parent"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditing(null)}
-                className="modal-close-btn"
-                aria-label="Close editor"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSave} className="modal-form">
-              <div className="form-group-row">
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      className="form-label"
-                      htmlFor="category-name"
-                      style={{
-                        color: fieldErrors.name ? "#dc2626" : undefined,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Name *
-                    </label>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: fieldErrors.name ? "#dc2626" : "#ef4444",
-                        fontWeight: 600,
-                      }}
-                    >
-                      (Mandatory)
-                    </span>
-                  </div>
-                  <Input
-                    id="category-name"
-                    type="text"
-                    value={editing.name}
-                    style={
-                      fieldErrors.name
-                        ? {
-                            borderColor: "#ef4444",
-                            borderWidth: "2px",
-                            backgroundColor: "#fef2f2",
-                            boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                          }
-                        : {}
-                    }
-                    onChange={(event) => {
-                      handleNameChange(event.target.value);
-                      if (fieldErrors.name) {
-                        setFieldErrors((prev) => ({ ...prev, name: undefined }));
-                      }
-                    }}
-                  />
-                  {fieldErrors.name && (
-                    <span
-                      className="field-error-text"
-                      style={{
-                        color: "#dc2626",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        marginTop: "5px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <AlertCircle size={13} color="#dc2626" />
-                      {fieldErrors.name}
-                    </span>
-                  )}
-                </div>
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label
-                      className="form-label"
-                      htmlFor="category-slug"
-                      style={{
-                        color: fieldErrors.slug ? "#dc2626" : undefined,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Slug *
-                    </label>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        color: fieldErrors.slug ? "#dc2626" : "#ef4444",
-                        fontWeight: 600,
-                      }}
-                    >
-                      (Mandatory)
-                    </span>
-                  </div>
-                  <Input
-                    id="category-slug"
-                    type="text"
-                    value={editing.slug}
-                    style={
-                      fieldErrors.slug
-                        ? {
-                            borderColor: "#ef4444",
-                            borderWidth: "2px",
-                            backgroundColor: "#fef2f2",
-                            boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                          }
-                        : {}
-                    }
-                    onChange={(event) => {
-                      handleSlugChange(event.target.value);
-                      if (fieldErrors.slug) {
-                        setFieldErrors((prev) => ({ ...prev, slug: undefined }));
-                      }
-                    }}
-                  />
-                  {fieldErrors.slug && (
-                    <span
-                      className="field-error-text"
-                      style={{
-                        color: "#dc2626",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        marginTop: "5px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
-                      <AlertCircle size={13} color="#dc2626" />
-                      {fieldErrors.slug}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {editing.id && editing.slug !== editing.originalSlug && (
-                <output className="form-hint" style={{ display: "block", margin: 0 }}>
-                  Changing this slug changes the category's path and every descendant's path.
-                  Existing links to the old URL will stop resolving.
-                </output>
-              )}
-
-              <div className="form-group">
-                <div
-                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-                >
-                  <label className="form-label" htmlFor="category-parent">
-                    Parent category
-                  </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                </div>
-                <select
-                  id="category-parent"
-                  className="form-select-field"
-                  value={editing.parentId ?? ""}
-                  onChange={(event) => handleParentChange(event.target.value)}
-                  disabled={editing.level === 1}
-                >
-                  <option value="">No parent (level 1)</option>
-                  {parentOptions.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <label className="form-label" htmlFor="category-icon">
-                      Icon
-                    </label>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                  </div>
-                  <Input
-                    id="category-icon"
-                    type="text"
-                    value={editing.icon}
-                    onChange={(event) => setField("icon", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <span className="form-label">Display order</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <OrderControls
-                      index={editorIndex}
-                      total={editorTotal}
-                      label="this category"
-                      onMove={(_from, to) => setField("displayOrder", to)}
-                    />
-                    <span className="text-sm text-muted">
-                      Position {editorIndex + 1} of {editorTotal}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <ImageField
-                label="Category image"
-                value={editing.imageUrl}
-                onChange={(url) => setField("imageUrl", url)}
-              />
-              <ImageField
-                label="Banner image"
-                value={editing.bannerImageUrl}
-                onChange={(url) => setField("bannerImageUrl", url)}
-              />
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="category-description">
-                  Description
-                </label>
-                <textarea
-                  id="category-description"
-                  className="ui-input"
-                  rows={3}
-                  value={editing.description}
-                  onChange={(event) => setField("description", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <span className="form-label">Active</span>
-                <ActiveToggle
-                  active={editing.isActive}
-                  label={editing.name || "this category"}
-                  onChange={(active) => setField("isActive", active)}
-                />
-              </div>
-
-              <label
-                className="form-label"
-                htmlFor="category-show-nav"
-                style={{ display: "flex", gap: 8, alignItems: "center" }}
-              >
-                <input
-                  id="category-show-nav"
-                  type="checkbox"
-                  checked={editing.showInNav}
-                  onChange={(event) => setField("showInNav", event.target.checked)}
-                />
-                Show in navigation
-              </label>
-              <label
-                className="form-label"
-                htmlFor="category-show-homepage"
-                style={{ display: "flex", gap: 8, alignItems: "center" }}
-              >
-                <input
-                  id="category-show-homepage"
-                  type="checkbox"
-                  checked={editing.showInHomepage}
-                  onChange={(event) => setField("showInHomepage", event.target.checked)}
-                />
-                Show on homepage
-              </label>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-meta-title">
-                    Meta title
-                  </label>
-                  <Input
-                    id="category-meta-title"
-                    type="text"
-                    value={editing.metaTitle}
-                    onChange={(event) => setField("metaTitle", event.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-canonical-url">
-                    Canonical URL
-                  </label>
-                  <Input
-                    id="category-canonical-url"
-                    type="text"
-                    value={editing.canonicalUrl}
-                    onChange={(event) => setField("canonicalUrl", event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="category-meta-description">
-                  Meta description
-                </label>
-                <textarea
-                  id="category-meta-description"
-                  className="ui-input"
-                  rows={2}
-                  value={editing.metaDescription}
-                  onChange={(event) => setField("metaDescription", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-listing-layout">
-                    Listing layout
-                  </label>
-                  <select
-                    id="category-listing-layout"
-                    className="form-select-field"
-                    value={editing.listingLayout}
-                    onChange={(event) => setField("listingLayout", event.target.value)}
-                  >
-                    <option value="">Default (Grid)</option>
-                    <option value="grid">Grid</option>
-                    <option value="list">List</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-listing-sort">
-                    Listing sort
-                  </label>
-                  <select
-                    id="category-listing-sort"
-                    className="form-select-field"
-                    value={editing.listingSort}
-                    onChange={(event) => setField("listingSort", event.target.value)}
-                  >
-                    <option value="">Default (Featured)</option>
-                    <option value="featured">Featured</option>
-                    <option value="newest">Newest</option>
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
-                    <option value="rating">Rating</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="category-listing-page-size">
-                    Page size
-                  </label>
-                  <Input
-                    id="category-listing-page-size"
-                    type="number"
-                    min={0}
-                    value={editing.listingPageSize}
-                    onChange={(event) => setField("listingPageSize", event.target.value)}
-                    placeholder="0 = all"
-                  />
-                </div>
-              </div>
-
-              <label
-                className="form-label"
-                htmlFor="category-show-sort"
-                style={{ display: "flex", gap: 8, alignItems: "center" }}
-              >
-                <input
-                  id="category-show-sort"
-                  type="checkbox"
-                  checked={Boolean(editing.listingShowSort)}
-                  onChange={(event) => setField("listingShowSort", event.target.checked)}
-                />
-                Show sort control
-              </label>
-
-              <label
-                className="form-label"
-                htmlFor="category-show-filters"
-                style={{ display: "flex", gap: 8, alignItems: "center" }}
-              >
-                <input
-                  id="category-show-filters"
-                  type="checkbox"
-                  checked={Boolean(editing.listingShowFilters)}
-                  onChange={(event) => setField("listingShowFilters", event.target.checked)}
-                />
-                Show filter controls
-              </label>
-
-              {formError && (
-                <p role="alert" className="form-error">
-                  {formError}
-                </p>
-              )}
-
-              <div className="modal-actions-footer">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving} className="submit-primary-btn">
-                  {saving ? "Saving..." : "Save Category"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={deleteTitle}
         message={

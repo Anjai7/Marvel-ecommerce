@@ -1,20 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Edit2, Plus, Trash2 } from "lucide-react";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  useToast,
-} from "../ui";
+import { Button, Input, useToast } from "../ui";
 import { slugify } from "./ContentEditorKit";
 import PageEditor, { pageUrl } from "./PageEditor";
 import { pageStatusLabel } from "./pageStatus";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import { formatAdminDate } from "./adminConstants";
 import {
   apiDeletePage,
@@ -279,100 +270,14 @@ export default function PagesEditor() {
         </div>
       )}
 
-      {loading ? (
-        <p className="chart-subtitle">Loading pages...</p>
-      ) : loadError ? null : rows.length === 0 ? (
-        <p className="chart-subtitle">No pages yet. Create the first one.</p>
-      ) : (
-        <table className="editor-table">
-          <thead>
-            <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Slug</th>
-              <th scope="col">Status</th>
-              <th scope="col">Template</th>
-              <th scope="col">Updated At</th>
-              <th scope="col">URL</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} data-testid={`editor-row-${row.id}`}>
-                <td>{row.title}</td>
-                <td>{row.slug}</td>
-                <td>{row.status}</td>
-                <td>{row.template || "—"}</td>
-                <td>{row.updated_at}</td>
-                <td>{row.url ? <a href={row.url}>{row.url}</a> : "—"}</td>
-                <td>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Edit ${row.title ?? row.slug}`}
-                      onClick={() => setEditing({ pageId: row.id })}
-                    >
-                      <Edit2 size={15} />
-                    </Button>
-                    {row.status === "Published" || row.status === "Scheduled" ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Unpublish ${row.title ?? row.slug}`}
-                        onClick={() => handleToggleActive(row, false)}
-                      >
-                        Unpublish
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Publish ${row.title ?? row.slug}`}
-                        onClick={() => handleToggleActive(row, true)}
-                      >
-                        Publish
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${row.title ?? row.slug}`}
-                      onClick={() => setDeleteTarget(row)}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title={`Delete ${deleteTarget?.title ?? deleteTarget?.slug ?? "this page"}?`}
-        message="This will permanently delete this page and all its sections. This cannot be undone."
-        destructive
-        pending={deleting}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleConfirmDelete}
-      />
-
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New page</DialogTitle>
-            <DialogDescription>
-              The page is created as a draft — it stays invisible until it is published.
-            </DialogDescription>
-          </DialogHeader>
-
+      {createOpen && (
+        <AdminInlinePanel
+          title="New page"
+          subtitle="The page is created as a draft — it stays invisible until it is published."
+          tone="blue"
+          onClose={() => setCreateOpen(false)}
+          closeLabel="Close the new page form"
+        >
           <div style={{ display: "grid", gap: 16 }}>
             <div className="form-group">
               <label className="form-label" htmlFor="new-page-title">
@@ -528,16 +433,101 @@ export default function PagesEditor() {
             )}
           </div>
 
-          <DialogFooter>
+          <div className="admin-inline-actions">
             <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
             <Button type="button" onClick={handleCreate} disabled={creating}>
               {creating ? "Creating..." : "Create page"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </AdminInlinePanel>
+      )}
+
+      {loading ? (
+        <p className="chart-subtitle">Loading pages...</p>
+      ) : loadError ? null : rows.length === 0 ? (
+        <p className="chart-subtitle">No pages yet. Create the first one.</p>
+      ) : (
+        <table className="editor-table">
+          <thead>
+            <tr>
+              <th scope="col">Title</th>
+              <th scope="col">Slug</th>
+              <th scope="col">Status</th>
+              <th scope="col">Template</th>
+              <th scope="col">Updated At</th>
+              <th scope="col">URL</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} data-testid={`editor-row-${row.id}`}>
+                <td>{row.title}</td>
+                <td>{row.slug}</td>
+                <td>{row.status}</td>
+                <td>{row.template || "—"}</td>
+                <td>{row.updated_at}</td>
+                <td>{row.url ? <a href={row.url}>{row.url}</a> : "—"}</td>
+                <td>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${row.title ?? row.slug}`}
+                      onClick={() => setEditing({ pageId: row.id })}
+                    >
+                      <Edit2 size={15} />
+                    </Button>
+                    {row.status === "Published" || row.status === "Scheduled" ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Unpublish ${row.title ?? row.slug}`}
+                        onClick={() => handleToggleActive(row, false)}
+                      >
+                        Unpublish
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        aria-label={`Publish ${row.title ?? row.slug}`}
+                        onClick={() => handleToggleActive(row, true)}
+                      >
+                        Publish
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${row.title ?? row.slug}`}
+                      onClick={() => setDeleteTarget(row)}
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <AdminConfirmStrip
+        open={Boolean(deleteTarget)}
+        title={`Delete ${deleteTarget?.title ?? deleteTarget?.slug ?? "this page"}?`}
+        message="This will permanently delete this page and all its sections. This cannot be undone."
+        destructive
+        pending={deleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

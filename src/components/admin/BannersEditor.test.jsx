@@ -140,7 +140,7 @@ describe("BannersEditor", () => {
     await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
     expect(screen.getByTestId("banner-preview")).toHaveAttribute("data-variant", "large");
 
-    await user.click(screen.getByRole("button", { name: "Close editor" }));
+    await user.click(screen.getByRole("button", { name: "Close the banner editor" }));
     await user.click(screen.getByRole("button", { name: "Edit Small Deal" }));
     // §3.4: a variant that is neither `large` nor `small` renders as `small`.
     expect(screen.getByTestId("banner-preview")).toHaveAttribute("data-variant", "small");
@@ -155,7 +155,7 @@ describe("BannersEditor", () => {
     await screen.findByText("End of Season");
     await user.click(screen.getByRole("button", { name: "Edit End of Season" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    const dialog = screen.getByRole("region", { name: /Banner/ });
     await user.click(within(dialog).getByRole("button", { name: "Remove gallery image 2" }));
     await user.click(within(dialog).getByRole("button", { name: "Save Banner" }));
 
@@ -175,7 +175,7 @@ describe("BannersEditor", () => {
     await screen.findByText("End of Season");
     await user.click(screen.getByRole("button", { name: "Add Banner" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    const dialog = screen.getByRole("region", { name: /Banner/ });
     await user.type(within(dialog).getByLabelText("Title *"), "Fresh Promo");
     await user.click(within(dialog).getByRole("button", { name: "Save Banner" }));
 
@@ -219,7 +219,7 @@ describe("BannersEditor", () => {
     await screen.findByText("Big Sale");
     await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    const dialog = screen.getByRole("region", { name: /Banner/ });
     await user.selectOptions(within(dialog).getByLabelText("Placement"), "home_promo_carousel");
     await user.click(within(dialog).getByRole("button", { name: "Save Banner" }));
 
@@ -256,7 +256,7 @@ describe("BannersEditor", () => {
     await screen.findByText("Big Sale");
     await user.click(screen.getByRole("button", { name: "Edit Big Sale" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    const dialog = screen.getByRole("region", { name: /Banner/ });
     expect(within(dialog).getByText("Display order")).toBeVisible();
     expect(within(dialog).getByText("Position 1 of 2")).toBeVisible();
 
@@ -317,7 +317,7 @@ describe("BannersEditor", () => {
     await user.click(screen.getByRole("button", { name: "Save Banner" }));
 
     expect(await screen.findByText("Save Failed")).toBeVisible();
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
+    const dialog = screen.getByRole("region", { name: /Banner/ });
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Banner title is required.");
     expect(apiFetchBanners).toHaveBeenCalledTimes(1);
   });
@@ -340,9 +340,10 @@ describe("BannersEditor", () => {
     expect(tablist).toHaveClass("banners-placement-tabs");
 
     await user.click(screen.getByRole("button", { name: "Add Banner" }));
-    const dialog = screen.getByRole("dialog", { name: "Banner editor" });
-    expect(dialog).toHaveClass("banners-modal-container");
-    expect(dialog.querySelector(".banners-modal-form")).toBeInTheDocument();
-    expect(dialog.querySelector(".banners-modal-footer")).toBeInTheDocument();
+    const panel = screen.getByRole("region", { name: /Banner/ });
+    // The editor is an in-page panel, not a popup over the table.
+    expect(panel).toHaveClass("admin-inline-panel");
+    expect(panel.querySelector(".banners-modal-form")).toBeInTheDocument();
+    expect(panel.querySelector(".banners-modal-footer")).toBeInTheDocument();
   });
 });

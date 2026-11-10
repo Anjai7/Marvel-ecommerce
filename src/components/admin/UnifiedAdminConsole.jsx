@@ -103,13 +103,9 @@ import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
 import PagesEditor from "./PagesEditor";
-import {
-  CreateUserModal,
-  ViewUserModal,
-  EditUserModal,
-  ResetPasswordModal,
-  DeleteUserModal,
-} from "./modals";
+import { CreateUserForm, ViewUserPanel, EditUserForm, ResetPasswordForm } from "./forms";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import OperationsHub from "./OperationsHub";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 import useInactivityTimeout from "./useInactivityTimeout";
@@ -2084,6 +2080,82 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
             </div>
 
+            {/* ============================================ */}
+            {/* USER FORMS — inline panels, above the table  */}
+            {/* ============================================ */}
+            <CreateUserForm
+              isOpen={showAddUserModal}
+              onClose={() => {
+                setShowAddUserModal(false);
+                setAddUserErrors({});
+              }}
+              form={addUserForm}
+              setForm={setAddUserForm}
+              onSubmit={handleCreateUser}
+              loading={addUserLoading}
+              isSuperAdmin={isSuperAdmin}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              onGeneratePassword={generateRandomPassword}
+              errors={addUserErrors}
+              clearError={(field) => setAddUserErrors((prev) => ({ ...prev, [field]: undefined }))}
+            />
+
+            <ViewUserPanel
+              user={viewingUser}
+              onClose={() => setViewingUser(null)}
+              renderRoleBadge={renderRoleBadge}
+              renderStatusBadge={renderStatusBadge}
+              onEdit={(target) => {
+                setViewingUser(null);
+                handleOpenEditUser(target);
+              }}
+              onResetPassword={(target) => {
+                setViewingUser(null);
+                setResetTargetUser(target);
+                setResetNewPassword("");
+              }}
+              onToggleStatus={(id, status, name) => handleToggleStatus(id, status, name)}
+              onCopyId={(id) => {
+                navigator.clipboard.writeText(id);
+                addToast({
+                  title: "Copied",
+                  message: "User ID copied to clipboard.",
+                  type: "info",
+                });
+              }}
+            />
+
+            <EditUserForm
+              user={editingUser}
+              onClose={() => setEditingUser(null)}
+              form={editUserForm}
+              setForm={setEditUserForm}
+              onSubmit={handleSaveEditUser}
+              loading={editUserLoading}
+              isSuperAdmin={isSuperAdmin}
+            />
+
+            <ResetPasswordForm
+              user={resetTargetUser}
+              onClose={() => setResetTargetUser(null)}
+              newPassword={resetNewPassword}
+              setNewPassword={setResetNewPassword}
+              onSubmit={handleResetPassword}
+              loading={resetPasswordLoading}
+            />
+
+            <AdminConfirmStrip
+              open={Boolean(deletingUser)}
+              title={`Delete '${deletingUser ? deletingUser.full_name || deletingUser.email : ""}'?`}
+              message="The user will immediately lose access to Marvel platform services. This cannot be undone."
+              destructive
+              pending={deleteLoading}
+              onCancel={() => setDeletingUser(null)}
+              onConfirm={handleDeleteUser}
+              confirmLabel="Permanently Delete"
+            />
+
             {/* USERS DATA TABLE */}
             <div className="users-table-card">
               <div className="table-card-top-info">
@@ -2343,259 +2415,65 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             </div>
 
             {productsView === "add" && (
-              <div
-                className="modal-backdrop-overlay"
-                onClick={() => {
+              <AdminInlinePanel
+                title={editingProduct ? "Edit Product" : "Add Product"}
+                subtitle={
+                  editingProduct
+                    ? "Updates go live on the storefront immediately."
+                    : "New products publish straight to the storefront."
+                }
+                tone="emerald"
+                onClose={() => {
                   setEditingProduct(null);
                   setProductErrors({});
                   setProductsView("list");
                 }}
+                closeLabel="Close the product form"
               >
-                <div
-                  className="modal-content-container animate-scale-up"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="modal-header">
-                    <div className="modal-title-with-icon">
-                      <div>
-                        <h3 className="modal-title">
-                          {editingProduct ? "Edit Product" : "Add Product"}
-                        </h3>
-                        <p className="modal-subtitle">
-                          {editingProduct
-                            ? "Updates go live on the storefront immediately."
-                            : "New products publish straight to the storefront."}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setEditingProduct(null);
-                        setProductErrors({});
-                        setProductsView("list");
-                      }}
-                      className="modal-close-btn"
-                      aria-label="Close product form"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <form onSubmit={handleSaveProduct} className="modal-form" noValidate>
-                    <div className="form-group-row">
-                      <div className="form-group">
-                        <label
-                          className="form-label"
-                          htmlFor="product-form-title"
-                          style={{
-                            color: productErrors.title ? "#dc2626" : undefined,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Product Title <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              color: productErrors.title ? "#dc2626" : "#ef4444",
-                              fontWeight: 600,
-                            }}
-                          >
-                            (Mandatory)
-                          </span>
-                        </label>
-                        <Input
-                          id="product-form-title"
-                          required
-                          type="text"
-                          placeholder="e.g. Aurora Wireless Speaker"
-                          value={productForm.title}
-                          style={
-                            productErrors.title
-                              ? {
-                                  borderColor: "#ef4444",
-                                  borderWidth: "2px",
-                                  backgroundColor: "#fef2f2",
-                                  boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                                }
-                              : {}
-                          }
-                          onChange={(e) => {
-                            setProductForm((prev) => ({ ...prev, title: e.target.value }));
-                            clearProductError("title");
-                          }}
-                        />
-                        {productErrors.title && (
-                          <span
-                            className="field-error-text"
-                            style={{
-                              color: "#dc2626",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              marginTop: "5px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            <AlertCircle size={13} color="#dc2626" />
-                            {productErrors.title}
-                          </span>
-                        )}
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">
-                          Category{" "}
-                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                        </label>
-                        <CategoryPicker
-                          value={productForm.category_id}
-                          label={productForm.category}
-                          onChange={(id, name) =>
-                            setProductForm((prev) => ({
-                              ...prev,
-                              category_id: id,
-                              category: name ?? prev.category,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="form-group-row">
-                      <div className="form-group">
-                        <label
-                          className="form-label"
-                          htmlFor="product-form-price"
-                          style={{
-                            color: productErrors.price ? "#dc2626" : undefined,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Price (₹) <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              color: productErrors.price ? "#dc2626" : "#ef4444",
-                              fontWeight: 600,
-                            }}
-                          >
-                            (Mandatory)
-                          </span>
-                        </label>
-                        <Input
-                          id="product-form-price"
-                          required
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="e.g. 4999"
-                          value={productForm.price}
-                          style={
-                            productErrors.price
-                              ? {
-                                  borderColor: "#ef4444",
-                                  borderWidth: "2px",
-                                  backgroundColor: "#fef2f2",
-                                  boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                                }
-                              : {}
-                          }
-                          onChange={(e) => {
-                            setProductForm((prev) => ({ ...prev, price: e.target.value }));
-                            clearProductError("price");
-                          }}
-                        />
-                        {productErrors.price && (
-                          <span
-                            className="field-error-text"
-                            style={{
-                              color: "#dc2626",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              marginTop: "5px",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
-                            <AlertCircle size={13} color="#dc2626" />
-                            {productErrors.price}
-                          </span>
-                        )}
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">
-                          Original Price (₹){" "}
-                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="Optional"
-                          value={productForm.original_price}
-                          onChange={(e) =>
-                            setProductForm((prev) => ({
-                              ...prev,
-                              original_price: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">
-                          Stock Units{" "}
-                          <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-                        </label>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="1"
-                          placeholder="e.g. 25"
-                          value={productForm.stock}
-                          onChange={(e) =>
-                            setProductForm((prev) => ({ ...prev, stock: e.target.value }))
-                          }
-                        />
-                      </div>
-                    </div>
+                <form onSubmit={handleSaveProduct} className="admin-inline-form" noValidate>
+                  <div className="form-group-row">
                     <div className="form-group">
                       <label
                         className="form-label"
-                        htmlFor="product-form-image_url"
+                        htmlFor="product-form-title"
                         style={{
-                          color: productErrors.image_url ? "#dc2626" : undefined,
+                          color: productErrors.title ? "#dc2626" : undefined,
                           fontWeight: 600,
                         }}
                       >
-                        Product Image <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                        Product Title <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
                         <span
                           style={{
                             fontSize: "11px",
-                            color: productErrors.image_url ? "#dc2626" : "#ef4444",
+                            color: productErrors.title ? "#dc2626" : "#ef4444",
                             fontWeight: 600,
                           }}
                         >
                           (Mandatory)
                         </span>
                       </label>
-                      <input
-                        id="product-form-image_url"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleProductImageUpload}
-                        className="form-select-field"
+                      <Input
+                        id="product-form-title"
+                        required
+                        type="text"
+                        placeholder="e.g. Aurora Wireless Speaker"
+                        value={productForm.title}
                         style={
-                          productErrors.image_url
+                          productErrors.title
                             ? {
                                 borderColor: "#ef4444",
                                 borderWidth: "2px",
-                                borderStyle: "dashed",
                                 backgroundColor: "#fef2f2",
                                 boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
                               }
                             : {}
                         }
+                        onChange={(e) => {
+                          setProductForm((prev) => ({ ...prev, title: e.target.value }));
+                          clearProductError("title");
+                        }}
                       />
-                      {productErrors.image_url && (
+                      {productErrors.title && (
                         <span
                           className="field-error-text"
                           style={{
@@ -2609,107 +2487,73 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           }}
                         >
                           <AlertCircle size={13} color="#dc2626" />
-                          {productErrors.image_url}
+                          {productErrors.title}
                         </span>
-                      )}
-                      {productForm.image_url && (
-                        <div
-                          style={{
-                            marginTop: "8px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                          }}
-                        >
-                          <img
-                            src={productForm.image_url}
-                            alt="Product preview"
-                            style={{
-                              width: "52px",
-                              height: "52px",
-                              objectFit: "cover",
-                              borderRadius: "6px",
-                              border: "1px solid #e2e8f0",
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProductForm((prev) => ({ ...prev, image_url: "" }));
-                              setProductErrors((prev) => ({
-                                ...prev,
-                                image_url: "Product image is required.",
-                              }));
-                            }}
-                            className="btn-cancel-red"
-                            style={{
-                              fontSize: "12px",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                            }}
-                          >
-                            Remove Image
-                          </button>
-                        </div>
                       )}
                     </div>
                     <div className="form-group">
+                      <label className="form-label">
+                        Category{" "}
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </label>
+                      <CategoryPicker
+                        value={productForm.category_id}
+                        label={productForm.category}
+                        onChange={(id, name) =>
+                          setProductForm((prev) => ({
+                            ...prev,
+                            category_id: id,
+                            category: name ?? prev.category,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group-row">
+                    <div className="form-group">
                       <label
                         className="form-label"
-                        htmlFor="product-form-description"
+                        htmlFor="product-form-price"
                         style={{
-                          color: productErrors.description ? "#dc2626" : undefined,
+                          color: productErrors.price ? "#dc2626" : undefined,
                           fontWeight: 600,
                         }}
                       >
-                        Description <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                        Price (₹) <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
                         <span
                           style={{
                             fontSize: "11px",
-                            color: productErrors.description ? "#dc2626" : "#ef4444",
+                            color: productErrors.price ? "#dc2626" : "#ef4444",
                             fontWeight: 600,
                           }}
                         >
                           (Mandatory)
                         </span>
                       </label>
-                      <textarea
-                        id="product-form-description"
-                        rows={3}
-                        className="form-select-field"
-                        placeholder="Product description is required"
-                        value={productForm.description}
+                      <Input
+                        id="product-form-price"
+                        required
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="e.g. 4999"
+                        value={productForm.price}
                         style={
-                          productErrors.description
+                          productErrors.price
                             ? {
                                 borderColor: "#ef4444",
                                 borderWidth: "2px",
                                 backgroundColor: "#fef2f2",
                                 boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                                width: "100%",
-                                resize: "vertical",
-                                padding: "10px 12px",
-                                borderRadius: "8px",
-                                fontFamily: "inherit",
-                                fontSize: "14px",
                               }
-                            : {
-                                width: "100%",
-                                resize: "vertical",
-                                padding: "10px 12px",
-                                borderRadius: "8px",
-                                fontFamily: "inherit",
-                                fontSize: "14px",
-                                border: "1px solid #e2e8f0",
-                              }
+                            : {}
                         }
                         onChange={(e) => {
-                          setProductForm((prev) => ({ ...prev, description: e.target.value }));
-                          clearProductError("description");
+                          setProductForm((prev) => ({ ...prev, price: e.target.value }));
+                          clearProductError("price");
                         }}
                       />
-                      {productErrors.description && (
+                      {productErrors.price && (
                         <span
                           className="field-error-text"
                           style={{
@@ -2723,39 +2567,243 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           }}
                         >
                           <AlertCircle size={13} color="#dc2626" />
-                          {productErrors.description}
+                          {productErrors.price}
                         </span>
                       )}
                     </div>
-                    <div className="modal-actions-footer">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="btn-cancel-red"
-                        onClick={() => {
-                          setEditingProduct(null);
-                          setProductErrors({});
-                          setProductsView("list");
+                    <div className="form-group">
+                      <label className="form-label">
+                        Original Price (₹){" "}
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Optional"
+                        value={productForm.original_price}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({
+                            ...prev,
+                            original_price: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">
+                        Stock Units{" "}
+                        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="e.g. 25"
+                        value={productForm.stock}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, stock: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label
+                      className="form-label"
+                      htmlFor="product-form-image_url"
+                      style={{
+                        color: productErrors.image_url ? "#dc2626" : undefined,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Product Image <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: productErrors.image_url ? "#dc2626" : "#ef4444",
+                          fontWeight: 600,
                         }}
                       >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={productSaving} className="submit-primary-btn">
-                        {productSaving ? (
-                          <>
-                            <RefreshCw size={15} className="spin-animation" /> Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Check size={16} />{" "}
-                            {editingProduct ? "Save Changes" : "Publish Product"}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+                        (Mandatory)
+                      </span>
+                    </label>
+                    <input
+                      id="product-form-image_url"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProductImageUpload}
+                      className="form-select-field"
+                      style={
+                        productErrors.image_url
+                          ? {
+                              borderColor: "#ef4444",
+                              borderWidth: "2px",
+                              borderStyle: "dashed",
+                              backgroundColor: "#fef2f2",
+                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                            }
+                          : {}
+                      }
+                    />
+                    {productErrors.image_url && (
+                      <span
+                        className="field-error-text"
+                        style={{
+                          color: "#dc2626",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          marginTop: "5px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <AlertCircle size={13} color="#dc2626" />
+                        {productErrors.image_url}
+                      </span>
+                    )}
+                    {productForm.image_url && (
+                      <div
+                        style={{
+                          marginTop: "8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        <img
+                          src={productForm.image_url}
+                          alt="Product preview"
+                          style={{
+                            width: "52px",
+                            height: "52px",
+                            objectFit: "cover",
+                            borderRadius: "6px",
+                            border: "1px solid #e2e8f0",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setProductForm((prev) => ({ ...prev, image_url: "" }));
+                            setProductErrors((prev) => ({
+                              ...prev,
+                              image_url: "Product image is required.",
+                            }));
+                          }}
+                          className="btn-cancel-red"
+                          style={{
+                            fontSize: "12px",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label
+                      className="form-label"
+                      htmlFor="product-form-description"
+                      style={{
+                        color: productErrors.description ? "#dc2626" : undefined,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Description <span style={{ color: "#ef4444", fontWeight: 700 }}>*</span>{" "}
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: productErrors.description ? "#dc2626" : "#ef4444",
+                          fontWeight: 600,
+                        }}
+                      >
+                        (Mandatory)
+                      </span>
+                    </label>
+                    <textarea
+                      id="product-form-description"
+                      rows={3}
+                      className="form-select-field"
+                      placeholder="Product description is required"
+                      value={productForm.description}
+                      style={
+                        productErrors.description
+                          ? {
+                              borderColor: "#ef4444",
+                              borderWidth: "2px",
+                              backgroundColor: "#fef2f2",
+                              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
+                              width: "100%",
+                              resize: "vertical",
+                              padding: "10px 12px",
+                              borderRadius: "8px",
+                              fontFamily: "inherit",
+                              fontSize: "14px",
+                            }
+                          : {
+                              width: "100%",
+                              resize: "vertical",
+                              padding: "10px 12px",
+                              borderRadius: "8px",
+                              fontFamily: "inherit",
+                              fontSize: "14px",
+                              border: "1px solid #e2e8f0",
+                            }
+                      }
+                      onChange={(e) => {
+                        setProductForm((prev) => ({ ...prev, description: e.target.value }));
+                        clearProductError("description");
+                      }}
+                    />
+                    {productErrors.description && (
+                      <span
+                        className="field-error-text"
+                        style={{
+                          color: "#dc2626",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          marginTop: "5px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <AlertCircle size={13} color="#dc2626" />
+                        {productErrors.description}
+                      </span>
+                    )}
+                  </div>
+                  <div className="admin-inline-actions">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="btn-cancel-red"
+                      onClick={() => {
+                        setEditingProduct(null);
+                        setProductErrors({});
+                        setProductsView("list");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={productSaving} className="submit-primary-btn">
+                      {productSaving ? (
+                        <>
+                          <RefreshCw size={15} className="spin-animation" /> Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Check size={16} /> {editingProduct ? "Save Changes" : "Publish Product"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </AdminInlinePanel>
             )}
 
             <div className="users-table-card">
@@ -3327,78 +3375,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 12: SETTINGS — the store's own configuration */}
         {activeTab === "settings" && <SettingsEditor />}
       </main>
-
-      {/* ==================================================== */}
-      {/* 3. MODALS & POPUPS                                   */}
-      {/* ==================================================== */}
-
-      <CreateUserModal
-        isOpen={showAddUserModal}
-        onClose={() => {
-          setShowAddUserModal(false);
-          setAddUserErrors({});
-        }}
-        form={addUserForm}
-        setForm={setAddUserForm}
-        onSubmit={handleCreateUser}
-        loading={addUserLoading}
-        isSuperAdmin={isSuperAdmin}
-        showPassword={showPassword}
-        setShowPassword={setShowPassword}
-        onGeneratePassword={generateRandomPassword}
-        errors={addUserErrors}
-        clearError={(field) => setAddUserErrors((prev) => ({ ...prev, [field]: undefined }))}
-      />
-
-      <ViewUserModal
-        user={viewingUser}
-        onClose={() => setViewingUser(null)}
-        renderRoleBadge={renderRoleBadge}
-        renderStatusBadge={renderStatusBadge}
-        onEdit={(target) => {
-          setViewingUser(null);
-          handleOpenEditUser(target);
-        }}
-        onResetPassword={(target) => {
-          setViewingUser(null);
-          setResetTargetUser(target);
-        }}
-        onToggleStatus={(id, status, name) => handleToggleStatus(id, status, name)}
-        onCopyId={(id) => {
-          navigator.clipboard.writeText(id);
-          addToast({
-            title: "Copied",
-            message: "User ID copied to clipboard.",
-            type: "info",
-          });
-        }}
-      />
-
-      <EditUserModal
-        user={editingUser}
-        onClose={() => setEditingUser(null)}
-        form={editUserForm}
-        setForm={setEditUserForm}
-        onSubmit={handleSaveEditUser}
-        loading={editUserLoading}
-        isSuperAdmin={isSuperAdmin}
-      />
-
-      <ResetPasswordModal
-        user={resetTargetUser}
-        onClose={() => setResetTargetUser(null)}
-        newPassword={resetNewPassword}
-        setNewPassword={setResetNewPassword}
-        onSubmit={handleResetPassword}
-        loading={resetPasswordLoading}
-      />
-
-      <DeleteUserModal
-        user={deletingUser}
-        onClose={() => setDeletingUser(null)}
-        onConfirm={handleDeleteUser}
-        loading={deleteLoading}
-      />
     </div>
   );
 }

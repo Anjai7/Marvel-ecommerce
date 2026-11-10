@@ -186,19 +186,19 @@ describe("HeroSlidesEditor", () => {
     renderEditor();
 
     await screen.findByText("Summer Sale");
-    await user.click(screen.getByRole("radio", { name: "Deactivate Summer Sale" }));
+    await user.click(screen.getByRole("switch", { name: "Summer Sale" }));
 
     await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
     expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s1", { id: "s1", is_active: false });
     expect(apiSaveHeroSlide).not.toHaveBeenCalled();
   });
 
-  it("activates a hidden slide using the radio control", async () => {
+  it("activates a hidden slide using the switch", async () => {
     const user = userEvent.setup();
     renderEditor();
 
     await screen.findByText("Winter Drop");
-    await user.click(screen.getByRole("radio", { name: "Activate Winter Drop" }));
+    await user.click(screen.getByRole("switch", { name: "Winter Drop" }));
 
     await waitFor(() => expect(apiUpdateHeroSlide).toHaveBeenCalledTimes(1));
     expect(apiUpdateHeroSlide).toHaveBeenCalledWith("s2", { id: "s2", is_active: true });
@@ -246,13 +246,13 @@ describe("HeroSlidesEditor", () => {
     await screen.findByText("Summer Sale");
     await user.click(screen.getByRole("button", { name: "View Summer Sale" }));
 
-    expect(await screen.findByRole("dialog", { name: "View Hero Slide" })).toBeVisible();
+    expect(await screen.findByRole("region", { name: "Summer Sale" })).toBeVisible();
     expect(screen.getByText("Hero slide details & storefront preview")).toBeVisible();
     expect(screen.getByText("CTA Destination:")).toBeVisible();
 
     await user.click(screen.getByRole("button", { name: "Close" }));
     await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "View Hero Slide" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Summer Sale" })).not.toBeInTheDocument();
     });
   });
 
@@ -263,7 +263,7 @@ describe("HeroSlidesEditor", () => {
     await screen.findByText("Summer Sale");
     await user.click(screen.getByRole("button", { name: "Edit Summer Sale" }));
 
-    const ctaToggle = screen.getByRole("checkbox", { name: "Enable CTA button" });
+    const ctaToggle = screen.getByRole("switch", { name: "Enable CTA button" });
     expect(ctaToggle).toBeChecked();
 
     await user.click(ctaToggle);

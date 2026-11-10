@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button, Input } from "../ui";
+import Switch from "../ui/Switch";
 import { ImageField } from "./ContentEditorKit";
 import ProductPicker from "./ProductPicker";
 import CategoryPicker from "./CategoryPicker";
@@ -227,12 +228,12 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
       case "boolean":
         return (
-          <label className="form-label" htmlFor={fieldId} style={{ display: "flex", gap: 8 }}>
-            <input
+          <label className="form-label" htmlFor={fieldId} style={{ display: "flex", gap: 10 }}>
+            <Switch
               id={fieldId}
-              type="checkbox"
               checked={value === true}
               onChange={(event) => update(name, event.target.checked)}
+              slotProps={{ input: { "aria-label": label } }}
             />
             {label}
           </label>

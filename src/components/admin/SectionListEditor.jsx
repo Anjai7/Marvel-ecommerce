@@ -17,18 +17,10 @@ import {
   Type,
   Video,
 } from "lucide-react";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-} from "../ui";
+import { Button, Input } from "../ui";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
+import AdminInlinePanel from "./AdminInlinePanel";
 import SectionConfigForm from "./SectionConfigForm";
 import { SECTION_STYLE_FIELDS, SECTION_TYPES } from "../../../server/lib/sectionTypes.js";
 import "./admin-content.css";
@@ -294,137 +286,18 @@ export default function SectionListEditor({ sections = [], onChange }) {
         {announcement}
       </div>
 
-      {sections.length === 0 ? (
-        <p className="chart-subtitle">No sections yet. Add the first one.</p>
-      ) : (
-        sections.map((section, index) => {
-          const name = sectionName(section, index);
-          return (
-            <div
-              key={section.uid}
-              className="section-card"
-              tabIndex={-1}
-              data-section-uid={section.uid}
-              data-testid={`section-card-${section.uid}`}
-              ref={(node) => {
-                if (node) cardRefs.current.set(section.uid, node);
-                else cardRefs.current.delete(section.uid);
-              }}
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                padding: 12,
-                border: "1px solid var(--border-color, #e2e8f0)",
-                borderRadius: 10,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 700 }}>{typeLabel(section.type)}</div>
-                {sectionPreviewSummary(section) && (
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      color: "#475569",
-                      marginTop: 2,
-                      maxWidth: 340,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {sectionPreviewSummary(section)}
-                  </div>
-                )}
-                <div className="text-sm text-muted">
-                  Position {index + 1} of {sections.length}
-                  {section.enabled === false ? " — hidden" : ""}
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <OrderControls
-                  index={index}
-                  total={sections.length}
-                  label={name}
-                  onMove={(from, to) => handleMove(from, to)}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Edit ${name}`}
-                  onClick={() =>
-                    setEditing({
-                      uid: section.uid,
-                      type: section.type,
-                      data: copyData(section.data),
-                      style: { ...(section.style ?? {}) },
-                    })
-                  }
-                >
-                  <Edit2 size={15} />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Duplicate ${name}`}
-                  onClick={() => handleDuplicate(section, index)}
-                >
-                  <Copy size={15} />
-                </Button>
-                <ActiveToggle
-                  active={section.enabled !== false}
-                  label={name}
-                  onChange={(enabled) => handleToggle(section, enabled)}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Delete ${name}`}
-                  onClick={() => setDeleteTarget(section)}
-                >
-                  <Trash2 size={15} />
-                </Button>
-              </div>
-            </div>
-          );
-        })
-      )}
-
-      <div>
-        <Button
-          type="button"
-          variant="outline"
-          className="quick-add-user-btn"
-          onClick={() => setAdding(true)}
-        >
-          <Plus size={16} />
-          <span>Add section</span>
-        </Button>
-      </div>
-
-      {/* The type picker: categorized, searchable, and accompanied by icons and clear descriptions */}
-      <Dialog
-        open={adding}
-        onOpenChange={(open) => {
-          setAdding(open);
-          if (!open) {
+      {adding && (
+        <AdminInlinePanel
+          title="Add section"
+          subtitle="Pick a component to append to your page layout."
+          tone="blue"
+          onClose={() => {
+            setAdding(false);
             setPickerCategory("all");
             setPickerSearch("");
-          }
-        }}
-      >
-        <DialogContent style={{ maxWidth: 580 }}>
-          <DialogHeader>
-            <DialogTitle>Add section</DialogTitle>
-            <DialogDescription>Pick a component to append to your page layout.</DialogDescription>
-          </DialogHeader>
-
+          }}
+          closeLabel="Close the section picker"
+        >
           {/* Quick search input */}
           <div style={{ position: "relative", marginBottom: 8 }}>
             <Search
@@ -541,7 +414,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
                 );
               })}
           </div>
-          <DialogFooter>
+          <div className="admin-inline-actions">
             <Button
               type="button"
               variant="outline"
@@ -553,47 +426,159 @@ export default function SectionListEditor({ sections = [], onChange }) {
             >
               Cancel
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        </AdminInlinePanel>
+      )}
+
+      {editing && (
+        <AdminInlinePanel
+          title={`Edit ${typeLabel(editing.type)}`}
+          subtitle={typeDescription(editing.type)}
+          tone="emerald"
+          onClose={() => setEditing(null)}
+          closeLabel="Close the section editor"
+        >
+          <SectionConfigForm
+            type={editing.type}
+            data={editing.data}
+            style={editing.style}
+            onChange={(data) =>
+              setEditing((previous) => (previous ? { ...previous, data } : previous))
+            }
+            onStyleChange={(style) =>
+              setEditing((previous) => (previous ? { ...previous, style } : previous))
+            }
+          />
+          <div className="admin-inline-actions">
+            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleApplyEdit}>
+              Apply
+            </Button>
+          </div>
+        </AdminInlinePanel>
+      )}
+
+      {sections.length === 0 ? (
+        <p className="chart-subtitle">No sections yet. Add the first one.</p>
+      ) : (
+        sections.map((section, index) => {
+          const name = sectionName(section, index);
+          return (
+            <div
+              key={section.uid}
+              className="section-card"
+              tabIndex={-1}
+              data-section-uid={section.uid}
+              data-testid={`section-card-${section.uid}`}
+              ref={(node) => {
+                if (node) cardRefs.current.set(section.uid, node);
+                else cardRefs.current.delete(section.uid);
+              }}
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                padding: 12,
+                border: "1px solid var(--border-color, #e2e8f0)",
+                borderRadius: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 700 }}>{typeLabel(section.type)}</div>
+                {sectionPreviewSummary(section) && (
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: "#475569",
+                      marginTop: 2,
+                      maxWidth: 340,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {sectionPreviewSummary(section)}
+                  </div>
+                )}
+                <div className="text-sm text-muted">
+                  Position {index + 1} of {sections.length}
+                  {section.enabled === false ? " — hidden" : ""}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <OrderControls
+                  index={index}
+                  total={sections.length}
+                  label={name}
+                  onMove={(from, to) => handleMove(from, to)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Edit ${name}`}
+                  onClick={() =>
+                    setEditing({
+                      uid: section.uid,
+                      type: section.type,
+                      data: copyData(section.data),
+                      style: { ...(section.style ?? {}) },
+                    })
+                  }
+                >
+                  <Edit2 size={15} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Duplicate ${name}`}
+                  onClick={() => handleDuplicate(section, index)}
+                >
+                  <Copy size={15} />
+                </Button>
+                <ActiveToggle
+                  active={section.enabled !== false}
+                  label={name}
+                  onChange={(enabled) => handleToggle(section, enabled)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Delete ${name}`}
+                  onClick={() => setDeleteTarget(section)}
+                >
+                  <Trash2 size={15} />
+                </Button>
+              </div>
+            </div>
+          );
+        })
+      )}
+
+      <div>
+        <Button
+          type="button"
+          variant="outline"
+          className="quick-add-user-btn"
+          onClick={() => setAdding(true)}
+        >
+          <Plus size={16} />
+          <span>Add section</span>
+        </Button>
+      </div>
+
+      {/* The type picker: categorized, searchable, and accompanied by icons and clear descriptions */}
 
       {/* The generated form for one section. */}
-      <Dialog
-        open={Boolean(editing)}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null);
-        }}
-      >
-        {editing && (
-          <DialogContent style={{ maxWidth: 640 }}>
-            <DialogHeader>
-              <DialogTitle>{`Edit ${typeLabel(editing.type)}`}</DialogTitle>
-              <DialogDescription>{typeDescription(editing.type)}</DialogDescription>
-            </DialogHeader>
-            <SectionConfigForm
-              type={editing.type}
-              data={editing.data}
-              style={editing.style}
-              onChange={(data) =>
-                setEditing((previous) => (previous ? { ...previous, data } : previous))
-              }
-              onStyleChange={(style) =>
-                setEditing((previous) => (previous ? { ...previous, style } : previous))
-              }
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleApplyEdit}>
-                Apply
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        )}
-      </Dialog>
 
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={`Delete '${deleteName}'?`}
         message="The section is removed from the page when the sections are saved."

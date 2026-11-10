@@ -116,17 +116,24 @@ describe("OrderControls", () => {
 });
 
 describe("ActiveToggle", () => {
-  it("reflects active with aria-pressed and calls back with the inverted value", async () => {
+  it("reflects active with aria-checked and calls back with the inverted value", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
     render(<ActiveToggle active={false} onChange={onChange} />);
 
-    const toggle = screen.getByRole("button", { name: /activate/i });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    const toggle = screen.getByRole("switch", { name: "this item" });
+    expect(toggle).not.toBeChecked();
 
     await user.click(toggle);
     expect(onChange).toHaveBeenCalledWith(true);
+  });
+
+  it("names the switch after the thing it controls", () => {
+    render(<ActiveToggle active onChange={() => {}} label="Electronics" />);
+
+    const toggle = screen.getByRole("switch", { name: "Electronics" });
+    expect(toggle).toBeChecked();
   });
 });
 
@@ -155,7 +162,7 @@ describe("EditorTable", () => {
     await user.click(screen.getByRole("button", { name: "Edit Electronics" }));
     expect(onEdit).toHaveBeenCalledWith(row);
 
-    await user.click(screen.getByRole("button", { name: "Deactivate Electronics" }));
+    await user.click(screen.getByRole("switch", { name: "Electronics" }));
     expect(onToggleActive).toHaveBeenCalledWith(row, false);
   });
 

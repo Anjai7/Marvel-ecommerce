@@ -12,7 +12,7 @@ import {
 import { Badge, Button, Input, useToast } from "../ui";
 import { slugify } from "./ContentEditorKit";
 import SectionListEditor from "./SectionListEditor";
-import ConfirmDialog from "./ConfirmDialog";
+import AdminConfirmStrip from "./AdminConfirmStrip";
 import {
   apiDeletePage,
   apiFetchPage,
@@ -483,7 +483,7 @@ export default function PageEditor({ pageId, onClose }) {
         <p role="alert" className="form-error">
           {loadError || "This page could not be loaded."}
         </p>
-        <div className="modal-actions-footer">
+        <div className="admin-inline-actions">
           <Button type="button" variant="outline" onClick={onClose}>
             Back to pages
           </Button>
@@ -717,7 +717,7 @@ export default function PageEditor({ pageId, onClose }) {
           </p>
         )}
 
-        <div className="modal-actions-footer">
+        <div className="admin-inline-actions">
           <Button type="submit" disabled={busy} className="submit-primary-btn">
             {busy ? "Saving..." : "Save"}
           </Button>
@@ -864,7 +864,7 @@ export default function PageEditor({ pageId, onClose }) {
         </div>
       )}
 
-      <ConfirmDialog
+      <AdminConfirmStrip
         open={deleteOpen}
         title={`Delete '${page.title}'?`}
         message="The page and every section on it are deleted with it. This cannot be undone."

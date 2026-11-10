@@ -142,7 +142,7 @@ describe("CategoriesTreeEditor", () => {
     await screen.findByText("Electronics");
     await user.click(screen.getByRole("button", { name: "Add subcategory to Electronics" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Category editor" });
+    const dialog = await screen.findByRole("region", { name: /Category/ });
     expect(within(dialog).getByLabelText("Parent category")).toHaveValue("c1");
     expect(within(dialog).getByText(/Level 2/)).toBeVisible();
   });
@@ -378,7 +378,7 @@ describe("CategoriesTreeEditor", () => {
     await user.click(screen.getByRole("button", { name: "Save Category" }));
 
     expect(await screen.findByText("Save Failed")).toBeVisible();
-    const dialog = screen.getByRole("dialog", { name: "Category editor" });
+    const dialog = screen.getByRole("region", { name: /Category/ });
     expect(within(dialog).getByRole("alert")).toHaveTextContent("Slug already exists.");
     // A failed write must not be followed by a reload that hides the form.
     expect(apiFetchCategoryTree).toHaveBeenCalledTimes(1);
@@ -416,7 +416,7 @@ describe("CategoriesTreeEditor", () => {
       banner_image_url: null,
     });
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Category editor" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("region", { name: /Category/ })).not.toBeInTheDocument()
     );
   });
 
@@ -435,7 +435,7 @@ describe("CategoriesTreeEditor", () => {
     await waitFor(() => expect(apiUpdateCategory).toHaveBeenCalledTimes(1));
     // No silent slugify fallback: the empty value reaches the transport.
     expect(apiUpdateCategory).toHaveBeenCalledWith("c1", { id: "c1", slug: "" });
-    const dialog = screen.getByRole("dialog", { name: "Category editor" });
+    const dialog = screen.getByRole("region", { name: /Category/ });
     expect(within(dialog).getByRole("alert")).toHaveTextContent(/slug is required/i);
   });
 
