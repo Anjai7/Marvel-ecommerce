@@ -1,0 +1,16 @@
+/* Admin charts.
+ *
+ * The chart components are the one admin area that had no stylesheet of its
+ * own — their wrappers carried classes that nothing styled. */
+
+.recharts-wrapper {
+  width: 100%;
+}
+
+/* A pie chart centred in the card it sits in. */
+.chart-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}

@@ -56,11 +56,11 @@ test.describe("admin console", () => {
     await page.locator("#admin-tab-products-add").click();
     await expect(page.getByRole("button", { name: "Publish Product" })).toBeVisible();
 
-    // Verify (Mandatory) indicators
-    await expect(page.getByText("Product Title * (Mandatory)")).toBeVisible();
-    await expect(page.getByText("Price (₹) * (Mandatory)")).toBeVisible();
-    await expect(page.getByText("Product Image * (Mandatory)")).toBeVisible();
-    await expect(page.getByText("Description * (Mandatory)")).toBeVisible();
+    // Verify the required-field mark
+    await expect(page.getByText("Product Title *")).toBeVisible();
+    await expect(page.getByText("Price (₹) *")).toBeVisible();
+    await expect(page.getByText("Product Image *")).toBeVisible();
+    await expect(page.getByText("Description *")).toBeVisible();
 
     // Click Publish Product without filling fields to trigger validation
     await page.getByRole("button", { name: "Publish Product" }).click();

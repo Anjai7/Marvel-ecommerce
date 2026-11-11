@@ -1,5 +1,6 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { roleColor, roleLabel } from "./roleColors";
+import "./charts.css";
 
 export default function UserRolesChart({ data }) {
   const total = Array.isArray(data) ? data.reduce((sum, d) => sum + d.value, 0) : 0;
@@ -13,7 +14,7 @@ export default function UserRolesChart({ data }) {
 
   return (
     <div className="recharts-wrapper">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <div className="chart-centered">
         <ResponsiveContainer width={220} height={220}>
           <PieChart>
             <Tooltip

@@ -1,5 +1,6 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { LOW_STOCK_THRESHOLD } from "../adminConstants";
+import "./charts.css";
 
 export default function InventoryChart({ data }) {
   if (!data) {

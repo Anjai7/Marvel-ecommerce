@@ -1,0 +1,626 @@
+/* Vendor dashboard — the seller console: the store banner, the key metrics,
+ * the catalog table, the shipment list and the two product/shipping modals.
+ * New classes only; imported by the vendor components that use them. */
+
+/* ── Page shell ───────────────────────────────────────── */
+.vendor-dashboard {
+  background: var(--gray-50);
+  min-height: calc(100vh - 120px);
+  padding: 30px 20px;
+}
+
+.vendor-dashboard__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ── Store banner ─────────────────────────────────────── */
+.vendor-banner {
+  background: linear-gradient(135deg, #3b0764 0%, #6b21a8 50%, #9333ea 100%);
+  color: #ffffff;
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px -5px rgba(107, 33, 168, 0.25);
+}
+
+.vendor-banner__identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.vendor-banner__logo {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vendor-banner__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vendor-banner__title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  color: #ffffff;
+}
+
+.vendor-banner__verified {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #dcfce7;
+  color: #15803d;
+  text-transform: uppercase;
+}
+
+.vendor-banner__meta {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 4px 0 0 0;
+}
+
+.vendor-banner__preview {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+}
+
+.vendor-banner__preview:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* ── Buttons ───────────────────────────────────────────── */
+/* The seller's own accent — the vendor surface is purple, not the app blue. */
+.vendor-button--accent {
+  background: #7c3aed;
+}
+
+/* The seller accent stays purple on hover, like the inline colour it replaces. */
+.vendor-button--accent:hover {
+  background: #7c3aed;
+}
+
+.vendor-button--block {
+  width: 100%;
+}
+
+.vendor-button--grow {
+  flex: 1;
+}
+
+.vendor-button__icon {
+  margin-right: 6px;
+}
+
+/* ── Key metrics ──────────────────────────────────────── */
+.vendor-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.vendor-metric {
+  background: var(--white);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-xs);
+}
+
+.vendor-metric__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+  text-transform: uppercase;
+}
+
+.vendor-metric__value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.vendor-metric__value--revenue {
+  color: var(--green);
+}
+
+.vendor-metric__value--items {
+  color: #7c3aed;
+}
+
+.vendor-metric__value--pending {
+  color: #d97706;
+}
+
+.vendor-metric__value--rating {
+  color: var(--gray-900);
+}
+
+.vendor-metric__hint {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 4px;
+}
+
+.vendor-metric__hint--positive {
+  color: var(--green);
+}
+
+/* ── Tabs ──────────────────────────────────────────────── */
+.vendor-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 2px solid var(--gray-200);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.vendor-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-500);
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.vendor-tab--active {
+  font-weight: 700;
+  color: #7c3aed;
+  border-bottom-color: #7c3aed;
+}
+
+/* ── Panels ────────────────────────────────────────────── */
+.vendor-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+}
+
+.vendor-panel {
+  background: var(--white);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-panel--tight {
+  padding: 20px;
+}
+
+.vendor-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.vendor-panel__title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--gray-900);
+}
+
+.vendor-panel__subtitle {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: var(--gray-900);
+}
+
+.vendor-side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Recent orders ─────────────────────────────────────── */
+.vendor-order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vendor-order-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-order-card__title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--gray-900);
+}
+
+.vendor-order-card__meta {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.vendor-order-card__aside {
+  text-align: right;
+}
+
+.vendor-order-card__total {
+  font-weight: 800;
+  color: var(--green);
+  font-size: 15px;
+}
+
+/* ── Status labels ─────────────────────────────────────── */
+/* A plain status word (overview list) and a filled chip (shipment list). */
+.vendor-status,
+.vendor-status-chip {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.vendor-status--delivered {
+  color: #15803d;
+}
+
+.vendor-status--pending {
+  color: #b45309;
+}
+
+.vendor-status-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.vendor-status-chip--delivered {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.vendor-status-chip--shipped {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.vendor-status-chip--processing {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* ── Quick actions and the stock alert ─────────────────── */
+.vendor-quick-action {
+  margin-bottom: 10px;
+}
+
+.vendor-alert {
+  background: #fffbeb;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid #fde68a;
+}
+
+.vendor-alert__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b45309;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.vendor-alert__text {
+  font-size: 12px;
+  color: #92400e;
+  margin: 6px 0 0 0;
+}
+
+/* ── Catalog ───────────────────────────────────────────── */
+.vendor-catalog {
+  background: var(--white);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-catalog__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.vendor-catalog__filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex: 1;
+  min-width: min(100%, 260px);
+}
+
+.vendor-category-filter {
+  width: 220px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-300);
+  font-size: 13px;
+}
+
+/* ── Catalog rows ──────────────────────────────────────── */
+.vendor-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vendor-product-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-product-title {
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.vendor-product-id {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.vendor-cell-muted {
+  color: var(--gray-500);
+}
+
+.vendor-cell-strong {
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.vendor-stock-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vendor-stock-badge--ok {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.vendor-stock-badge--low {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.vendor-moderation-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.vendor-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.vendor-action-button {
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.vendor-action-button--edit {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.vendor-action-button--delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Shipments ─────────────────────────────────────────── */
+.vendor-fulfillment {
+  background: var(--white);
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-fulfillment__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 16px;
+}
+
+.vendor-shipment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vendor-shipment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+}
+
+.vendor-shipment__heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vendor-shipment__title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--gray-900);
+}
+
+.vendor-shipment__meta {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-top: 4px;
+}
+
+.vendor-shipment__tracking {
+  font-size: 12px;
+  color: #2563eb;
+  margin-top: 4px;
+}
+
+.vendor-shipment__aside {
+  text-align: right;
+}
+
+.vendor-shipment__total {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+}
+
+/* ── Modals ────────────────────────────────────────────── */
+.vendor-modal__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.vendor-modal__dialog {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  max-width: 540px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* The shipping dialog is a little smaller and never scrolls on its own. */
+.vendor-modal__dialog--compact {
+  max-width: 480px;
+  max-height: none;
+  overflow-y: visible;
+}
+
+.vendor-modal__title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 18px;
+}
+
+.vendor-modal__title--compact {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+/* ── Product / shipping forms ──────────────────────────── */
+.vendor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vendor-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.vendor-field__label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
+
+/* The category picker and the shipping selects share one control look. */
+.vendor-field__control {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-300);
+  background: var(--white);
+  color: var(--gray-900);
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+.vendor-field__control--textarea {
+  font-size: 13px;
+  resize: vertical;
+}
+
+.vendor-form__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}

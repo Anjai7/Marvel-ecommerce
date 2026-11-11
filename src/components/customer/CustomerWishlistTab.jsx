@@ -1,6 +1,7 @@
 import { Heart, ShoppingBag } from "lucide-react";
 import { Button } from "../ui";
 import { formatCurrency } from "../../lib/currency";
+import "./customer-portal.css";
 
 /**
  * Customer wishlist view tab.
@@ -14,59 +15,19 @@ export default function CustomerWishlistTab({
   onRemoveWishlist,
 }) {
   if (wishlistLoading) {
-    return (
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: 16,
-          padding: 32,
-          border: "1px solid #e2e8f0",
-          textAlign: "center",
-          color: "#64748b",
-          fontSize: 14,
-        }}
-      >
-        Loading your wishlist…
-      </div>
-    );
+    return <div className="customer-state">Loading your wishlist…</div>;
   }
 
   if (wishlistError) {
-    return (
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: 16,
-          padding: 32,
-          border: "1px solid #e2e8f0",
-          textAlign: "center",
-          color: "#64748b",
-          fontSize: 14,
-        }}
-      >
-        Wishlist is temporarily unavailable.
-      </div>
-    );
+    return <div className="customer-state">Wishlist is temporarily unavailable.</div>;
   }
 
   if (savedWishlist.length === 0) {
     return (
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: 16,
-          padding: 40,
-          border: "1px solid #e2e8f0",
-          textAlign: "center",
-        }}
-      >
-        <Heart size={40} color="#cbd5e1" />
-        <h3 style={{ fontSize: 17, fontWeight: 800, color: "#0f172a", margin: "12px 0 6px" }}>
-          Your wishlist is empty
-        </h3>
-        <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 18px" }}>
-          Products you save will appear here.
-        </p>
+      <div className="customer-empty">
+        <Heart size={40} className="customer-empty__icon" />
+        <h3 className="customer-empty__title">Your wishlist is empty</h3>
+        <p className="customer-empty__text">Products you save will appear here.</p>
         {onNavigateHome && (
           <Button variant="primary" size="sm" onClick={onNavigateHome}>
             Browse the store
@@ -77,13 +38,7 @@ export default function CustomerWishlistTab({
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))",
-        gap: 20,
-      }}
-    >
+    <div className="customer-wishlist-grid">
       {savedWishlist.map((entry) => {
         const product = entry?.product;
         if (!product) return null;
@@ -95,75 +50,30 @@ export default function CustomerWishlistTab({
           product.original_price != null && Number(product.original_price) > Number(product.price);
 
         return (
-          <div
-            key={entry.id ?? entry.product_id}
-            style={{
-              background: "#ffffff",
-              borderRadius: 16,
-              padding: 18,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          >
-            {image && (
-              <img
-                src={image}
-                alt={title}
-                style={{
-                  width: "100%",
-                  height: 180,
-                  objectFit: "cover",
-                  borderRadius: 12,
-                  marginBottom: 12,
-                }}
-              />
-            )}
+          <div key={entry.id ?? entry.product_id} className="customer-wishlist-card">
+            {image && <img src={image} alt={title} className="customer-wishlist-card__image" />}
             {product.category && (
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#2563eb",
-                  textTransform: "uppercase",
-                }}
-              >
-                {product.category}
-              </div>
+              <div className="customer-wishlist-card__category">{product.category}</div>
             )}
-            <h4
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: "#0f172a",
-                margin: "4px 0 8px 0",
-              }}
-            >
-              {title}
-            </h4>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+            <h4 className="customer-wishlist-card__title">{title}</h4>
+            <div className="customer-wishlist-card__price">
+              <span className="customer-wishlist-card__price-current">
                 {hasPrice ? formatCurrency(product.price) : "—"}
               </span>
               {hasOriginal && (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#94a3b8",
-                    textDecoration: "line-through",
-                  }}
-                >
+                <span className="customer-wishlist-card__price-original">
                   {formatCurrency(product.original_price)}
                 </span>
               )}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="customer-wishlist-card__actions">
               <Button
                 variant="primary"
                 size="sm"
-                style={{ flex: 1 }}
+                className="customer-wishlist-card__action"
                 onClick={() => onAddToCart(product, title)}
               >
-                <ShoppingBag size={14} style={{ marginRight: 6 }} /> Move to Cart
+                <ShoppingBag size={14} className="customer-button__icon" /> Move to Cart
               </Button>
               <Button
                 variant="secondary"

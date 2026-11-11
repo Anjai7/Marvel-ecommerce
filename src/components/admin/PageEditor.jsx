@@ -9,7 +9,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
-import { Badge, Button, Input, useToast } from "../ui";
+import { Badge, Button, Input, RequiredMark, useToast } from "../ui";
 import { slugify } from "./ContentEditorKit";
 import SectionListEditor from "./SectionListEditor";
 import AdminConfirmStrip from "./AdminConfirmStrip";
@@ -23,6 +23,7 @@ import {
 } from "../../api/pagesApi";
 import { PAGE_KINDS, PAGE_TEMPLATES } from "../../../server/lib/pageRules.js";
 import { validateSection } from "../../../server/lib/sectionTypes.js";
+import "./admin-forms.css";
 
 /**
  * The editor of one CMS page.
@@ -504,7 +505,7 @@ export default function PageEditor({ pageId, onClose }) {
             <Badge variant={status === "Published" ? "success" : "secondary"}>{status}</Badge>
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="page-editor-actions">
           <Button type="button" variant="outline" onClick={onClose}>
             Back to pages
           </Button>
@@ -544,15 +545,16 @@ export default function PageEditor({ pageId, onClose }) {
         </div>
       </div>
 
-      <form onSubmit={handleSave} noValidate style={{ display: "grid", gap: 16 }}>
+      <form onSubmit={handleSave} noValidate className="page-editor-form">
         <div className="form-group-row">
           <div className="form-group">
             <label className="form-label" htmlFor="page-title">
-              Title *
+              Title <RequiredMark />
             </label>
             <Input
               id="page-title"
               type="text"
+              required
               value={form.title}
               onChange={(event) => setField("title", event.target.value)}
             />
@@ -560,12 +562,13 @@ export default function PageEditor({ pageId, onClose }) {
 
           <div className="form-group">
             <label className="form-label" htmlFor="page-slug">
-              Slug *
+              Slug <RequiredMark />
             </label>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="page-editor-slug-row">
               <Input
                 id="page-slug"
                 type="text"
+                required
                 value={form.slug}
                 onChange={(event) => setField("slug", event.target.value)}
               />
@@ -582,7 +585,7 @@ export default function PageEditor({ pageId, onClose }) {
         </div>
 
         {form.slug !== form.originalSlug && (
-          <p className="form-hint" style={{ margin: 0 }}>
+          <p className="form-hint">
             Changing the slug changes the page&apos;s address to {pageUrl(form.slug)}. Links to the
             old address stop resolving.
           </p>
@@ -730,7 +733,7 @@ export default function PageEditor({ pageId, onClose }) {
         </div>
       </form>
 
-      <div style={{ marginTop: 24, display: "grid", gap: 12 }}>
+      <div className="page-editor-sections">
         <div className="chart-card-header">
           <div>
             <h4 className="chart-title">Sections</h4>
@@ -755,109 +758,47 @@ export default function PageEditor({ pageId, onClose }) {
 
       {/* Embedded Live Preview Panel */}
       {showLivePreview && (
-        <div
-          className="admin-content-card"
-          style={{
-            marginTop: 24,
-            padding: 16,
-            background: "#f8fafc",
-            border: "1.5px solid #cbd5e1",
-            borderRadius: 16,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 12,
-              marginBottom: 14,
-            }}
-          >
+        <div className="admin-content-card page-preview-card">
+          <div className="page-preview-header">
             <div>
-              <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>
-                Interactive Live Preview
-              </h4>
-              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+              <h4 className="page-preview-title">Interactive Live Preview</h4>
+              <p className="page-preview-subtitle">
                 Previewing: {pageUrl(form?.slug || page.slug)} (Draft & published sections)
               </p>
             </div>
 
             {/* Viewport switch: Desktop vs Mobile */}
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <div className="page-preview-switch">
               <button
                 type="button"
                 onClick={() => setPreviewViewport("desktop")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  background: previewViewport === "desktop" ? "#2563eb" : "#ffffff",
-                  color: previewViewport === "desktop" ? "#ffffff" : "#475569",
-                  border: "1px solid #cbd5e1",
-                }}
+                className={`page-preview-viewport${
+                  previewViewport === "desktop" ? " is-active" : ""
+                }`}
               >
                 <Monitor size={14} /> Desktop
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewViewport("mobile")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  background: previewViewport === "mobile" ? "#2563eb" : "#ffffff",
-                  color: previewViewport === "mobile" ? "#ffffff" : "#475569",
-                  border: "1px solid #cbd5e1",
-                }}
+                className={`page-preview-viewport${
+                  previewViewport === "mobile" ? " is-active" : ""
+                }`}
               >
                 <Smartphone size={14} /> Mobile (390px)
               </button>
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              background: "#0f172a",
-              borderRadius: 12,
-              padding: previewViewport === "mobile" ? "20px 0" : "0",
-              overflow: "hidden",
-            }}
-          >
+          <div className={`page-preview-stage${previewViewport === "mobile" ? " is-mobile" : ""}`}>
             <div
-              style={{
-                width: previewViewport === "mobile" ? 390 : "100%",
-                height: 640,
-                borderRadius: previewViewport === "mobile" ? 24 : 0,
-                boxShadow: previewViewport === "mobile" ? "0 12px 36px rgba(0,0,0,0.4)" : "none",
-                overflow: "hidden",
-                border: previewViewport === "mobile" ? "4px solid #334155" : "none",
-                background: "#ffffff",
-                transition: "width 0.25s ease",
-              }}
+              className={`page-preview-frame${previewViewport === "mobile" ? " is-mobile" : ""}`}
             >
               <iframe
                 title="Page Live Preview"
                 key={`${form?.slug || page.slug}-${previewNonce}`}
                 src={`${pagePreviewUrl(form?.slug || page.slug)}&t=${previewNonce}`}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  border: "none",
-                }}
+                className="page-preview-iframe"
               />
             </div>
           </div>

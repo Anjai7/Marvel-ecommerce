@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Edit2, Plus, Trash2 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import {
+  Button,
+  Input,
+  RequiredMark,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useToast,
+} from "../ui";
 import { slugify } from "./ContentEditorKit";
 import PageEditor, { pageUrl } from "./PageEditor";
 import { pageStatusLabel } from "./pageStatus";
@@ -17,6 +28,7 @@ import {
 } from "../../api/pagesApi";
 import { PAGE_KINDS, PAGE_TEMPLATES } from "../../../server/lib/pageRules.js";
 import { PAGE_STARTER_PRESETS } from "./pageTemplates.js";
+import "./admin-panels.css";
 
 /**
  * The pages screen: the list of CMS pages and the editor behind it.
@@ -263,7 +275,7 @@ export default function PagesEditor() {
 
       {loadError && (
         <div role="alert" className="form-error">
-          <p style={{ margin: "0 0 8px" }}>{loadError}</p>
+          <p className="pages-create-error">{loadError}</p>
           <Button type="button" variant="outline" size="sm" onClick={load}>
             Try again
           </Button>
@@ -278,14 +290,15 @@ export default function PagesEditor() {
           onClose={() => setCreateOpen(false)}
           closeLabel="Close the new page form"
         >
-          <div style={{ display: "grid", gap: 16 }}>
+          <div className="pages-create-form">
             <div className="form-group">
               <label className="form-label" htmlFor="new-page-title">
-                Title *
+                Title <RequiredMark />
               </label>
               <Input
                 id="new-page-title"
                 type="text"
+                aria-required="true"
                 value={draft.title}
                 onChange={(event) => handleTitleChange(event.target.value)}
               />
@@ -293,11 +306,12 @@ export default function PagesEditor() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="new-page-slug">
-                Slug *
+                Slug <RequiredMark />
               </label>
               <Input
                 id="new-page-slug"
                 type="text"
+                aria-required="true"
                 value={draft.slug}
                 onChange={(event) => handleSlugChange(event.target.value)}
               />
@@ -305,22 +319,15 @@ export default function PagesEditor() {
 
             {/* Starter Presets */}
             <div className="form-group">
-              <label className="form-label" style={{ marginBottom: 6 }}>
-                Choose a Starter Layout
-              </label>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                  gap: 8,
-                }}
-              >
+              <label className="form-label pages-preset-label">Choose a Starter Layout</label>
+              <div className="pages-preset-grid">
                 {PAGE_STARTER_PRESETS.map((preset) => {
                   const selected = draft.presetId === preset.id;
                   return (
                     <button
                       key={preset.id}
                       type="button"
+                      className={`admin-chip pages-preset-option${selected ? " is-selected" : ""}`}
                       onClick={() =>
                         setDraft((prev) => ({
                           ...prev,
@@ -329,53 +336,12 @@ export default function PagesEditor() {
                           template: preset.template || prev.template,
                         }))
                       }
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        border: selected ? "2px solid #2563eb" : "1px solid #cbd5e1",
-                        background: selected ? "#eff6ff" : "#ffffff",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 4,
-                      }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: selected ? "#1d4ed8" : "#0f172a",
-                          }}
-                        >
-                          {preset.name}
-                        </span>
-                        {preset.badge && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: 6,
-                              background: selected ? "#dbeafe" : "#f1f5f9",
-                              color: selected ? "#1e40af" : "#64748b",
-                            }}
-                          >
-                            {preset.badge}
-                          </span>
-                        )}
+                      <div className="pages-preset-head">
+                        <span className="pages-preset-name">{preset.name}</span>
+                        {preset.badge && <span className="pages-preset-badge">{preset.badge}</span>}
                       </div>
-                      <span style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.35 }}>
-                        {preset.description}
-                      </span>
+                      <span className="pages-preset-description">{preset.description}</span>
                     </button>
                   );
                 })}
@@ -449,74 +415,78 @@ export default function PagesEditor() {
       ) : loadError ? null : rows.length === 0 ? (
         <p className="chart-subtitle">No pages yet. Create the first one.</p>
       ) : (
-        <table className="editor-table">
-          <thead>
-            <tr>
-              <th scope="col">Title</th>
-              <th scope="col">Slug</th>
-              <th scope="col">Status</th>
-              <th scope="col">Template</th>
-              <th scope="col">Updated At</th>
-              <th scope="col">URL</th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} data-testid={`editor-row-${row.id}`}>
-                <td>{row.title}</td>
-                <td>{row.slug}</td>
-                <td>{row.status}</td>
-                <td>{row.template || "—"}</td>
-                <td>{row.updated_at}</td>
-                <td>{row.url ? <a href={row.url}>{row.url}</a> : "—"}</td>
-                <td>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Edit ${row.title ?? row.slug}`}
-                      onClick={() => setEditing({ pageId: row.id })}
-                    >
-                      <Edit2 size={15} />
-                    </Button>
-                    {row.status === "Published" || row.status === "Scheduled" ? (
+        <div className="table-responsive-wrapper">
+          <Table className="ui-table--cards">
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Title</TableHead>
+                <TableHead scope="col">Slug</TableHead>
+                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col">Template</TableHead>
+                <TableHead scope="col">Updated At</TableHead>
+                <TableHead scope="col">URL</TableHead>
+                <TableHead scope="col">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id} data-testid={`editor-row-${row.id}`}>
+                  <TableCell>{row.title}</TableCell>
+                  <TableCell data-label="Slug">{row.slug}</TableCell>
+                  <TableCell data-label="Status">{row.status}</TableCell>
+                  <TableCell data-label="Template">{row.template || "—"}</TableCell>
+                  <TableCell data-label="Updated At">{row.updated_at}</TableCell>
+                  <TableCell data-label="URL">
+                    {row.url ? <a href={row.url}>{row.url}</a> : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <div className="admin-row-actions admin-row-actions--wide">
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Unpublish ${row.title ?? row.slug}`}
-                        onClick={() => handleToggleActive(row, false)}
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${row.title ?? row.slug}`}
+                        onClick={() => setEditing({ pageId: row.id })}
                       >
-                        Unpublish
+                        <Edit2 size={15} />
                       </Button>
-                    ) : (
+                      {row.status === "Published" || row.status === "Scheduled" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Unpublish ${row.title ?? row.slug}`}
+                          onClick={() => handleToggleActive(row, false)}
+                        >
+                          Unpublish
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Publish ${row.title ?? row.slug}`}
+                          onClick={() => handleToggleActive(row, true)}
+                        >
+                          Publish
+                        </Button>
+                      )}
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`Publish ${row.title ?? row.slug}`}
-                        onClick={() => handleToggleActive(row, true)}
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${row.title ?? row.slug}`}
+                        onClick={() => setDeleteTarget(row)}
                       >
-                        Publish
+                        <Trash2 size={15} />
                       </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${row.title ?? row.slug}`}
-                      onClick={() => setDeleteTarget(row)}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <AdminConfirmStrip

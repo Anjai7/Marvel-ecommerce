@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input } from "../ui";
+import { Button } from "../ui";
+import SearchInput from "../ui/SearchInput";
 import { apiFetchProducts } from "../../api/backendApi";
+import "./admin-forms.css";
 
 export default function ProductPicker({ value = [], onChange, disabled = false, max = 24, id }) {
   const selectedIds = Array.isArray(value) ? value : [];
@@ -60,36 +62,19 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
   };
 
   return (
-    <div className="product-picker" style={{ display: "grid", gap: 12 }}>
+    <div className="product-picker">
       {selectedIds.length > 0 && (
-        <div
-          className="product-picker-selected"
-          style={{ display: "flex", flexWrap: "wrap", gap: 8 }}
-        >
+        <div className="product-picker-selected">
           {selectedIds.map((selectedId) => (
-            <div
-              key={selectedId}
-              className="product-chip"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "4px 8px",
-                background: "#f1f5f9",
-                borderRadius: 6,
-                border: "1px solid #cbd5e1",
-                color: "#0f172a",
-                fontSize: 12,
-              }}
-            >
-              <span style={{ fontFamily: "monospace" }}>{selectedId}</span>
+            <div key={selectedId} className="product-chip">
+              <span className="product-chip-id">{selectedId}</span>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 disabled={disabled}
                 aria-label={`Remove product ${selectedId}`}
-                style={{ width: 18, height: 18, padding: 0 }}
+                className="product-chip-remove"
                 onClick={() => handleRemove(selectedId)}
               >
                 <X size={12} />
@@ -100,14 +85,15 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
       )}
 
       <div>
-        <Input
+        <SearchInput
+          fluid
           id={id}
-          type="text"
           value={searchTerm}
+          onValueChange={setSearchTerm}
           placeholder="Search products by title..."
+          ariaLabel="Search products"
+          clearLabel="Clear product search"
           disabled={disabled}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          aria-label="Search products"
         />
       </div>
 
@@ -126,67 +112,24 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
       )}
 
       {!loading && results.length > 0 && (
-        <ul
-          className="product-picker-results"
-          style={{
-            margin: 0,
-            listStyle: "none",
-            display: "grid",
-            gap: 6,
-            maxHeight: 240,
-            overflowY: "auto",
-            border: "1px solid #e2e8f0",
-            borderRadius: 6,
-            background: "#ffffff",
-            padding: 6,
-          }}
-        >
+        <ul className="product-picker-results">
           {results.map((product) => {
             const isSelected = selectedIds.includes(product.id);
             return (
-              <li
-                key={product.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 8,
-                  padding: "6px 8px",
-                  borderRadius: 4,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+              <li key={product.id} className="product-picker-result">
+                <div className="product-picker-result-main">
                   {product.image_url ? (
                     <img
                       src={product.image_url}
                       alt={product.title}
-                      style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }}
+                      className="product-picker-thumb"
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        background: "#334155",
-                        borderRadius: 4,
-                      }}
-                    />
+                    <div className="product-picker-thumb-placeholder" />
                   )}
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {product.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted-color, #94a3b8)" }}>
-                      ₹{product.price}
-                    </div>
+                  <div className="product-picker-result-text">
+                    <div className="product-picker-result-title">{product.title}</div>
+                    <div className="product-picker-result-price">₹{product.price}</div>
                   </div>
                 </div>
 

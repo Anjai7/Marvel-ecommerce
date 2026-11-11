@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Edit2, Eye, Plus, Trash2 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import { Button, Input, RequiredMark, useToast } from "../ui";
 import Switch from "../ui/Switch";
 import "./admin-content.css";
+import "./admin-editors.css";
 import {
   apiDeleteHeroSlide,
   apiFetchHeroSlides,
@@ -317,17 +318,10 @@ export default function HeroSlidesEditor() {
           <form onSubmit={handleSave} className="admin-inline-form">
             <div className="form-group-row">
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-badge">
                     Badge
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-badge"
@@ -337,17 +331,10 @@ export default function HeroSlidesEditor() {
                 />
               </div>
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-tag">
                     Tag
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-tag"
@@ -359,43 +346,22 @@ export default function HeroSlidesEditor() {
             </div>
 
             <div className="form-group">
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
+              <div className="editor-field-header">
                 <label
-                  className="form-label"
+                  className={`form-label editor-field-label--required${
+                    fieldErrors.title ? " editor-field-label--error" : ""
+                  }`}
                   htmlFor="hero-title"
-                  style={{
-                    color: fieldErrors.title ? "#dc2626" : undefined,
-                    fontWeight: 600,
-                  }}
                 >
-                  Title *
+                  Title <RequiredMark />
                 </label>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    color: fieldErrors.title ? "#dc2626" : "#ef4444",
-                    fontWeight: 600,
-                  }}
-                >
-                  (Mandatory)
-                </span>
               </div>
               <Input
                 id="hero-title"
                 type="text"
                 value={editing.title}
-                style={
-                  fieldErrors.title
-                    ? {
-                        borderColor: "#ef4444",
-                        borderWidth: "2px",
-                        backgroundColor: "#fef2f2",
-                        boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                      }
-                    : {}
-                }
+                aria-required="true"
+                className={fieldErrors.title ? "ui-input--invalid" : undefined}
                 onChange={(event) => {
                   setField("title", event.target.value);
                   if (fieldErrors.title) {
@@ -404,18 +370,7 @@ export default function HeroSlidesEditor() {
                 }}
               />
               {fieldErrors.title && (
-                <span
-                  className="field-error-text"
-                  style={{
-                    color: "#dc2626",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    marginTop: "5px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
+                <span className="editor-field-error">
                   <AlertCircle size={13} color="#dc2626" />
                   {fieldErrors.title}
                 </span>
@@ -423,13 +378,10 @@ export default function HeroSlidesEditor() {
             </div>
 
             <div className="form-group">
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
+              <div className="editor-field-header">
                 <label className="form-label" htmlFor="hero-subtitle">
                   Subtitle
                 </label>
-                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
               </div>
               <Input
                 id="hero-subtitle"
@@ -439,11 +391,9 @@ export default function HeroSlidesEditor() {
               />
             </div>
 
-            <div className="form-group" style={{ marginBottom: "8px" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-              >
-                <label className="form-label" htmlFor="hero-cta-toggle" style={{ margin: 0 }}>
+            <div className="form-group editor-group--tight">
+              <div className="editor-switch-row">
+                <label className="form-label" htmlFor="hero-cta-toggle">
                   CTA Button
                 </label>
                 <div className="hero-status-switch">
@@ -458,10 +408,7 @@ export default function HeroSlidesEditor() {
                   </span>
                 </div>
               </div>
-              <p
-                className="form-hint"
-                style={{ fontSize: "12px", color: "#64748b", margin: "4px 0 0" }}
-              >
+              <p className="form-hint editor-hint--tight">
                 When disabled, the button is hidden on the storefront while retaining configured
                 text and link.
               </p>
@@ -469,17 +416,10 @@ export default function HeroSlidesEditor() {
 
             <div className="form-group-row">
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-btn-text">
                     Button text
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-btn-text"
@@ -490,17 +430,10 @@ export default function HeroSlidesEditor() {
                 />
               </div>
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-btn-path">
                     Button path
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-btn-path"
@@ -533,17 +466,10 @@ export default function HeroSlidesEditor() {
 
             <div className="form-group-row">
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-bg-gradient">
                     Background gradient
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-bg-gradient"
@@ -553,17 +479,10 @@ export default function HeroSlidesEditor() {
                 />
               </div>
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="hero-price-text">
                     Price text
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="hero-price-text"
@@ -575,13 +494,10 @@ export default function HeroSlidesEditor() {
             </div>
 
             <div className="form-group">
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
+              <div className="editor-field-header">
                 <label className="form-label" htmlFor="hero-ribbon">
                   Ribbon text
                 </label>
-                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
               </div>
               <Input
                 id="hero-ribbon"
@@ -602,9 +518,11 @@ export default function HeroSlidesEditor() {
 
             {editing.title.trim() && (
               <div
-                className="hero-preview"
+                className="hero-preview editor-preview"
                 aria-label="Slide preview"
-                style={editing.bgGradient ? { background: editing.bgGradient } : undefined}
+                style={
+                  editing.bgGradient ? { "--editor-preview-bg": editing.bgGradient } : undefined
+                }
               >
                 {editing.badge && <span className="role-pill admin">{editing.badge}</span>}
                 <strong>{editing.title}</strong>
@@ -618,7 +536,7 @@ export default function HeroSlidesEditor() {
                     alt="Slide preview"
                     width={96}
                     height={64}
-                    style={{ objectFit: "cover", borderRadius: 4 }}
+                    className="editor-thumbnail"
                   />
                 )}
               </div>
@@ -655,26 +573,20 @@ export default function HeroSlidesEditor() {
           onClose={() => setViewing(null)}
           closeLabel="Close the slide preview"
         >
-          <div
-            className="admin-inline-stack"
-            style={{
-              padding: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-            }}
-          >
+          <div className="admin-inline-stack editor-detail-stack">
             <div
-              className="hero-preview"
+              className="hero-preview editor-preview"
               aria-label="Slide preview details"
-              style={viewing.bg_gradient ? { background: viewing.bg_gradient } : undefined}
+              style={
+                viewing.bg_gradient ? { "--editor-preview-bg": viewing.bg_gradient } : undefined
+              }
             >
               {viewing.badge && <span className="role-pill admin">{viewing.badge}</span>}
               <strong>{viewing.title}</strong>
               {viewing.subtitle && <p className="chart-subtitle">{viewing.subtitle}</p>}
               {viewing.price_text && <span>{viewing.price_text}</span>}
               {viewing.btn_enabled !== false && viewing.btn_text && (
-                <span style={{ fontWeight: 600, color: "#2563eb" }}>{viewing.btn_text}</span>
+                <span className="editor-preview-cta">{viewing.btn_text}</span>
               )}
               {viewing.ribbon_text && <span>{viewing.ribbon_text}</span>}
               {(viewing.product_image_url ||
@@ -687,32 +599,21 @@ export default function HeroSlidesEditor() {
                   alt={viewing.title}
                   width={96}
                   height={64}
-                  style={{ objectFit: "cover", borderRadius: 4 }}
+                  className="editor-thumbnail"
                 />
               )}
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "10px",
-                fontSize: "13px",
-              }}
-            >
+            <div className="editor-detail-grid">
               <div>
                 <strong>Order:</strong> #{viewing.order_index ?? 0}
               </div>
               <div>
                 <strong>Status:</strong>{" "}
                 <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontWeight: 700,
-                    color: viewing.is_active === false ? "#64748b" : "#059669",
-                  }}
+                  className={`editor-detail-status editor-detail-status--${
+                    viewing.is_active === false ? "off" : "on"
+                  }`}
                 >
                   {viewing.is_active === false ? "OFF" : "ON"}
                 </span>
@@ -732,10 +633,7 @@ export default function HeroSlidesEditor() {
               </div>
             </div>
 
-            <div
-              className="admin-inline-actions"
-              style={{ padding: "12px 0 0 0", borderTop: "1px solid #e2e8f0" }}
-            >
+            <div className="admin-inline-actions editor-detail-actions">
               <Button type="button" variant="outline" onClick={() => setViewing(null)}>
                 Close
               </Button>
@@ -770,7 +668,7 @@ export default function HeroSlidesEditor() {
                     alt=""
                     width={48}
                     height={32}
-                    style={{ objectFit: "cover", borderRadius: 4 }}
+                    className="editor-thumbnail"
                   />
                 ) : (
                   <span className="menu-tree-toggle-spacer" />

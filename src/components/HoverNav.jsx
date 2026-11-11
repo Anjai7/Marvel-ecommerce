@@ -76,6 +76,12 @@ export default function HoverNav({ onDynamicNavigate }) {
   const browseTimer = useRef(null);
   const browseGroupRef = useRef(null);
   const scrollRef = useRef(null);
+  // One ref per nav item: the mega-menu measures it to place itself.
+  const groupRefs = useRef(new Map());
+  const groupRef = (id) => {
+    if (!groupRefs.current.has(id)) groupRefs.current.set(id, { current: null });
+    return groupRefs.current.get(id);
+  };
 
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -332,6 +338,7 @@ export default function HoverNav({ onDynamicNavigate }) {
               return (
                 <div
                   key={root.id}
+                  ref={groupRef(root.id)}
                   className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
                   onMouseEnter={() => hasLiveDropdown && navEnter(root.title)}
                   onMouseLeave={hasLiveDropdown ? navLeave : undefined}
@@ -384,6 +391,7 @@ export default function HoverNav({ onDynamicNavigate }) {
                       root={root}
                       alignRight={alignRight}
                       onNavigate={handleLiveNavigate}
+                      anchorRef={groupRef(root.id)}
                     />
                   )}
                 </div>

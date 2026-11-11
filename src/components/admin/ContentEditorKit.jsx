@@ -1,9 +1,19 @@
 import { useId, useState } from "react";
 import { ArrowDown, ArrowUp, Edit2, Trash2 } from "lucide-react";
-import { Button, ImageUploadDropzone } from "../ui";
+import {
+  Button,
+  ImageUploadDropzone,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui";
 import Switch from "../ui/Switch";
 import { apiUploadImage } from "../../api/contentApi";
 import AdminConfirmStrip from "./AdminConfirmStrip";
+import "./admin-panels.css";
 
 /**
  * Lowercase, collapse every run outside [a-z0-9] to "-", then trim "-".
@@ -40,12 +50,10 @@ export function ImageField({ label, value, onChange, folder = "marvel_content" }
   };
 
   return (
-    <fieldset className="form-group" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+    <fieldset className="form-group image-field">
       <legend className="form-label">{label}</legend>
-      <span className="text-sm text-muted image-field-value" style={{ overflowWrap: "anywhere" }}>
-        {value || "No image selected."}
-      </span>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <span className="text-sm text-muted image-field-value">{value || "No image selected."}</span>
+      <div className="image-field-actions">
         <Button
           type="button"
           variant="outline"
@@ -95,7 +103,7 @@ export function ImageField({ label, value, onChange, folder = "marvel_content" }
 export function OrderControls({ index, total, onMove, label, disabled = false }) {
   const suffix = label ? ` ${label}` : "";
   return (
-    <span className="order-controls" style={{ display: "inline-flex", gap: 4 }}>
+    <span className="order-controls">
       <Button
         type="button"
         variant="ghost"
@@ -171,55 +179,59 @@ export function EditorTable({
 
   return (
     <>
-      <table className="editor-table">
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column} scope="col">
-                {humanize(column)}
-              </th>
-            ))}
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const rowId = row?.id ?? index;
-            return (
-              <tr key={rowId} data-testid={`editor-row-${rowId}`}>
-                {columns.map((column) => (
-                  <td key={column}>{cellValue(row?.[column])}</td>
-                ))}
-                <td>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Edit ${rowLabel(row)}`}
-                    onClick={() => onEdit?.(row)}
-                  >
-                    <Edit2 size={15} />
-                  </Button>
-                  <ActiveToggle
-                    active={row?.is_active !== false}
-                    label={rowLabel(row)}
-                    onChange={(active) => onToggleActive?.(row, active)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete ${rowLabel(row)}`}
-                    onClick={() => setDeleteTarget(row)}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="table-responsive-wrapper">
+        <Table className="ui-table--cards">
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead key={column} scope="col">
+                  {humanize(column)}
+                </TableHead>
+              ))}
+              <TableHead scope="col">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row, index) => {
+              const rowId = row?.id ?? index;
+              return (
+                <TableRow key={rowId} data-testid={`editor-row-${rowId}`}>
+                  {columns.map((column) => (
+                    <TableCell key={column} data-label={humanize(column)}>
+                      {cellValue(row?.[column])}
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${rowLabel(row)}`}
+                      onClick={() => onEdit?.(row)}
+                    >
+                      <Edit2 size={15} />
+                    </Button>
+                    <ActiveToggle
+                      active={row?.is_active !== false}
+                      label={rowLabel(row)}
+                      onChange={(active) => onToggleActive?.(row, active)}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${rowLabel(row)}`}
+                      onClick={() => setDeleteTarget(row)}
+                    >
+                      <Trash2 size={15} />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
       <AdminConfirmStrip
         open={Boolean(deleteTarget)}
         title={`Delete '${deleteTarget ? rowLabel(deleteTarget) : "item"}'?`}

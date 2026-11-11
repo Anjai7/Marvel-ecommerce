@@ -1,0 +1,278 @@
+/* ─── UI primitives ─────────────────────────────────────────────
+   The small shared pieces that more than one screen needs: a field
+   with a label and a control, a place to drop an image, a loading
+   placeholder. Every class here is named after the thing it draws —
+   never after the screen that happens to use it today — so a new
+   screen can reach for the same piece. */
+
+/* ── Fields ─────────────────────────────────────────────────── */
+
+/* A label stacked above its control. */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A field's label on one side and the field's controls on the other. */
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* The name of the field. */
+.field-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-700);
+}
+
+/* A row of small buttons that belong to the label above them. */
+.button-group {
+  display: flex;
+  gap: 6px;
+}
+
+/* One button of a button group. */
+.segment-button {
+  background: transparent;
+  border: none;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-500);
+  cursor: pointer;
+}
+
+/* The button of the group that is chosen. */
+.segment-button.is-active {
+  background: var(--gray-100);
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+/* ── The image drop zone ────────────────────────────────────── */
+
+/* The area an image is dropped on, or clicked to pick one. */
+.dropzone {
+  border: 2px dashed var(--gray-300);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* The drop area while an image is held over it. */
+.dropzone.is-dragging {
+  border-color: #7c3aed;
+  background: #f3e8ff;
+}
+
+/* The round icon that sits in the middle of the drop area. */
+.dropzone-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ede9fe;
+  color: #7c3aed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+/* The line that says what can be dropped here. */
+.dropzone-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+/* The quieter line under the title. */
+.dropzone-hint {
+  font-size: 11px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+/* The file picker the drop area opens. */
+.hidden-file-input {
+  display: none;
+}
+
+/* The chosen image, waiting to be saved. */
+.dropzone-preview {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--gray-300);
+  background: var(--gray-900);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The chosen image itself. */
+.dropzone-preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* The layer over the image while the upload runs. */
+.dropzone-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  gap: 8px;
+}
+
+/* What the overlay says while the upload runs. */
+.dropzone-overlay-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The button that clears the chosen image. */
+.dropzone-preview-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ── The search field ───────────────────────────────────────── */
+
+/* The search field and everything that drops out of it. */
+.search-wrap-command {
+  position: relative;
+  width: 100%;
+}
+
+/* The text field and its clear button. */
+.search-field {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Loading placeholders ───────────────────────────────────── */
+
+/* The light that runs across a placeholder while it waits. */
+@keyframes ui-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* The card that stands in for a product card while it loads. */
+.skeleton-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* The picture that stands in for the product photo. */
+.skeleton-card-media {
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--gray-100) 0%, var(--gray-200) 50%, var(--gray-100) 100%);
+  background-size: 200% 100%;
+  animation: ui-shimmer 1.5s infinite;
+}
+
+/* Every grey bar that stands in for a piece of content. */
+.skeleton-block {
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+}
+
+/* The darker bars, for the parts that carry the most weight. */
+.skeleton-block--text {
+  background: var(--gray-200);
+}
+
+.skeleton-block--badge {
+  width: 35%;
+  height: 12px;
+}
+
+.skeleton-block--title {
+  width: 90%;
+  height: 16px;
+}
+
+.skeleton-block--subtitle {
+  width: 65%;
+  height: 14px;
+}
+
+.skeleton-block--meta {
+  width: 40%;
+  height: 20px;
+}
+
+.skeleton-block--price {
+  width: 25%;
+  height: 14px;
+}
+
+.skeleton-block--button {
+  width: 100%;
+  height: 36px;
+  margin-top: 6px;
+}
+
+/* The row that holds the rating and the price. */
+.skeleton-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* The row of cards that slides across the screen. */
+.skeleton-carousel {
+  display: flex;
+  gap: 20px;
+  overflow: hidden;
+  width: 100%;
+  padding: 8px 0;
+}
+
+/* One card of the sliding row. */
+.skeleton-carousel-item {
+  flex: 0 0 calc(25% - 15px);
+  min-width: 240px;
+}

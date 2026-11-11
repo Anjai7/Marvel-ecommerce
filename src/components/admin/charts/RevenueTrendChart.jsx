@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { formatCurrency } from "../../../lib/currency";
+import "./charts.css";
 
 export default function RevenueTrendChart({ data }) {
   const [reducedMotion, setReducedMotion] = useState(false);

@@ -14,4 +14,7 @@ export * from "./Accordion";
 export * from "./Avatar";
 export * from "./Select";
 export * from "./Popover";
+export * from "./Table";
+export { default as Switch } from "./Switch";
+export { default as RequiredMark } from "./RequiredMark";
 export { default as ImageUploadDropzone } from "./ImageUploadDropzone";

@@ -1,5 +1,6 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { formatCurrency } from "../../../lib/currency";
+import "./charts.css";
 
 export default function BestSellersChart({ data }) {
   if (!data || data.length === 0) {

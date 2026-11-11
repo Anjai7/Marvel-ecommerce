@@ -804,7 +804,7 @@ describe("MenuTreeEditor", () => {
       expect(screen.queryByText("Deals")).not.toBeInTheDocument();
 
       // Clear search
-      await user.click(screen.getByRole("button", { name: "Clear search" }));
+      await user.click(screen.getByRole("button", { name: "Clear menu search" }));
       expect(await screen.findByText("Deals")).toBeVisible();
     });
 

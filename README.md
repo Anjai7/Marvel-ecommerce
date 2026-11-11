@@ -39,6 +39,39 @@ Consistently styled according to a highly polished brand palette:
 
 ---
 
+## 🧩 Component system
+
+Shared UI lives in `src/components/ui/` and is imported from one barrel. Build a
+control once and every screen that needs it gets the same behaviour and the same
+look.
+
+| Primitive                                                               | For                                |
+| ----------------------------------------------------------------------- | ---------------------------------- |
+| `Button` `Badge` `Card` `Input` `Rating` `Toast` `Avatar`               | the everyday controls              |
+| `Dialog` `DropdownMenu` `Popover` `Select` `Tooltip` `Tabs` `Accordion` | overlays and disclosure            |
+| `Table` `TableHeader` `TableBody` `TableRow` `TableHead` `TableCell`    | **every** table in the app         |
+| `Switch`                                                                | every on/off control (Material UI) |
+| `RequiredMark`                                                          | the `*` on a required field        |
+| `SearchInput`                                                           | every search field                 |
+| `ImageUploadDropzone` `CommandSearch` `ProductPrice`                    | the rest                           |
+
+Two rules keep the app easy to change:
+
+1. **No inline styles.** A `style={{…}}` cannot be found with a search and cannot
+   be themed, so every style lives in the area's stylesheet — `admin-console.css`,
+   `admin-editors.css`, `admin-panels.css`, `admin-forms.css`,
+   `vendor-dashboard.css`, `customer-portal.css`, `ui-primitives.css` — and uses
+   the design tokens above. `npm run lint:styles` fails the build if an inline
+   style reappears in the admin console, the shared primitives or the two
+   dashboards.
+2. **One table structure.** Every table is built from the `Table` parts, so it
+   looks the same everywhere and can be restyled in one place. The
+   `ui-table--cards` modifier turns a wide table into a stack of cards below
+   640px; give every cell that is not the headline or the action column a
+   `data-label` so the card keeps its column name.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -65,7 +98,7 @@ Make sure you have Node.js 22.12 or newer and npm 10 or newer. The repository in
 ### Quality checks
 
 ```bash
-npm run check       # Oxlint, unit/component tests, and production build
+npm run check       # Oxlint, style guard, unit/component tests, and production build
 npm run test:e2e    # Playwright browser and accessibility checks
 npm run audit       # high/critical npm vulnerability gate
 ```

@@ -3,6 +3,7 @@ import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles } from "lucide-rea
 import { ProductPrice } from "./ProductPrice";
 import { apiFetchProducts } from "../../api/backendApi";
 import { useContent } from "../../context/ContentContext";
+import "./ui-primitives.css";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
 const MAX_RECENT = 5;
@@ -118,13 +119,9 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
   };
 
   return (
-    <div
-      className="search-wrap-command"
-      ref={containerRef}
-      style={{ position: "relative", width: "100%" }}
-    >
+    <div className="search-wrap-command" ref={containerRef}>
       <div className="search-wrap">
-        <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
+        <div className="search-field">
           <input
             id="main-search-input"
             className="search-input"

@@ -8,7 +8,6 @@ import {
   Truck,
   ChevronRight,
   ArrowLeft,
-  ShoppingBag,
 } from "lucide-react";
 import { Button, useToast } from "../ui";
 import CustomerWishlistTab from "./CustomerWishlistTab";
@@ -17,6 +16,7 @@ import { apiFetchOrders } from "../../api/backendApi";
 import { apiFetchWishlist, apiAddToWishlist, apiRemoveFromWishlist } from "../../api/wishlistApi";
 import { useCart } from "../../context/CartContext";
 import { formatCurrency } from "../../lib/currency";
+import "./customer-portal.css";
 
 export default function CustomerPortal({ currentUser, onNavigateHome, onSelectProduct }) {
   const [activeTab, setActiveTab] = useState("orders"); // orders, wishlist, profile
@@ -90,63 +90,23 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
     switch (status) {
       case "delivered":
         return (
-          <span
-            style={{
-              background: "#dcfce7",
-              color: "#15803d",
-              padding: "3px 10px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            Delivered
-          </span>
+          <span className="customer-status-badge customer-status-badge--delivered">Delivered</span>
         );
       case "shipped":
         return (
-          <span
-            style={{
-              background: "#e0f2fe",
-              color: "#0369a1",
-              padding: "3px 10px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
+          <span className="customer-status-badge customer-status-badge--shipped">
             In Transit (Shipped)
           </span>
         );
       case "processing":
         return (
-          <span
-            style={{
-              background: "#fef3c7",
-              color: "#b45309",
-              padding: "3px 10px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
+          <span className="customer-status-badge customer-status-badge--processing">
             Processing Order
           </span>
         );
       default:
         return (
-          <span
-            style={{
-              background: "#f1f5f9",
-              color: "#475569",
-              padding: "3px 10px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-          >
-            {status}
-          </span>
+          <span className="customer-status-badge customer-status-badge--default">{status}</span>
         );
     }
   };
@@ -186,58 +146,22 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
   const savedWishlist = wishlist.filter((entry) => entry?.product);
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 120px)", padding: "32px 16px" }}>
-      <div className="container" style={{ maxWidth: 1160, margin: "0 auto" }}>
+    <div className="customer-portal">
+      <div className="container customer-portal__inner">
         {/* Top Breadcrumb & User Bar */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 16,
-            background: "#ffffff",
-            padding: "20px 24px",
-            borderRadius: 16,
-            border: "1px solid #e2e8f0",
-            marginBottom: 24,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.02)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 12,
-                background: "linear-gradient(135deg, #2563eb 0%, #1e40af 100%)",
-                color: "#ffffff",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                fontWeight: 800,
-              }}
-            >
+        <div className="customer-welcome">
+          <div className="customer-welcome__identity">
+            <div className="customer-welcome__avatar">
               {currentUser?.full_name ? currentUser.full_name[0].toUpperCase() : "U"}
             </div>
             <div>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: 0 }}>
+              <h2 className="customer-welcome__title">
                 Welcome back, {currentUser?.full_name || "Valued Customer"}
               </h2>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: "#64748b",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 2,
-                }}
-              >
+              <div className="customer-welcome__meta">
                 <span>{currentUser?.email || "user@marvel.com"}</span>
                 <span>•</span>
-                <span style={{ color: "#16a34a", fontWeight: 600 }}>Prime Customer Member</span>
+                <span className="customer-welcome__member">Prime Customer Member</span>
               </div>
             </div>
           </div>
@@ -247,127 +171,57 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
             size="sm"
             onClick={onNavigateHome}
             leftIcon={<ArrowLeft size={16} />}
-            style={{ borderRadius: 10 }}
+            className="customer-welcome__back"
           >
             Back to Marketplace Store
           </Button>
         </div>
 
         {/* Tab Navigation */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            borderBottom: "2px solid #e2e8f0",
-            marginBottom: 24,
-            overflowX: "auto",
-            whiteSpace: "nowrap",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-          }}
-        >
+        <div className="customer-tabs">
           <button
             onClick={() => setActiveTab("orders")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "orders" ? 700 : 500,
-              color: activeTab === "orders" ? "#2563eb" : "#64748b",
-              borderBottom: activeTab === "orders" ? "3px solid #2563eb" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`customer-tab${activeTab === "orders" ? " customer-tab--active" : ""}`}
           >
-            <Package size={18} /> My Orders & Deliveries ({orders.length})
+            <Package size={18} /> My Orders &amp; Deliveries ({orders.length})
           </button>
 
           <button
             onClick={() => setActiveTab("wishlist")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "wishlist" ? 700 : 500,
-              color: activeTab === "wishlist" ? "#2563eb" : "#64748b",
-              borderBottom:
-                activeTab === "wishlist" ? "3px solid #2563eb" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`customer-tab${activeTab === "wishlist" ? " customer-tab--active" : ""}`}
           >
             <Heart size={18} /> Saved Wishlist ({savedWishlist.length})
           </button>
 
           <button
             onClick={() => setActiveTab("profile")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "profile" ? 700 : 500,
-              color: activeTab === "profile" ? "#2563eb" : "#64748b",
-              borderBottom: activeTab === "profile" ? "3px solid #2563eb" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`customer-tab${activeTab === "profile" ? " customer-tab--active" : ""}`}
           >
-            <User size={18} /> Account Settings & Addresses
+            <User size={18} /> Account Settings &amp; Addresses
           </button>
         </div>
 
         {/* TAB 1: ORDERS & TRACKING */}
         {activeTab === "orders" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-              gap: 24,
-            }}
-          >
+          <div className="customer-orders">
             {/* Orders List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="customer-order-list">
               {orders.map((ord) => {
                 const isSelected = selectedOrder?.id === ord.id;
                 return (
                   <div
                     key={ord.id}
                     onClick={() => setSelectedOrder(ord)}
-                    style={{
-                      background: "#ffffff",
-                      borderRadius: 14,
-                      padding: 20,
-                      border: isSelected ? "2px solid #2563eb" : "1px solid #e2e8f0",
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
+                    className={`customer-order-card${
+                      isSelected ? " customer-order-card--selected" : ""
+                    }`}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 12,
-                      }}
-                    >
+                    <div className="customer-order-card__header">
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>
+                        <div className="customer-order-card__title">
                           Order #{ord.id.toUpperCase()}
                         </div>
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                        <div className="customer-order-card__date">
                           Placed on{" "}
                           {new Date(ord.created_at).toLocaleDateString("en-US", {
                             month: "short",
@@ -379,47 +233,20 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                       {getStatusBadge(ord.status)}
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 14,
-                        marginTop: 12,
-                        paddingTop: 12,
-                        borderTop: "1px solid #f1f5f9",
-                      }}
-                    >
+                    <div className="customer-order-items">
                       {ord.items?.map((item, i) => (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div key={i} className="customer-order-item">
                           <img
+                            className="customer-order-item__thumb"
                             src={
                               item.image ||
                               "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100"
                             }
                             alt={item.title}
-                            style={{
-                              width: 44,
-                              height: 44,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                              border: "1px solid #e2e8f0",
-                            }}
                           />
                           <div>
-                            <div
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#1e293b",
-                                maxWidth: 220,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {item.title}
-                            </div>
-                            <div style={{ fontSize: 12, color: "#64748b" }}>
+                            <div className="customer-order-item__title">{item.title}</div>
+                            <div className="customer-order-item__meta">
                               Qty: {item.quantity} • {formatCurrency(item.price)}
                             </div>
                           </div>
@@ -432,13 +259,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                                 e.stopPropagation();
                                 handleAddWishlist(item.product_id, item.title);
                               }}
-                              style={{
-                                border: "none",
-                                background: "none",
-                                color: "#94a3b8",
-                                cursor: "pointer",
-                                padding: 4,
-                              }}
+                              className="customer-wishlist-button"
                             >
                               <Heart size={16} />
                             </button>
@@ -447,30 +268,14 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                       ))}
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginTop: 14,
-                        fontSize: 13,
-                      }}
-                    >
-                      <span style={{ color: "#64748b" }}>
+                    <div className="customer-order-footer">
+                      <span className="customer-order-footer__total">
                         Total:{" "}
-                        <strong style={{ color: "#0f172a" }}>
+                        <strong className="customer-order-footer__amount">
                           {formatCurrency(ord.total_amount)}
                         </strong>
                       </span>
-                      <span
-                        style={{
-                          color: "#2563eb",
-                          fontWeight: 700,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
+                      <span className="customer-order-footer__link">
                         View Tracking Details <ChevronRight size={14} />
                       </span>
                     </div>
@@ -481,42 +286,11 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
 
             {/* Selected Order Detailed Live Tracker */}
             {selectedOrder && (
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 16,
-                  padding: 24,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: 20,
-                  }}
-                >
+              <div className="customer-tracker">
+                <div className="customer-tracker__header">
                   <div>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        color: "#64748b",
-                      }}
-                    >
-                      Package Tracking
-                    </span>
-                    <h3
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 800,
-                        color: "#0f172a",
-                        margin: "4px 0 0 0",
-                      }}
-                    >
+                    <span className="customer-tracker__eyebrow">Package Tracking</span>
+                    <h3 className="customer-tracker__title">
                       Order #{selectedOrder.id.toUpperCase()}
                     </h3>
                   </div>
@@ -524,60 +298,24 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                 </div>
 
                 {/* Progress Step Bar */}
-                <div
-                  style={{
-                    background: "#f8fafc",
-                    padding: "18px 16px",
-                    borderRadius: 12,
-                    marginBottom: 20,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      position: "relative",
-                      marginBottom: 8,
-                    }}
-                  >
+                <div className="customer-tracker__steps">
+                  <div className="customer-tracker__steps-row">
                     {["Order Confirmed", "Processing", "Shipped", "Delivered"].map((step, idx) => {
                       const currentStep = getStatusStep(selectedOrder.status);
                       const isComplete = idx <= currentStep;
                       return (
-                        <div
-                          key={step}
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            flex: 1,
-                            textAlign: "center",
-                            zIndex: 1,
-                          }}
-                        >
+                        <div key={step} className="customer-tracker__step">
                           <div
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: "50%",
-                              background: isComplete ? "#2563eb" : "#cbd5e1",
-                              color: "#ffffff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 12,
-                              fontWeight: 700,
-                              marginBottom: 6,
-                            }}
+                            className={`customer-tracker__step-dot${
+                              isComplete ? " customer-tracker__step-dot--done" : ""
+                            }`}
                           >
                             {isComplete ? <CheckCircle2 size={16} /> : idx + 1}
                           </div>
                           <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: isComplete ? 700 : 500,
-                              color: isComplete ? "#0f172a" : "#94a3b8",
-                            }}
+                            className={`customer-tracker__step-label${
+                              isComplete ? " customer-tracker__step-label--done" : ""
+                            }`}
                           >
                             {step}
                           </span>
@@ -588,84 +326,37 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                 </div>
 
                 {/* Courier & Tracking Details */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 160px), 1fr))",
-                    gap: 14,
-                    marginBottom: 20,
-                  }}
-                >
-                  <div style={{ background: "#f8fafc", padding: 12, borderRadius: 10 }}>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "#64748b",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Carrier
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "#0f172a",
-                        marginTop: 2,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
+                <div className="customer-tracker__details">
+                  <div className="customer-tracker__detail">
+                    <div className="customer-tracker__detail-label">Carrier</div>
+                    <div className="customer-tracker__detail-value">
                       <Truck size={14} color="#2563eb" />{" "}
                       {selectedOrder.carrier || "Express Courier"}
                     </div>
                   </div>
 
-                  <div style={{ background: "#f8fafc", padding: 12, borderRadius: 10 }}>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "#64748b",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Tracking Number
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#2563eb", marginTop: 2 }}>
+                  <div className="customer-tracker__detail">
+                    <div className="customer-tracker__detail-label">Tracking Number</div>
+                    <div className="customer-tracker__detail-value customer-tracker__detail-value--accent">
                       {selectedOrder.tracking_number || "TRK-9849201"}
                     </div>
                   </div>
                 </div>
 
                 {/* Delivery Location */}
-                <div
-                  style={{ background: "#f8fafc", padding: 14, borderRadius: 10, marginBottom: 20 }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
+                <div className="customer-tracker__address">
+                  <div className="customer-tracker__address-label">
                     <MapPin size={12} /> Shipping Address
                   </div>
-                  <div style={{ fontSize: 13, color: "#1e293b", marginTop: 4, fontWeight: 500 }}>
+                  <div className="customer-tracker__address-value">
                     {selectedOrder.shipping_address}
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: 10 }}>
+                <div className="customer-tracker__actions">
                   <Button
                     variant="primary"
-                    style={{ flex: 1 }}
+                    className="customer-button--grow"
                     onClick={() =>
                       addToast({
                         title: "Order Receipt",

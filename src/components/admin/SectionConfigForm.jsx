@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Button, Input } from "../ui";
+import { Button, Input, RequiredMark } from "../ui";
 import Switch from "../ui/Switch";
 import { ImageField } from "./ContentEditorKit";
 import ProductPicker from "./ProductPicker";
@@ -10,6 +10,7 @@ import {
   SECTION_TYPES,
   validateSection,
 } from "../../../server/lib/sectionTypes.js";
+import "./admin-forms.css";
 
 /**
  * The generated form for one section.
@@ -133,6 +134,8 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
     const fieldId = `${formId}-${name}`;
     const label = fieldLabel(name);
     const value = current[name];
+    // A required field says so to the browser and to a screen reader.
+    const required = rule.required === true;
 
     switch (rule.type) {
       case "string":
@@ -149,8 +152,10 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         return (
           <Input
             id={fieldId}
+            className="section-control-string"
             type="text"
             maxLength={rule.max}
+            required={required || undefined}
             value={textOf(value)}
             onChange={(event) => update(name, event.target.value)}
           />
@@ -160,9 +165,10 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         return (
           <textarea
             id={fieldId}
-            className="ui-input"
+            className="ui-input section-control-text"
             rows={5}
             maxLength={rule.max}
+            required={required || undefined}
             value={textOf(value)}
             onChange={(event) => update(name, event.target.value)}
           />
@@ -171,7 +177,7 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
       case "url": {
         const upload = isImageField(name);
         return (
-          <div style={{ display: "grid", gap: 8 }}>
+          <div className="section-control-url">
             {upload && (
               <ImageField
                 label={label}
@@ -186,6 +192,7 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
               inputMode="url"
               maxLength={rule.max}
               placeholder={upload ? "https://example.com/image.jpg" : undefined}
+              required={required || undefined}
               value={textOf(value)}
               onChange={(event) => update(name, event.target.value)}
             />
@@ -195,12 +202,13 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
       case "link":
         return (
-          <div style={{ display: "grid", gap: 4 }}>
+          <div className="section-control-link">
             <Input
               id={fieldId}
               type="text"
               inputMode="url"
               maxLength={rule.max}
+              required={required || undefined}
               value={textOf(value)}
               onChange={(event) => update(name, event.target.value)}
             />
@@ -214,8 +222,9 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         return (
           <select
             id={fieldId}
-            className="form-select-field"
+            className="form-select-field section-control-enum"
             value={rule.values.includes(value) ? value : (rule.values[0] ?? "")}
+            required={required || undefined}
             onChange={(event) => update(name, event.target.value)}
           >
             {rule.values.map((option) => (
@@ -228,7 +237,7 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
       case "boolean":
         return (
-          <label className="form-label" htmlFor={fieldId} style={{ display: "flex", gap: 10 }}>
+          <label className="form-label section-control-boolean" htmlFor={fieldId}>
             <Switch
               id={fieldId}
               checked={value === true}
@@ -243,9 +252,11 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         return (
           <Input
             id={fieldId}
+            className="section-control-number"
             type="number"
             min={rule.min}
             max={rule.max}
+            required={required || undefined}
             value={numberText(value)}
             onChange={(event) =>
               update(name, event.target.value === "" ? "" : Number(event.target.value))
@@ -257,12 +268,9 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         const ids = listOf(value);
         if (name === "category_ids") {
           return (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="section-control-list">
               {ids.map((id, index) => (
-                <div
-                  key={`${fieldId}-${index}`}
-                  style={{ display: "flex", gap: 8, alignItems: "center" }}
-                >
+                <div key={`${fieldId}-${index}`} className="section-control-list-row">
                   <CategoryPicker
                     id={`${fieldId}-${index}`}
                     value={id}
@@ -321,14 +329,13 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         const items = listOf(value);
         const keys = Array.isArray(rule.items) ? rule.items : [];
         return (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="section-control-items">
             {items.map((item, index) => {
               const entry = objectOf(item);
               return (
                 <fieldset
                   key={`${fieldId}-${index}`}
-                  className="form-group"
-                  style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}
+                  className="form-group section-control-fieldset"
                 >
                   <legend className="form-label">
                     {label} {index + 1}
@@ -338,11 +345,12 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
                     return (
                       <div key={key} className="form-group">
                         <label className="form-label" htmlFor={entryId}>
-                          {fieldLabel(key)}
+                          {fieldLabel(key)} <RequiredMark />
                         </label>
                         <Input
                           id={entryId}
                           type="text"
+                          aria-required="true"
                           value={textOf(entry[key])}
                           onChange={(event) => {
                             const next = [...items];
@@ -412,7 +420,12 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
         {carriesOwnLabel ? null : (
           <label className="form-label" htmlFor={fieldId}>
             {label}
-            {rule.required ? " *" : ""}
+            {rule.required ? (
+              <>
+                {" "}
+                <RequiredMark />
+              </>
+            ) : null}
           </label>
         )}
         {renderControl(name, rule, current, update)}
@@ -421,13 +434,13 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
   };
 
   return (
-    <div className="section-config-form" style={{ display: "grid", gap: 16 }}>
+    <div className="section-config-form">
       {Object.entries(definition.fields).map(([name, rule]) =>
         renderField(name, rule, values, setValue)
       )}
 
       {onStyleChange ? (
-        <fieldset className="form-group" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+        <fieldset className="form-group section-control-fieldset">
           <legend className="form-label">Layout</legend>
           {Object.entries(SECTION_STYLE_FIELDS).map(([name, rule]) =>
             renderField(name, rule, styleValues, setStyleValue)
@@ -437,7 +450,7 @@ export default function SectionConfigForm({ type, data, style, onChange, onStyle
 
       {errors.length > 0 && (
         <div role="alert" className="form-error">
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
+          <ul className="section-error-list">
             {errors.map((error) => (
               <li key={error}>{error}</li>
             ))}

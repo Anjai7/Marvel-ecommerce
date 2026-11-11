@@ -14,6 +14,7 @@ import { Loader2, RotateCcw, Save } from "lucide-react";
 import { apiFetchSettings, apiUpdateSettings } from "../../api/settingsApi";
 import { Button, Input, useToast } from "../ui";
 import Switch from "../ui/Switch";
+import "./admin-forms.css";
 
 /** Read `a.b.c` out of an object. */
 const readPath = (object, path) =>
@@ -205,7 +206,7 @@ export default function SettingsEditor() {
 
   if (loading) {
     return (
-      <p className="chart-subtitle" style={{ padding: "12px 4px" }}>
+      <p className="chart-subtitle settings-loading">
         <Loader2 size={14} className="spin-animation" /> Loading settings...
       </p>
     );
@@ -225,7 +226,7 @@ export default function SettingsEditor() {
       </div>
 
       {error && (
-        <p role="alert" className="form-error" style={{ marginBottom: 16 }}>
+        <p role="alert" className="form-error settings-error">
           {error}
         </p>
       )}
@@ -239,7 +240,7 @@ export default function SettingsEditor() {
               const id = `settings-${row.path.replace(/\./g, "-")}`;
               if (row.type === "checkbox") {
                 return (
-                  <label key={row.path} className="settings-checkbox" htmlFor={id}>
+                  <label key={row.path} className="settings-checkbox settings-row" htmlFor={id}>
                     <Switch
                       id={id}
                       checked={Boolean(value)}
@@ -256,7 +257,10 @@ export default function SettingsEditor() {
               }
               if (row.type === "textarea" || row.type === "json") {
                 return (
-                  <div key={row.path} className="form-group settings-field settings-field-wide">
+                  <div
+                    key={row.path}
+                    className="form-group settings-field settings-field-wide settings-row"
+                  >
                     <label className="form-label" htmlFor={id}>
                       {row.label}
                     </label>
@@ -290,7 +294,7 @@ export default function SettingsEditor() {
                 );
               }
               return (
-                <div key={row.path} className="form-group settings-field">
+                <div key={row.path} className="form-group settings-field settings-row">
                   <label className="form-label" htmlFor={id}>
                     {row.label}
                   </label>

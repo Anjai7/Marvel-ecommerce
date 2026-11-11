@@ -121,7 +121,7 @@ export default function CategoryPagePanel({ category, onClose }) {
         <PageEditor pageId={editingPageId} onClose={handleEditorClose} />
       ) : (
         <>
-          <p className="chart-subtitle" style={{ marginTop: 0 }}>
+          <p className="chart-subtitle">
             A category does <strong>not</strong> need a custom page. Without one the built-in
             default category template is used: the category&apos;s own name, description and listing
             settings. A custom page only adds sections on top of that — a hero, a rich text block, a
@@ -145,7 +145,7 @@ export default function CategoryPagePanel({ category, onClose }) {
             </>
           ) : page ? (
             <>
-              <p className="chart-subtitle" style={{ marginTop: 0 }}>
+              <p className="chart-subtitle">
                 <strong>This category has a custom page.</strong> {page.title}
                 {page.slug ? ` — ${page.slug}` : ""}
               </p>
@@ -156,7 +156,7 @@ export default function CategoryPagePanel({ category, onClose }) {
             </>
           ) : (
             <>
-              <p className="chart-subtitle" style={{ marginTop: 0 }}>
+              <p className="chart-subtitle">
                 <strong>This category has no custom page.</strong> The built-in default category
                 template is serving it.
               </p>

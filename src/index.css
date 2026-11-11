@@ -743,10 +743,14 @@ input:focus:not(:focus-visible) {
   flex-shrink: 0;
 }
 
-/* Mega Menu Component */
+/* Mega Menu Component.
+   The panel is positioned against the viewport, not against the nav bar:
+   the nav bar is a horizontal scroller, and an absolutely positioned panel
+   inside it is clipped by that scroller — the dropdown never appeared.
+   The top and left are set from the item that opened it. */
 .mega-menu {
-  position: absolute;
-  top: 100%;
+  position: fixed;
+  top: 0;
   left: 0;
   width: max-content;
   max-width: min(1040px, calc(100vw - 32px));
@@ -767,10 +771,11 @@ input:focus:not(:focus-visible) {
   box-sizing: border-box;
 }
 
+/* The panel is placed by script, so the CSS alignment hints are gone. */
 .mega-menu.align-right,
 .nav-group-right .mega-menu {
   left: auto;
-  right: 0;
+  right: auto;
 }
 
 .mega-menu-grid {
@@ -1102,6 +1107,9 @@ input:focus:not(:focus-visible) {
   opacity: 0;
   transition: opacity 0.6s ease;
   pointer-events: none;
+  /* The background image is scaled a touch for the Ken Burns effect; without
+     this it sticks out past the edge of the screen. */
+  overflow: hidden;
 }
 .hero-slide.active {
   opacity: 1;
@@ -4210,6 +4218,11 @@ input:focus:not(:focus-visible) {
   .hero-dots {
     bottom: 12px;
     left: 20px;
+  }
+  /* The arrows sat on top of the hero copy on a phone. The dots and a
+     swipe drive the carousel there, so the arrows step aside. */
+  .hero-nav-btn {
+    display: none;
   }
   .promo-carousel {
     height: 180px;
@@ -7438,6 +7451,13 @@ input:focus:not(:focus-visible) {
   animation: spin 1s linear infinite;
 }
 
+/* Eight components ask for `.animate-spin` — the loading spinner on the
+   product page, the route guard, the CMS page, the category pages. The class
+   had no rule anywhere, so every one of them sat still. */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 @keyframes spin {
   100% {
     transform: rotate(360deg);
@@ -7602,6 +7622,21 @@ input:focus:not(:focus-visible) {
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 20px;
+}
+
+/* The heading and the action cannot share a line on a phone: the button ran
+   over the title. They stack instead. */
+@media (max-width: 560px) {
+  .chart-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .chart-card-header > button {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 .chart-title {
@@ -7996,6 +8031,59 @@ input:focus:not(:focus-visible) {
   cursor: pointer;
 }
 
+/* ── The shared search field ───────────────────────────── */
+/* Every console list filters through the same field, so they all look
+   the same: one height, one leading icon, one clear button. */
+.app-search-wrapper {
+  position: relative;
+  flex: 0 1 340px;
+  max-width: 340px;
+  min-width: 220px;
+}
+
+.app-search-wrapper--fluid {
+  flex: 1 1 100%;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.app-search-icon {
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.app-search-input {
+  height: 38px;
+  font-size: 13px;
+  padding: 0 34px 0 36px;
+  border-radius: 8px;
+}
+
+/* The field carries its own clear button, so the browser's own one is
+   switched off — otherwise Safari draws a second clear control. */
+.app-search-input::-webkit-search-cancel-button,
+.app-search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.app-search-clear {
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 640px) {
+  .app-search-wrapper:not(.app-search-wrapper--fluid) {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}
+
 .toolbar-filters-group {
   display: flex;
   align-items: center;
@@ -8096,49 +8184,6 @@ input:focus:not(:focus-visible) {
 .table-responsive-wrapper {
   width: 100%;
   overflow-x: auto;
-}
-
-.admin-data-table,
-.editor-table,
-.banners-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-}
-
-.admin-data-table th,
-.editor-table th,
-.banners-table th {
-  padding: 14px 18px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  color: #ffffff;
-  background: #1e40af;
-  border-bottom: 1px solid #1d4ed8;
-  text-transform: uppercase;
-}
-
-.admin-data-table td,
-.editor-table td {
-  padding: 16px 18px;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 13.5px;
-  vertical-align: middle;
-}
-
-.editor-table tbody tr:hover td {
-  background: #f8fafc;
-}
-
-.editor-table tbody tr.selected-row td,
-.editor-table tbody tr[aria-current="true"] td {
-  background: #eff6ff !important;
-}
-
-.editor-table tbody tr.selected-row td:first-child,
-.editor-table tbody tr[aria-current="true"] td:first-child {
-  border-left: 3px solid #2563eb;
 }
 
 .user-table-row:hover {
@@ -8478,6 +8523,14 @@ input:focus:not(:focus-visible) {
   margin: 0;
   font-size: 12.5px;
   font-weight: 600;
+  color: #dc2626;
+}
+
+/* The picker's own error message. The picker is shared between the admin
+   console and the vendor dashboard, so it lives with the global forms. */
+.picker-error {
+  margin: 6px 0 0;
+  font-size: 12px;
   color: #dc2626;
 }
 

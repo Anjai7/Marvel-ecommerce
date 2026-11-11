@@ -1,4 +1,5 @@
-import { Button, Input } from "../ui";
+import { Button, Input, RequiredMark } from "../ui";
+import "./vendor-dashboard.css";
 
 /**
  * Fulfillment and shipping update modal for Vendor Dashboard.
@@ -14,58 +15,22 @@ export default function VendorFulfillmentModal({
   if (!isOpen || !selectedOrder) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: 16,
-          maxWidth: 480,
-          width: "100%",
-          padding: 28,
-          boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
-        }}
-      >
-        <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 16 }}>
+    <div className="vendor-modal__overlay">
+      <div className="vendor-modal__dialog vendor-modal__dialog--compact">
+        <h3 className="vendor-modal__title vendor-modal__title--compact">
           Update Shipment for Order #{selectedOrder.id.toUpperCase()}
         </h3>
 
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={onSubmit} className="vendor-form">
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#475569",
-                marginBottom: 4,
-              }}
-            >
+            <label className="vendor-field__label" htmlFor="vendor-fulfillment-status">
               Fulfillment Status
             </label>
             <select
+              id="vendor-fulfillment-status"
               value={fulfillmentForm.status}
               onChange={(e) => setFulfillmentForm({ ...fulfillmentForm, status: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                fontSize: 14,
-              }}
+              className="vendor-field__control"
             >
               <option value="processing">Processing</option>
               <option value="shipped">Shipped (In Transit)</option>
@@ -74,27 +39,14 @@ export default function VendorFulfillmentModal({
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#475569",
-                marginBottom: 4,
-              }}
-            >
+            <label className="vendor-field__label" htmlFor="vendor-fulfillment-carrier">
               Shipping Carrier
             </label>
             <select
+              id="vendor-fulfillment-carrier"
               value={fulfillmentForm.carrier}
               onChange={(e) => setFulfillmentForm({ ...fulfillmentForm, carrier: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                fontSize: 14,
-              }}
+              className="vendor-field__control"
             >
               <option value="FedEx Express">FedEx Express</option>
               <option value="DHL Express">DHL Express</option>
@@ -104,18 +56,11 @@ export default function VendorFulfillmentModal({
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#475569",
-                marginBottom: 4,
-              }}
-            >
-              Tracking Number
+            <label className="vendor-field__label" htmlFor="vendor-fulfillment-tracking">
+              Tracking Number <RequiredMark />
             </label>
             <Input
+              id="vendor-fulfillment-tracking"
               type="text"
               placeholder="e.g. FX-984920194"
               value={fulfillmentForm.tracking_number}
@@ -126,8 +71,12 @@ export default function VendorFulfillmentModal({
             />
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-            <Button type="submit" variant="primary" style={{ flex: 1, background: "#7c3aed" }}>
+          <div className="vendor-form__actions">
+            <Button
+              type="submit"
+              variant="primary"
+              className="vendor-button--accent vendor-button--grow"
+            >
               Save Shipment Info
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>

@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Edit2, Plus, Trash2 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import {
+  Button,
+  Input,
+  RequiredMark,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useToast,
+} from "../ui";
 import {
   apiDeleteFooterLink,
   apiDeleteFooterSection,
@@ -15,6 +26,7 @@ import {
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
+import "./admin-panels.css";
 
 const CONTENT_EVENT = "marvel_content_updated";
 const SECTION_TYPES = [
@@ -465,11 +477,12 @@ export default function FooterEditor() {
               <>
                 <div className="form-group">
                   <label className="form-label" htmlFor="footer-heading">
-                    Heading *
+                    Heading <RequiredMark />
                   </label>
                   <Input
                     id="footer-heading"
                     type="text"
+                    aria-required="true"
                     value={form.heading}
                     onChange={(event) => setField("heading", event.target.value)}
                   />
@@ -509,22 +522,24 @@ export default function FooterEditor() {
               <>
                 <div className="form-group">
                   <label className="form-label" htmlFor="footer-link-label">
-                    Label *
+                    Label <RequiredMark />
                   </label>
                   <Input
                     id="footer-link-label"
                     type="text"
+                    aria-required="true"
                     value={form.label}
                     onChange={(event) => setField("label", event.target.value)}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="footer-link-href">
-                    Href *
+                    Href <RequiredMark />
                   </label>
                   <Input
                     id="footer-link-href"
                     type="text"
+                    aria-required="true"
                     value={form.href}
                     onChange={(event) => setField("href", event.target.value)}
                   />
@@ -569,7 +584,7 @@ export default function FooterEditor() {
       {loading ? (
         <p className="chart-subtitle">Loading footer content...</p>
       ) : (
-        <div className="footer-editor-layout" style={{ display: "grid", gap: 24 }}>
+        <div className="footer-editor-layout">
           <div className="admin-content-card">
             <div className="admin-content-card-header">
               <div>
@@ -584,82 +599,59 @@ export default function FooterEditor() {
               </Button>
             </div>
             {sections.length === 0 ? (
-              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+              <div className="admin-panel-empty">
                 <p className="chart-subtitle">No footer sections yet. Add the first one.</p>
               </div>
             ) : (
-              <div className="table-responsive">
-                <table className="editor-table admin-data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Heading</th>
-                      <th scope="col">Type</th>
-                      <th scope="col">Column</th>
-                      <th scope="col">Order</th>
-                      <th scope="col">Active</th>
-                      <th scope="col">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="table-responsive-wrapper">
+                <Table className="ui-table--cards">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">Heading</TableHead>
+                      <TableHead scope="col">Type</TableHead>
+                      <TableHead scope="col">Column</TableHead>
+                      <TableHead scope="col">Order</TableHead>
+                      <TableHead scope="col">Active</TableHead>
+                      <TableHead scope="col">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {sections.map((section, index) => {
                       const isSelected = section.id === selectedId;
                       return (
-                        <tr
+                        <TableRow
                           key={section.id}
                           data-testid={`footer-section-${section.id}`}
                           aria-current={isSelected ? "true" : undefined}
-                          className={isSelected ? "selected-row" : ""}
+                          data-selected={isSelected ? "true" : undefined}
                         >
-                          <td>
+                          <TableCell>
                             <button
                               type="button"
                               aria-pressed={isSelected}
                               onClick={() => setSelectedId(section.id)}
-                              className="chart-pill-btn"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 6,
-                                padding: "6px 14px",
-                                borderRadius: 8,
-                                border: isSelected ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
-                                background: isSelected ? "#2563eb" : "#ffffff",
-                                color: isSelected ? "#ffffff" : "#1e293b",
-                                fontWeight: 700,
-                                fontSize: 13,
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                              }}
+                              className={`admin-chip footer-section-select${
+                                isSelected ? " is-selected" : ""
+                              }`}
                             >
                               {section.heading}
                             </button>
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell data-label="Type">
                             <span
-                              style={{
-                                display: "inline-block",
-                                padding: "3px 8px",
-                                borderRadius: 6,
-                                fontSize: 11.5,
-                                fontWeight: 700,
-                                background:
-                                  section.section_type === "links" ? "#eff6ff" : "#f1f5f9",
-                                color: section.section_type === "links" ? "#2563eb" : "#475569",
-                                border:
-                                  section.section_type === "links"
-                                    ? "1px solid #bfdbfe"
-                                    : "1px solid #e2e8f0",
-                              }}
+                              className={`footer-section-type${
+                                section.section_type === "links" ? " is-links" : ""
+                              }`}
                             >
                               {section.section_type}
                             </span>
-                          </td>
-                          <td>
-                            <span style={{ fontWeight: 600, color: "#475569" }}>
+                          </TableCell>
+                          <TableCell data-label="Column">
+                            <span className="footer-section-column">
                               Col {Number(section.column_index ?? 0) + 1}
                             </span>
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell data-label="Order">
                             <OrderControls
                               index={index}
                               total={sections.length}
@@ -667,16 +659,16 @@ export default function FooterEditor() {
                               disabled={busy}
                               onMove={(from, to) => handleMoveSection(section, from, to)}
                             />
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell data-label="Active">
                             <ActiveToggle
                               active={section.is_active !== false}
                               label={section.heading}
                               onChange={(active) => handleToggleSection(section, active)}
                             />
-                          </td>
-                          <td>
-                            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                          </TableCell>
+                          <TableCell>
+                            <div className="admin-row-actions">
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -697,12 +689,12 @@ export default function FooterEditor() {
                                 <Trash2 size={15} />
                               </Button>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>
@@ -730,44 +722,33 @@ export default function FooterEditor() {
             </div>
 
             {!selectedSection ? (
-              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+              <div className="admin-panel-empty">
                 <p className="chart-subtitle">Select a section to edit its links.</p>
               </div>
             ) : links.length === 0 ? (
-              <div style={{ padding: "32px 20px", textAlign: "center" }}>
+              <div className="admin-panel-empty">
                 <p className="chart-subtitle">No links in this section yet.</p>
               </div>
             ) : (
-              <div className="table-responsive">
-                <table className="editor-table admin-data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Label</th>
-                      <th scope="col">Href</th>
-                      <th scope="col">Order</th>
-                      <th scope="col">Active</th>
-                      <th scope="col">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="table-responsive-wrapper">
+                <Table className="ui-table--cards">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">Label</TableHead>
+                      <TableHead scope="col">Href</TableHead>
+                      <TableHead scope="col">Order</TableHead>
+                      <TableHead scope="col">Active</TableHead>
+                      <TableHead scope="col">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {links.map((link, index) => (
-                      <tr key={link.id} data-testid={`footer-link-${link.id}`}>
-                        <td style={{ fontWeight: 600, color: "#0f172a" }}>{link.label}</td>
-                        <td>
-                          <code
-                            style={{
-                              background: "#f1f5f9",
-                              padding: "3px 8px",
-                              borderRadius: 6,
-                              fontSize: 12,
-                              color: "#0f172a",
-                              border: "1px solid #e2e8f0",
-                            }}
-                          >
-                            {link.href}
-                          </code>
-                        </td>
-                        <td>
+                      <TableRow key={link.id} data-testid={`footer-link-${link.id}`}>
+                        <TableCell className="footer-link-label">{link.label}</TableCell>
+                        <TableCell data-label="Href">
+                          <code className="footer-link-href">{link.href}</code>
+                        </TableCell>
+                        <TableCell data-label="Order">
                           <OrderControls
                             index={index}
                             total={links.length}
@@ -775,16 +756,16 @@ export default function FooterEditor() {
                             disabled={busy}
                             onMove={(from, to) => handleMoveLink(link, from, to)}
                           />
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell data-label="Active">
                           <ActiveToggle
                             active={link.is_active !== false}
                             label={link.label}
                             onChange={(active) => handleToggleLink(link, active)}
                           />
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                        </TableCell>
+                        <TableCell>
+                          <div className="admin-row-actions">
                             <Button
                               type="button"
                               variant="ghost"
@@ -805,11 +786,11 @@ export default function FooterEditor() {
                               <Trash2 size={15} />
                             </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             )}
           </div>

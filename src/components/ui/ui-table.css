@@ -1,0 +1,175 @@
+/* ── The table ────────────────────────────────────────── */
+/* One table structure for the whole app. Every table is built from the
+   Table parts, so a change here changes every table. */
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ui-table-head {
+  padding: 14px 18px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #ffffff;
+  background: #1e40af;
+  border-bottom: 1px solid #1d4ed8;
+  text-transform: uppercase;
+}
+
+.ui-table-cell {
+  padding: 16px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13.5px;
+  vertical-align: middle;
+}
+
+.ui-table-row:hover > .ui-table-cell {
+  background: #f8fafc;
+}
+
+/* The row that is currently selected in a list of sections or links. */
+.ui-table-row[data-selected="true"] > .ui-table-cell {
+  background: #eff6ff;
+}
+
+.ui-table-row[data-selected="true"] > .ui-table-cell:first-child {
+  border-left: 3px solid #2563eb;
+}
+
+.ui-table-caption {
+  caption-side: bottom;
+  padding: 12px 18px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: left;
+}
+
+/* The action column sits on the right. The class was used by eight table
+   cells and had no rule anywhere, so the header and its buttons were
+   left-aligned in a wide column. */
+.ui-table .text-right {
+  text-align: right;
+}
+
+/* The empty state — the one row a list shows when it has nothing in it. */
+.ui-table-empty {
+  padding: 32px 20px;
+  text-align: center;
+}
+
+/* On a tablet the console has the full width but the tables do not, so the
+   cells tighten up rather than pushing the actions off the edge. */
+@media (max-width: 900px) {
+  .ui-table-head {
+    padding: 12px 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .ui-table-cell {
+    padding: 13px 10px;
+    font-size: 13px;
+  }
+}
+
+/* ── The table as cards ───────────────────────────────── */
+/* A wide table cannot be squeezed into a phone. Below 640 every row becomes
+   a card: the first cell is the card's headline and the rest sit in a
+   two-column grid of label/value pairs, so the record stays compact. */
+@media (max-width: 640px) {
+  .ui-table--cards .ui-table-header {
+    display: none;
+  }
+
+  .ui-table--cards .ui-table-body {
+    display: block;
+  }
+
+  .ui-table--cards .ui-table-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  }
+
+  .ui-table--cards .ui-table-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 0;
+    border-bottom: none;
+    text-align: left;
+    min-width: 0;
+  }
+
+  /* The column name becomes the label of the value beside it. */
+  .ui-table--cards .ui-table-cell[data-label]::before {
+    content: attr(data-label);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  /* A long value (an email, a product name) wraps instead of running off
+     the card. */
+  .ui-table--cards .ui-table-cell > * {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  /* The headline and the actions take the full width of the card. A last
+     cell that carries a data-label is a value, not an action — the
+     Customers table ends on a status, not on buttons — so it stays in the
+     grid. */
+  .ui-table--cards .ui-table-cell:first-child,
+  .ui-table--cards .ui-table-cell:last-child:not([data-label]) {
+    grid-column: 1 / -1;
+  }
+
+  .ui-table--cards .ui-table-cell:first-child {
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .ui-table--cards .ui-table-cell:last-child:not([data-label]) {
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  /* The headline and the actions label themselves. */
+  .ui-table--cards .ui-table-cell:first-child::before,
+  .ui-table--cards .ui-table-cell:last-child:not([data-label])::before {
+    display: none;
+  }
+
+  /* The empty state spans the row; it must not become a flex cell. */
+  .ui-table--cards .ui-table-cell[data-empty] {
+    display: block;
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+
+  .ui-table--cards .ui-table-cell[data-empty]::before {
+    display: none;
+  }
+}
+
+/* ── The required-field mark ──────────────────────────── */
+.form-required {
+  color: #dc2626;
+  font-weight: 800;
+  margin-left: 3px;
+}

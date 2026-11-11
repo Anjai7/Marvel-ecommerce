@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "../adminConstants";
+import "./charts.css";
 
 /* Keyed by the `order_status` enum value, so every slice is a stage the
  * database can actually store. */

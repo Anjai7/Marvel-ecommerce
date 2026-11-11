@@ -108,7 +108,7 @@ export default function CategoryPicker({
             onChange?.(value ?? null, text === "" ? null : event.target.value);
           }}
         />
-        <p role="alert" style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>
+        <p role="alert" className="picker-error">
           {error}
         </p>
       </div>

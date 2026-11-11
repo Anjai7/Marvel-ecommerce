@@ -10,20 +10,21 @@ import {
   Megaphone,
   MousePointerClick,
   Plus,
-  Search,
   ShoppingBag,
   Sparkles,
   Trash2,
   Type,
   Video,
 } from "lucide-react";
-import { Button, Input } from "../ui";
+import { Button } from "../ui";
+import SearchInput from "../ui/SearchInput";
 import { ActiveToggle, OrderControls } from "./ContentEditorKit";
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import SectionConfigForm from "./SectionConfigForm";
 import { SECTION_STYLE_FIELDS, SECTION_TYPES } from "../../../server/lib/sectionTypes.js";
 import "./admin-content.css";
+import "./admin-panels.css";
 
 /**
  * The ordered section list of a page.
@@ -279,7 +280,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
   const deleteName = deleteTarget ? sectionName(deleteTarget, deleteIndex) : "this section";
 
   return (
-    <div className="section-list-editor" style={{ display: "grid", gap: 12 }}>
+    <div className="section-list-editor">
       {/* The move announcement. It is mounted once, in the initial markup, so
           a screen reader is already listening when the first move happens. */}
       <div role="status" aria-live="polite" aria-atomic="true" className="text-sm text-muted">
@@ -299,37 +300,19 @@ export default function SectionListEditor({ sections = [], onChange }) {
           closeLabel="Close the section picker"
         >
           {/* Quick search input */}
-          <div style={{ position: "relative", marginBottom: 8 }}>
-            <Search
-              size={15}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#94a3b8",
-                pointerEvents: "none",
-              }}
-            />
-            <Input
-              type="text"
-              placeholder="Search sections by name or description..."
+          <div className="section-picker-search">
+            <SearchInput
+              fluid
               value={pickerSearch}
-              onChange={(e) => setPickerSearch(e.target.value)}
-              style={{ paddingLeft: 34, height: 38 }}
+              onValueChange={setPickerSearch}
+              placeholder="Search sections by name or description..."
+              ariaLabel="Search sections"
+              clearLabel="Clear section search"
             />
           </div>
 
           {/* Category filter tabs */}
-          <div
-            style={{
-              display: "flex",
-              gap: 6,
-              overflowX: "auto",
-              paddingBottom: 6,
-              marginBottom: 8,
-            }}
-          >
+          <div className="section-picker-categories">
             {Object.entries(SECTION_CATEGORIES).map(([catKey, catLabel]) => {
               const active = pickerCategory === catKey;
               return (
@@ -337,18 +320,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
                   key={catKey}
                   type="button"
                   onClick={() => setPickerCategory(catKey)}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    fontWeight: active ? 700 : 500,
-                    color: active ? "#2563eb" : "#64748b",
-                    background: active ? "#eff6ff" : "transparent",
-                    border: active ? "1px solid #bfdbfe" : "1px solid #e2e8f0",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "all 0.15s ease",
-                  }}
+                  className={`admin-chip section-picker-category${active ? " is-active" : ""}`}
                 >
                   {catLabel}
                 </button>
@@ -356,7 +328,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
             })}
           </div>
 
-          <div className="section-picker-grid" style={{ maxHeight: "50vh", overflowY: "auto" }}>
+          <div className="section-picker-grid section-picker-scroll">
             {Object.entries(SECTION_TYPES)
               .filter(([type, definition]) => {
                 if (pickerCategory !== "all" && TYPE_TO_CATEGORY[type] !== pickerCategory) {
@@ -377,36 +349,17 @@ export default function SectionListEditor({ sections = [], onChange }) {
                     key={type}
                     type="button"
                     aria-label={definition.label}
-                    className="section-picker-option"
+                    className="section-picker-option section-picker-entry"
                     onClick={() => {
                       handleAdd(type);
                       setPickerCategory("all");
                       setPickerSearch("");
                     }}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      padding: "12px 14px",
-                    }}
                   >
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        background: "#f1f5f9",
-                        color: "#2563eb",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        marginTop: 2,
-                      }}
-                    >
+                    <div className="section-picker-option-icon">
                       <IconComponent size={18} />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                    <div className="section-picker-option-body">
                       <span className="section-picker-title">{definition.label}</span>
                       <span className="section-picker-desc">{definition.description}</span>
                     </div>
@@ -476,33 +429,11 @@ export default function SectionListEditor({ sections = [], onChange }) {
                 if (node) cardRefs.current.set(section.uid, node);
                 else cardRefs.current.delete(section.uid);
               }}
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                padding: 12,
-                border: "1px solid var(--border-color, #e2e8f0)",
-                borderRadius: 10,
-              }}
             >
               <div>
-                <div style={{ fontWeight: 700 }}>{typeLabel(section.type)}</div>
+                <div className="section-card-title">{typeLabel(section.type)}</div>
                 {sectionPreviewSummary(section) && (
-                  <div
-                    style={{
-                      fontSize: 12.5,
-                      color: "#475569",
-                      marginTop: 2,
-                      maxWidth: 340,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {sectionPreviewSummary(section)}
-                  </div>
+                  <div className="section-card-summary">{sectionPreviewSummary(section)}</div>
                 )}
                 <div className="text-sm text-muted">
                   Position {index + 1} of {sections.length}
@@ -510,7 +441,7 @@ export default function SectionListEditor({ sections = [], onChange }) {
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="section-card-actions">
                 <OrderControls
                   index={index}
                   total={sections.length}

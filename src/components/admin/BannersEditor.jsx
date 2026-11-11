@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Edit2, Plus, Trash2 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import {
+  Button,
+  Input,
+  RequiredMark,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useToast,
+} from "../ui";
 import {
   apiDeleteBanner,
   apiFetchBanners,
@@ -12,6 +23,7 @@ import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, cellValue, ImageField, OrderControls } from "./ContentEditorKit";
 import "./banners-editor.css";
+import "./admin-editors.css";
 
 const CONTENT_EVENT = "marvel_content_updated";
 
@@ -201,61 +213,32 @@ async function renumberPlacement(rowId, placement, position) {
 
 const textField = ({ id, label, value, onChange, type = "text", error, required }) => (
   <div className="form-group" key={id}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div className="editor-field-header">
       <label
-        className="form-label"
+        className={`form-label${required ? " editor-field-label--required" : ""}${
+          error ? " editor-field-label--error" : ""
+        }`}
         htmlFor={id}
-        style={{
-          color: error ? "#dc2626" : undefined,
-          fontWeight: required ? 600 : undefined,
-          margin: 0,
-        }}
       >
         {label}
+        {required ? (
+          <>
+            {" "}
+            <RequiredMark />
+          </>
+        ) : null}
       </label>
-      {required ? (
-        <span
-          style={{
-            fontSize: "11px",
-            color: error ? "#dc2626" : "#ef4444",
-            fontWeight: 600,
-          }}
-        >
-          (Mandatory)
-        </span>
-      ) : (
-        <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
-      )}
     </div>
     <Input
       id={id}
       type={type}
       value={value ?? ""}
-      style={
-        error
-          ? {
-              borderColor: "#ef4444",
-              borderWidth: "2px",
-              backgroundColor: "#fef2f2",
-              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-            }
-          : {}
-      }
+      aria-required={required ? "true" : undefined}
+      className={error ? "ui-input--invalid" : undefined}
       onChange={(event) => onChange(event.target.value)}
     />
     {error && (
-      <span
-        className="field-error-text"
-        style={{
-          color: "#dc2626",
-          fontSize: "12px",
-          fontWeight: 600,
-          marginTop: "5px",
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-        }}
-      >
+      <span className="editor-field-error">
         <AlertCircle size={13} color="#dc2626" />
         {error}
       </span>
@@ -528,7 +511,7 @@ export default function BannersEditor() {
           onClose={() => setEditing(null)}
           closeLabel="Close the banner editor"
         >
-          <form onSubmit={handleSave} className="admin-inline-form banners-modal-form">
+          <form onSubmit={handleSave} className="admin-inline-form banners-editor-form">
             <div className="form-group">
               <label className="form-label" htmlFor="banner-placement">
                 Placement
@@ -554,7 +537,7 @@ export default function BannersEditor() {
               <>
                 {textField({
                   id: "banner-title",
-                  label: "Title *",
+                  label: "Title",
                   value: editing.title,
                   required: true,
                   error: fieldErrors.title,
@@ -603,10 +586,9 @@ export default function BannersEditor() {
                   </select>
                 </div>
                 <output
-                  className="form-hint"
+                  className="form-hint editor-hint"
                   data-testid="banner-preview"
                   data-variant={editing.variant === "large" ? "large" : "small"}
-                  style={{ display: "block" }}
                 >
                   {editing.variant === "large"
                     ? "Renders in the large slot."
@@ -625,7 +607,7 @@ export default function BannersEditor() {
                 })}
                 {textField({
                   id: "banner-title",
-                  label: "Title *",
+                  label: "Title",
                   value: editing.title,
                   required: true,
                   error: fieldErrors.title,
@@ -708,7 +690,7 @@ export default function BannersEditor() {
               <>
                 {textField({
                   id: "banner-title",
-                  label: "Title *",
+                  label: "Title",
                   value: editing.title,
                   required: true,
                   error: fieldErrors.title,
@@ -767,7 +749,7 @@ export default function BannersEditor() {
             <div className="form-group-row">
               <div className="form-group">
                 <span className="form-label">Display order</span>
-                <div className="banners-order-wrapper">
+                <div className="editor-order-row">
                   <OrderControls
                     index={formPosition}
                     total={formTotal}
@@ -795,7 +777,7 @@ export default function BannersEditor() {
               </p>
             )}
 
-            <div className="admin-inline-actions banners-modal-footer">
+            <div className="admin-inline-actions banners-editor-actions">
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>
                 Cancel
               </Button>
@@ -812,30 +794,28 @@ export default function BannersEditor() {
       ) : banners.length === 0 ? (
         <p className="chart-subtitle">No banners for this placement yet. Add the first one.</p>
       ) : (
-        <div className="table-responsive-wrapper banners-table-wrapper">
-          <table className="editor-table admin-data-table banners-table">
-            <thead>
-              <tr>
+        <div className="table-responsive-wrapper editor-table-wrapper">
+          <Table className="ui-table--cards">
+            <TableHeader>
+              <TableRow>
                 {COLUMNS[placement].map((column) => (
-                  <th key={column}>{column.replaceAll("_", " ")}</th>
+                  <TableHead key={column} scope="col">
+                    {column.replaceAll("_", " ")}
+                  </TableHead>
                 ))}
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead scope="col">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {banners.map((row, index) => (
-                <tr key={row.id} data-testid={`editor-row-${row.id}`} className="banners-table-row">
+                <TableRow key={row.id} data-testid={`editor-row-${row.id}`}>
                   {COLUMNS[placement].map((column) => (
-                    <td
-                      key={column}
-                      data-label={column.replaceAll("_", " ")}
-                      className="banners-table-cell"
-                    >
+                    <TableCell key={column} data-label={column.replaceAll("_", " ")}>
                       {cellValue(row[column])}
-                    </td>
+                    </TableCell>
                   ))}
-                  <td data-label="Actions" className="banners-table-cell banners-actions-cell">
-                    <div className="banners-actions-wrapper">
+                  <TableCell>
+                    <div className="editor-table-actions">
                       <OrderControls
                         index={index}
                         total={banners.length}
@@ -869,11 +849,11 @@ export default function BannersEditor() {
                         <Trash2 size={14} />
                       </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
 

@@ -1,0 +1,359 @@
+/* The shared vocabulary of the admin forms.
+ *
+ * One stylesheet for every admin form: the user forms, the page editor, the
+ * section form, the settings screen and the product picker. Each of them
+ * imports this file, so a field looks the same wherever it is edited.
+ *
+ * The colours come from the design tokens of `src/index.css`; the ones that
+ * have no token (the error red, the preview's own shadows) keep their value.
+ */
+
+/* ── The user forms ───────────────────────────────────────── */
+
+/* A label whose field can be rejected is a little lighter than the rest. */
+.form-label.user-form-label {
+  font-weight: 600;
+}
+
+/* A label whose field was rejected says so in the same red as its message. */
+.form-label.user-form-label--invalid {
+  color: #dc2626;
+}
+
+/* The one invalid-field look: a red border, a tinted field and a red ring. */
+.ui-input.user-form-input--invalid,
+.ui-input.user-form-input--invalid:focus {
+  border-color: #dc2626;
+  border-width: 2px;
+  background-color: #fef2f2;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* The message under a field that was rejected. */
+.field-error-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── The page editor ──────────────────────────────────────── */
+
+/* The row of actions in the editor's header. */
+.page-editor-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* The metadata form: one column of fields. */
+.page-editor-form {
+  display: grid;
+  gap: 16px;
+}
+
+/* The slug row: the input and the button that fills it. */
+.page-editor-slug-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* The sections of the page, under the metadata form. */
+.page-editor-sections {
+  margin-top: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+/* ── The live preview ─────────────────────────────────────── */
+
+/* The preview card: a content card in the preview's own colours. */
+.admin-content-card.page-preview-card {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-300);
+  border-radius: 16px;
+}
+
+/* The header of the preview: the title and the viewport switch. */
+.page-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.page-preview-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.page-preview-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* The switch between the desktop and the mobile preview. */
+.page-preview-switch {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.page-preview-viewport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--white);
+  color: var(--gray-600);
+  border: 1px solid var(--gray-300);
+}
+
+/* The viewport the preview is drawn in. */
+.page-preview-viewport.is-active {
+  background: var(--primary);
+  color: var(--white);
+}
+
+/* The stage the preview sits on. */
+.page-preview-stage {
+  display: flex;
+  justify-content: center;
+  background: var(--gray-900);
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The stage of the mobile preview, which stands in for a phone's own frame. */
+.page-preview-stage.is-mobile {
+  padding: 20px 0;
+}
+
+/* The frame the preview is drawn in. */
+.page-preview-frame {
+  width: 100%;
+  height: 640px;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  border: none;
+  background: var(--white);
+  transition: width 0.25s ease;
+}
+
+/* The frame of the mobile preview: a phone, with its own bezel. */
+.page-preview-frame.is-mobile {
+  width: 390px;
+  border-radius: 24px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  border: 4px solid var(--gray-700);
+}
+
+.page-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ── The product picker ───────────────────────────────────── */
+
+.product-picker {
+  display: grid;
+  gap: 12px;
+}
+
+/* The chosen products, as a row of chips. */
+.product-picker-selected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* One chosen product. */
+.product-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--gray-100);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-300);
+  color: var(--gray-900);
+  font-size: 12px;
+}
+
+/* The id of a chosen product. */
+.product-chip-id {
+  font-family: monospace;
+}
+
+/* The button that takes a product off the list. */
+.ui-btn.product-chip-remove {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+/* The search results. */
+.product-picker-results {
+  margin: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  padding: 6px;
+}
+
+/* One result: the product and the button that adds it. */
+.product-picker-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+}
+
+.product-picker-result-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.product-picker-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+}
+
+/* The stand-in of a product that has no picture. */
+.product-picker-thumb-placeholder {
+  width: 32px;
+  height: 32px;
+  background: var(--gray-700);
+  border-radius: var(--radius-xs);
+}
+
+.product-picker-result-text {
+  min-width: 0;
+}
+
+.product-picker-result-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-picker-result-price {
+  font-size: 12px;
+  color: var(--muted-color, #94a3b8);
+}
+
+/* ── The section form ─────────────────────────────────────── */
+
+/* The generated form of one section. */
+.section-config-form {
+  display: grid;
+  gap: 16px;
+}
+
+/* The plain controls of the section form: a short text, a number, a long
+   text and a choice. They share one look, so they share one rule. */
+.section-control-string,
+.section-control-text,
+.section-control-number,
+.section-control-enum {
+  min-width: 0;
+}
+
+/* A fieldset that carries no chrome of its own. */
+.section-control-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* The control of a URL field: the upload widget above the URL itself. */
+.section-control-url {
+  display: grid;
+  gap: 8px;
+}
+
+/* The control of a link field. */
+.section-control-link {
+  display: grid;
+  gap: 4px;
+}
+
+/* The control of a switch field: the switch and its label. */
+.section-control-boolean {
+  display: flex;
+  gap: 10px;
+}
+
+/* The control of a list field. */
+.section-control-list {
+  display: grid;
+  gap: 8px;
+}
+
+/* One row of a list field. */
+.section-control-list-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* The control of an item-list field: one fieldset per entry. */
+.section-control-items {
+  display: grid;
+  gap: 12px;
+}
+
+/* The list of problems the server reported. */
+.section-error-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* ── The settings screen ──────────────────────────────────── */
+
+/* A settings row: the label above the control it owns. */
+.settings-row {
+  min-width: 0;
+}
+
+/* The screen while the settings are still on their way. */
+.settings-loading {
+  padding: 12px 4px;
+}
+
+/* The failure above the settings groups. */
+.form-error.settings-error {
+  margin-bottom: 16px;
+}

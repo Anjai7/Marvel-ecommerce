@@ -1,4 +1,5 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import "./charts.css";
 
 export default function CustomerRepeatChart({ data }) {
   if (!data || data.totalCustomers === 0) {
@@ -16,7 +17,7 @@ export default function CustomerRepeatChart({ data }) {
 
   return (
     <div className="recharts-wrapper">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <div className="chart-centered">
         <ResponsiveContainer width={220} height={220}>
           <PieChart>
             <Tooltip

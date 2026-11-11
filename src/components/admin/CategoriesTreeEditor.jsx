@@ -8,8 +8,10 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import { Button, Input, RequiredMark, useToast } from "../ui";
 import Switch from "../ui/Switch";
+import "./admin-content.css";
+import "./admin-editors.css";
 import {
   apiDeleteCategory,
   apiFetchCategoryTree,
@@ -542,11 +544,7 @@ export default function CategoriesTreeEditor() {
         </Button>
       </div>
 
-      <label
-        className="form-label"
-        htmlFor="category-show-hidden"
-        style={{ display: "flex", gap: 10, alignItems: "center" }}
-      >
+      <label className="form-label editor-switch-label" htmlFor="category-show-hidden">
         <Switch
           id="category-show-hidden"
           checked={showHidden}
@@ -571,47 +569,22 @@ export default function CategoriesTreeEditor() {
           <form onSubmit={handleSave} className="admin-inline-form">
             <div className="form-group-row">
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label
-                    className="form-label"
+                    className={`form-label editor-field-label--required${
+                      fieldErrors.name ? " editor-field-label--error" : ""
+                    }`}
                     htmlFor="category-name"
-                    style={{
-                      color: fieldErrors.name ? "#dc2626" : undefined,
-                      fontWeight: 600,
-                    }}
                   >
-                    Name *
+                    Name <RequiredMark />
                   </label>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: fieldErrors.name ? "#dc2626" : "#ef4444",
-                      fontWeight: 600,
-                    }}
-                  >
-                    (Mandatory)
-                  </span>
                 </div>
                 <Input
                   id="category-name"
                   type="text"
                   value={editing.name}
-                  style={
-                    fieldErrors.name
-                      ? {
-                          borderColor: "#ef4444",
-                          borderWidth: "2px",
-                          backgroundColor: "#fef2f2",
-                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                        }
-                      : {}
-                  }
+                  aria-required="true"
+                  className={fieldErrors.name ? "ui-input--invalid" : undefined}
                   onChange={(event) => {
                     handleNameChange(event.target.value);
                     if (fieldErrors.name) {
@@ -620,65 +593,29 @@ export default function CategoriesTreeEditor() {
                   }}
                 />
                 {fieldErrors.name && (
-                  <span
-                    className="field-error-text"
-                    style={{
-                      color: "#dc2626",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      marginTop: "5px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
+                  <span className="editor-field-error">
                     <AlertCircle size={13} color="#dc2626" />
                     {fieldErrors.name}
                   </span>
                 )}
               </div>
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label
-                    className="form-label"
+                    className={`form-label editor-field-label--required${
+                      fieldErrors.slug ? " editor-field-label--error" : ""
+                    }`}
                     htmlFor="category-slug"
-                    style={{
-                      color: fieldErrors.slug ? "#dc2626" : undefined,
-                      fontWeight: 600,
-                    }}
                   >
-                    Slug *
+                    Slug <RequiredMark />
                   </label>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      color: fieldErrors.slug ? "#dc2626" : "#ef4444",
-                      fontWeight: 600,
-                    }}
-                  >
-                    (Mandatory)
-                  </span>
                 </div>
                 <Input
                   id="category-slug"
                   type="text"
                   value={editing.slug}
-                  style={
-                    fieldErrors.slug
-                      ? {
-                          borderColor: "#ef4444",
-                          borderWidth: "2px",
-                          backgroundColor: "#fef2f2",
-                          boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                        }
-                      : {}
-                  }
+                  aria-required="true"
+                  className={fieldErrors.slug ? "ui-input--invalid" : undefined}
                   onChange={(event) => {
                     handleSlugChange(event.target.value);
                     if (fieldErrors.slug) {
@@ -687,18 +624,7 @@ export default function CategoriesTreeEditor() {
                   }}
                 />
                 {fieldErrors.slug && (
-                  <span
-                    className="field-error-text"
-                    style={{
-                      color: "#dc2626",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      marginTop: "5px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
+                  <span className="editor-field-error">
                     <AlertCircle size={13} color="#dc2626" />
                     {fieldErrors.slug}
                   </span>
@@ -707,20 +633,17 @@ export default function CategoriesTreeEditor() {
             </div>
 
             {editing.id && editing.slug !== editing.originalSlug && (
-              <output className="form-hint" style={{ display: "block", margin: 0 }}>
+              <output className="form-hint editor-hint">
                 Changing this slug changes the category's path and every descendant's path. Existing
                 links to the old URL will stop resolving.
               </output>
             )}
 
             <div className="form-group">
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
+              <div className="editor-field-header">
                 <label className="form-label" htmlFor="category-parent">
                   Parent category
                 </label>
-                <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
               </div>
               <select
                 id="category-parent"
@@ -740,17 +663,10 @@ export default function CategoriesTreeEditor() {
 
             <div className="form-group-row">
               <div className="form-group">
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
+                <div className="editor-field-header">
                   <label className="form-label" htmlFor="category-icon">
                     Icon
                   </label>
-                  <span style={{ fontSize: "11px", color: "#64748b" }}>(Optional)</span>
                 </div>
                 <Input
                   id="category-icon"
@@ -761,7 +677,7 @@ export default function CategoriesTreeEditor() {
               </div>
               <div className="form-group">
                 <span className="form-label">Display order</span>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="editor-order-row">
                   <OrderControls
                     index={editorIndex}
                     total={editorTotal}
@@ -809,11 +725,7 @@ export default function CategoriesTreeEditor() {
             </div>
 
             <div className="form-group">
-              <label
-                className="form-label"
-                htmlFor="category-show-nav"
-                style={{ display: "flex", gap: 10, alignItems: "center" }}
-              >
+              <label className="form-label editor-switch-label" htmlFor="category-show-nav">
                 <Switch
                   id="category-show-nav"
                   checked={editing.showInNav}
@@ -824,11 +736,7 @@ export default function CategoriesTreeEditor() {
               </label>
             </div>
             <div className="form-group">
-              <label
-                className="form-label"
-                htmlFor="category-show-homepage"
-                style={{ display: "flex", gap: 10, alignItems: "center" }}
-              >
+              <label className="form-label editor-switch-label" htmlFor="category-show-homepage">
                 <Switch
                   id="category-show-homepage"
                   checked={editing.showInHomepage}
@@ -927,11 +835,7 @@ export default function CategoriesTreeEditor() {
             </div>
 
             <div className="form-group">
-              <label
-                className="form-label"
-                htmlFor="category-show-sort"
-                style={{ display: "flex", gap: 10, alignItems: "center" }}
-              >
+              <label className="form-label editor-switch-label" htmlFor="category-show-sort">
                 <Switch
                   id="category-show-sort"
                   checked={Boolean(editing.listingShowSort)}
@@ -943,11 +847,7 @@ export default function CategoriesTreeEditor() {
             </div>
 
             <div className="form-group">
-              <label
-                className="form-label"
-                htmlFor="category-show-filters"
-                style={{ display: "flex", gap: 10, alignItems: "center" }}
-              >
+              <label className="form-label editor-switch-label" htmlFor="category-show-filters">
                 <Switch
                   id="category-show-filters"
                   checked={Boolean(editing.listingShowFilters)}

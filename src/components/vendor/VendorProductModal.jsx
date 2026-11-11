@@ -1,5 +1,6 @@
-import { Button, Input, ImageUploadDropzone } from "../ui";
+import { Button, Input, ImageUploadDropzone, RequiredMark } from "../ui";
 import CategoryPicker from "../admin/CategoryPicker";
+import "./vendor-dashboard.css";
 
 /**
  * Add / Edit Product modal for Vendor Dashboard.
@@ -15,51 +16,19 @@ export default function VendorProductModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 9999,
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: "#ffffff",
-          borderRadius: 16,
-          maxWidth: 540,
-          width: "100%",
-          padding: 28,
-          boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-      >
-        <h3 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 18 }}>
+    <div className="vendor-modal__overlay">
+      <div className="vendor-modal__dialog">
+        <h3 className="vendor-modal__title">
           {editingProduct ? "Edit Product Listing" : "Add New Product to Store"}
         </h3>
 
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={onSubmit} className="vendor-form">
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#475569",
-                marginBottom: 4,
-              }}
-            >
-              Product Title
+            <label className="vendor-field__label" htmlFor="vendor-product-title">
+              Product Title <RequiredMark />
             </label>
             <Input
+              id="vendor-product-title"
               type="text"
               placeholder="e.g. Wireless Pro Earbuds"
               value={productForm.title}
@@ -68,20 +37,13 @@ export default function VendorProductModal({
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="vendor-form__grid">
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#475569",
-                  marginBottom: 4,
-                }}
-              >
-                Selling Price (₹)
+              <label className="vendor-field__label" htmlFor="vendor-product-price">
+                Selling Price (₹) <RequiredMark />
               </label>
               <Input
+                id="vendor-product-price"
                 type="number"
                 step="0.01"
                 placeholder="99.99"
@@ -91,18 +53,11 @@ export default function VendorProductModal({
               />
             </div>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#475569",
-                  marginBottom: 4,
-                }}
-              >
+              <label className="vendor-field__label" htmlFor="vendor-product-original-price">
                 Original Price (₹)
               </label>
               <Input
+                id="vendor-product-original-price"
                 type="number"
                 step="0.01"
                 placeholder="129.99"
@@ -112,20 +67,13 @@ export default function VendorProductModal({
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="vendor-form__grid">
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#475569",
-                  marginBottom: 4,
-                }}
-              >
+              <label className="vendor-field__label" htmlFor="vendor-product-category">
                 Category
               </label>
               <CategoryPicker
+                id="vendor-product-category"
                 value={productForm.category_id}
                 label={productForm.category}
                 onChange={(id, name) =>
@@ -135,28 +83,15 @@ export default function VendorProductModal({
                     category: name ?? productForm.category,
                   })
                 }
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 14,
-                }}
+                className="vendor-field__control"
               />
             </div>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "#475569",
-                  marginBottom: 4,
-                }}
-              >
-                Stock Quantity
+              <label className="vendor-field__label" htmlFor="vendor-product-stock">
+                Stock Quantity <RequiredMark />
               </label>
               <Input
+                id="vendor-product-stock"
                 type="number"
                 placeholder="20"
                 value={productForm.stock}
@@ -175,34 +110,25 @@ export default function VendorProductModal({
           </div>
 
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#475569",
-                marginBottom: 4,
-              }}
-            >
+            <label className="vendor-field__label" htmlFor="vendor-product-description">
               Description
             </label>
             <textarea
+              id="vendor-product-description"
               rows={3}
               placeholder="Product features and specifications..."
               value={productForm.description}
               onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                fontSize: 13,
-              }}
+              className="vendor-field__control vendor-field__control--textarea"
             />
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-            <Button type="submit" variant="primary" style={{ flex: 1, background: "#7c3aed" }}>
+          <div className="vendor-form__actions">
+            <Button
+              type="submit"
+              variant="primary"
+              className="vendor-button--accent vendor-button--grow"
+            >
               {editingProduct ? "Save Changes" : "Publish to Store"}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>

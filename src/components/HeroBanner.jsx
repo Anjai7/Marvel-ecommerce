@@ -205,7 +205,6 @@ export default function HeroBanner({ onNavigate }) {
         id="hero-prev"
         onClick={prev}
         aria-label="Previous slide"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         <ChevronLeft size={24} color="#fff" />
       </button>
@@ -215,7 +214,6 @@ export default function HeroBanner({ onNavigate }) {
         id="hero-next"
         onClick={next}
         aria-label="Next slide"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         <ChevronRight size={24} color="#fff" />
       </button>

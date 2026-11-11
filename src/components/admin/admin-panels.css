@@ -1,0 +1,304 @@
+/* ── The admin panels ──────────────────────────────────────── */
+/* The editors of the console: the footer, the pages and the ordered
+   list of sections. They share one table, one set of rows and one set
+   of chips, so a panel looks the same wherever it is opened. */
+
+/* ── The shared panel furniture ───────────────────────────── */
+/* The empty state of a panel: no sections yet, no links yet. */
+.admin-panel-empty {
+  padding: 32px 20px;
+  text-align: center;
+}
+
+/* The buttons of one table row. */
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-row-actions--wide {
+  gap: 6px;
+}
+
+/* A chip the admin can press: the section pill, the starter preset,
+   the category tab of the type picker. */
+.admin-chip {
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+/* ── The footer editor ────────────────────────────────────── */
+.footer-editor-layout {
+  display: grid;
+  gap: 24px;
+}
+
+/* The heading of a section: the button that picks the section. */
+.footer-section-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.footer-section-select.is-selected {
+  border: 1.5px solid var(--navy);
+  background: var(--navy);
+  color: var(--white);
+}
+
+/* The type of a section: a column of links or a group of tags. */
+.footer-section-type {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  color: var(--gray-600);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.footer-section-type.is-links {
+  border-color: var(--navy-light);
+  background: var(--navy-bg);
+  color: var(--navy);
+}
+
+/* The column a section sits in, and the name of a footer link. */
+.footer-section-column,
+.footer-link-label {
+  font-weight: 600;
+}
+
+.footer-section-column {
+  color: var(--gray-600);
+}
+
+.footer-link-label {
+  color: var(--gray-900);
+}
+
+/* The address of a footer link. */
+.footer-link-href {
+  padding: 3px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  color: var(--gray-900);
+  font-size: 12px;
+}
+
+/* ── The pages editor ─────────────────────────────────────── */
+/* The form of a new page. */
+.pages-create-form {
+  display: grid;
+  gap: 16px;
+}
+
+.pages-create-error {
+  margin: 0 0 8px;
+}
+
+/* The starter layouts a new page can begin with. */
+.pages-preset-label {
+  margin-bottom: 6px;
+}
+
+.pages-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.pages-preset-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  text-align: left;
+}
+
+.pages-preset-option.is-selected {
+  border: 2px solid var(--navy);
+  background: var(--navy-bg);
+}
+
+/* The name and the badge of a starter layout. */
+.pages-preset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pages-preset-name {
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pages-preset-option.is-selected .pages-preset-name {
+  color: var(--navy-dark);
+}
+
+.pages-preset-badge {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+  color: var(--gray-500);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pages-preset-option.is-selected .pages-preset-badge {
+  background: var(--gray-200);
+  color: var(--navy-dark);
+}
+
+.pages-preset-description {
+  color: var(--gray-500);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+/* ── The section list ─────────────────────────────────────── */
+.section-list-editor {
+  display: grid;
+  gap: 12px;
+}
+
+/* The search box of the type picker. */
+.section-picker-search {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+/* The category tabs of the type picker. */
+.section-picker-categories {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.section-picker-category {
+  padding: 4px 10px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.section-picker-category.is-active {
+  border-color: var(--navy-light);
+  background: var(--navy-bg);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+/* The scroll area of the type picker. The compound selector keeps the
+   cap of the list on this list alone, whatever order the
+   stylesheets are loaded in. */
+.section-picker-grid.section-picker-scroll {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+/* One type of the picker: the icon beside the label. */
+.section-picker-option.section-picker-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.section-picker-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  margin-top: 2px;
+  border-radius: var(--radius-md);
+  background: var(--gray-100);
+  color: var(--navy);
+}
+
+.section-picker-option-body {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+/* One section of the page. */
+.section-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color, var(--gray-200));
+  border-radius: var(--radius-md);
+}
+
+.section-card-title {
+  font-weight: 700;
+}
+
+.section-card-summary {
+  max-width: 340px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--gray-600);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── The shared editor kit ────────────────────────────────── */
+/* The image slot of the editors. */
+.image-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.image-field-value {
+  overflow-wrap: anywhere;
+}
+
+.image-field-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The up and down buttons of an ordered list. */
+.order-controls {
+  display: inline-flex;
+  gap: 4px;
+}

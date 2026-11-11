@@ -322,19 +322,26 @@ describe("BannersEditor", () => {
     expect(apiFetchBanners).toHaveBeenCalledTimes(1);
   });
 
-  it("renders responsive mobile data-labels on table cells and responsive layout classes", async () => {
+  it("renders the shared table with responsive mobile data-labels on its cells", async () => {
     const user = userEvent.setup();
     renderEditor();
 
     await screen.findByText("Big Sale");
     const row = screen.getByTestId("editor-row-b1");
-    expect(row).toHaveClass("banners-table-row");
+    // The one table in the app: below 640px it turns into a stack of cards.
+    expect(row).toHaveClass("ui-table-row");
+    expect(row.closest("table")).toHaveClass("ui-table", "ui-table--cards");
 
     const cells = within(row).getAllByRole("cell");
     expect(cells[0]).toHaveAttribute("data-label", "title");
     expect(cells[1]).toHaveAttribute("data-label", "variant");
     expect(cells[2]).toHaveAttribute("data-label", "display order");
-    expect(cells[3]).toHaveAttribute("data-label", "Actions");
+    // The actions cell is the last one: it labels itself, so it needs none.
+    expect(cells[3]).not.toHaveAttribute("data-label");
+
+    // Every label is the column's own name.
+    const headers = screen.getAllByRole("columnheader").map((head) => head.textContent);
+    expect(headers).toEqual(["title", "variant", "display order", "Actions"]);
 
     const tablist = screen.getByRole("tablist", { name: "Banner placement" });
     expect(tablist).toHaveClass("banners-placement-tabs");
@@ -343,7 +350,7 @@ describe("BannersEditor", () => {
     const panel = screen.getByRole("region", { name: /Banner/ });
     // The editor is an in-page panel, not a popup over the table.
     expect(panel).toHaveClass("admin-inline-panel");
-    expect(panel.querySelector(".banners-modal-form")).toBeInTheDocument();
-    expect(panel.querySelector(".banners-modal-footer")).toBeInTheDocument();
+    expect(panel.querySelector(".banners-editor-form")).toBeInTheDocument();
+    expect(panel.querySelector(".banners-editor-actions")).toBeInTheDocument();
   });
 });

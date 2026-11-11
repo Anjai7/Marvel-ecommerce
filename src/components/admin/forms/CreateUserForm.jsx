@@ -1,6 +1,8 @@
 import { X, Sparkles, Eye, RefreshCw, Check, AlertCircle } from "lucide-react";
-import { Button, Input } from "../../ui";
+import clsx from "clsx";
+import { Button, Input, RequiredMark } from "../../ui";
 import AdminInlinePanel from "../AdminInlinePanel";
+import "../admin-forms.css";
 
 /**
  * The create-user form, shown inline in the Users tab.
@@ -36,57 +38,29 @@ export default function CreateUserForm({
         <div className="form-group-row">
           <div className="form-group">
             <label
-              className="form-label"
+              className={clsx(
+                "form-label",
+                "user-form-label",
+                errors.fullName && "user-form-label--invalid"
+              )}
               htmlFor="user-create-fullname"
-              style={{
-                color: errors.fullName ? "#dc2626" : undefined,
-                fontWeight: 600,
-              }}
             >
-              Full Name <span style={{ color: "#dc2626", fontWeight: 700 }}>*</span>{" "}
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: errors.fullName ? "#dc2626" : "#dc2626",
-                  fontWeight: 600,
-                }}
-              >
-                (Mandatory)
-              </span>
+              Full Name <RequiredMark />
             </label>
             <Input
               id="user-create-fullname"
               type="text"
               placeholder="e.g. Alex Morgan"
+              required
               value={form.fullName}
-              style={
-                errors.fullName
-                  ? {
-                      borderColor: "#dc2626",
-                      borderWidth: "2px",
-                      backgroundColor: "#fef2f2",
-                      boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                    }
-                  : {}
-              }
+              className={clsx(errors.fullName && "user-form-input--invalid")}
               onChange={(e) => {
                 setForm((prev) => ({ ...prev, fullName: e.target.value }));
                 clearError?.("fullName");
               }}
             />
             {errors.fullName && (
-              <span
-                className="field-error-text"
-                style={{
-                  color: "#dc2626",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  marginTop: "5px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
+              <span className="field-error-text">
                 <AlertCircle size={13} color="#dc2626" />
                 {errors.fullName}
               </span>
@@ -95,57 +69,29 @@ export default function CreateUserForm({
 
           <div className="form-group">
             <label
-              className="form-label"
+              className={clsx(
+                "form-label",
+                "user-form-label",
+                errors.email && "user-form-label--invalid"
+              )}
               htmlFor="user-create-email"
-              style={{
-                color: errors.email ? "#dc2626" : undefined,
-                fontWeight: 600,
-              }}
             >
-              Email Address <span style={{ color: "#dc2626", fontWeight: 700 }}>*</span>{" "}
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: errors.email ? "#dc2626" : "#dc2626",
-                  fontWeight: 600,
-                }}
-              >
-                (Mandatory)
-              </span>
+              Email Address <RequiredMark />
             </label>
             <Input
               id="user-create-email"
               type="email"
               placeholder="alex@marvel.com"
+              required
               value={form.email}
-              style={
-                errors.email
-                  ? {
-                      borderColor: "#dc2626",
-                      borderWidth: "2px",
-                      backgroundColor: "#fef2f2",
-                      boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                    }
-                  : {}
-              }
+              className={clsx(errors.email && "user-form-input--invalid")}
               onChange={(e) => {
                 setForm((prev) => ({ ...prev, email: e.target.value }));
                 clearError?.("email");
               }}
             />
             {errors.email && (
-              <span
-                className="field-error-text"
-                style={{
-                  color: "#dc2626",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  marginTop: "5px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
+              <span className="field-error-text">
                 <AlertCircle size={13} color="#dc2626" />
                 {errors.email}
               </span>
@@ -156,23 +102,14 @@ export default function CreateUserForm({
         <div className="form-group">
           <div className="label-with-action">
             <label
-              className="form-label"
+              className={clsx(
+                "form-label",
+                "user-form-label",
+                errors.password && "user-form-label--invalid"
+              )}
               htmlFor="user-create-password"
-              style={{
-                color: errors.password ? "#dc2626" : undefined,
-                fontWeight: 600,
-              }}
             >
-              Temporary Password <span style={{ color: "#dc2626", fontWeight: 700 }}>*</span>{" "}
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: errors.password ? "#dc2626" : "#dc2626",
-                  fontWeight: 600,
-                }}
-              >
-                (Mandatory)
-              </span>
+              Temporary Password <RequiredMark />
             </label>
             <button type="button" onClick={onGeneratePassword} className="generate-pass-btn">
               <Sparkles size={12} /> Auto-Generate
@@ -183,17 +120,9 @@ export default function CreateUserForm({
               id="user-create-password"
               type={showPassword ? "text" : "password"}
               placeholder="Minimum 6 characters"
+              required
               value={form.password}
-              style={
-                errors.password
-                  ? {
-                      borderColor: "#dc2626",
-                      borderWidth: "2px",
-                      backgroundColor: "#fef2f2",
-                      boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                    }
-                  : {}
-              }
+              className={clsx(errors.password && "user-form-input--invalid")}
               onChange={(e) => {
                 setForm((prev) => ({ ...prev, password: e.target.value }));
                 clearError?.("password");
@@ -210,18 +139,7 @@ export default function CreateUserForm({
             </button>
           </div>
           {errors.password && (
-            <span
-              className="field-error-text"
-              style={{
-                color: "#dc2626",
-                fontSize: "12px",
-                fontWeight: 600,
-                marginTop: "5px",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
+            <span className="field-error-text">
               <AlertCircle size={13} color="#dc2626" />
               {errors.password}
             </span>
@@ -231,16 +149,14 @@ export default function CreateUserForm({
         <div className="form-group-row">
           <div className="form-group">
             <label className="form-label" htmlFor="user-create-role">
-              Account Role <span style={{ color: "#dc2626", fontWeight: 700 }}>*</span>{" "}
-              <span style={{ fontSize: "11px", color: "#dc2626", fontWeight: 600 }}>
-                (Mandatory)
-              </span>
+              Account Role <RequiredMark />
             </label>
             <select
               id="user-create-role"
               value={form.role}
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               className="form-select-field"
+              required
             >
               <option value="user">Customer (Standard Shopper)</option>
               <option value="vendor">Vendor / Seller</option>
@@ -253,57 +169,29 @@ export default function CreateUserForm({
         {form.role === "vendor" && (
           <div className="form-group animate-fade-in">
             <label
-              className="form-label"
+              className={clsx(
+                "form-label",
+                "user-form-label",
+                errors.storeName && "user-form-label--invalid"
+              )}
               htmlFor="user-create-storename"
-              style={{
-                color: errors.storeName ? "#dc2626" : undefined,
-                fontWeight: 600,
-              }}
             >
-              Store / Business Name <span style={{ color: "#dc2626", fontWeight: 700 }}>*</span>{" "}
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: errors.storeName ? "#dc2626" : "#dc2626",
-                  fontWeight: 600,
-                }}
-              >
-                (Mandatory)
-              </span>
+              Store / Business Name <RequiredMark />
             </label>
             <Input
               id="user-create-storename"
               type="text"
               placeholder="e.g. Apex Electronics"
+              required
               value={form.storeName}
-              style={
-                errors.storeName
-                  ? {
-                      borderColor: "#dc2626",
-                      borderWidth: "2px",
-                      backgroundColor: "#fef2f2",
-                      boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.15)",
-                    }
-                  : {}
-              }
+              className={clsx(errors.storeName && "user-form-input--invalid")}
               onChange={(e) => {
                 setForm((prev) => ({ ...prev, storeName: e.target.value }));
                 clearError?.("storeName");
               }}
             />
             {errors.storeName && (
-              <span
-                className="field-error-text"
-                style={{
-                  color: "#dc2626",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  marginTop: "5px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
+              <span className="field-error-text">
                 <AlertCircle size={13} color="#dc2626" />
                 {errors.storeName}
               </span>

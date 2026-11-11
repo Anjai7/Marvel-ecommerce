@@ -1,23 +1,26 @@
 import { useState, useEffect } from "react";
 import {
   Store,
-  Package,
   Plus,
   Edit2,
   Trash2,
   TrendingUp,
   Truck,
-  CheckCircle2,
   AlertCircle,
-  Search,
   ExternalLink,
-  Settings,
-  ShieldCheck,
   ShoppingBag,
-  Clock,
-  ArrowRight,
 } from "lucide-react";
-import { Button, Input, useToast } from "../ui";
+import {
+  Button,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  useToast,
+} from "../ui";
+import SearchInput from "../ui/SearchInput";
 import CategoryPicker from "../admin/CategoryPicker";
 import VendorProductModal from "./VendorProductModal";
 import VendorFulfillmentModal from "./VendorFulfillmentModal";
@@ -31,6 +34,7 @@ import {
   apiUpdateOrderStatus,
 } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
+import "./vendor-dashboard.css";
 
 /** Depth-first lookup of one node in a category tree. */
 function findCategoryNode(nodes, id) {
@@ -59,6 +63,13 @@ function collectCategoryIds(nodes, id) {
     stack.push(...(node.children || []));
   }
   return ids;
+}
+
+/** The tone of an order status: delivered, shipped or still being processed. */
+function statusTone(status) {
+  if (status === "delivered") return "delivered";
+  if (status === "shipped") return "shipped";
+  return "processing";
 }
 
 export default function VendorDashboard({ currentUser, onNavigateHome }) {
@@ -272,59 +283,22 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
   });
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "calc(100vh - 120px)", padding: "30px 20px" }}>
-      <div className="container" style={{ maxWidth: 1200, margin: "0 auto" }}>
+    <div className="vendor-dashboard">
+      <div className="container vendor-dashboard__inner">
         {/* Vendor Header Banner */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #3b0764 0%, #6b21a8 50%, #9333ea 100%)",
-            color: "#ffffff",
-            borderRadius: 16,
-            padding: "24px 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: 16,
-            marginBottom: 24,
-            boxShadow: "0 10px 25px -5px rgba(107, 33, 168, 0.25)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: "rgba(255, 255, 255, 0.2)",
-                backdropFilter: "blur(8px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+        <div className="vendor-banner">
+          <div className="vendor-banner__identity">
+            <div className="vendor-banner__logo">
               <Store size={28} color="#ffffff" />
             </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, color: "#fff" }}>
+              <div className="vendor-banner__title-row">
+                <h2 className="vendor-banner__title">
                   {currentUser?.store_name || "TechGear Flagship Store"}
                 </h2>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 800,
-                    padding: "3px 10px",
-                    borderRadius: 20,
-                    background: "#dcfce7",
-                    color: "#15803d",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  Verified Merchant
-                </span>
+                <span className="vendor-banner__verified">Verified Merchant</span>
               </div>
-              <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.8)", margin: "4px 0 0 0" }}>
+              <p className="vendor-banner__meta">
                 Seller Account: <strong>{currentUser?.full_name}</strong> ({currentUser?.email})
               </p>
             </div>
@@ -334,206 +308,66 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
             variant="secondary"
             size="sm"
             onClick={onNavigateHome}
-            style={{
-              background: "rgba(255,255,255,0.2)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 10,
-            }}
+            className="vendor-banner__preview"
           >
-            <ExternalLink size={14} style={{ marginRight: 6 }} /> Preview Public Storefront
+            <ExternalLink size={14} className="vendor-button__icon" /> Preview Public Storefront
           </Button>
         </div>
 
         {/* Store Key Metrics */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 16,
-            marginBottom: 28,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 14,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748b",
-                textTransform: "uppercase",
-              }}
-            >
-              Total Gross Revenue
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#16a34a", marginTop: 4 }}>
+        <div className="vendor-metrics">
+          <div className="vendor-metric">
+            <div className="vendor-metric__label">Total Gross Revenue</div>
+            <div className="vendor-metric__value vendor-metric__value--revenue">
               {formatCurrency(totalRevenue)}
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              Across {orders.length} store orders
-            </div>
+            <div className="vendor-metric__hint">Across {orders.length} store orders</div>
           </div>
 
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 14,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748b",
-                textTransform: "uppercase",
-              }}
-            >
-              Active Listed Items
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#7c3aed", marginTop: 4 }}>
+          <div className="vendor-metric">
+            <div className="vendor-metric__label">Active Listed Items</div>
+            <div className="vendor-metric__value vendor-metric__value--items">
               {products.length}
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              {totalStockUnits} Total stock units
-            </div>
+            <div className="vendor-metric__hint">{totalStockUnits} Total stock units</div>
           </div>
 
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 14,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748b",
-                textTransform: "uppercase",
-              }}
-            >
-              Pending Fulfillment
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#d97706", marginTop: 4 }}>
+          <div className="vendor-metric">
+            <div className="vendor-metric__label">Pending Fulfillment</div>
+            <div className="vendor-metric__value vendor-metric__value--pending">
               {orders.filter((o) => o.status === "processing").length}
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-              Ready to package & ship
-            </div>
+            <div className="vendor-metric__hint">Ready to package &amp; ship</div>
           </div>
 
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 14,
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "#64748b",
-                textTransform: "uppercase",
-              }}
-            >
-              Seller Rating
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", marginTop: 4 }}>
-              4.8 ★
-            </div>
-            <div style={{ fontSize: 12, color: "#16a34a", marginTop: 4 }}>
+          <div className="vendor-metric">
+            <div className="vendor-metric__label">Seller Rating</div>
+            <div className="vendor-metric__value vendor-metric__value--rating">4.8 ★</div>
+            <div className="vendor-metric__hint vendor-metric__hint--positive">
               Top 5% customer satisfaction
             </div>
           </div>
         </div>
 
         {/* Tab Controls */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            borderBottom: "2px solid #e2e8f0",
-            marginBottom: 24,
-            overflowX: "auto",
-            whiteSpace: "nowrap",
-            WebkitOverflowScrolling: "touch",
-            scrollbarWidth: "none",
-          }}
-        >
+        <div className="vendor-tabs">
           <button
             onClick={() => setActiveTab("overview")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "overview" ? 700 : 500,
-              color: activeTab === "overview" ? "#7c3aed" : "#64748b",
-              borderBottom:
-                activeTab === "overview" ? "3px solid #7c3aed" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`vendor-tab${activeTab === "overview" ? " vendor-tab--active" : ""}`}
           >
             <TrendingUp size={18} /> Store Overview
           </button>
 
           <button
             onClick={() => setActiveTab("products")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "products" ? 700 : 500,
-              color: activeTab === "products" ? "#7c3aed" : "#64748b",
-              borderBottom:
-                activeTab === "products" ? "3px solid #7c3aed" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`vendor-tab${activeTab === "products" ? " vendor-tab--active" : ""}`}
           >
             <ShoppingBag size={18} /> Product Catalog ({products.length})
           </button>
 
           <button
             onClick={() => setActiveTab("orders")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 18px",
-              border: "none",
-              background: "none",
-              fontSize: 14,
-              fontWeight: activeTab === "orders" ? 700 : 500,
-              color: activeTab === "orders" ? "#7c3aed" : "#64748b",
-              borderBottom: activeTab === "orders" ? "3px solid #7c3aed" : "3px solid transparent",
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
+            className={`vendor-tab${activeTab === "orders" ? " vendor-tab--active" : ""}`}
           >
             <Truck size={18} /> Order Fulfillment ({orders.length})
           </button>
@@ -541,71 +375,35 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === "overview" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
-              gap: 24,
-            }}
-          >
+          <div className="vendor-overview">
             {/* Recent Orders Overview */}
-            <div
-              style={{
-                background: "#ffffff",
-                padding: 24,
-                borderRadius: 16,
-                border: "1px solid #e2e8f0",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 18,
-                }}
-              >
-                <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "#0f172a" }}>
-                  Recent Incoming Orders
-                </h3>
+            <div className="vendor-panel">
+              <div className="vendor-panel__header">
+                <h3 className="vendor-panel__title">Recent Incoming Orders</h3>
                 <Button variant="secondary" size="sm" onClick={() => setActiveTab("orders")}>
                   View All Orders
                 </Button>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="vendor-order-list">
                 {orders.slice(0, 3).map((order) => (
-                  <div
-                    key={order.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: 14,
-                      borderRadius: 10,
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  >
+                  <div key={order.id} className="vendor-order-card">
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
+                      <div className="vendor-order-card__title">
                         Order #{order.id.toUpperCase()}
                       </div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
+                      <div className="vendor-order-card__meta">
                         Customer: {order.customer_name} • {order.items?.length || 1} item(s)
                       </div>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 800, color: "#16a34a", fontSize: 15 }}>
+                    <div className="vendor-order-card__aside">
+                      <div className="vendor-order-card__total">
                         {formatCurrency(order.total_amount)}
                       </div>
                       <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          textTransform: "uppercase",
-                          color: order.status === "delivered" ? "#15803d" : "#b45309",
-                        }}
+                        className={`vendor-status vendor-status--${
+                          order.status === "delivered" ? "delivered" : "pending"
+                        }`}
                       >
                         {order.status}
                       </span>
@@ -616,28 +414,19 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
             </div>
 
             {/* Quick Actions & Stock Alerts */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div
-                style={{
-                  background: "#ffffff",
-                  padding: 20,
-                  borderRadius: 16,
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <h4 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 12px 0" }}>
-                  Quick Seller Actions
-                </h4>
+            <div className="vendor-side-column">
+              <div className="vendor-panel vendor-panel--tight">
+                <h4 className="vendor-panel__subtitle">Quick Seller Actions</h4>
                 <Button
                   variant="primary"
-                  style={{ width: "100%", background: "#7c3aed", marginBottom: 10 }}
+                  className="vendor-button--accent vendor-button--block vendor-quick-action"
                   onClick={handleOpenAddProduct}
                 >
-                  <Plus size={16} style={{ marginRight: 6 }} /> Add New Product
+                  <Plus size={16} className="vendor-button__icon" /> Add New Product
                 </Button>
                 <Button
                   variant="secondary"
-                  style={{ width: "100%" }}
+                  className="vendor-button--block"
                   onClick={() => setActiveTab("orders")}
                 >
                   Process Shipments
@@ -645,27 +434,11 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               </div>
 
               {lowStockCount > 0 && (
-                <div
-                  style={{
-                    background: "#fffbeb",
-                    padding: 16,
-                    borderRadius: 14,
-                    border: "1px solid #fde68a",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      color: "#b45309",
-                      fontWeight: 700,
-                      fontSize: 14,
-                    }}
-                  >
+                <div className="vendor-alert">
+                  <div className="vendor-alert__title">
                     <AlertCircle size={16} /> Low Stock Alert ({lowStockCount})
                   </div>
-                  <p style={{ fontSize: 12, color: "#92400e", margin: "6px 0 0 0" }}>
+                  <p className="vendor-alert__text">
                     Some products have less than 10 units remaining. Restock to prevent lost sales.
                   </p>
                 </div>
@@ -676,269 +449,150 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
 
         {/* TAB 2: PRODUCT CATALOG CRUD */}
         {activeTab === "products" && (
-          <div
-            style={{
-              background: "#ffffff",
-              padding: 24,
-              borderRadius: 16,
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 14,
-                marginBottom: 20,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  flex: 1,
-                  minWidth: "min(100%, 260px)",
-                }}
-              >
-                <Input
-                  type="text"
-                  placeholder="Search products by title..."
+          <div className="vendor-catalog">
+            <div className="vendor-catalog__toolbar">
+              <div className="vendor-catalog__filters">
+                <SearchInput
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  leftIcon={<Search size={16} />}
+                  onValueChange={setSearchQuery}
+                  placeholder="Search products by title..."
+                  ariaLabel="Search vendor products"
+                  clearLabel="Clear product search"
                 />
                 <CategoryPicker
                   value={categoryFilter.id}
                   label={categoryFilter.name}
                   onChange={(id, name) => setCategoryFilter({ id, name })}
                   emptyLabel="All Categories"
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #cbd5e1",
-                    fontSize: 13,
-                    width: 220,
-                  }}
+                  className="vendor-category-filter"
                 />
               </div>
 
               <Button
                 variant="primary"
-                style={{ background: "#7c3aed" }}
+                className="vendor-button--accent"
                 onClick={handleOpenAddProduct}
               >
-                <Plus size={16} style={{ marginRight: 6 }} /> Add Product
+                <Plus size={16} className="vendor-button__icon" /> Add Product
               </Button>
             </div>
 
             {/* Products Table */}
-            <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  textAlign: "left",
-                  fontSize: 14,
-                }}
-              >
-                <thead>
-                  <tr
-                    style={{
-                      background: "#f8fafc",
-                      color: "#475569",
-                      borderBottom: "2px solid #e2e8f0",
-                    }}
-                  >
-                    <th style={{ padding: "12px 16px" }}>Product Item</th>
-                    <th style={{ padding: "12px 16px" }}>Category</th>
-                    <th style={{ padding: "12px 16px" }}>Price</th>
-                    <th style={{ padding: "12px 16px" }}>Stock</th>
-                    <th style={{ padding: "12px 16px" }}>Status</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <div className="table-responsive-wrapper">
+              <Table className="ui-table--cards">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Product Item</TableHead>
+                    <TableHead scope="col">Category</TableHead>
+                    <TableHead scope="col">Price</TableHead>
+                    <TableHead scope="col">Stock</TableHead>
+                    <TableHead scope="col">Status</TableHead>
+                    <TableHead scope="col" className="text-right">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredProducts.map((prod) => (
-                    <tr key={prod.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "14px 16px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <TableRow key={prod.id}>
+                      <TableCell>
+                        <div className="vendor-product">
                           <img
+                            className="vendor-product-thumb"
                             src={
                               prod.image_url ||
                               "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100"
                             }
                             alt={prod.title}
-                            style={{
-                              width: 44,
-                              height: 44,
-                              objectFit: "cover",
-                              borderRadius: 8,
-                              border: "1px solid #e2e8f0",
-                            }}
                           />
                           <div>
-                            <div style={{ fontWeight: 700, color: "#0f172a" }}>{prod.title}</div>
-                            <div style={{ fontSize: 12, color: "#64748b" }}>ID: {prod.id}</div>
+                            <div className="vendor-product-title">{prod.title}</div>
+                            <div className="vendor-product-id">ID: {prod.id}</div>
                           </div>
                         </div>
-                      </td>
-                      <td style={{ padding: "14px 16px", color: "#64748b" }}>{prod.category}</td>
-                      <td style={{ padding: "14px 16px", fontWeight: 700, color: "#0f172a" }}>
+                      </TableCell>
+                      <TableCell data-label="Category" className="vendor-cell-muted">
+                        {prod.category}
+                      </TableCell>
+                      <TableCell data-label="Price" className="vendor-cell-strong">
                         {formatCurrency(prod.price)}
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
+                      </TableCell>
+                      <TableCell data-label="Stock">
                         <span
-                          style={{
-                            padding: "3px 8px",
-                            borderRadius: 6,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            background: prod.stock > 10 ? "#dcfce7" : "#fef3c7",
-                            color: prod.stock > 10 ? "#15803d" : "#b45309",
-                          }}
+                          className={`vendor-stock-badge vendor-stock-badge--${
+                            prod.stock > 10 ? "ok" : "low"
+                          }`}
                         >
                           {prod.stock} in stock
                         </span>
-                      </td>
-                      <td style={{ padding: "14px 16px" }}>
-                        <span
-                          style={{
-                            padding: "3px 8px",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            background: "#e0f2fe",
-                            color: "#0369a1",
-                          }}
-                        >
+                      </TableCell>
+                      <TableCell data-label="Status">
+                        <span className="vendor-moderation-badge">
                           {prod.moderation_status || "Active"}
                         </span>
-                      </td>
-                      <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: 8 }}>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="vendor-actions">
                           <button
                             onClick={() => handleOpenEditProduct(prod)}
-                            style={{
-                              padding: 6,
-                              borderRadius: 6,
-                              border: "none",
-                              background: "#f3e8ff",
-                              color: "#7c3aed",
-                              cursor: "pointer",
-                            }}
+                            className="vendor-action-button vendor-action-button--edit"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteProduct(prod.id, prod.title)}
-                            style={{
-                              padding: 6,
-                              borderRadius: 6,
-                              border: "none",
-                              background: "#fee2e2",
-                              color: "#dc2626",
-                              cursor: "pointer",
-                            }}
+                            className="vendor-action-button vendor-action-button--delete"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
 
         {/* TAB 3: ORDER FULFILLMENT */}
         {activeTab === "orders" && (
-          <div
-            style={{
-              background: "#ffffff",
-              padding: 24,
-              borderRadius: 16,
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", marginBottom: 16 }}>
-              Order Fulfillment & Shipments ({orders.length})
+          <div className="vendor-fulfillment">
+            <h3 className="vendor-fulfillment__title">
+              Order Fulfillment &amp; Shipments ({orders.length})
             </h3>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="vendor-shipment-list">
               {orders.map((ord) => (
-                <div
-                  key={ord.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: 14,
-                    padding: 18,
-                    borderRadius: 12,
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
+                <div key={ord.id} className="vendor-shipment">
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontWeight: 800, fontSize: 15, color: "#0f172a" }}>
-                        Order #{ord.id.toUpperCase()}
-                      </span>
+                    <div className="vendor-shipment__heading">
+                      <span className="vendor-shipment__title">Order #{ord.id.toUpperCase()}</span>
                       <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: "2px 8px",
-                          borderRadius: 6,
-                          textTransform: "uppercase",
-                          background:
-                            ord.status === "delivered"
-                              ? "#dcfce7"
-                              : ord.status === "shipped"
-                                ? "#e0f2fe"
-                                : "#fef3c7",
-                          color:
-                            ord.status === "delivered"
-                              ? "#15803d"
-                              : ord.status === "shipped"
-                                ? "#0369a1"
-                                : "#b45309",
-                        }}
+                        className={`vendor-status-chip vendor-status-chip--${statusTone(ord.status)}`}
                       >
                         {ord.status}
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                    <div className="vendor-shipment__meta">
                       Customer: <strong>{ord.customer_name}</strong> ({ord.customer_email}) • Ship
                       to: {ord.shipping_address}
                     </div>
-                    <div style={{ fontSize: 12, color: "#2563eb", marginTop: 4 }}>
+                    <div className="vendor-shipment__tracking">
                       Tracking: {ord.carrier || "Express"} —{" "}
                       <code>{ord.tracking_number || "Awaiting shipment"}</code>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right" }}>
-                    <div
-                      style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}
-                    >
-                      {formatCurrency(ord.total_amount)}
-                    </div>
+                  <div className="vendor-shipment__aside">
+                    <div className="vendor-shipment__total">{formatCurrency(ord.total_amount)}</div>
                     <Button
                       variant="primary"
                       size="sm"
-                      style={{ background: "#7c3aed" }}
+                      className="vendor-button--accent"
                       onClick={() => handleOpenFulfillment(ord)}
                     >
-                      <Truck size={14} style={{ marginRight: 6 }} /> Update Shipment
+                      <Truck size={14} className="vendor-button__icon" /> Update Shipment
                     </Button>
                   </div>
                 </div>

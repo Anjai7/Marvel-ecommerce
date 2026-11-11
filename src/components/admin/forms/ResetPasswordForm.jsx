@@ -1,6 +1,7 @@
 import { Key } from "lucide-react";
-import { Button, Input } from "../../ui";
+import { Button, Input, RequiredMark } from "../../ui";
 import AdminInlinePanel from "../AdminInlinePanel";
+import "../admin-forms.css";
 
 /**
  * The reset-password form, shown inline in the Users tab.
@@ -28,7 +29,7 @@ export default function ResetPasswordForm({
       <form onSubmit={onSubmit} className="admin-inline-form">
         <div className="form-group">
           <label className="form-label" htmlFor="user-reset-password">
-            New Password *
+            New Password <RequiredMark />
           </label>
           <Input
             id="user-reset-password"

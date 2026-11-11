@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { apiUploadImage } from "../../api/backendApi";
 import { Button, Input } from "./index";
+import "./ui-primitives.css";
 
 export default function ImageUploadDropzone({
   value,
@@ -69,41 +70,21 @@ export default function ImageUploadDropzone({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>
-          Product Image (Cloudinary CDN)
-        </label>
-        <div style={{ display: "flex", gap: 6 }}>
+    <div className="field-stack">
+      <div className="field-header">
+        <label className="field-label">Product Image (Cloudinary CDN)</label>
+        <div className="button-group">
           <button
             type="button"
             onClick={() => setMode("file")}
-            style={{
-              background: mode === "file" ? "#f1f5f9" : "transparent",
-              border: "none",
-              padding: "2px 8px",
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: mode === "file" ? 700 : 500,
-              color: mode === "file" ? "#0f172a" : "#64748b",
-              cursor: "pointer",
-            }}
+            className={mode === "file" ? "segment-button is-active" : "segment-button"}
           >
             Upload File
           </button>
           <button
             type="button"
             onClick={() => setMode("url")}
-            style={{
-              background: mode === "url" ? "#f1f5f9" : "transparent",
-              border: "none",
-              padding: "2px 8px",
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: mode === "url" ? 700 : 500,
-              color: mode === "url" ? "#0f172a" : "#64748b",
-              cursor: "pointer",
-            }}
+            className={mode === "url" ? "segment-button is-active" : "segment-button"}
           >
             Paste URL
           </button>
@@ -124,42 +105,13 @@ export default function ImageUploadDropzone({
       ) : (
         <div>
           {preview ? (
-            <div
-              style={{
-                position: "relative",
-                width: "100%",
-                height: 160,
-                borderRadius: 12,
-                overflow: "hidden",
-                border: "1px solid #cbd5e1",
-                background: "#0f172a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <img
-                src={preview}
-                alt="Product preview"
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
+            <div className="dropzone-preview">
+              <img src={preview} alt="Product preview" className="dropzone-preview-image" />
 
               {uploading && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background: "rgba(0,0,0,0.6)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    gap: 8,
-                  }}
-                >
+                <div className="dropzone-overlay">
                   <Loader2 size={24} className="animate-spin" />
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>Uploading to Cloudinary...</span>
+                  <span className="dropzone-overlay-label">Uploading to Cloudinary...</span>
                 </div>
               )}
 
@@ -167,21 +119,7 @@ export default function ImageUploadDropzone({
                 <button
                   type="button"
                   onClick={handleClear}
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    background: "rgba(0,0,0,0.7)",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: 28,
-                    height: 28,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                  }}
+                  className="dropzone-preview-clear"
                   title="Remove image"
                 >
                   <X size={16} />
@@ -197,42 +135,20 @@ export default function ImageUploadDropzone({
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: dragOver ? "2px dashed #7c3aed" : "2px dashed #cbd5e1",
-                background: dragOver ? "#f3e8ff" : "#f8fafc",
-                borderRadius: 12,
-                padding: "24px 16px",
-                textAlign: "center",
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-              }}
+              className={dragOver ? "dropzone is-dragging" : "dropzone"}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                style={{ display: "none" }}
+                className="hidden-file-input"
               />
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: "50%",
-                  background: "#ede9fe",
-                  color: "#7c3aed",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 8,
-                }}
-              >
+              <div className="dropzone-icon">
                 <UploadCloud size={22} />
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
-                Click to upload or drag & drop image
-              </div>
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+              <div className="dropzone-title">Click to upload or drag & drop image</div>
+              <div className="dropzone-hint">
                 PNG, JPG, WebP up to 10MB (Stores on Cloudinary CDN)
               </div>
             </div>

@@ -1,7 +1,8 @@
 import { Edit2, RefreshCw, Check } from "lucide-react";
-import { Button, Input } from "../../ui";
+import { Button, Input, RequiredMark } from "../../ui";
 import { EMPTY } from "../adminConstants";
 import AdminInlinePanel from "../AdminInlinePanel";
+import "../admin-forms.css";
 
 /**
  * The edit-user form, shown inline in the Users tab.
@@ -34,7 +35,7 @@ export default function EditUserForm({
         <div className="form-group-row">
           <div className="form-group">
             <label className="form-label" htmlFor="edit-user-fullname">
-              Full Name
+              Full Name <RequiredMark />
             </label>
             <Input
               id="edit-user-fullname"
@@ -47,7 +48,7 @@ export default function EditUserForm({
 
           <div className="form-group">
             <label className="form-label" htmlFor="edit-user-email">
-              Email Address
+              Email Address <RequiredMark />
             </label>
             <Input
               id="edit-user-email"
@@ -63,13 +64,14 @@ export default function EditUserForm({
           {/* Role Selector */}
           <div className="form-group">
             <label className="form-label" htmlFor="edit-user-role">
-              Role
+              Role <RequiredMark />
             </label>
             <select
               id="edit-user-role"
               value={form.role}
               onChange={(e) => setForm((prev) => ({ ...prev, role: e.target.value }))}
               className="form-select-field"
+              aria-required="true"
             >
               <option value="user">Customer (User)</option>
               <option value="vendor">Vendor</option>
@@ -81,13 +83,14 @@ export default function EditUserForm({
           {/* Status Selector */}
           <div className="form-group">
             <label className="form-label" htmlFor="edit-user-status">
-              Account Status
+              Account Status <RequiredMark />
             </label>
             <select
               id="edit-user-status"
               value={form.status}
               onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
               className="form-select-field"
+              aria-required="true"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -101,11 +104,12 @@ export default function EditUserForm({
         {form.role === "vendor" && (
           <div className="form-group animate-fade-in">
             <label className="form-label" htmlFor="edit-user-store-name">
-              Vendor Store Name
+              Vendor Store Name <RequiredMark />
             </label>
             <Input
               id="edit-user-store-name"
               type="text"
+              aria-required="true"
               value={form.store_name}
               onChange={(e) => setForm((prev) => ({ ...prev, store_name: e.target.value }))}
             />

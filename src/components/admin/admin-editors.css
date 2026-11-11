@@ -1,0 +1,186 @@
+/* Admin editors — the shared vocabulary of the four content editors:
+   the menu tree, the category tree, the hero slides and the banners.
+   Every editor imports it, so a field looks the same wherever it is
+   edited. Imported by the editors that use it. */
+
+/* ── A labelled field ─────────────────────────────────────── */
+/* The label sits on the left of the row, whatever sits beside it on
+   the right. Every field that owns a label wears this row. */
+.editor-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* A required field's label is the one that carries the asterisk. */
+.form-label.editor-field-label--required {
+  font-weight: 600;
+}
+
+/* A field that failed validation says so in the same red as its message. */
+.form-label.editor-field-label--error {
+  color: #dc2626;
+}
+
+/* The message under a field that failed validation. */
+.editor-field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* The input of a field that failed validation. */
+.ui-input.ui-input--invalid {
+  border-color: #ef4444;
+  border-width: 2px;
+  background-color: #fef2f2;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+/* A hint under a field. */
+.editor-hint {
+  display: block;
+  margin: 0;
+}
+
+/* A hint that sits close under the field it explains. */
+.editor-hint--tight {
+  display: block;
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* ── Switches and order controls ──────────────────────────── */
+/* A label that holds a switch beside its text. */
+.editor-switch-label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* A row that holds a label on the left and a switch on the right. */
+.editor-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* The order buttons and the position they sit at. */
+.editor-order-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* A form group that needs less room under it. */
+.editor-group--tight {
+  margin-bottom: 8px;
+}
+
+/* ── The tree ─────────────────────────────────────────────── */
+/* The empty state of a search that found nothing: the same block,
+   less padding. */
+.menu-tree-empty--compact {
+  padding: 32px 16px;
+}
+
+/* ── The list of banners ──────────────────────────────────── */
+/* The frame around the shared table. */
+.editor-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--white);
+  border: 1px solid #e2e8f0;
+}
+
+/* On a phone every row is its own card, so the frame around them
+   goes: the cards carry their own edges. */
+@media (max-width: 640px) {
+  .editor-table-wrapper {
+    border: none;
+    background: transparent;
+    overflow-x: visible;
+  }
+}
+
+/* The row of controls at the end of a table row. */
+.editor-table-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* On a phone the row is a card, so the controls take its full width and
+   wrap instead of running past the edge. */
+@media (max-width: 640px) {
+  .editor-table-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+/* ── The slide preview ────────────────────────────────────── */
+/* The preview box. Its background is the slide's own gradient, so
+   the value arrives as a custom property and the styling stays here. */
+.editor-preview {
+  background: var(--editor-preview-bg, transparent);
+}
+
+/* The picture inside the preview and the thumbnail in the list. */
+.editor-thumbnail {
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+}
+
+/* The call-to-action text inside the preview. */
+.editor-preview-cta {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* The panel that holds the preview and the details under it. */
+.editor-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0;
+}
+
+/* The grid of details under the preview. */
+.editor-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 13px;
+}
+
+/* The on/off state in the details grid. */
+.editor-detail-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+}
+
+.editor-detail-status--on {
+  color: #059669;
+}
+
+.editor-detail-status--off {
+  color: #64748b;
+}
+
+/* The actions at the foot of the details panel. */
+.editor-detail-actions {
+  padding: 12px 0 0 0;
+  border-top: 1px solid #e2e8f0;
+}

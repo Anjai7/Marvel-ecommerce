@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import {
   Home,
   ShoppingBag,
@@ -169,8 +169,15 @@ function MegaMenuFeaturedCard({
  * Live mega-menu for one level-1 tree node: level-2 nodes become column
  * headers (ordered/grouped by `section`), level-3 nodes become links,
  * and a promo card renders when `promo_title` is set.
+ *
+ * The panel is positioned against the viewport rather than against its
+ * parent. The nav bar is a horizontal scroller, and an absolutely
+ * positioned panel inside it is clipped by the scroller — so the dropdown
+ * never appeared on the pages that use this nav. `anchorRef` points at the
+ * item that opened it; the panel follows it.
  */
-export function LiveMegaMenu({ root, alignRight, onNavigate }) {
+export function LiveMegaMenu({ root, alignRight, onNavigate, anchorRef }) {
+  const menuRef = useRef(null);
   const level2 = groupBySection((root.children || []).filter(isVisible).sort(byOrder));
   const featured = root.promo_title
     ? {
@@ -181,8 +188,35 @@ export function LiveMegaMenu({ root, alignRight, onNavigate }) {
       }
     : null;
 
+  // Keep the panel under its item, and on the screen.
+  useLayoutEffect(() => {
+    const place = () => {
+      const menu = menuRef.current;
+      const anchor = anchorRef?.current;
+      if (!menu || !anchor) return;
+      const anchorBox = anchor.getBoundingClientRect();
+      const width = menu.offsetWidth;
+      // Left-aligned menus start at the item; right-aligned ones end at it.
+      const wanted = alignRight ? anchorBox.right - width : anchorBox.left;
+      // Keep the panel on the screen whatever the item does.
+      const left = Math.max(16, Math.min(wanted, window.innerWidth - width - 16));
+      menu.style.left = `${left}px`;
+      menu.style.top = `${anchorBox.bottom}px`;
+    };
+
+    place();
+    window.addEventListener("resize", place);
+    // The nav scrolls sideways, so the anchor moves under the pointer.
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchorRef, alignRight]);
+
   return (
     <div
+      ref={menuRef}
       className={`mega-menu ${alignRight ? "align-right" : "align-left"}`}
       role="region"
       aria-label={`${root.title} submenu`}
@@ -261,6 +295,12 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
   const error = errors?.menu ?? null;
   const [activeMenu, setActiveMenu] = useState(null);
   const navTimer = useRef(null);
+  // One ref per nav item: the mega-menu measures it to place itself.
+  const groupRefs = useRef(new Map());
+  const groupRef = (id) => {
+    if (!groupRefs.current.has(id)) groupRefs.current.set(id, { current: null });
+    return groupRefs.current.get(id);
+  };
 
   useEffect(
     () => () => {
@@ -353,9 +393,11 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
               const children = (root.children || []).filter(isVisible);
               const hasDropdown = children.length > 0;
               const isActive = activePath === root.path;
+              const anchorRef = groupRef(root.id);
               return (
                 <div
                   key={root.id}
+                  ref={anchorRef}
                   className={`hover-nav-group ${alignRight ? "nav-group-right" : "nav-group-left"}`}
                   onMouseEnter={() => hasDropdown && openMenu(root.title)}
                   onMouseLeave={hasDropdown ? scheduleClose : undefined}
@@ -371,7 +413,12 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
                     targetPath: root.path || "/",
                   })}
                   {hasDropdown && activeMenu === root.title && (
-                    <LiveMegaMenu root={root} alignRight={alignRight} onNavigate={onNavigate} />
+                    <LiveMegaMenu
+                      root={root}
+                      alignRight={alignRight}
+                      onNavigate={onNavigate}
+                      anchorRef={anchorRef}
+                    />
                   )}
                 </div>
               );
