@@ -280,6 +280,64 @@ describe("MenuTreeEditor", () => {
     expect(screen.getByText("Phones")).toBeVisible();
   });
 
+  it("renders the tree as a table with one row per node", async () => {
+    const { container } = renderEditor();
+
+    await screen.findByText("Shop");
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Name" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Path" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Status" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeVisible();
+
+    // The header row plus one row per node, in tree order.
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(5);
+    expect(rows[1]).toHaveAttribute("data-testid", "menu-row-1");
+    expect(rows[2]).toHaveAttribute("data-testid", "menu-row-2");
+    expect(rows[3]).toHaveAttribute("data-testid", "menu-row-3");
+    expect(rows[4]).toHaveAttribute("data-testid", "menu-row-4");
+
+    // The hierarchy is an indent, so every cell carries its depth.
+    expect(container.querySelector('[data-testid="menu-row-1"] .admin-tree-name')).toHaveAttribute(
+      "data-depth",
+      "1"
+    );
+    expect(container.querySelector('[data-testid="menu-row-2"] .admin-tree-name')).toHaveAttribute(
+      "data-depth",
+      "2"
+    );
+    expect(container.querySelector('[data-testid="menu-row-3"] .admin-tree-name')).toHaveAttribute(
+      "data-depth",
+      "3"
+    );
+
+    // The middle columns keep their name for the card layout.
+    expect(
+      container.querySelector('[data-testid="menu-row-1"] .ui-table-cell[data-label="Path"]')
+    ).toBeTruthy();
+    expect(
+      container.querySelector('[data-testid="menu-row-1"] .ui-table-cell[data-label="Status"]')
+    ).toBeTruthy();
+  });
+
+  it("hides the children of a collapsed node and brings them back", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await screen.findByText("Electronics");
+    await user.click(screen.getByRole("button", { name: "Collapse Shop" }));
+
+    expect(screen.getByText("Shop")).toBeVisible();
+    expect(screen.queryByText("Electronics")).not.toBeInTheDocument();
+    expect(screen.queryByText("Phones")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Expand Shop" }));
+    expect(await screen.findByText("Electronics")).toBeVisible();
+    expect(screen.getByText("Phones")).toBeVisible();
+  });
+
   it("shows the top-level and total item counts in the tree header", async () => {
     renderEditor();
 

@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Edit2, Eye, Plus, Trash2 } from "lucide-react";
-import { Button, Input, RequiredMark, useToast } from "../ui";
+import {
+  Button,
+  Input,
+  RequiredMark,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useToast,
+} from "../ui";
 import Switch from "../ui/Switch";
 import "./admin-content.css";
 import "./admin-editors.css";
@@ -658,82 +669,111 @@ export default function HeroSlidesEditor() {
       ) : slides.length === 0 ? (
         <p className="chart-subtitle">No hero slides yet. Add the first one to get started.</p>
       ) : (
-        <div className="menu-tree">
-          {slides.map((slide, index) => (
-            <div key={slide.id} className="menu-tree-node" data-level={1}>
-              <div className="menu-tree-row">
-                {slide.product_image_url || slide.bg_image_url || slide.fallback_image_url ? (
-                  <img
-                    src={slide.product_image_url || slide.bg_image_url || slide.fallback_image_url}
-                    alt=""
-                    width={48}
-                    height={32}
-                    className="editor-thumbnail"
-                  />
-                ) : (
-                  <span className="menu-tree-toggle-spacer" />
-                )}
-                <span className="menu-tree-title">{slide.title}</span>
-                {slide.badge && <span className="role-pill admin">{slide.badge}</span>}
-                <span className="text-muted text-sm menu-tree-path">#{slide.order_index ?? 0}</span>
-                <div className="hero-status-switch">
-                  <Switch
-                    checked={slide.is_active !== false}
-                    disabled={busy}
-                    onChange={(event) => handleToggleActive(slide, event.target.checked)}
-                    slotProps={{ input: { "aria-label": slide.title } }}
-                    title={
-                      slide.is_active !== false
-                        ? `Deactivate ${slide.title}`
-                        : `Activate ${slide.title}`
-                    }
-                  />
-                  <span className="hero-status-switch-text" aria-hidden="true">
-                    {slide.is_active !== false ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <div className="menu-tree-actions">
-                  <OrderControls
-                    index={index}
-                    total={slides.length}
-                    label={slide.title}
-                    disabled={busy}
-                    onMove={(from, to) => handleMove(slide, from, to)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`View ${slide.title}`}
-                    disabled={busy}
-                    onClick={() => setViewing(slide)}
-                  >
-                    <Eye size={15} />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Edit ${slide.title}`}
-                    disabled={busy}
-                    onClick={() => openEdit(slide)}
-                  >
-                    <Edit2 size={15} />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Delete ${slide.title}`}
-                    disabled={busy}
-                    onClick={() => setDeleteTarget(slide)}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="table-responsive-wrapper">
+          <Table className="ui-table--cards">
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Slide</TableHead>
+                <TableHead scope="col">Badge</TableHead>
+                <TableHead scope="col">Order</TableHead>
+                <TableHead scope="col">Active</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slides.map((slide, index) => (
+                <TableRow key={slide.id}>
+                  <TableCell>
+                    <div className="hero-slide-cell">
+                      {slide.product_image_url || slide.bg_image_url || slide.fallback_image_url ? (
+                        <img
+                          src={
+                            slide.product_image_url ||
+                            slide.bg_image_url ||
+                            slide.fallback_image_url
+                          }
+                          alt=""
+                          width={48}
+                          height={32}
+                          className="editor-thumbnail"
+                        />
+                      ) : null}
+                      <span className="hero-slide-title">{slide.title}</span>
+                    </div>
+                  </TableCell>
+
+                  <TableCell data-label="Badge">
+                    {slide.badge ? <span className="role-pill admin">{slide.badge}</span> : "—"}
+                  </TableCell>
+
+                  <TableCell data-label="Order">#{slide.order_index ?? 0}</TableCell>
+
+                  <TableCell data-label="Active">
+                    <div className="hero-status-switch">
+                      <Switch
+                        checked={slide.is_active !== false}
+                        disabled={busy}
+                        onChange={(event) => handleToggleActive(slide, event.target.checked)}
+                        slotProps={{ input: { "aria-label": slide.title } }}
+                        title={
+                          slide.is_active !== false
+                            ? `Deactivate ${slide.title}`
+                            : `Activate ${slide.title}`
+                        }
+                      />
+                      <span className="hero-status-switch-text" aria-hidden="true">
+                        {slide.is_active !== false ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="text-right">
+                    <div className="hero-slide-actions">
+                      <OrderControls
+                        index={index}
+                        total={slides.length}
+                        label={slide.title}
+                        disabled={busy}
+                        onMove={(from, to) => handleMove(slide, from, to)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`View ${slide.title}`}
+                        disabled={busy}
+                        onClick={() => setViewing(slide)}
+                      >
+                        <Eye size={15} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${slide.title}`}
+                        disabled={busy}
+                        onClick={() => openEdit(slide)}
+                      >
+                        <Edit2 size={15} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${slide.title}`}
+                        disabled={busy}
+                        onClick={() => setDeleteTarget(slide)}
+                      >
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

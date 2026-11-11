@@ -141,6 +141,30 @@
   border-radius: var(--radius-xs);
 }
 
+/* A hero slide row: the thumbnail and the title, side by side. */
+.hero-slide-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hero-slide-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-slide-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+}
+
 /* The call-to-action text inside the preview. */
 .editor-preview-cta {
   font-weight: 600;

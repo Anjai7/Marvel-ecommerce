@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductPicker from "./ProductPicker";
@@ -41,6 +41,23 @@ describe("ProductPicker", () => {
       expect(apiFetchProducts).toHaveBeenCalledWith({ search: "Iron" });
     });
     expect(await screen.findByText("Iron Man Helmet")).toBeInTheDocument();
+  });
+
+  it("renders the search results as a real table", async () => {
+    const user = userEvent.setup();
+    apiFetchProducts.mockResolvedValueOnce(sampleProducts);
+
+    render(<ProductPicker value={[]} onChange={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Search products"), "Iron");
+    await screen.findByText("Iron Man Helmet");
+
+    const table = screen.getByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Product" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Price" })).toBeInTheDocument();
+    expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+    // The header row plus one row per result.
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
   });
 
   it("adds a product to the selection", async () => {

@@ -124,32 +124,10 @@
   gap: 24px;
 }
 
-.customer-order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.customer-order-card {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  border: 1px solid var(--gray-200);
-  box-shadow: var(--shadow-xs);
+/* An order row: the whole row picks the order for the tracker. */
+.customer-order-row {
   cursor: pointer;
   transition: var(--transition);
-}
-
-.customer-order-card--selected {
-  border: 2px solid var(--navy);
-}
-
-.customer-order-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
 }
 
 .customer-order-card__title {
@@ -161,7 +139,6 @@
 .customer-order-card__date {
   font-size: 12px;
   color: var(--gray-500);
-  margin-top: 2px;
 }
 
 /* The status pill of an order — delivered, in transit, processing or unknown. */
@@ -192,13 +169,12 @@
   color: var(--gray-600);
 }
 
+/* The items of an order, side by side inside the order's cell. */
 .customer-order-items {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--gray-100);
 }
 
 .customer-order-item {
@@ -236,15 +212,6 @@
   color: var(--gray-400);
   cursor: pointer;
   padding: 4px;
-}
-
-.customer-order-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  font-size: 13px;
 }
 
 .customer-order-footer__total {

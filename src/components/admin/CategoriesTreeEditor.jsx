@@ -8,10 +8,22 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { Button, Input, RequiredMark, useToast } from "../ui";
+import {
+  Button,
+  Input,
+  RequiredMark,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  useToast,
+} from "../ui";
 import Switch from "../ui/Switch";
 import "./admin-content.css";
 import "./admin-editors.css";
+import "./admin-tree.css";
 import {
   apiDeleteCategory,
   apiFetchCategoryTree,
@@ -50,6 +62,29 @@ function flatten(nodes = [], acc = []) {
   return acc;
 }
 
+/**
+ * The tree as a flat list of rows.
+ *
+ * A table cannot hold nested rows, so the hierarchy is flattened into a
+ * depth-first list: every node becomes one row and its depth becomes the
+ * indent. A collapsed node contributes only itself — its children stay
+ * hidden — so a collapsed branch is still a single row.
+ */
+function flattenTree(nodes = [], { collapsed = {} } = {}) {
+  const rows = [];
+  const walk = (list, depth) => {
+    for (const node of list) {
+      rows.push({ node, depth });
+      const children = node.children ?? [];
+      if (children.length === 0) continue;
+      if (collapsed[node.id]) continue;
+      walk(children, depth + 1);
+    }
+  };
+  walk(nodes, 1);
+  return rows;
+}
+
 /** The full sibling group for a parent — hidden rows included, because reorder
  *  requires the complete scope. Tree roots when `parentId` is null. */
 function siblingsFor(nodes = [], parentId) {
@@ -67,6 +102,9 @@ function visibleNodes(nodes = [], showHidden) {
     .filter((node) => node.is_active !== false)
     .map((node) => ({ ...node, children: visibleNodes(node.children ?? [], showHidden) }));
 }
+
+/**
+ * The tree as a flat list of rows.
 
 /** The single source of truth for what a save writes: every field the form owns. */
 function toPayload(form) {
@@ -408,44 +446,51 @@ export default function CategoriesTreeEditor() {
     }
   };
 
-  const renderNode = (node, depth) => {
+  const renderRow = ({ node, depth }) => {
     const children = node.children ?? [];
     const siblings = siblingsFor(tree, node.parent_id ?? null);
     const index = siblings.findIndex((sibling) => sibling.id === node.id);
     const isOpen = !collapsed[node.id];
 
     return (
-      <div
-        key={node.id}
-        className="menu-tree-node"
-        data-level={depth}
-        data-testid={`category-node-${node.id}`}
-      >
-        <div className="menu-tree-row">
-          {children.length > 0 ? (
-            <button
-              type="button"
-              className="menu-tree-toggle"
-              aria-label={`${isOpen ? "Collapse" : "Expand"} ${node.name}`}
-              aria-expanded={isOpen}
-              onClick={() =>
-                setCollapsed((previous) => ({ ...previous, [node.id]: !previous[node.id] }))
-              }
-            >
-              {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-            </button>
-          ) : (
-            <span className="menu-tree-toggle-spacer" />
-          )}
+      <TableRow key={node.id} className="admin-tree-row" data-testid={`category-node-${node.id}`}>
+        <TableCell>
+          <div className="admin-tree-name" data-depth={depth}>
+            {children.length > 0 ? (
+              <button
+                type="button"
+                className="admin-tree-toggle"
+                aria-label={`${isOpen ? "Collapse" : "Expand"} ${node.name}`}
+                aria-expanded={isOpen}
+                onClick={() =>
+                  setCollapsed((previous) => ({ ...previous, [node.id]: !previous[node.id] }))
+                }
+              >
+                {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              </button>
+            ) : (
+              <span className="admin-tree-toggle-spacer" />
+            )}
 
-          <span className="menu-tree-title">{node.name}</span>
-          <span className="text-muted text-sm menu-tree-path">{node.slug}</span>
+            <span className="admin-tree-title">{node.name}</span>
+          </div>
+        </TableCell>
+
+        <TableCell data-label="Slug">
+          <div className="admin-tree-path">{node.slug}</div>
+        </TableCell>
+
+        <TableCell data-label="Level">{Number(node.level ?? depth)}</TableCell>
+
+        <TableCell data-label="Status">
           <span className={`status-pill ${node.is_active === false ? "inactive" : "active"}`}>
             <span className="status-dot"></span>
             {node.is_active === false ? "Hidden" : "Active"}
           </span>
+        </TableCell>
 
-          <div className="menu-tree-actions">
+        <TableCell>
+          <div className="admin-tree-actions">
             <OrderControls
               index={index}
               total={siblings.length}
@@ -495,16 +540,12 @@ export default function CategoriesTreeEditor() {
               <Trash2 size={15} />
             </Button>
           </div>
-        </div>
-
-        {children.length > 0 && isOpen && (
-          <div className="menu-tree-children">
-            {children.map((child) => renderNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
+        </TableCell>
+      </TableRow>
     );
   };
+
+  const treeRows = flattenTree(visible, { collapsed });
 
   const editorSiblings = editing ? siblingsFor(tree, editing.parentId ?? null) : [];
   const editorIndex = editing?.id
@@ -881,7 +922,22 @@ export default function CategoriesTreeEditor() {
       ) : visible.length === 0 ? (
         <p className="chart-subtitle">No categories yet. Add the first one to get started.</p>
       ) : (
-        <div className="menu-tree">{visible.map((node) => renderNode(node, 1))}</div>
+        <div className="table-responsive-wrapper">
+          <Table className="ui-table--cards">
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Name</TableHead>
+                <TableHead scope="col">Slug</TableHead>
+                <TableHead scope="col">Level</TableHead>
+                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col" className="text-right">
+                  Actions
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>{treeRows.map((entry) => renderRow(entry))}</TableBody>
+          </Table>
+        </div>
       )}
 
       <AdminConfirmStrip

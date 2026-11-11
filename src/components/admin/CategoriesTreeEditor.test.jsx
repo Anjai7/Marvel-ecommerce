@@ -135,6 +135,43 @@ describe("CategoriesTreeEditor", () => {
     expect(apiFetchCategoryTree).toHaveBeenCalledWith({ includeInactive: true });
   });
 
+  it("renders the taxonomy as a real table with one row per visible node", async () => {
+    renderEditor();
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Name" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Slug" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Level" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Status" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeVisible();
+
+    // The header row plus one row per node, in depth-first order.
+    const rows = within(table).getAllByRole("row");
+    expect(rows).toHaveLength(6);
+
+    // The hierarchy is an indent, so every node carries its depth.
+    const container = table.parentElement;
+    expect(
+      container.querySelector('[data-testid="category-node-c1"] .admin-tree-name')
+    ).toHaveAttribute("data-depth", "1");
+    expect(
+      container.querySelector('[data-testid="category-node-c2"] .admin-tree-name')
+    ).toHaveAttribute("data-depth", "2");
+    expect(
+      container.querySelector('[data-testid="category-node-c5"] .admin-tree-name')
+    ).toHaveAttribute("data-depth", "3");
+
+    // The columns that become card labels keep the header wording.
+    expect(
+      container.querySelector('[data-testid="category-node-c1"] .ui-table-cell[data-label="Slug"]')
+    ).toBeTruthy();
+    expect(
+      container.querySelector(
+        '[data-testid="category-node-c1"] .ui-table-cell[data-label="Status"]'
+      )
+    ).toBeTruthy();
+  });
+
   it("opens an add-subcategory form whose parent is the clicked node", async () => {
     const user = userEvent.setup();
     renderEditor();

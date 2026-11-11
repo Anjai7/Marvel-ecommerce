@@ -385,31 +385,49 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                 </Button>
               </div>
 
-              <div className="vendor-order-list">
-                {orders.slice(0, 3).map((order) => (
-                  <div key={order.id} className="vendor-order-card">
-                    <div>
-                      <div className="vendor-order-card__title">
-                        Order #{order.id.toUpperCase()}
-                      </div>
-                      <div className="vendor-order-card__meta">
-                        Customer: {order.customer_name} • {order.items?.length || 1} item(s)
-                      </div>
-                    </div>
-                    <div className="vendor-order-card__aside">
-                      <div className="vendor-order-card__total">
-                        {formatCurrency(order.total_amount)}
-                      </div>
-                      <span
-                        className={`vendor-status vendor-status--${
-                          order.status === "delivered" ? "delivered" : "pending"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="table-responsive-wrapper">
+                <Table className="ui-table--cards">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">Order</TableHead>
+                      <TableHead scope="col">Details</TableHead>
+                      <TableHead scope="col" className="text-right">
+                        Total
+                      </TableHead>
+                      <TableHead scope="col">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.slice(0, 3).map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell>
+                          <div className="vendor-order-card__title">
+                            Order #{order.id.toUpperCase()}
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Details">
+                          <div className="vendor-order-card__meta">
+                            Customer: {order.customer_name} • {order.items?.length || 1} item(s)
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Total" className="text-right">
+                          <div className="vendor-order-card__total">
+                            {formatCurrency(order.total_amount)}
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Status">
+                          <span
+                            className={`vendor-status vendor-status--${
+                              order.status === "delivered" ? "delivered" : "pending"
+                            }`}
+                          >
+                            {order.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
 
@@ -562,41 +580,67 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               Order Fulfillment &amp; Shipments ({orders.length})
             </h3>
 
-            <div className="vendor-shipment-list">
-              {orders.map((ord) => (
-                <div key={ord.id} className="vendor-shipment">
-                  <div>
-                    <div className="vendor-shipment__heading">
-                      <span className="vendor-shipment__title">Order #{ord.id.toUpperCase()}</span>
-                      <span
-                        className={`vendor-status-chip vendor-status-chip--${statusTone(ord.status)}`}
-                      >
-                        {ord.status}
-                      </span>
-                    </div>
-                    <div className="vendor-shipment__meta">
-                      Customer: <strong>{ord.customer_name}</strong> ({ord.customer_email}) • Ship
-                      to: {ord.shipping_address}
-                    </div>
-                    <div className="vendor-shipment__tracking">
-                      Tracking: {ord.carrier || "Express"} —{" "}
-                      <code>{ord.tracking_number || "Awaiting shipment"}</code>
-                    </div>
-                  </div>
-
-                  <div className="vendor-shipment__aside">
-                    <div className="vendor-shipment__total">{formatCurrency(ord.total_amount)}</div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="vendor-button--accent"
-                      onClick={() => handleOpenFulfillment(ord)}
-                    >
-                      <Truck size={14} className="vendor-button__icon" /> Update Shipment
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="table-responsive-wrapper">
+              <Table className="ui-table--cards">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Order</TableHead>
+                    <TableHead scope="col">Customer</TableHead>
+                    <TableHead scope="col">Tracking</TableHead>
+                    <TableHead scope="col" className="text-right">
+                      Total
+                    </TableHead>
+                    <TableHead scope="col" className="text-right">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((ord) => (
+                    <TableRow key={ord.id}>
+                      <TableCell>
+                        <div className="vendor-shipment__heading">
+                          <span className="vendor-shipment__title">
+                            Order #{ord.id.toUpperCase()}
+                          </span>
+                          <span
+                            className={`vendor-status-chip vendor-status-chip--${statusTone(ord.status)}`}
+                          >
+                            {ord.status}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell data-label="Customer">
+                        <div className="vendor-shipment__meta">
+                          Customer: <strong>{ord.customer_name}</strong> ({ord.customer_email}) •
+                          Ship to: {ord.shipping_address}
+                        </div>
+                      </TableCell>
+                      <TableCell data-label="Tracking">
+                        <div className="vendor-shipment__tracking">
+                          Tracking: {ord.carrier || "Express"} —{" "}
+                          <code>{ord.tracking_number || "Awaiting shipment"}</code>
+                        </div>
+                      </TableCell>
+                      <TableCell data-label="Total" className="text-right">
+                        <div className="vendor-shipment__total">
+                          {formatCurrency(ord.total_amount)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="vendor-button--accent"
+                          onClick={() => handleOpenFulfillment(ord)}
+                        >
+                          <Truck size={14} className="vendor-button__icon" /> Update Shipment
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}

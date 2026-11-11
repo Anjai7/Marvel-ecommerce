@@ -248,22 +248,8 @@
 }
 
 /* ── Recent orders ─────────────────────────────────────── */
-.vendor-order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.vendor-order-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
-}
+/* The recent-orders table. The rows are the shared table rows; only the
+   words inside the cells keep a class of their own. */
 
 .vendor-order-card__title {
   font-weight: 700;
@@ -274,10 +260,6 @@
 .vendor-order-card__meta {
   font-size: 12px;
   color: var(--gray-500);
-}
-
-.vendor-order-card__aside {
-  text-align: right;
 }
 
 .vendor-order-card__total {
@@ -482,24 +464,6 @@
   margin-bottom: 16px;
 }
 
-.vendor-shipment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.vendor-shipment {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 18px;
-  border-radius: 12px;
-  background: var(--gray-50);
-  border: 1px solid var(--gray-200);
-}
-
 .vendor-shipment__heading {
   display: flex;
   align-items: center;
@@ -515,24 +479,17 @@
 .vendor-shipment__meta {
   font-size: 13px;
   color: var(--gray-500);
-  margin-top: 4px;
 }
 
 .vendor-shipment__tracking {
   font-size: 12px;
   color: #2563eb;
-  margin-top: 4px;
-}
-
-.vendor-shipment__aside {
-  text-align: right;
 }
 
 .vendor-shipment__total {
   font-size: 18px;
   font-weight: 800;
   color: var(--gray-900);
-  margin-bottom: 8px;
 }
 
 /* ── Modals ────────────────────────────────────────────── */

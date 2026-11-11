@@ -1,0 +1,91 @@
+/* A tree rendered as a table.
+ *
+ * The menu and category trees are hierarchies, but each row carries the same
+ * columns, so they are tables with an indent. The depth is a data attribute
+ * rather than an inline style, so the rows stay restyleable from here. */
+
+.admin-tree-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-tree-name[data-depth="1"] {
+  padding-left: 4px;
+}
+
+.admin-tree-name[data-depth="2"] {
+  padding-left: 26px;
+}
+
+.admin-tree-name[data-depth="3"] {
+  padding-left: 48px;
+}
+
+.admin-tree-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--gray-900);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-tree-path {
+  display: block;
+  max-width: 320px;
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", Menlo, monospace;
+  font-size: 12px;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-tree-toggle {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.admin-tree-toggle:hover {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.admin-tree-toggle-spacer {
+  width: 26px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.admin-tree-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-end;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.admin-tree-actions .ui-btn-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.admin-tree-row:hover .admin-tree-actions,
+.admin-tree-row:focus-within .admin-tree-actions {
+  opacity: 1;
+}

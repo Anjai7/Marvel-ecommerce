@@ -9,7 +9,16 @@ import {
   ChevronRight,
   ArrowLeft,
 } from "lucide-react";
-import { Button, useToast } from "../ui";
+import {
+  Button,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  useToast,
+} from "../ui";
 import CustomerWishlistTab from "./CustomerWishlistTab";
 import CustomerProfileTab from "./CustomerProfileTab";
 import { apiFetchOrders } from "../../api/backendApi";
@@ -205,83 +214,102 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
         {activeTab === "orders" && (
           <div className="customer-orders">
             {/* Orders List */}
-            <div className="customer-order-list">
-              {orders.map((ord) => {
-                const isSelected = selectedOrder?.id === ord.id;
-                return (
-                  <div
-                    key={ord.id}
-                    onClick={() => setSelectedOrder(ord)}
-                    className={`customer-order-card${
-                      isSelected ? " customer-order-card--selected" : ""
-                    }`}
-                  >
-                    <div className="customer-order-card__header">
-                      <div>
-                        <div className="customer-order-card__title">
-                          Order #{ord.id.toUpperCase()}
-                        </div>
-                        <div className="customer-order-card__date">
-                          Placed on{" "}
-                          {new Date(ord.created_at).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </div>
-                      </div>
-                      {getStatusBadge(ord.status)}
-                    </div>
-
-                    <div className="customer-order-items">
-                      {ord.items?.map((item, i) => (
-                        <div key={i} className="customer-order-item">
-                          <img
-                            className="customer-order-item__thumb"
-                            src={
-                              item.image ||
-                              "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100"
-                            }
-                            alt={item.title}
-                          />
-                          <div>
-                            <div className="customer-order-item__title">{item.title}</div>
-                            <div className="customer-order-item__meta">
-                              Qty: {item.quantity} • {formatCurrency(item.price)}
-                            </div>
+            <div className="table-responsive-wrapper">
+              <Table className="ui-table--cards">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">Order</TableHead>
+                    <TableHead scope="col">Date</TableHead>
+                    <TableHead scope="col">Status</TableHead>
+                    <TableHead scope="col">Items</TableHead>
+                    <TableHead scope="col" className="text-right">
+                      Total
+                    </TableHead>
+                    <TableHead scope="col" className="text-right">
+                      Tracking
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orders.map((ord) => {
+                    const isSelected = selectedOrder?.id === ord.id;
+                    return (
+                      <TableRow
+                        key={ord.id}
+                        onClick={() => setSelectedOrder(ord)}
+                        data-selected={isSelected}
+                        className="customer-order-row"
+                      >
+                        <TableCell>
+                          <div className="customer-order-card__title">
+                            Order #{ord.id.toUpperCase()}
                           </div>
-                          {item.product_id && (
-                            <button
-                              type="button"
-                              aria-label={`Save ${item.title} to wishlist`}
-                              title="Save to wishlist"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddWishlist(item.product_id, item.title);
-                              }}
-                              className="customer-wishlist-button"
-                            >
-                              <Heart size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="customer-order-footer">
-                      <span className="customer-order-footer__total">
-                        Total:{" "}
-                        <strong className="customer-order-footer__amount">
-                          {formatCurrency(ord.total_amount)}
-                        </strong>
-                      </span>
-                      <span className="customer-order-footer__link">
-                        View Tracking Details <ChevronRight size={14} />
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                        </TableCell>
+                        <TableCell data-label="Date">
+                          <div className="customer-order-card__date">
+                            Placed on{" "}
+                            {new Date(ord.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Status">{getStatusBadge(ord.status)}</TableCell>
+                        <TableCell data-label="Items">
+                          <div className="customer-order-items">
+                            {ord.items?.map((item, i) => (
+                              <div key={i} className="customer-order-item">
+                                <img
+                                  className="customer-order-item__thumb"
+                                  src={
+                                    item.image ||
+                                    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=100"
+                                  }
+                                  alt={item.title}
+                                />
+                                <div>
+                                  <div className="customer-order-item__title">{item.title}</div>
+                                  <div className="customer-order-item__meta">
+                                    Qty: {item.quantity} • {formatCurrency(item.price)}
+                                  </div>
+                                </div>
+                                {item.product_id && (
+                                  <button
+                                    type="button"
+                                    aria-label={`Save ${item.title} to wishlist`}
+                                    title="Save to wishlist"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddWishlist(item.product_id, item.title);
+                                    }}
+                                    className="customer-wishlist-button"
+                                  >
+                                    <Heart size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Total" className="text-right">
+                          <span className="customer-order-footer__total">
+                            Total:{" "}
+                            <strong className="customer-order-footer__amount">
+                              {formatCurrency(ord.total_amount)}
+                            </strong>
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="customer-order-footer__link">
+                            View Tracking Details <ChevronRight size={14} />
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Selected Order Detailed Live Tracker */}

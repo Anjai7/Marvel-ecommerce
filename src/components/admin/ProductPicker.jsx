@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { Button } from "../ui";
+import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui";
 import SearchInput from "../ui/SearchInput";
 import { apiFetchProducts } from "../../api/backendApi";
 import "./admin-forms.css";
@@ -112,41 +112,66 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
       )}
 
       {!loading && results.length > 0 && (
-        <ul className="product-picker-results">
-          {results.map((product) => {
-            const isSelected = selectedIds.includes(product.id);
-            return (
-              <li key={product.id} className="product-picker-result">
-                <div className="product-picker-result-main">
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.title}
-                      className="product-picker-thumb"
-                    />
-                  ) : (
-                    <div className="product-picker-thumb-placeholder" />
-                  )}
-                  <div className="product-picker-result-text">
-                    <div className="product-picker-result-title">{product.title}</div>
-                    <div className="product-picker-result-price">₹{product.price}</div>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant={isSelected ? "outline" : "default"}
-                  size="sm"
-                  disabled={disabled || isSelected || selectedIds.length >= max}
-                  onClick={() => handleAdd(product)}
-                  aria-label={isSelected ? `Selected ${product.title}` : `Add ${product.title}`}
-                >
-                  {isSelected ? "Selected" : "Add"}
-                </Button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="product-picker-results">
+          <div className="table-responsive-wrapper">
+            <Table className="ui-table--cards">
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Product</TableHead>
+                  <TableHead scope="col" className="text-right">
+                    Price
+                  </TableHead>
+                  <TableHead scope="col" className="text-right">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {results.map((product) => {
+                  const isSelected = selectedIds.includes(product.id);
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="product-picker-result-main">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.title}
+                              className="product-picker-thumb"
+                            />
+                          ) : (
+                            <div className="product-picker-thumb-placeholder" />
+                          )}
+                          <div className="product-picker-result-title">{product.title}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell
+                        data-label="Price"
+                        className="product-picker-result-price text-right"
+                      >
+                        ₹{product.price}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant={isSelected ? "outline" : "default"}
+                          size="sm"
+                          disabled={disabled || isSelected || selectedIds.length >= max}
+                          onClick={() => handleAdd(product)}
+                          aria-label={
+                            isSelected ? `Selected ${product.title}` : `Add ${product.title}`
+                          }
+                        >
+                          {isSelected ? "Selected" : "Add"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       )}
     </div>
   );

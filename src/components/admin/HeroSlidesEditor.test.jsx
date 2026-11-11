@@ -102,6 +102,25 @@ describe("HeroSlidesEditor", () => {
     expect(screen.getByRole("button", { name: "Delete Winter Drop" })).toBeVisible();
   });
 
+  it("renders the slides as a real table with the action buttons in the last column", async () => {
+    renderEditor();
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Slide" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Badge" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Order" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Active" })).toBeVisible();
+    expect(within(table).getByRole("columnheader", { name: "Actions" })).toBeVisible();
+
+    // The header row plus one row per slide.
+    expect(within(table).getAllByRole("row")).toHaveLength(3);
+
+    // The columns that become card labels keep the header wording.
+    const winter = within(table).getByText("Winter Drop").closest("tr");
+    expect(within(winter).getByText("#1")).toBeTruthy();
+    expect(within(winter).getByLabelText("Winter Drop")).toBeTruthy();
+  });
+
   it("blocks save when title is required and missing", async () => {
     const user = userEvent.setup();
     renderEditor();

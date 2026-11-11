@@ -210,7 +210,7 @@
   padding: 0;
 }
 
-/* The search results. */
+/* The search results, as a table in a scrollable box. */
 .product-picker-results {
   margin: 0;
   list-style: none;
@@ -225,15 +225,6 @@
 }
 
 /* One result: the product and the button that adds it. */
-.product-picker-result {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: var(--radius-xs);
-}
-
 .product-picker-result-main {
   display: flex;
   align-items: center;
@@ -256,19 +247,16 @@
   border-radius: var(--radius-xs);
 }
 
-.product-picker-result-text {
-  min-width: 0;
-}
-
+/* The title of a result — it wraps rather than pushing the table sideways. */
 .product-picker-result-title {
   font-size: 13px;
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
-.product-picker-result-price {
+/* The price of a result, in the muted tone of the old list. */
+.ui-table-cell.product-picker-result-price {
   font-size: 12px;
   color: var(--muted-color, #94a3b8);
 }

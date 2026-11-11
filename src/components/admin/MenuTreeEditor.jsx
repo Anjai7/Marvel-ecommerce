@@ -21,10 +21,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   useToast,
 } from "../ui";
 import "./admin-content.css";
 import "./admin-editors.css";
+import "./admin-tree.css";
 import {
   apiDeleteMenuItem,
   apiFetchCategoryTree,
@@ -214,6 +221,30 @@ function countDescendants(node) {
 /** Every node in the tree, at any depth. */
 function countNodes(nodes = []) {
   return nodes.reduce((total, node) => total + 1 + countNodes(node.children ?? []), 0);
+}
+
+/**
+ * The tree as a flat list of rows.
+ *
+ * A table cannot hold nested rows, so the hierarchy is flattened into a
+ * depth-first list: every node becomes one row and its depth becomes the
+ * indent. A collapsed node contributes only itself — its children stay
+ * hidden — while a search expands everything, so every match is reachable.
+ */
+function flattenTree(nodes = [], { collapsed = {}, isSearchActive = false } = {}) {
+  const rows = [];
+  const walk = (list, depth) => {
+    for (const node of list) {
+      rows.push({ node, depth });
+      const children = node.children ?? [];
+      if (children.length === 0) continue;
+      const isOpen = isSearchActive ? true : !collapsed[node.id];
+      if (!isOpen) continue;
+      walk(children, depth + 1);
+    }
+  };
+  walk(nodes, 1);
+  return rows;
 }
 
 /** Level-2 and level-3 categories, with their full category path. */
@@ -752,7 +783,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
     }
   };
 
-  const renderNode = (item, depth) => {
+  /** One row of the table: a flattened node and the depth it sits at. */
+  const renderRow = ({ node: item, depth }) => {
     const children = item.children ?? [];
     const parent = findParent(tree, item.id);
     const siblings = siblingsFor(tree, parent?.id ?? null);
@@ -761,42 +793,42 @@ export default function MenuTreeEditor({ role = "admin" }) {
     const isOpen = isSearchActive ? true : !collapsed[item.id];
 
     return (
-      <div key={item.id} className="menu-tree-node" data-level={depth}>
-        <div className="menu-tree-row" data-testid={`menu-row-${item.id}`}>
-          {children.length > 0 ? (
-            <button
-              type="button"
-              className="menu-tree-toggle"
-              aria-label={`${isOpen ? "Collapse" : "Expand"} ${item.title}`}
-              aria-expanded={isOpen}
-              onClick={() =>
-                setCollapsed((previous) => ({ ...previous, [item.id]: !previous[item.id] }))
-              }
-            >
-              {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-            </button>
-          ) : (
-            <span className="menu-tree-toggle-spacer" />
-          )}
-          <span className="menu-tree-label">
-            <span className="menu-tree-title">{item.title}</span>
+      <TableRow key={item.id} className="admin-tree-row" data-testid={`menu-row-${item.id}`}>
+        <TableCell>
+          <div className="admin-tree-name" data-depth={depth}>
+            {children.length > 0 ? (
+              <button
+                type="button"
+                className="admin-tree-toggle"
+                aria-label={`${isOpen ? "Collapse" : "Expand"} ${item.title}`}
+                aria-expanded={isOpen}
+                onClick={() =>
+                  setCollapsed((previous) => ({ ...previous, [item.id]: !previous[item.id] }))
+                }
+              >
+                {isOpen ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+              </button>
+            ) : (
+              <span className="admin-tree-toggle-spacer" />
+            )}
+            <span className="admin-tree-title">{item.title}</span>
             {item.badge && (
               <Badge variant={badgeVariantFor(item.badge_variant, item.badge)} size="sm">
                 {item.badge}
               </Badge>
             )}
-          </span>
-          <span className="menu-tree-path">{item.path}</span>
-          <span className="menu-tree-status">
-            <Badge
-              variant={item.is_active === false ? "secondary" : "success"}
-              size="sm"
-              icon={<span className="menu-tree-status-dot" aria-hidden="true" />}
-            >
-              {item.is_active === false ? "Hidden" : "Active"}
-            </Badge>
-          </span>
-          <div className="menu-tree-actions">
+          </div>
+        </TableCell>
+        <TableCell data-label="Path">
+          <div className="admin-tree-path">{item.path}</div>
+        </TableCell>
+        <TableCell data-label="Status">
+          <Badge variant={item.is_active === false ? "secondary" : "success"} size="sm">
+            {item.is_active === false ? "Hidden" : "Active"}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <div className="admin-tree-actions">
             <OrderControls
               index={index}
               total={siblings.length}
@@ -843,13 +875,8 @@ export default function MenuTreeEditor({ role = "admin" }) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-        {children.length > 0 && isOpen && (
-          <div className="menu-tree-children">
-            {children.map((child) => renderNode(child, depth + 1))}
-          </div>
-        )}
-      </div>
+        </TableCell>
+      </TableRow>
     );
   };
 
@@ -894,6 +921,12 @@ export default function MenuTreeEditor({ role = "admin" }) {
   const validPage = Math.min(Math.max(1, currentPage), totalPages);
   const startIndex = (validPage - 1) * pageSize;
   const paginatedTree = filteredTree.slice(startIndex, startIndex + pageSize);
+  // The table holds one row per node, so the hierarchy is flattened first:
+  // the paginated roots and every child they show, in the same order.
+  const treeRows = flattenTree(paginatedTree, {
+    collapsed,
+    isSearchActive: Boolean(searchQuery.trim()),
+  });
 
   return (
     <div className="dashboard-tab-view animate-fade-in">
@@ -1362,7 +1395,21 @@ export default function MenuTreeEditor({ role = "admin" }) {
             </div>
           ) : (
             <>
-              <div className="menu-tree">{paginatedTree.map((item) => renderNode(item, 1))}</div>
+              <div className="table-responsive-wrapper">
+                <Table className="ui-table--cards">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">Name</TableHead>
+                      <TableHead scope="col">Path</TableHead>
+                      <TableHead scope="col">Status</TableHead>
+                      <TableHead scope="col" className="text-right">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>{treeRows.map((entry) => renderRow(entry))}</TableBody>
+                </Table>
+              </div>
               {totalPages > 1 && (
                 <div className="menu-pagination-bar" role="navigation" aria-label="Menu pagination">
                   <div className="menu-pagination-info">
