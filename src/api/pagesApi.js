@@ -63,16 +63,6 @@ export function normalisePagePayload(payload) {
 /* The admin operations                                                        */
 /* -------------------------------------------------------------------------- */
 
-/**
- * The admin page list.
- *
- * `includeInactive` asks for the drafts and the hidden pages too — the
- * editor has to be able to see a page that is not live, otherwise it could
- * never bring it back.
- */
-export const apiFetchPages = (opts = {}) =>
-  apiFetch(`${PAGES}${query({ includeInactive: opts.includeInactive })}`);
-
 /** One page with every section, the disabled ones included. */
 export const apiFetchPage = (id) => apiFetch(`${PAGES}/${enc(id)}`);
 

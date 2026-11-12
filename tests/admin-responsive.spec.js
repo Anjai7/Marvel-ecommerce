@@ -50,7 +50,6 @@ test.describe("admin console is responsive", () => {
         "#admin-tab-users",
         "#admin-tab-site-content-menus",
         "#admin-tab-site-content-banners",
-        "#admin-tab-site-content-pages",
         "#admin-tab-settings",
       ];
 
@@ -71,10 +70,10 @@ test.describe("admin console is responsive", () => {
         }, tab);
         await page.waitForTimeout(300);
 
-        await page.evaluate((sel) => {
+        await page.evaluate(() => {
           const parent = document.querySelector("#admin-tab-site-content");
           if (parent && parent.getAttribute("aria-expanded") !== "true") parent.click();
-        }, tab);
+        });
         await page.waitForTimeout(300);
 
         await page.evaluate((sel) => document.querySelector(sel)?.click(), tab);

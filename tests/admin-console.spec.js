@@ -72,14 +72,6 @@ test.describe("admin console", () => {
     await expect(page.getByText("Product description is required.")).toBeVisible();
   });
 
-  test("sidebar exposes the Pages editor", async ({ page }) => {
-    await page.locator("#admin-tab-site-content").click();
-    await expect(page.locator("#admin-tab-site-content-pages")).toBeVisible();
-    await page.locator("#admin-tab-site-content-pages").click();
-    await expect(page.getByRole("heading", { name: "Pages", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "New page" })).toBeVisible();
-  });
-
   test("mobile side panel opens as drawer and navigates smoothly", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const toggle = page.getByRole("button", { name: "Open navigation menu" });
