@@ -1171,11 +1171,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         <div className="sidebar-brand-header">
           <div className="brand-logo-wrapper">
             <div className="brand-logo-img-box">
-              <img src="/logo.png" alt="Marvel" className="brand-logo-img" />
+              <img src="/logo.png" alt="Marvel Market" className="brand-logo-img" />
             </div>
             <div className="brand-text-container">
               <div className="brand-title-row">
-                <span className="brand-name">MARVEL</span>
                 <span className={`brand-role-tag ${isSuperAdmin ? "super" : "admin"}`}>
                   {isSuperAdmin ? "ROOT" : "ADMIN"}
                 </span>

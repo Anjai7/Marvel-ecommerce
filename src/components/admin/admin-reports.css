@@ -4,10 +4,15 @@
 
 /* ── Sidebar submenus ─────────────────────────────────── */
 /* ── Top bar: notifications + profile menu ───────────────── */
+/* Every control in the top-right cluster is the same size and the same
+   shape: 38px tall, 10px corners, a white face and a hairline border.
+   Before, the storefront shortcut was a grey button 35px tall, the bell
+   was a white square 38px tall and the account chip was a 42px pill —
+   three different buttons sitting side by side. */
 .navbar-actions-block {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .admin-topbar-icon-btn {
@@ -34,10 +39,13 @@
   border-color: #cbd5e1;
 }
 
+/* The count rides on the corner of the bell. Its ring is the colour of
+   the bar it sits on, so the badge reads as a badge and not as a smudge
+   on the button's border. */
 .admin-notification-count {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -7px;
+  right: -7px;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -54,9 +62,10 @@
 .admin-profile-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 10px 5px 6px;
-  border-radius: 999px;
+  gap: 9px;
+  height: 38px;
+  padding: 0 10px 0 6px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
   cursor: pointer;
@@ -70,16 +79,18 @@
   border-color: #cbd5e1;
 }
 
+/* The avatar wears the brand navy, like the sidebar and the storefront
+   shortcut, so the top bar is one palette. */
 .admin-profile-avatar {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -88,8 +99,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  line-height: 1.25;
-  max-width: 180px;
+  line-height: 1.2;
+  max-width: 160px;
 }
 
 .admin-profile-name {
@@ -103,8 +114,8 @@
 }
 
 .admin-profile-role {
-  font-size: 10.5px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.4px;

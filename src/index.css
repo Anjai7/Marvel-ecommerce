@@ -7068,23 +7068,26 @@ input:focus:not(:focus-visible) {
   gap: 12px;
 }
 
+/* The logo is a wide wordmark (3:1). Squeezed into a square tile it was an
+   unreadable smudge, so it keeps its own shape: a white plate, sized to the
+   wordmark. */
 .brand-logo-img-box {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  height: 38px;
+  padding: 0 8px;
+  border-radius: 10px;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   border: 1px solid #e2e8f0;
 }
 
 .brand-logo-img {
-  width: 38px;
-  height: 38px;
+  height: 24px;
+  width: auto;
+  max-width: 96px;
   object-fit: contain;
   display: block;
 }
@@ -7101,36 +7104,29 @@ input:focus:not(:focus-visible) {
   gap: 8px;
 }
 
-.brand-name {
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: 1.5px;
-  color: #1e3a8a;
-}
-
 .brand-role-tag {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .brand-role-tag.super {
-  background: #7e22ce;
-  color: #ffffff;
-  border: 1px solid #6b21a8;
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
 }
 
 .brand-role-tag.admin {
-  background: #1e40af;
-  color: #ffffff;
-  border: 1px solid #1d4ed8;
+  background: #dbeafe;
+  color: #1e3a8a;
+  border: 1px solid #bfdbfe;
 }
 
 .brand-subtitle {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #64748b;
   font-weight: 500;
 }
@@ -7292,23 +7288,26 @@ input:focus:not(:focus-visible) {
 .navbar-live-store-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  background: #f1f5f9;
-  border: 1px solid #cbd5e1;
+  gap: 7px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   color: #1e3a8a;
   font-size: 13px;
   font-weight: 700;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .navbar-live-store-btn:hover {
-  background: #1e40af;
-  border-color: #1e40af;
-  color: #ffffff;
-  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e3a8a;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -7335,7 +7334,7 @@ input:focus:not(:focus-visible) {
   -webkit-backdrop-filter: blur(8px);
   margin-left: -36px;
   margin-right: -36px;
-  padding: 18px 36px;
+  padding: 14px 36px;
   margin-bottom: 24px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
@@ -7363,8 +7362,10 @@ input:focus:not(:focus-visible) {
   margin-bottom: 4px;
 }
 
+/* The page you are on. It is the strongest word in the breadcrumb, so it
+   wears the brand navy rather than a link blue — it is not a link. */
 .current-page-label {
-  color: #3b82f6;
+  color: #1e3a8a;
   font-weight: 700;
 }
 
@@ -8928,10 +8929,6 @@ input:focus:not(:focus-visible) {
   .navbar-breadcrumb {
     font-size: 11.5px;
     gap: 4px;
-  }
-
-  .brand-name {
-    font-size: 15px;
   }
 
   .brand-subtitle {
