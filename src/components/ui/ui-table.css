@@ -21,17 +21,28 @@
 
 .ui-table-cell {
   padding: 16px 18px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #eef2f7;
   font-size: 13.5px;
   vertical-align: middle;
 }
 
-.ui-table-row:hover > .ui-table-cell {
-  background: #f8fafc;
+/* Every other row carries a shade of white that is a hair off, so the eye
+   can follow a row across the columns instead of losing it in a wall of
+   white. The shade is barely there: #f8fafc against #ffffff. Above 640px
+   only — below it every row is a card of its own and a stripe inside a
+   card would just muddy it. */
+@media (min-width: 641px) {
+  .ui-table-body .ui-table-row:nth-child(even) > .ui-table-cell {
+    background: #f8fafc;
+  }
+}
+
+.ui-table-body .ui-table-row:hover > .ui-table-cell {
+  background: #f1f5f9;
 }
 
 /* The row that is currently selected in a list of sections or links. */
-.ui-table-row[data-selected="true"] > .ui-table-cell {
+.ui-table-body .ui-table-row[data-selected="true"] > .ui-table-cell {
   background: #eff6ff;
 }
 
