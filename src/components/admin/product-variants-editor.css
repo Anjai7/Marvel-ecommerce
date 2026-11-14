@@ -1,0 +1,252 @@
+/* ── Options & Variants ─────────────────────────────────
+   The admin section that writes a product's option values and
+   its sellable variants: the option blocks with their value
+   chips, the suggestion row, and the combination matrix.
+
+   The colours are the console's own — the brand navy and the
+   gray ramp — so the section reads as part of the panel it
+   sits in rather than as a widget from somewhere else. */
+
+.product-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+}
+
+.product-variants__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.product-variants__header .chart-title {
+  color: #1e3a8a;
+}
+
+.product-variants__options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── One option block (one kind and its values) ───────────── */
+
+.product-variants__option {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+}
+
+.product-variants__option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-variants__option-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gray-900);
+}
+
+.product-variants__option-head .ui-btn-ghost {
+  color: #b91c1c;
+}
+
+.product-variants__option-head .ui-btn-ghost:hover {
+  background: #fef2f2;
+}
+
+/* ── The value chips ────────────────────────────────────── */
+
+.product-variants__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.product-variants__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 12px;
+  font-size: 13px;
+  color: var(--gray-800);
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: 999px;
+}
+
+.product-variants__chip-text {
+  font-weight: 600;
+}
+
+.product-variants__chip-linked {
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #1e3a8a;
+  background: #e0e7ff;
+  border-radius: 999px;
+}
+
+.product-variants__chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--gray-500);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.product-variants__chip-remove:hover {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+/* ── Adding a value ─────────────────────────────────────── */
+
+.product-variants__add-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-variants__add-value .ui-input-wrapper {
+  flex: 1 1 160px;
+  max-width: 260px;
+}
+
+.product-variants__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-500);
+}
+
+/* ── Adding an option type ──────────────────────────────── */
+
+.product-variants__add-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--gray-200);
+}
+
+.product-variants__select {
+  flex: 0 1 200px;
+  width: auto;
+  min-width: 180px;
+}
+
+/* ── The suggestion row ──────────────────────────────────── */
+
+.product-variants__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #f0f5ff;
+  border: 1px dashed #bfdbfe;
+  border-radius: var(--radius-sm);
+}
+
+.product-variants__suggestions-title {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #1e3a8a;
+}
+
+.product-variants__suggestion {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e3a8a;
+  background: var(--white);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.product-variants__suggestion:hover {
+  color: var(--white);
+  background: #1e40af;
+  border-color: #1e40af;
+}
+
+/* ── The matrix ──────────────────────────────────────────── */
+
+.product-variants__matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.product-variants__matrix-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-variants__matrix-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gray-900);
+}
+
+.product-variants__matrix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-variants__matrix .ui-input {
+  min-width: 90px;
+}
+
+.product-variants__empty {
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-sm);
+}

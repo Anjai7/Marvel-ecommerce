@@ -206,6 +206,15 @@
   color: var(--gray-500);
 }
 
+/* The choice the customer made for this item — a quiet line under the title,
+ * with the SKU of the variant when the order carries one. */
+.customer-order-item__options {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+  margin-bottom: 2px;
+}
+
 .customer-wishlist-button {
   border: none;
   background: none;

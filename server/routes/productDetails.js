@@ -39,11 +39,49 @@ function mapReview(row) {
   };
 }
 
-function mapVariant(row) {
+function mapVariant(row, catalogue) {
+  // The catalogue row wins: a catalogue row that was renamed renames the
+  // option on every product that links to it.
+  const entry = catalogue.get(row.option_value_id);
   return {
     id: row.id ?? null,
-    label: row.label ?? null,
-    value: row.value ?? null,
+    label: entry?.label ?? row.label ?? null,
+    value: entry?.value ?? row.value ?? null,
+  };
+}
+
+/** One option value of a product, whatever its kind. */
+function mapOption(row, catalogue) {
+  const entry = catalogue.get(row.option_value_id);
+  return {
+    id: row.id ?? null,
+    kind: row.kind ?? null,
+    label: entry?.label ?? row.label ?? null,
+    value: entry?.value ?? row.value ?? null,
+    position: row.position ?? 0,
+    option_value_id: row.option_value_id ?? null,
+  };
+}
+
+/** The choice a combination represents: a list of `{ kind, label, value }`. */
+function mapCombinationOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options.map((entry) => ({
+    kind: entry?.kind ?? null,
+    label: entry?.label ?? null,
+    value: entry?.value ?? null,
+  }));
+}
+
+function mapCombination(row) {
+  return {
+    id: row.id ?? null,
+    sku: row.sku ?? null,
+    price: toNumberOrNull(row.price),
+    stock: row.stock ?? null,
+    image_url: row.image_url ?? null,
+    options: mapCombinationOptions(row.options),
+    position: row.position ?? 0,
   };
 }
 
@@ -53,6 +91,50 @@ function mapMedia(row) {
     url: row.url ?? null,
     kind: row.kind ?? null,
   };
+}
+
+/**
+ * The relation does not exist yet. The options schema (apply-04-product-variants.sql)
+ * may not have been applied — every surface that reads it degrades to what it
+ * can serve instead of taking the page down with it.
+ */
+function isMissingRelation(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  const code = String(error?.code ?? "");
+  return (
+    ["42P01", "PGRST105", "PGRST121"].includes(code) ||
+    message.includes("does not exist") ||
+    message.includes("schema cache")
+  );
+}
+
+/**
+ * The catalogue rows the option values link to, keyed by id.
+ *
+ * The catalogue (`product_option_values`) holds the label and the value that
+ * are shown, so a rename there renames the option everywhere that links to
+ * it. The ids are read in one query: a product links to a handful of them,
+ * not to the whole catalogue.
+ *
+ * `null` means the read failed — the caller turns that into a 500 rather
+ * than serving option values that are quietly out of date. A catalogue that
+ * does not exist yet is a degraded store, not a broken one: the option
+ * values are served from the rows themselves.
+ */
+async function loadCatalogue(rows) {
+  const ids = [...new Set(rows.map((row) => row.option_value_id).filter(Boolean))];
+  if (!ids.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("product_option_values")
+    .select("id, label, value")
+    .in("id", ids);
+  if (error) {
+    if (isMissingRelation(error)) return new Map();
+    console.error("Supabase product option values read error:", error.message);
+    return null;
+  }
+  return new Map((data ?? []).map((row) => [row.id, row]));
 }
 
 /**
@@ -92,8 +174,8 @@ function summarizeReviews(rows) {
  *
  * Everything a product page shows comes from here: the product row, its stored
  * offers, its reviews (aggregated from `product_reviews`, not from
- * `products.rating`), its colour/size variants and its media. A table with no
- * rows yields an empty list, never an invented one.
+ * `products.rating`), its option values, its sellable combinations and its
+ * media. A table with no rows yields an empty list, never an invented one.
  */
 router.get("/:id/details", async (req, res) => {
   const id = req.params.id;
@@ -113,31 +195,38 @@ router.get("/:id/details", async (req, res) => {
       return res.status(404).json({ error: "Product not found." });
     }
 
-    const [offersResult, reviewsResult, variantsResult, mediaResult] = await Promise.all([
-      supabase
-        .from("product_offers")
-        .select("*")
-        .eq("product_id", id)
-        .eq("is_active", true)
-        .order("position", { ascending: true }),
-      supabase
-        .from("product_reviews")
-        .select("*")
-        .eq("product_id", id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("product_variants")
-        .select("*")
-        .eq("product_id", id)
-        .eq("is_active", true)
-        .order("position", { ascending: true }),
-      supabase
-        .from("product_media")
-        .select("*")
-        .eq("product_id", id)
-        .eq("is_active", true)
-        .order("position", { ascending: true }),
-    ]);
+    const [offersResult, reviewsResult, variantsResult, combinationsResult, mediaResult] =
+      await Promise.all([
+        supabase
+          .from("product_offers")
+          .select("*")
+          .eq("product_id", id)
+          .eq("is_active", true)
+          .order("position", { ascending: true }),
+        supabase
+          .from("product_reviews")
+          .select("*")
+          .eq("product_id", id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", id)
+          .eq("is_active", true)
+          .order("position", { ascending: true }),
+        supabase
+          .from("product_variant_combinations")
+          .select("*")
+          .eq("product_id", id)
+          .eq("is_active", true)
+          .order("position", { ascending: true }),
+        supabase
+          .from("product_media")
+          .select("*")
+          .eq("product_id", id)
+          .eq("is_active", true)
+          .order("position", { ascending: true }),
+      ]);
 
     const failed = [offersResult, reviewsResult, variantsResult, mediaResult].find(
       (result) => result.error
@@ -147,16 +236,45 @@ router.get("/:id/details", async (req, res) => {
       return res.status(500).json({ error: READ_ERROR });
     }
 
-    const variantRows = variantsResult.data ?? [];
+    // The sellable combinations need the migration; the storefront must not
+    // 500 because they are absent. A missing table degrades to "no
+    // combinations" — the page prices the product row instead.
+    if (combinationsResult.error && !isMissingRelation(combinationsResult.error)) {
+      console.error(
+        "Supabase product variant combinations read error:",
+        combinationsResult.error.message
+      );
+      return res.status(500).json({ error: READ_ERROR });
+    }
+    const combinationRows = combinationsResult.error ? [] : (combinationsResult.data ?? []);
+
+    const variantRows = (variantsResult.data ?? []).slice().sort((left, right) => {
+      // The query already asks for the position order; sorting here makes it
+      // a guarantee of the response rather than a fact about the database.
+      return (left.position ?? 0) - (right.position ?? 0);
+    });
+    const catalogue = await loadCatalogue(variantRows);
+    if (!catalogue) {
+      return res.status(500).json({ error: READ_ERROR });
+    }
 
     res.json({
       product,
       offers: (offersResult.data ?? []).map(mapOffer),
       reviews: summarizeReviews(reviewsResult.data ?? []),
       variants: {
-        colors: variantRows.filter((row) => row.kind === "color").map(mapVariant),
-        sizes: variantRows.filter((row) => row.kind === "size").map(mapVariant),
+        // Every option value of the product, whatever its kind.
+        options: variantRows.map((row) => mapOption(row, catalogue)),
+        // The colours and the sizes stay what they always were: the
+        // storefront and its tests read them by name.
+        colors: variantRows
+          .filter((row) => row.kind === "color")
+          .map((row) => mapVariant(row, catalogue)),
+        sizes: variantRows
+          .filter((row) => row.kind === "size")
+          .map((row) => mapVariant(row, catalogue)),
       },
+      combinations: combinationRows.map(mapCombination),
       media: (mediaResult.data ?? []).map(mapMedia),
     });
   } catch (err) {

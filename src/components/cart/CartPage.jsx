@@ -8,6 +8,40 @@ import "./cart.css";
 const FALLBACK_BANNER_IMG =
   "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=300&fit=crop";
 
+/** The human label of every option kind — "color" reads as "Colour". */
+const OPTION_KIND_LABELS = {
+  color: "Colour",
+  size: "Size",
+  capacity: "Capacity",
+  storage: "Storage",
+  material: "Material",
+  style: "Style",
+  weight: "Weight",
+  flavour: "Flavour",
+};
+
+/**
+ * The customer's choice for one line as a readable line: "Colour: Blue · Size: M".
+ *
+ * A line without a choice carries none, and a stored option may be missing
+ * its label, so the array is read defensively.
+ */
+function formatOptions(options) {
+  if (!Array.isArray(options)) return "";
+  const parts = [];
+  for (const option of options) {
+    if (!option || typeof option !== "object") continue;
+    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
+    const kindLabel = OPTION_KIND_LABELS[kind];
+    const text = [option.label, option.value]
+      .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
+      .find((candidate) => candidate && !candidate.startsWith("#"));
+    if (!text) continue;
+    parts.push(kindLabel ? `${kindLabel}: ${text}` : text);
+  }
+  return parts.join(" · ");
+}
+
 export function CartPage({ onNavigateHome, onCheckout }) {
   const { items, cartCount, subtotal, savings, total, removeItem, updateQuantity } = useCart();
   const { addToast } = useToast();
@@ -58,16 +92,16 @@ export function CartPage({ onNavigateHome, onCheckout }) {
               const title = item?.title || "Product";
               const qty = item?.quantity || 1;
               const lineTotal = Number(item?.price || 0) * qty;
+              // A line is identified by the item and the combination it was bought as.
+              const lineId = item.lineId ?? `${item.id}::${item.combination_id ?? ""}`;
+              const choice = formatOptions(item.options);
               return (
-                <li key={item.id} className="cart-item">
-                  <img
-                    src={item.image}
-                    alt={title}
-                    className="cart-item-img"
-                    style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }}
-                  />
+                <li key={lineId} className="cart-item">
+                  <img src={item.image} alt={title} className="cart-item-img" />
                   <div className="cart-item-info">
                     <h3 className="cart-item-title">{title}</h3>
+                    {choice && <div className="cart-item-options">{choice}</div>}
+                    {item.sku && <div className="cart-item-sku">SKU: {item.sku}</div>}
                     {item.category && <div className="cart-item-category">{item.category}</div>}
                     <div className="cart-item-price">{formatCurrency(item.price)}</div>
                   </div>
@@ -75,7 +109,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
                     <button
                       type="button"
                       aria-label={`Decrease quantity for ${title}`}
-                      onClick={() => updateQuantity(item.id, qty - 1)}
+                      onClick={() => updateQuantity(lineId, qty - 1)}
                     >
                       <Minus size={14} />
                     </button>
@@ -83,7 +117,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
                     <button
                       type="button"
                       aria-label={`Increase quantity for ${title}`}
-                      onClick={() => updateQuantity(item.id, qty + 1)}
+                      onClick={() => updateQuantity(lineId, qty + 1)}
                     >
                       <Plus size={14} />
                     </button>
@@ -94,7 +128,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(lineId)}
                     aria-label={`Remove ${title} from cart`}
                   >
                     <Trash2 size={14} /> Remove

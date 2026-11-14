@@ -133,6 +133,18 @@ export async function apiFetchProductById(id) {
   return apiFetch(`/products/${encodeURIComponent(id)}`);
 }
 
+/**
+ * The whole product detail payload — `{ product, offers, reviews, variants,
+ * combinations, media }` — for one product id.
+ *
+ * `variants.options` carries the product's option values and `combinations`
+ * its sellable variants, so the admin console can show what is already
+ * stored before it writes anything back.
+ */
+export async function apiFetchProductDetails(id) {
+  return apiFetch(`/products/${encodeURIComponent(id)}/details`);
+}
+
 export async function apiCreateProduct(productData) {
   const data = await apiFetch("/products", { method: "POST", body: productData });
   return data.product;

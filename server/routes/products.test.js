@@ -22,6 +22,9 @@ function makeDb(handlers = {}) {
     ilike: [],
     insert: [],
     update: [],
+    upsert: [],
+    delete: [],
+    writes: [],
     maybeSingle: 0,
     single: 0,
   };
@@ -29,7 +32,7 @@ function makeDb(handlers = {}) {
   mockFrom.mockReset();
   mockFrom.mockImplementation((table) => {
     calls.tables.push(table);
-    const state = { op: null, columns: null, table };
+    const state = { op: null, columns: null, table, filters: [] };
 
     const query = {
       select(columns) {
@@ -39,6 +42,7 @@ function makeDb(handlers = {}) {
         return query;
       },
       eq(column, value) {
+        state.filters.push([column, value]);
         calls.eq.push([column, value]);
         return query;
       },
@@ -47,6 +51,7 @@ function makeDb(handlers = {}) {
         return query;
       },
       in(column, values) {
+        state.filters.push([column, values]);
         calls.in.push([column, values]);
         return query;
       },
@@ -61,11 +66,25 @@ function makeDb(handlers = {}) {
       insert(rows) {
         state.op = "insert";
         calls.insert.push(rows);
+        calls.writes.push({ op: "insert", table, rows });
+        return query;
+      },
+      upsert(rows, options) {
+        state.op = "upsert";
+        calls.upsert.push({ table, rows, options });
+        calls.writes.push({ op: "upsert", table, rows, options });
         return query;
       },
       update(row) {
         state.op = "update";
         calls.update.push(row);
+        calls.writes.push({ op: "update", table, row });
+        return query;
+      },
+      delete() {
+        state.op = "delete";
+        calls.delete.push({ table, filters: state.filters });
+        calls.writes.push({ op: "delete", table, filters: state.filters });
         return query;
       },
       maybeSingle() {
@@ -508,5 +527,290 @@ describe("products API category binding", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Category not found." });
     expect(calls.update).toEqual([]);
+  });
+
+  // ─── Options and variants ──────────────────────────────────────────────
+
+  const insertsInto = (calls, table) =>
+    calls.writes.filter((write) => write.op === "insert" && write.table === table);
+  const deletesFrom = (calls, table) =>
+    calls.writes.filter((write) => write.op === "delete" && write.table === table);
+
+  const newProduct = (overrides = {}) => ({
+    title: "Aurora Phone",
+    price: 49999,
+    description: "Flagship phone",
+    image_url: "https://example.com/phone.jpg",
+    ...overrides,
+  });
+
+  it("POST /api/products stores the variants and the combinations of the new product", async () => {
+    const calls = makeDb({
+      single: () => ({ data: product(), error: null }),
+      select: (state, table) =>
+        table === "product_option_values"
+          ? { data: [{ id: "catalogue-blue" }], error: null }
+          : { data: [], error: null },
+    });
+
+    const res = await send(
+      "POST",
+      "/api/products",
+      newProduct({
+        variants: [
+          { kind: "color", label: "Blue", value: "#2563eb", option_value_id: "catalogue-blue" },
+          { kind: "size", label: "M", value: "M", option_value_id: null },
+        ],
+        combinations: [
+          {
+            sku: "PHONE-BLUE-M",
+            price: 49999,
+            stock: 12,
+            image_url: "https://example.com/blue.jpg",
+            options: [
+              { kind: "color", label: "Blue", value: "#2563eb" },
+              { kind: "size", label: "M", value: "M" },
+            ],
+          },
+        ],
+      })
+    );
+
+    expect(res.status).toBe(201);
+
+    expect(insertsInto(calls, "product_variants")[0].rows).toEqual([
+      {
+        product_id: "prod-1",
+        kind: "color",
+        label: "Blue",
+        value: "#2563eb",
+        option_value_id: "catalogue-blue",
+        position: 0,
+        is_active: true,
+      },
+      {
+        product_id: "prod-1",
+        kind: "size",
+        label: "M",
+        value: "M",
+        option_value_id: null,
+        position: 1,
+        is_active: true,
+      },
+    ]);
+
+    expect(insertsInto(calls, "product_variant_combinations")[0].rows).toEqual([
+      {
+        product_id: "prod-1",
+        sku: "PHONE-BLUE-M",
+        price: 49999,
+        stock: 12,
+        image_url: "https://example.com/blue.jpg",
+        options: [
+          { kind: "color", label: "Blue", value: "#2563eb" },
+          { kind: "size", label: "M", value: "M" },
+        ],
+        position: 0,
+        is_active: true,
+      },
+    ]);
+  });
+
+  it("POST /api/products stores an option_value_id the catalogue does not know as null", async () => {
+    const calls = makeDb({
+      single: () => ({ data: product(), error: null }),
+      select: (state, table) =>
+        table === "product_option_values"
+          ? { data: [{ id: "catalogue-blue" }], error: null }
+          : { data: [], error: null },
+    });
+
+    const res = await send(
+      "POST",
+      "/api/products",
+      newProduct({
+        variants: [{ kind: "color", label: "Blue", option_value_id: "catalogue-ghost" }],
+      })
+    );
+
+    expect(res.status).toBe(201);
+    expect(insertsInto(calls, "product_variants")[0].rows[0].option_value_id).toBeNull();
+  });
+
+  it("PUT /api/products/:id replaces the variants and the combinations it is sent", async () => {
+    const calls = makeDb({
+      single: () => ({ data: product(), error: null }),
+      select: () => ({ data: [], error: null }),
+    });
+
+    const res = await send("PUT", "/api/products/prod-1", {
+      title: "Aurora Phone",
+      variants: [{ kind: "size", label: "L", value: "L" }],
+      combinations: [{ sku: "PHONE-L", price: 100, stock: 3, options: [] }],
+    });
+
+    expect(res.status).toBe(200);
+
+    // The option fields are not columns of `products`: the product row is
+    // never asked to carry them.
+    expect(calls.update).toEqual([{ title: "Aurora Phone" }]);
+
+    // The product's own rows are deleted before the new ones are inserted.
+    expect(deletesFrom(calls, "product_variants")[0].filters).toContainEqual([
+      "product_id",
+      "prod-1",
+    ]);
+    expect(deletesFrom(calls, "product_variant_combinations")[0].filters).toContainEqual([
+      "product_id",
+      "prod-1",
+    ]);
+
+    expect(insertsInto(calls, "product_variants")[0].rows).toEqual([
+      {
+        product_id: "prod-1",
+        kind: "size",
+        label: "L",
+        value: "L",
+        option_value_id: null,
+        position: 0,
+        is_active: true,
+      },
+    ]);
+    expect(insertsInto(calls, "product_variant_combinations")[0].rows).toEqual([
+      {
+        product_id: "prod-1",
+        sku: "PHONE-L",
+        price: 100,
+        stock: 3,
+        image_url: null,
+        options: [],
+        position: 0,
+        is_active: true,
+      },
+    ]);
+  });
+
+  it("PUT /api/products/:id with an empty variants array clears the product's rows", async () => {
+    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
+
+    const res = await send("PUT", "/api/products/prod-1", { variants: [] });
+
+    expect(res.status).toBe(200);
+    expect(deletesFrom(calls, "product_variants")).toHaveLength(1);
+    expect(insertsInto(calls, "product_variants")).toEqual([]);
+  });
+
+  it("POST /api/products without the option fields leaves the product's rows alone", async () => {
+    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
+
+    const res = await send("POST", "/api/products", newProduct());
+
+    expect(res.status).toBe(201);
+    expect(deletesFrom(calls, "product_variants")).toEqual([]);
+    expect(deletesFrom(calls, "product_variant_combinations")).toEqual([]);
+    expect(insertsInto(calls, "product_variants")).toEqual([]);
+    expect(insertsInto(calls, "product_variant_combinations")).toEqual([]);
+  });
+
+  it("PUT /api/products/:id without the option fields leaves the product's rows alone", async () => {
+    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
+
+    const res = await send("PUT", "/api/products/prod-1", { title: "Aurora Phone" });
+
+    expect(res.status).toBe(200);
+    expect(deletesFrom(calls, "product_variants")).toEqual([]);
+    expect(deletesFrom(calls, "product_variant_combinations")).toEqual([]);
+    expect(insertsInto(calls, "product_variants")).toEqual([]);
+    expect(insertsInto(calls, "product_variant_combinations")).toEqual([]);
+  });
+
+  it("POST /api/products rejects a variant with an unknown kind and writes nothing", async () => {
+    const calls = makeDb({});
+
+    const res = await send(
+      "POST",
+      "/api/products",
+      newProduct({ variants: [{ kind: "colour", label: "Blue" }] })
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("kind");
+    expect(body.error).toContain("color");
+    expect(calls.insert).toEqual([]);
+    expect(calls.writes).toEqual([]);
+  });
+
+  it("POST /api/products rejects a variant without a label and writes nothing", async () => {
+    const calls = makeDb({});
+
+    const res = await send(
+      "POST",
+      "/api/products",
+      newProduct({ variants: [{ kind: "color", value: "#2563eb" }] })
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("label");
+    expect(calls.insert).toEqual([]);
+  });
+
+  it("POST /api/products rejects a combination with a negative price or a fractional stock", async () => {
+    const calls = makeDb({});
+
+    let res = await send(
+      "POST",
+      "/api/products",
+      newProduct({ combinations: [{ sku: "PHONE-BLUE", price: -1 }] })
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("price");
+
+    res = await send(
+      "POST",
+      "/api/products",
+      newProduct({ combinations: [{ sku: "PHONE-BLUE", stock: 1.5 }] })
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("stock");
+
+    expect(calls.insert).toEqual([]);
+  });
+
+  it("PUT /api/products/:id rejects a combination option with an unknown kind and writes nothing", async () => {
+    const calls = makeDb({});
+
+    const res = await send("PUT", "/api/products/prod-1", {
+      combinations: [{ sku: "PHONE-BLUE", options: [{ kind: "colour", label: "Blue" }] }],
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("kind");
+    expect(calls.update).toEqual([]);
+    expect(calls.writes).toEqual([]);
+  });
+
+  it("POST /api/products answers 500 when the variants cannot be written", async () => {
+    const calls = makeDb({
+      single: () => ({ data: product(), error: null }),
+      insert: (state, table) =>
+        table === "product_variants"
+          ? { data: null, error: { message: "variants boom" } }
+          : { data: [], error: null },
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await send(
+      "POST",
+      "/api/products",
+      newProduct({ variants: [{ kind: "color", label: "Blue" }] })
+    );
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toEqual(expect.any(String));
+    expect(body.error).not.toContain("variants boom");
+    // The product row is written first, then the variants are attempted.
+    expect(insertsInto(calls, "product_variants")).toHaveLength(1);
   });
 });

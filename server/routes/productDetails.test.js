@@ -9,7 +9,7 @@ import app from "../app.js";
 
 /**
  * Chainable Supabase double. The detail route reads the product with
- * `maybeSingle()` and then awaits four filtered, ordered list queries, so the
+ * `maybeSingle()` and then awaits five filtered, ordered list queries, so the
  * handler answers per table.
  */
 function makeDb(handlers = {}) {
@@ -18,6 +18,7 @@ function makeDb(handlers = {}) {
     select: [],
     eq: [],
     order: [],
+    in: [],
     maybeSingle: 0,
   };
 
@@ -38,6 +39,10 @@ function makeDb(handlers = {}) {
       },
       order(column, options) {
         calls.order.push([table, column, options]);
+        return query;
+      },
+      in(column, values) {
+        calls.in.push([table, column, values]);
         return query;
       },
       maybeSingle() {
@@ -152,6 +157,8 @@ const reviews = [
   },
 ];
 
+// The option values of the product, in the order the route returns them:
+// the position order.
 const variants = [
   {
     id: "variant-color-0",
@@ -163,6 +170,24 @@ const variants = [
     is_active: true,
   },
   {
+    id: "variant-color-1",
+    product_id: product.id,
+    kind: "color",
+    label: "Cloud White",
+    value: "#f1f5f9",
+    position: 1,
+    is_active: true,
+  },
+  {
+    id: "variant-capacity-0",
+    product_id: product.id,
+    kind: "capacity",
+    label: "256 GB",
+    value: "256",
+    position: 2,
+    is_active: true,
+  },
+  {
     id: "variant-size-0",
     product_id: product.id,
     kind: "size",
@@ -171,13 +196,22 @@ const variants = [
     position: 3,
     is_active: true,
   },
+];
+
+// The sellable combinations of the product.
+const combinations = [
   {
-    id: "variant-color-1",
+    id: "combination-0",
     product_id: product.id,
-    kind: "color",
-    label: "Cloud White",
-    value: "#f1f5f9",
-    position: 1,
+    sku: "MRV-HEADP-BLACK",
+    price: "2499.00",
+    stock: 12,
+    image_url: null,
+    options: [
+      { kind: "color", label: "Midnight Black", value: "#111827" },
+      { kind: "size", label: "Standard", value: "Standard" },
+    ],
+    position: 0,
     is_active: true,
   },
 ];
@@ -200,6 +234,8 @@ const listHandlers = (overrides = {}) => ({
     if (table === "product_offers") return { data: offers, error: null };
     if (table === "product_reviews") return { data: reviews, error: null };
     if (table === "product_variants") return { data: variants, error: null };
+    if (table === "product_variant_combinations") return { data: combinations, error: null };
+    if (table === "product_option_values") return { data: [], error: null };
     if (table === "product_media") return { data: media, error: null };
     return { data: [], error: null };
   },
@@ -273,12 +309,60 @@ describe("product details API", () => {
         })),
       },
       variants: {
+        options: [
+          {
+            id: "variant-color-0",
+            kind: "color",
+            label: "Midnight Black",
+            value: "#111827",
+            position: 0,
+            option_value_id: null,
+          },
+          {
+            id: "variant-color-1",
+            kind: "color",
+            label: "Cloud White",
+            value: "#f1f5f9",
+            position: 1,
+            option_value_id: null,
+          },
+          {
+            id: "variant-capacity-0",
+            kind: "capacity",
+            label: "256 GB",
+            value: "256",
+            position: 2,
+            option_value_id: null,
+          },
+          {
+            id: "variant-size-0",
+            kind: "size",
+            label: "Standard",
+            value: "Standard",
+            position: 3,
+            option_value_id: null,
+          },
+        ],
         colors: [
           { id: "variant-color-0", label: "Midnight Black", value: "#111827" },
           { id: "variant-color-1", label: "Cloud White", value: "#f1f5f9" },
         ],
         sizes: [{ id: "variant-size-0", label: "Standard", value: "Standard" }],
       },
+      combinations: [
+        {
+          id: "combination-0",
+          sku: "MRV-HEADP-BLACK",
+          price: 2499,
+          stock: 12,
+          image_url: null,
+          options: [
+            { kind: "color", label: "Midnight Black", value: "#111827" },
+            { kind: "size", label: "Standard", value: "Standard" },
+          ],
+          position: 0,
+        },
+      ],
       media: [{ id: "media-hero", url: "https://images.example.com/hero.jpg", kind: "hero" }],
     });
   });
@@ -343,6 +427,148 @@ describe("product details API", () => {
 
   it("surfaces a child table read error as 500", async () => {
     makeDb(listHandlers({ product_media: { data: null, error: { message: "media boom" } } }));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await get(`/api/products/${product.id}/details`);
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "Could not load product details." });
+  });
+
+  // ─── Options and combinations ──────────────────────────────────────────
+
+  it("returns every option value of the product, whatever its kind, ordered by position", async () => {
+    const calls = makeDb(listHandlers());
+
+    const res = await get(`/api/products/${product.id}/details`);
+    const body = await res.json();
+
+    expect(body.variants.options.map((option) => option.id)).toEqual([
+      "variant-color-0",
+      "variant-color-1",
+      "variant-capacity-0",
+      "variant-size-0",
+    ]);
+    expect(body.variants.options.map((option) => option.kind)).toEqual([
+      "color",
+      "color",
+      "capacity",
+      "size",
+    ]);
+    expect(body.variants.options.map((option) => option.position)).toEqual([0, 1, 2, 3]);
+
+    // The colours and the sizes are still there, unchanged.
+    expect(body.variants.colors).toHaveLength(2);
+    expect(body.variants.sizes).toHaveLength(1);
+
+    expect(calls.order).toContainEqual(["product_variants", "position", { ascending: true }]);
+  });
+
+  it("returns the sellable combinations of the product", async () => {
+    makeDb(listHandlers());
+
+    const res = await get(`/api/products/${product.id}/details`);
+    const body = await res.json();
+
+    expect(body.combinations).toEqual([
+      {
+        id: "combination-0",
+        sku: "MRV-HEADP-BLACK",
+        price: 2499,
+        stock: 12,
+        image_url: null,
+        options: [
+          { kind: "color", label: "Midnight Black", value: "#111827" },
+          { kind: "size", label: "Standard", value: "Standard" },
+        ],
+        position: 0,
+      },
+    ]);
+  });
+
+  it("returns empty options and empty combinations for a product that has none", async () => {
+    makeDb(
+      listHandlers({
+        product_variants: { data: [], error: null },
+        product_variant_combinations: { data: [], error: null },
+      })
+    );
+
+    const res = await get(`/api/products/${product.id}/details`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.variants.options).toEqual([]);
+    expect(body.variants.colors).toEqual([]);
+    expect(body.variants.sizes).toEqual([]);
+    expect(body.combinations).toEqual([]);
+  });
+
+  it("takes the label and the value of the catalogue row an option value links to", async () => {
+    makeDb(
+      listHandlers({
+        product_variants: {
+          data: [
+            {
+              id: "variant-color-0",
+              product_id: product.id,
+              kind: "color",
+              label: "Black",
+              value: "#111827",
+              option_value_id: "catalogue-black",
+              position: 0,
+              is_active: true,
+            },
+          ],
+          error: null,
+        },
+        product_option_values: {
+          data: [{ id: "catalogue-black", label: "Obsidian Black", value: "#0b0b0f" }],
+          error: null,
+        },
+      })
+    );
+
+    const res = await get(`/api/products/${product.id}/details`);
+    const body = await res.json();
+
+    // The rename in the catalogue is the one the customer reads.
+    expect(body.variants.options[0]).toEqual({
+      id: "variant-color-0",
+      kind: "color",
+      label: "Obsidian Black",
+      value: "#0b0b0f",
+      position: 0,
+      option_value_id: "catalogue-black",
+    });
+    expect(body.variants.colors[0]).toEqual({
+      id: "variant-color-0",
+      label: "Obsidian Black",
+      value: "#0b0b0f",
+    });
+  });
+
+  it("surfaces a catalogue read error as 500", async () => {
+    makeDb(
+      listHandlers({
+        product_option_values: { data: null, error: { message: "catalogue boom" } },
+        product_variants: {
+          data: [
+            {
+              id: "variant-color-0",
+              product_id: product.id,
+              kind: "color",
+              label: "Black",
+              value: "#111827",
+              option_value_id: "catalogue-black",
+              position: 0,
+              is_active: true,
+            },
+          ],
+          error: null,
+        },
+      })
+    );
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await get(`/api/products/${product.id}/details`);

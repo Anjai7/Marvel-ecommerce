@@ -268,6 +268,20 @@
   font-size: 15px;
 }
 
+/* The choice the customer made for an item — one quiet line per item of the
+ * order that carries options, under the order and the customer details. */
+.vendor-item-options {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vendor-item-options__line {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
 /* ── Status labels ─────────────────────────────────────── */
 /* A plain status word (overview list) and a filled chip (shipment list). */
 .vendor-status,

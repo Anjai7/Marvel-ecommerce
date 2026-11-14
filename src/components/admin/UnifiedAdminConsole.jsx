@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -74,6 +74,7 @@ import {
   apiModerateProduct,
   apiUpdateOrderStatus,
   apiUploadImage,
+  apiFetchProductDetails,
 } from "../../api/backendApi";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -117,6 +118,8 @@ import { CreateUserForm, ViewUserPanel, EditUserForm, ResetPasswordForm } from "
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import OperationsHub from "./OperationsHub";
+import ProductVariantsEditor from "./ProductVariantsEditor";
+import { OPTION_KIND_LABELS } from "../../lib/productOptions";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 import useInactivityTimeout from "./useInactivityTimeout";
 
@@ -148,6 +151,102 @@ function orderRef(order) {
 function money(value) {
   if (value === null || value === undefined || value === "") return EMPTY;
   return formatCurrency(value);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Product options and variants
+   ───────────────────────────────────────────────────────────── */
+
+/**
+ * A number the admin typed, or `null` when the field was left empty.
+ *
+ * A blank price or stock means "not stated" — the API takes `null` for that,
+ * never `0`, which would claim the variant is free or out of stock.
+ */
+function optionalNumber(value) {
+  const text = String(value ?? "").trim();
+  if (text === "") return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+
+/** The option rows as the API takes them: `{ kind, label, value, option_value_id }`. */
+function toApiVariants(variants) {
+  if (!Array.isArray(variants)) return [];
+  return variants.map((variant) => ({
+    kind: variant?.kind ?? "",
+    label: variant?.label ?? "",
+    value: variant?.value ?? "",
+    option_value_id: variant?.option_value_id ?? null,
+  }));
+}
+
+/** The sellable combinations as the API takes them. */
+function toApiCombinations(combinations) {
+  if (!Array.isArray(combinations)) return [];
+  return combinations.map((combination) => ({
+    sku: combination?.sku ?? "",
+    price: optionalNumber(combination?.price),
+    stock: optionalNumber(combination?.stock),
+    image_url: combination?.image_url ?? "",
+    options: Array.isArray(combination?.options)
+      ? combination.options.map((option) => ({
+          kind: option?.kind ?? "",
+          label: option?.label ?? "",
+          value: option?.value ?? "",
+        }))
+      : [],
+  }));
+}
+
+/**
+ * The customer's choice for one order item, as one line of text:
+ * "Colour: Blue · Size: M · SKU: TEE-BLUE-M".
+ *
+ * The axis comes from the option's kind ("color" reads as "Colour") and the
+ * choice from the option's label — what the customer picked. A SKU is added
+ * when the item has one. An item with no options has no line at all.
+ */
+function orderItemChoice(item) {
+  const options = Array.isArray(item?.options) ? item.options : [];
+  const parts = [];
+  for (const option of options) {
+    if (!option) continue;
+    const axis = OPTION_KIND_LABELS[option.kind] || option.kind || "";
+    const label = String(option.label ?? "").trim();
+    const value = String(option.value ?? "").trim();
+    // The label is the choice the customer reads; when it repeats the axis
+    // name the value carries the choice instead.
+    const choice = label && label !== axis ? label : value || label;
+    if (!axis && !choice) continue;
+    parts.push(`${axis || choice}: ${choice || axis}`);
+  }
+  const sku = String(item?.sku ?? "").trim();
+  if (sku) parts.push(`SKU: ${sku}`);
+  return parts.join(" · ");
+}
+
+/**
+ * The items cell of an orders table.
+ *
+ * An order's items carry what the customer chose — the options and the SKU —
+ * so the admin can see it. A line is added only for an item that has options;
+ * an order without them reads exactly as it always did.
+ */
+function orderItemsCell(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const chosen = items.filter((item) => orderItemChoice(item));
+  return (
+    <>
+      {Array.isArray(order?.items) ? `${order.items.length} items` : EMPTY}
+      {chosen.map((item, index) => (
+        <div key={item?.id ?? `${item?.sku ?? ""}-${index}`}>
+          <strong>{displayValue(item?.title)}</strong>
+          <div className="chart-subtitle">{orderItemChoice(item)}</div>
+        </div>
+      ))}
+    </>
+  );
 }
 
 /**
@@ -231,7 +330,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     stock: "",
     image_url: "",
     description: "",
+    // The product's option values and its sellable combinations. Empty until
+    // the admin adds some — a product may have neither.
+    variants: [],
+    combinations: [],
   });
+
+  // The product whose options are being read. A read that lands after the
+  // admin moved on to another product is dropped, so the form never shows
+  // another product's rows.
+  const variantsRequestRef = useRef(null);
 
   // Users Tab Filter States
   const [searchUser, setSearchUser] = useState("");
@@ -428,6 +536,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setActiveTab("products");
     setEditingProduct(null);
     setProductErrors({});
+    variantsRequestRef.current = null;
     setProductForm({
       title: "",
       price: "",
@@ -437,6 +546,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       stock: "",
       image_url: "",
       description: "",
+      // A new product starts with no options and no combinations.
+      variants: [],
+      combinations: [],
     });
     setProductsView("add");
   };
@@ -450,6 +562,50 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       clearProductError("image_url");
     } catch (err) {
       addToast({ title: "Image Upload Failed", message: err.message, type: "error" });
+    }
+  };
+
+  /**
+   * Reads the options and combinations a product already has.
+   *
+   * The read runs beside the panel, never in front of it: the form opens
+   * straight away and the stored rows land when they arrive. A failed read
+   * leaves the section empty — the admin fills it in by hand.
+   */
+  const loadProductVariants = async (productId) => {
+    variantsRequestRef.current = productId;
+    try {
+      const payload = await apiFetchProductDetails(productId);
+      // Another product was opened while this read was in flight — its rows
+      // are the ones that belong on screen.
+      if (variantsRequestRef.current !== productId) return;
+      const options = Array.isArray(payload?.variants?.options) ? payload.variants.options : [];
+      const combinations = Array.isArray(payload?.combinations) ? payload.combinations : [];
+      setProductForm((prev) => ({
+        ...prev,
+        variants: options.map((option) => ({
+          kind: option?.kind ?? "",
+          label: option?.label ?? "",
+          value: option?.value ?? "",
+          option_value_id: option?.option_value_id ?? null,
+        })),
+        combinations: combinations.map((combination) => ({
+          sku: combination?.sku ?? "",
+          price: combination?.price ?? null,
+          stock: combination?.stock ?? null,
+          image_url: combination?.image_url ?? "",
+          options: Array.isArray(combination?.options)
+            ? combination.options.map((option) => ({
+                kind: option?.kind ?? "",
+                label: option?.label ?? "",
+                value: option?.value ?? "",
+              }))
+            : [],
+        })),
+      }));
+    } catch {
+      // The product's options could not be read. The section stays empty and
+      // the admin fills it in — a failed read never blocks the form.
     }
   };
 
@@ -468,8 +624,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "",
       image_url: prod.image_url || prod.image || "",
       description: prod.description || "",
+      // The stored options and combinations arrive with the read below.
+      variants: [],
+      combinations: [],
     });
     setProductsView("add");
+    loadProductVariants(prod.id);
   };
 
   const handleSaveProduct = async (e) => {
@@ -528,6 +688,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             : parseInt(productForm.stock, 10) || 0,
         image_url: productForm.image_url.trim(),
         description: productForm.description.trim(),
+        // The options and the sellable combinations go with every save, on a
+        // create and on an update alike. The server replaces the product's
+        // rows when the fields are present, so a product the admin emptied
+        // really does lose its options. A blank price or stock is sent as
+        // `null` — "not stated", never `0`.
+        variants: toApiVariants(productForm.variants),
+        combinations: toApiCombinations(productForm.combinations),
       };
       if (editingProduct) {
         const updated = await apiUpdateProduct(editingProduct.id, payload);
@@ -1856,9 +2023,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            {Array.isArray(order.items) ? `${order.items.length} items` : EMPTY}
-                          </TableCell>
+                          <TableCell>{orderItemsCell(order)}</TableCell>
                           <TableCell className="font-bold text-emerald">
                             {money(order.total_amount)}
                           </TableCell>
@@ -2578,6 +2743,17 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       </span>
                     )}
                   </div>
+                  <ProductVariantsEditor
+                    value={{
+                      variants: productForm.variants,
+                      combinations: productForm.combinations,
+                    }}
+                    onChange={(next) => setProductForm((prev) => ({ ...prev, ...next }))}
+                    category={productForm.category}
+                    categoryId={productForm.category_id ?? null}
+                    productPrice={Number(productForm.price) || 0}
+                    productStock={Number(productForm.stock) || 0}
+                  />
                   <div className="admin-inline-actions">
                     <Button
                       type="button"
@@ -2890,9 +3066,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                               </span>
                             </div>
                           </TableCell>
-                          <TableCell data-label="Items">
-                            {Array.isArray(order.items) ? `${order.items.length} items` : EMPTY}
-                          </TableCell>
+                          <TableCell data-label="Items">{orderItemsCell(order)}</TableCell>
                           <TableCell className="font-bold text-emerald" data-label="Total">
                             {money(order.total_amount)}
                           </TableCell>

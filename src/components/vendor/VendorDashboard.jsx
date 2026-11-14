@@ -72,6 +72,73 @@ function statusTone(status) {
   return "processing";
 }
 
+/** The human label of every option kind — "color" reads as "Colour". */
+const OPTION_KIND_LABELS = {
+  color: "Colour",
+  size: "Size",
+  capacity: "Capacity",
+  storage: "Storage",
+  material: "Material",
+  style: "Style",
+  weight: "Weight",
+  flavour: "Flavour",
+};
+
+/**
+ * The readable text of one option: its label, or — when a stored option has
+ * no label — its value. A hex colour value stands for nothing a seller can
+ * read, so it is dropped.
+ */
+function optionText(option) {
+  if (!option || typeof option !== "object") return "";
+  return [option.label, option.value]
+    .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
+    .find((candidate) => candidate && !candidate.startsWith("#"));
+}
+
+/**
+ * The customer's choice for one item as a readable line: "Colour: Blue · Size: M".
+ * "" means there is nothing to show, so the caller can leave the cell as it is.
+ */
+function formatOptions(options) {
+  if (!Array.isArray(options)) return "";
+  const parts = [];
+  for (const option of options) {
+    const text = optionText(option);
+    if (!text) continue;
+    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
+    const kindLabel = OPTION_KIND_LABELS[kind];
+    parts.push(kindLabel ? `${kindLabel}: ${text}` : text);
+  }
+  return parts.join(" · ");
+}
+
+/** The same choice, short: "Blue / M" — one quiet line per item. */
+function formatOptionValues(options) {
+  if (!Array.isArray(options)) return "";
+  const parts = [];
+  for (const option of options) {
+    const text = optionText(option);
+    if (text) parts.push(text);
+  }
+  return parts.join(" / ");
+}
+
+/**
+ * One short line per item of the order that carries a choice — "Blue / M" —
+ * with the full reading ("Colour: Blue · Size: M") kept beside it. Orders
+ * placed before the options existed simply have none.
+ */
+function orderOptionLines(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      const short = formatOptionValues(item?.options);
+      return short ? { short, full: formatOptions(item?.options) } : null;
+    })
+    .filter(Boolean);
+}
+
 export default function VendorDashboard({ currentUser, onNavigateHome }) {
   const [activeTab, setActiveTab] = useState("overview"); // overview, products, orders, settings
   const [products, setProducts] = useState([]);
@@ -398,34 +465,50 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.slice(0, 3).map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <div className="vendor-order-card__title">
-                            Order #{order.id.toUpperCase()}
-                          </div>
-                        </TableCell>
-                        <TableCell data-label="Details">
-                          <div className="vendor-order-card__meta">
-                            Customer: {order.customer_name} • {order.items?.length || 1} item(s)
-                          </div>
-                        </TableCell>
-                        <TableCell data-label="Total" className="text-right">
-                          <div className="vendor-order-card__total">
-                            {formatCurrency(order.total_amount)}
-                          </div>
-                        </TableCell>
-                        <TableCell data-label="Status">
-                          <span
-                            className={`vendor-status vendor-status--${
-                              order.status === "delivered" ? "delivered" : "pending"
-                            }`}
-                          >
-                            {order.status}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {orders.slice(0, 3).map((order) => {
+                      const optionLines = orderOptionLines(order.items);
+                      return (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            <div className="vendor-order-card__title">
+                              Order #{order.id.toUpperCase()}
+                            </div>
+                          </TableCell>
+                          <TableCell data-label="Details">
+                            <div className="vendor-order-card__meta">
+                              Customer: {order.customer_name} • {order.items?.length || 1} item(s)
+                            </div>
+                            {optionLines.length > 0 && (
+                              <div className="vendor-item-options">
+                                {optionLines.map((line, index) => (
+                                  <div
+                                    key={index}
+                                    className="vendor-item-options__line"
+                                    title={line.full}
+                                  >
+                                    {line.short}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell data-label="Total" className="text-right">
+                            <div className="vendor-order-card__total">
+                              {formatCurrency(order.total_amount)}
+                            </div>
+                          </TableCell>
+                          <TableCell data-label="Status">
+                            <span
+                              className={`vendor-status vendor-status--${
+                                order.status === "delivered" ? "delivered" : "pending"
+                              }`}
+                            >
+                              {order.status}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -596,49 +679,65 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((ord) => (
-                    <TableRow key={ord.id}>
-                      <TableCell>
-                        <div className="vendor-shipment__heading">
-                          <span className="vendor-shipment__title">
-                            Order #{ord.id.toUpperCase()}
-                          </span>
-                          <span
-                            className={`vendor-status-chip vendor-status-chip--${statusTone(ord.status)}`}
+                  {orders.map((ord) => {
+                    const optionLines = orderOptionLines(ord.items);
+                    return (
+                      <TableRow key={ord.id}>
+                        <TableCell>
+                          <div className="vendor-shipment__heading">
+                            <span className="vendor-shipment__title">
+                              Order #{ord.id.toUpperCase()}
+                            </span>
+                            <span
+                              className={`vendor-status-chip vendor-status-chip--${statusTone(ord.status)}`}
+                            >
+                              {ord.status}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Customer">
+                          <div className="vendor-shipment__meta">
+                            Customer: <strong>{ord.customer_name}</strong> ({ord.customer_email}) •
+                            Ship to: {ord.shipping_address}
+                          </div>
+                          {optionLines.length > 0 && (
+                            <div className="vendor-item-options">
+                              {optionLines.map((line, index) => (
+                                <div
+                                  key={index}
+                                  className="vendor-item-options__line"
+                                  title={line.full}
+                                >
+                                  {line.short}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell data-label="Tracking">
+                          <div className="vendor-shipment__tracking">
+                            Tracking: {ord.carrier || "Express"} —{" "}
+                            <code>{ord.tracking_number || "Awaiting shipment"}</code>
+                          </div>
+                        </TableCell>
+                        <TableCell data-label="Total" className="text-right">
+                          <div className="vendor-shipment__total">
+                            {formatCurrency(ord.total_amount)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="vendor-button--accent"
+                            onClick={() => handleOpenFulfillment(ord)}
                           >
-                            {ord.status}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell data-label="Customer">
-                        <div className="vendor-shipment__meta">
-                          Customer: <strong>{ord.customer_name}</strong> ({ord.customer_email}) •
-                          Ship to: {ord.shipping_address}
-                        </div>
-                      </TableCell>
-                      <TableCell data-label="Tracking">
-                        <div className="vendor-shipment__tracking">
-                          Tracking: {ord.carrier || "Express"} —{" "}
-                          <code>{ord.tracking_number || "Awaiting shipment"}</code>
-                        </div>
-                      </TableCell>
-                      <TableCell data-label="Total" className="text-right">
-                        <div className="vendor-shipment__total">
-                          {formatCurrency(ord.total_amount)}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          className="vendor-button--accent"
-                          onClick={() => handleOpenFulfillment(ord)}
-                        >
-                          <Truck size={14} className="vendor-button__icon" /> Update Shipment
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <Truck size={14} className="vendor-button__icon" /> Update Shipment
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

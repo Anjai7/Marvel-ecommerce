@@ -270,6 +270,83 @@ function mapSizes(sizes) {
     .filter(Boolean);
 }
 
+/** One option value of one axis: `{ id, kind, label, value }`. */
+function mapOptionValues(options) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .map((option) => {
+      if (!option || typeof option !== "object") return null;
+      const kind = text(option.kind);
+      const label = text(option.label ?? option.name);
+      if (!kind || !label) return null;
+      return { id: option.id ?? null, kind, label, value: text(option.value) };
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Every option value of the product, in the order the API returned them.
+ *
+ * The flat `variants.options` list is the contract. A payload that predates
+ * it only carries `colors` and `sizes`, so the values are lifted from there
+ * — the page must not go blank because an older server has not been updated.
+ */
+function optionValuesFrom(payload) {
+  const options = mapOptionValues(payload?.variants?.options);
+  if (options.length > 0) return options;
+
+  const lifted = [];
+  for (const color of payload?.variants?.colors ?? []) {
+    if (!color || typeof color !== "object") continue;
+    const label = text(color.label ?? color.name);
+    if (!label) continue;
+    lifted.push({ id: color.id ?? null, kind: "color", label, value: text(color.value) });
+  }
+  for (const size of payload?.variants?.sizes ?? []) {
+    if (!size || typeof size !== "object") continue;
+    const label = text(size.label ?? size.name);
+    if (!label) continue;
+    lifted.push({ id: size.id ?? null, kind: "size", label, value: text(size.value) });
+  }
+  return lifted;
+}
+
+/** The choice one combination stands for: `[{ kind, label, value }]`. */
+function mapCombinationOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .map((option) => {
+      if (!option || typeof option !== "object") return null;
+      const kind = text(option.kind);
+      const label = text(option.label ?? option.name);
+      if (!kind || !label) return null;
+      return { kind, label, value: text(option.value) };
+    })
+    .filter(Boolean);
+}
+
+/** One sellable combination: its own price, stock and SKU. */
+function mapCombinations(combinations) {
+  if (!Array.isArray(combinations)) return [];
+  return combinations
+    .map((combination) => {
+      if (!combination || typeof combination !== "object") return null;
+      const id = combination.id ?? null;
+      const sku = text(combination.sku);
+      const options = mapCombinationOptions(combination.options);
+      if (id === null && sku === null && options.length === 0) return null;
+      return {
+        id,
+        sku,
+        price: amount(combination.price),
+        stock: amount(combination.stock),
+        imageUrl: text(combination.image_url ?? combination.imageUrl),
+        options,
+      };
+    })
+    .filter(Boolean);
+}
+
 function sellerFrom(product) {
   const name = text(product.vendor_name ?? product.seller_name ?? product.store_name);
   return name ? { name } : null;
@@ -290,8 +367,16 @@ function manufacturerFrom(product) {
 /**
  * Shape one details payload for the product page.
  *
+ * The payload carries the product row, the stored offers and reviews, the
+ * option values of the product (`variants.options` — every value of every
+ * axis, in the order the API returned them), the sellable combinations
+ * (`combinations` — each with its own price, stock, SKU and choice) and the
+ * media. `variants.colors` and `variants.sizes` stay exactly as the API
+ * sends them.
+ *
  * @param {{ product?: object, offers?: object[], reviews?: object,
- *   variants?: { colors?: object[], sizes?: object[] }, media?: object[] }} payload
+ *   variants?: { options?: object[], colors?: object[], sizes?: object[] },
+ *   combinations?: object[], media?: object[] }} payload
  * @returns {object|null} null when there is no product row to show
  */
 export function buildDynamicProductDetails(payload) {
@@ -335,6 +420,11 @@ export function buildDynamicProductDetails(payload) {
     image: media[0]?.url ?? null,
     colors: mapColors(payload?.variants?.colors),
     sizes: mapSizes(payload?.variants?.sizes),
+    // A payload that carries the flat option list wins; one that only carries
+    // the legacy colour/size lists is still shown correctly — the selectors
+    // are generated from the values rather than the keys.
+    variantOptions: optionValuesFrom(payload),
+    combinations: mapCombinations(payload?.combinations),
 
     highlights: textList(product.highlights),
     specifications: specificationGroups(product.specifications),

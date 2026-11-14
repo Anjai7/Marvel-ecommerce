@@ -94,6 +94,21 @@
   color: #0f172a;
 }
 
+.cart-item-options {
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.cart-item-sku {
+  font-size: 10.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
 .cart-item-category {
   font-size: 12px;
   font-weight: 700;

@@ -82,9 +82,80 @@ function offerText(offer) {
   return offer?.description || offer?.title || null;
 }
 
+/** The human label of every option kind — "color" reads as "Colour". */
+const OPTION_KIND_LABELS = {
+  color: "Colour",
+  size: "Size",
+  capacity: "Capacity",
+  storage: "Storage",
+  material: "Material",
+  style: "Style",
+  weight: "Weight",
+  flavour: "Flavour",
+};
+
+/** "color" → "Colour"; an unknown kind reads as its own capitalised word. */
+function optionKindLabel(kind) {
+  if (typeof kind !== "string") return "";
+  const key = kind.trim().toLowerCase();
+  if (!key) return "";
+  if (OPTION_KIND_LABELS[key]) return OPTION_KIND_LABELS[key];
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+/**
+ * The option values of one product, grouped by kind.
+ *
+ * The kinds keep the order in which they first appear and every kind keeps
+ * the order the API returned its values in.
+ */
+function groupOptionValues(variantOptions) {
+  const groups = [];
+  const byKind = new Map();
+  for (const option of variantOptions) {
+    if (!option || typeof option !== "object") continue;
+    const kind = typeof option.kind === "string" ? option.kind.trim() : "";
+    const label = typeof option.label === "string" ? option.label.trim() : "";
+    if (!kind || !label) continue;
+    if (!byKind.has(kind)) {
+      const group = { kind, label: optionKindLabel(kind), values: [] };
+      byKind.set(kind, group);
+      groups.push(group);
+    }
+    byKind.get(kind).values.push({ ...option, kind, label });
+  }
+  return groups;
+}
+
+/**
+ * The combination that stands for the customer's choice.
+ *
+ * A combination matches when it holds a value of the same kind and label for
+ * every kind the customer chose. A combination that covers exactly those
+ * kinds wins over one that covers only some of them.
+ */
+function matchCombination(groups, combinations) {
+  if (groups.length === 0 || !Array.isArray(combinations)) return null;
+
+  const covers = (candidate, exact) => {
+    const options = Array.isArray(candidate?.options) ? candidate.options : [];
+    if (options.length === 0) return false;
+    const matches = groups.every((group) =>
+      options.some((option) => option?.kind === group.kind && option?.label === group.chosen.label)
+    );
+    if (!matches) return false;
+    return exact ? options.length === groups.length : true;
+  };
+
+  return (
+    combinations.find((candidate) => covers(candidate, true)) ??
+    combinations.find((candidate) => covers(candidate, false)) ??
+    null
+  );
+}
+
 export default function ProductDetails({ product }) {
-  const [selectedColor, setSelectedColor] = useState(0);
-  const [selectedSize, setSelectedSize] = useState(0);
+  const [selection, setSelection] = useState({});
   const [qty, setQty] = useState(1);
   const [pincode, setPincode] = useState("");
   const [pincodeMsg, setPincodeMsg] = useState(null);
@@ -99,18 +170,42 @@ export default function ProductDetails({ product }) {
 
   const {
     offers = { emi: [], bank: [], coupon: [] },
-    colors = [],
-    sizes = [],
+    variantOptions = [],
+    combinations = [],
     highlights = [],
     reviewSummary = { overall: null, total: 0 },
     deliveryInfo = { estimatedDays: null, lines: [] },
     seller,
   } = product;
 
-  const colorIndex = Math.min(selectedColor, Math.max(colors.length - 1, 0));
-  const selectedColorValue = colors[colorIndex] ?? null;
-  const sizeIndex = Math.min(selectedSize, Math.max(sizes.length - 1, 0));
-  const selectedSizeValue = sizes[sizeIndex] ?? null;
+  // One choice per kind. The first value of a kind is the default, and a kind
+  // whose values changed falls back to its first value as well.
+  const optionGroups = groupOptionValues(variantOptions).map((group) => ({
+    ...group,
+    chosen: group.values.find((value) => value.label === selection[group.kind]) ?? group.values[0],
+  }));
+
+  const selectedOptions = optionGroups.map((group) => ({
+    kind: group.kind,
+    label: group.chosen.label,
+    value: group.chosen.value ?? null,
+  }));
+
+  // The combination that stands for the customer's choice — its price, stock
+  // and SKU are what the page shows and what goes into the cart.
+  const combination = matchCombination(optionGroups, combinations);
+  const productPrice = product.price ?? null;
+  const originalPrice = product.originalPrice ?? null;
+  const resolvedPrice = combination?.price != null ? combination.price : productPrice;
+  const combinationStock = combination?.stock ?? null;
+  const resolvedStock = combinationStock !== null ? combinationStock : (product.stock ?? null);
+  const resolvedInStock = combinationStock !== null ? resolvedStock > 0 : (product.inStock ?? null);
+  const resolvedSku = combination?.sku ?? product.sku ?? null;
+  const combinationId = combination?.id ?? null;
+  const discountPercent =
+    resolvedPrice !== null && originalPrice !== null && originalPrice > resolvedPrice
+      ? Math.round(((originalPrice - resolvedPrice) / originalPrice) * 100)
+      : null;
 
   const emiLead = offers.emi[0] ?? null;
   const bankLead = offers.bank[0] ?? null;
@@ -126,7 +221,16 @@ export default function ProductDetails({ product }) {
   const handleCart = () => {
     if (cartState === "added") return;
     setCartState("added");
-    addItem(product, qty);
+    addItem(
+      {
+        ...product,
+        price: resolvedPrice,
+        sku: resolvedSku,
+        combination_id: combinationId,
+        options: selectedOptions,
+      },
+      qty
+    );
     addToast({
       title: "Added to Cart",
       message: `${product.name} added to cart.`,
@@ -169,12 +273,12 @@ export default function ProductDetails({ product }) {
               Featured
             </Badge>
           )}
-          {product.inStock === true && (
+          {resolvedInStock === true && (
             <Badge variant="success" size="sm">
               ✓ In Stock
             </Badge>
           )}
-          {product.inStock === false && (
+          {resolvedInStock === false && (
             <Badge variant="danger" size="sm">
               Out of Stock
             </Badge>
@@ -210,23 +314,21 @@ export default function ProductDetails({ product }) {
       <div className="pd-card-block pd-price-card">
         <div className="pd-price-main">
           <span className="pd-current-price">
-            {product.price === null ? "—" : formatCurrency(product.price)}
+            {resolvedPrice === null ? "—" : formatCurrency(resolvedPrice)}
           </span>
-          {product.originalPrice !== null && product.price !== null && (
-            <span className="pd-original-price">{formatCurrency(product.originalPrice)}</span>
+          {originalPrice !== null && resolvedPrice !== null && (
+            <span className="pd-original-price">{formatCurrency(originalPrice)}</span>
           )}
-          {product.discountPercent !== null && (
-            <span className="pd-discount-badge">{product.discountPercent}% OFF</span>
+          {discountPercent !== null && (
+            <span className="pd-discount-badge">{discountPercent}% OFF</span>
           )}
         </div>
         <div className="pd-price-sub">
-          {product.originalPrice !== null &&
-            product.price !== null &&
-            product.originalPrice > product.price && (
-              <span className="pd-savings-pill">
-                Save {formatCurrency(product.originalPrice - product.price)}
-              </span>
-            )}
+          {originalPrice !== null && resolvedPrice !== null && originalPrice > resolvedPrice && (
+            <span className="pd-savings-pill">
+              Save {formatCurrency(originalPrice - resolvedPrice)}
+            </span>
+          )}
           {product.offerText && <span className="pd-inclusive">{product.offerText}</span>}
         </div>
 
@@ -291,52 +393,51 @@ export default function ProductDetails({ product }) {
 
       {/* ─────────── 3. QUANTITY & OPTIONS ─────────── */}
       <div className="pd-card-block pd-options-card">
-        {colors.length > 0 && (
-          <div className="pd-option-group">
+        {optionGroups.map((group) => (
+          <div className="pd-option-group" key={group.kind}>
             <div className="pd-option-label">
               <span>
-                Color: <strong>{selectedColorValue?.label}</strong>
+                {group.label}: <strong>{group.chosen.label}</strong>
               </span>
             </div>
-            <div className="pd-color-swatches">
-              {colors.map((color, index) => (
-                <button
-                  key={color.id ?? color.label}
-                  className={`pd-color-btn ${index === colorIndex ? "active" : ""}`}
-                  onClick={() => setSelectedColor(index)}
-                  title={color.label}
-                >
-                  <span
-                    className="pd-color-circle"
-                    style={color.value ? { background: color.value } : undefined}
-                  />
-                  <span className="pd-color-name">{color.label}</span>
-                </button>
-              ))}
-            </div>
+            {group.kind === "color" ? (
+              <div className="pd-color-swatches">
+                {group.values.map((value) => (
+                  <button
+                    key={value.id ?? `${group.kind}-${value.label}`}
+                    className={`pd-color-btn ${value.label === group.chosen.label ? "active" : ""}`}
+                    onClick={() =>
+                      setSelection((current) => ({ ...current, [group.kind]: value.label }))
+                    }
+                    title={value.label}
+                  >
+                    <span
+                      className="pd-color-circle"
+                      style={
+                        value.value ? { "--pd-swatch-color": value.value } : undefined
+                      } /* inline-style: allowed */
+                    />
+                    <span className="pd-color-name">{value.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="pd-option-pills">
+                {group.values.map((value) => (
+                  <button
+                    key={value.id ?? `${group.kind}-${value.label}`}
+                    className={`pd-option-pill ${value.label === group.chosen.label ? "active" : ""}`}
+                    onClick={() =>
+                      setSelection((current) => ({ ...current, [group.kind]: value.label }))
+                    }
+                  >
+                    {value.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-
-        {sizes.length > 0 && (
-          <div className="pd-option-group">
-            <div className="pd-option-label">
-              <span>
-                Select Size: <strong>{selectedSizeValue?.label}</strong>
-              </span>
-            </div>
-            <div className="pd-size-pills">
-              {sizes.map((size, index) => (
-                <button
-                  key={size.id ?? size.label}
-                  className={`pd-size-pill ${index === sizeIndex ? "active" : ""}`}
-                  onClick={() => setSelectedSize(index)}
-                >
-                  {size.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        ))}
 
         {/* Quantity Stepper */}
         <div className="pd-option-group">

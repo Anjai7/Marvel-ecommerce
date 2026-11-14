@@ -58,6 +58,9 @@ describe("CartContext", () => {
       originalPrice: 150,
       image: "https://example.com/a.png",
       category: "audio",
+      sku: null,
+      combination_id: null,
+      options: [],
     });
     const normalized = normalizeProduct(productB);
     expect(normalized.id).toBe("b");

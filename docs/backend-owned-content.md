@@ -59,15 +59,21 @@ create table if not exists public.product_reviews (
 );
 ```
 
-### `product_variants`
+### `product_variants` — the option values of a product
+
+`kind` is one of `color`, `size`, `capacity`, `storage`, `material`,
+`style`, `weight`, `flavour` — the eight axes a product can be sold on.
+`option_value_id` links the value to the shared catalogue (below). Full DDL
+and the widening migration are in `docs/sql/apply-04-product-variants.sql`.
 
 ```sql
 create table if not exists public.product_variants (
   id uuid primary key default gen_random_uuid(),
   product_id uuid not null references public.products(id) on delete cascade,
-  kind text not null check (kind in ('color', 'size')),
+  kind text not null check (kind in ('color','size','capacity','storage','material','style','weight','flavour')),
   label text not null,
   value text,
+  option_value_id uuid references public.product_option_values(id) on delete set null,
   position int not null default 0,
   is_active boolean not null default true
 );
@@ -119,6 +125,19 @@ alter table public.products add column if not exists user_guide jsonb;
 
 All of them are nullable and have no default. A null column means "not
 configured", never "invent a value".
+
+### `product_option_values` — the shared catalogue of option values
+
+One row per `(kind, label)` in the whole store. A product links its option
+values here through `product_variants.option_value_id`, so renaming the
+catalogue row renames the option on every product that uses it. Full DDL in
+`docs/sql/apply-04-product-variants.sql`.
+
+### `product_variant_combinations` — the sellable variants
+
+One row per sellable combination of a product's options ("Blue / M"), each
+carrying its own `sku`, `price`, `stock` and `image_url`. Full DDL in
+`docs/sql/apply-04-product-variants.sql`.
 
 ## 2. API
 
@@ -176,9 +195,30 @@ omitted. Known keys and their shapes:
     ]
   },
   "variants": {
+    "options": [
+      {
+        "id": "",
+        "kind": "capacity",
+        "label": "256 GB",
+        "value": "256",
+        "position": 0,
+        "option_value_id": null
+      }
+    ],
     "colors": [{ "id": "", "label": "", "value": "#1e293b" }],
     "sizes": [{ "id": "", "label": "", "value": "" }]
   },
+  "combinations": [
+    {
+      "id": "",
+      "sku": "MRV-PHONE-256",
+      "price": 49999,
+      "stock": 12,
+      "image_url": null,
+      "position": 0,
+      "options": [{ "kind": "capacity", "label": "256 GB", "value": "256" }]
+    }
+  ],
   "media": [{ "id": "", "url": "", "kind": "gallery" }]
 }
 ```
@@ -189,8 +229,13 @@ omitted. Known keys and their shapes:
 - `reviews.breakdown` counts stored rows per star, keys `"1"`–`"5"`, only the
   stars that occur.
 - `reviews.items` is ordered newest first.
+- `variants.options` carries every option value of the product, ordered by
+  `position`; the catalogue label/value wins when the value is linked.
 - `variants.colors` / `variants.sizes` are grouped by `kind`, ordered by
   `position`.
+- `combinations` is every sellable combination of the product, ordered by
+  `position`, each with its own `sku`, `price`, `stock`, `image_url` and
+  `options` — the choice it stands for.
 - `media` is ordered by `position`.
 - 404 when the product does not exist.
 

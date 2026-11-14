@@ -27,6 +27,7 @@ const sampleItems = [
     image: "https://example.com/img1.jpg",
     category: "Apparel",
     quantity: 2,
+    lineId: "p1::",
   },
   {
     id: "p2",
@@ -108,7 +109,7 @@ describe("CartPage", () => {
       name: "Increase quantity for Marvel T-Shirt",
     });
     await user.click(inc);
-    expect(cart.updateQuantity).toHaveBeenCalledWith("p1", 3);
+    expect(cart.updateQuantity).toHaveBeenCalledWith("p1::", 3);
   });
 
   it("Remove calls removeItem", async () => {
@@ -127,7 +128,7 @@ describe("CartPage", () => {
       name: "Remove Marvel T-Shirt from cart",
     });
     await user.click(removeBtn);
-    expect(cart.removeItem).toHaveBeenCalledWith("p1");
+    expect(cart.removeItem).toHaveBeenCalledWith("p1::");
   });
 
   it("displays subtotal, savings and total", () => {
