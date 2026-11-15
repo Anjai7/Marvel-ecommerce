@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProductViewPage from "./ProductViewPage";
 import { ToastProvider } from "../ui/Toast";
@@ -177,5 +178,62 @@ describe("ProductViewPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Plain Canvas Shoe" })).toBeInTheDocument();
     expect(screen.queryByText(/Deal ends in/)).not.toBeInTheDocument();
+  });
+
+  it("offers every option kind as a choice, and only the stocked ones", async () => {
+    const user = userEvent.setup();
+    apiFetchProductDetails.mockResolvedValue({
+      ...MINIMAL_PAYLOAD,
+      product: { id: "p3", title: "Every Kind Tee", price: "900.00" },
+      variants: {
+        options: [
+          { id: "o1", kind: "size", label: "S", value: "S" },
+          { id: "o2", kind: "size", label: "M", value: "M" },
+          { id: "o3", kind: "material", label: "Cotton", value: "Cotton" },
+          { id: "o4", kind: "material", label: "Silk", value: "Silk" },
+          { id: "o5", kind: "color", label: "Black", value: "#111827" },
+        ],
+        colors: [{ id: "o5", label: "Black", value: "#111827" }],
+        sizes: [],
+      },
+      // Only "S / Cotton / Black" is stocked.
+      combinations: [
+        {
+          id: "k1",
+          sku: "TEE-S",
+          price: 900,
+          stock: 3,
+          image_url: null,
+          options: [
+            { kind: "size", label: "S", value: "S" },
+            { kind: "material", label: "Cotton", value: "Cotton" },
+            { kind: "color", label: "Black", value: "#111827" },
+          ],
+        },
+      ],
+    });
+
+    renderPage({ productId: "p3", onBack: vi.fn() });
+
+    expect(await screen.findByRole("heading", { name: "Every Kind Tee" })).toBeInTheDocument();
+
+    // Every kind is a choice, not a colour swatch only.
+    expect(screen.getByRole("button", { name: "S" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "M" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cotton" })).toBeInTheDocument();
+
+    // A value that no combination carries cannot be bought.
+    expect(screen.getByRole("button", { name: "M" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Silk" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "S" })).toBeEnabled();
+
+    // The stocked combination is the one the page opens on.
+    expect(screen.getByRole("button", { name: "S" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Cotton" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("₹900")).toBeInTheDocument();
+
+    // Choosing a value moves the other kinds to one that is in stock with it.
+    await user.click(screen.getByRole("button", { name: "Cotton" }));
+    expect(screen.getByRole("button", { name: "Cotton" })).toHaveAttribute("aria-pressed", "true");
   });
 });

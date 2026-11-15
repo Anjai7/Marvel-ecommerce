@@ -5253,6 +5253,9 @@ input:focus:not(:focus-visible) {
   height: 16px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.15);
+  /* The fill is the colour the admin stored with the option value. A value
+     that carries no colour falls back to a light grey rather than none. */
+  background: var(--pd-swatch-color, #e2e8f0);
 }
 .pd-color-avail {
   font-size: 11px;
@@ -5310,6 +5313,56 @@ input:focus:not(:focus-visible) {
   background: var(--navy-bg);
   color: var(--navy);
   box-shadow: 0 0 0 2px rgba(40, 116, 240, 0.25);
+}
+
+/* The option pills — every kind that is not a colour (size, capacity,
+   storage, material, style, weight, flavour). They wrap onto a second row
+   rather than running off the side of the panel. */
+.pd-option-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pd-option-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.pd-option-pill:hover:not(.disabled) {
+  border-color: var(--navy);
+  color: var(--navy);
+  background: var(--navy-bg);
+}
+.pd-option-pill.active {
+  border-color: var(--navy);
+  background: var(--navy-bg);
+  color: var(--navy);
+  box-shadow: 0 0 0 2px rgba(40, 116, 240, 0.25);
+}
+/* A value that no sellable combination carries for the rest of the choice. */
+.pd-option-pill.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+/* A value that is stocked, but not with what is chosen on the other kinds. */
+.pd-option-pill.muted,
+.pd-color-btn.muted {
+  opacity: 0.55;
+}
+.pd-option-pill.muted:hover,
+.pd-color-btn.muted:hover {
+  opacity: 1;
 }
 .pd-qty-row {
   display: inline-flex;

@@ -154,6 +154,93 @@ function matchCombination(groups, combinations) {
   );
 }
 
+/**
+ * The values of one kind that the shop stocks at all.
+ *
+ * A value that no combination carries cannot be bought in any
+ * arrangement — it is shown struck through rather than hidden, so the
+ * customer sees that the product comes in that colour but not that one.
+ * A product with no combinations carries one price for everything, so every
+ * value is available.
+ */
+function stockedLabels(groups, combinations, group) {
+  if (!Array.isArray(combinations) || combinations.length === 0) {
+    return group.values.map((value) => value.label);
+  }
+
+  const stocked = new Set();
+  for (const combination of combinations) {
+    const options = Array.isArray(combination?.options) ? combination.options : [];
+    for (const option of options) {
+      if (option?.kind === group.kind && option.label) stocked.add(option.label);
+    }
+  }
+  return group.values.filter((value) => stocked.has(value.label)).map((value) => value.label);
+}
+
+/**
+ * The values of one kind that can be bought with everything else that is
+ * chosen right now.
+ *
+ * Picking a colour narrows the sizes to the ones that arrive in that
+ * colour. The customer may still pick another colour — the sizes move with
+ * it — but the ones that do not pair are dimmed so the narrowing is
+ * visible.
+ */
+function pairingLabels(groups, combinations, group, selection) {
+  if (!Array.isArray(combinations) || combinations.length === 0) {
+    return group.values.map((value) => value.label);
+  }
+
+  const others = groups.filter((entry) => entry.kind !== group.kind);
+  return group.values
+    .filter((value) =>
+      combinations.some((combination) => {
+        const options = Array.isArray(combination?.options) ? combination.options : [];
+        const carriesThis = options.some(
+          (option) => option?.kind === group.kind && option?.label === value.label
+        );
+        if (!carriesThis) return false;
+        return others.every((other) => {
+          const label = selection?.[other.kind];
+          if (!label) return true;
+          return options.some((option) => option?.kind === other.kind && option?.label === label);
+        });
+      })
+    )
+    .map((value) => value.label);
+}
+
+/**
+ * The choice after the customer picks one value.
+ *
+ * Picking a value can rule out the value chosen on another kind — the shop
+ * does not stock "Red / XXL" — so the other kinds move to the first value
+ * that is still in stock with it. A product without combinations keeps the
+ * choice exactly as it was.
+ */
+function reconcileSelection(groups, combinations, selection) {
+  if (!Array.isArray(combinations) || combinations.length === 0) return selection;
+
+  const next = { ...selection };
+  // A few passes: fixing one kind can rule out a value on another kind.
+  for (let pass = 0; pass < 3; pass += 1) {
+    let changed = false;
+    for (const group of groups) {
+      const available = pairingLabels(groups, combinations, group, next);
+      const current = next[group.kind];
+      if (current && available.includes(current)) continue;
+      const fallback = available[0];
+      if (fallback === current) continue;
+      if (fallback) next[group.kind] = fallback;
+      else delete next[group.kind];
+      changed = true;
+    }
+    if (!changed) break;
+  }
+  return next;
+}
+
 export default function ProductDetails({ product }) {
   const [selection, setSelection] = useState({});
   const [qty, setQty] = useState(1);
@@ -179,10 +266,16 @@ export default function ProductDetails({ product }) {
   } = product;
 
   // One choice per kind. The first value of a kind is the default, and a kind
-  // whose values changed falls back to its first value as well.
-  const optionGroups = groupOptionValues(variantOptions).map((group) => ({
+  // whose values changed falls back to its first value as well. The choice is
+  // reconciled with the combinations the shop stocks, so the page opens on a
+  // combination that can actually be bought.
+  const groups = groupOptionValues(variantOptions);
+  const effectiveSelection = reconcileSelection(groups, combinations, selection);
+  const optionGroups = groups.map((group) => ({
     ...group,
-    chosen: group.values.find((value) => value.label === selection[group.kind]) ?? group.values[0],
+    chosen:
+      group.values.find((value) => value.label === effectiveSelection[group.kind]) ??
+      group.values[0],
   }));
 
   const selectedOptions = optionGroups.map((group) => ({
@@ -211,6 +304,16 @@ export default function ProductDetails({ product }) {
   const bankLead = offers.bank[0] ?? null;
   const couponLead = offers.coupon[0] ?? null;
   const offerCount = offers.emi.length + offers.bank.length + offers.coupon.length;
+
+  /**
+   * The customer picks a value. The other kinds follow it to the first value
+   * that is still in stock with it.
+   */
+  const selectValue = (kind, label) => {
+    setSelection((current) =>
+      reconcileSelection(optionGroups, combinations, { ...current, [kind]: label })
+    );
+  };
 
   const deliveryLines = deliveryInfo?.lines ?? [];
   const hasDelivery = deliveryLines.length > 0 || Boolean(deliveryInfo?.estimatedDays);
@@ -393,51 +496,71 @@ export default function ProductDetails({ product }) {
 
       {/* ─────────── 3. QUANTITY & OPTIONS ─────────── */}
       <div className="pd-card-block pd-options-card">
-        {optionGroups.map((group) => (
-          <div className="pd-option-group" key={group.kind}>
-            <div className="pd-option-label">
-              <span>
-                {group.label}: <strong>{group.chosen.label}</strong>
-              </span>
+        {optionGroups.map((group) => {
+          const stocked = stockedLabels(optionGroups, combinations, group);
+          const pairing = pairingLabels(optionGroups, combinations, group, effectiveSelection);
+          return (
+            <div className="pd-option-group" key={group.kind}>
+              <div className="pd-option-label">
+                <span>
+                  {group.label}: <strong>{group.chosen.label}</strong>
+                </span>
+              </div>
+              {group.kind === "color" ? (
+                <div className="pd-color-swatches">
+                  {group.values.map((value) => {
+                    const unavailable = !stocked.includes(value.label);
+                    const dimmed = !unavailable && !pairing.includes(value.label);
+                    const selected = value.label === group.chosen.label;
+                    return (
+                      <button
+                        key={value.id ?? `${group.kind}-${value.label}`}
+                        type="button"
+                        className={`pd-color-btn ${selected ? "active" : ""} ${
+                          unavailable ? "disabled" : ""
+                        } ${dimmed ? "muted" : ""}`}
+                        disabled={unavailable}
+                        aria-pressed={selected}
+                        onClick={() => selectValue(group.kind, value.label)}
+                        title={value.label}
+                      >
+                        <span
+                          className="pd-color-circle"
+                          style={
+                            value.value ? { "--pd-swatch-color": value.value } : undefined
+                          } /* inline-style: allowed */
+                        />
+                        <span className="pd-color-name">{value.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="pd-option-pills">
+                  {group.values.map((value) => {
+                    const unavailable = !stocked.includes(value.label);
+                    const dimmed = !unavailable && !pairing.includes(value.label);
+                    const selected = value.label === group.chosen.label;
+                    return (
+                      <button
+                        key={value.id ?? `${group.kind}-${value.label}`}
+                        type="button"
+                        className={`pd-option-pill ${selected ? "active" : ""} ${
+                          unavailable ? "disabled" : ""
+                        } ${dimmed ? "muted" : ""}`}
+                        disabled={unavailable}
+                        aria-pressed={selected}
+                        onClick={() => selectValue(group.kind, value.label)}
+                      >
+                        {value.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            {group.kind === "color" ? (
-              <div className="pd-color-swatches">
-                {group.values.map((value) => (
-                  <button
-                    key={value.id ?? `${group.kind}-${value.label}`}
-                    className={`pd-color-btn ${value.label === group.chosen.label ? "active" : ""}`}
-                    onClick={() =>
-                      setSelection((current) => ({ ...current, [group.kind]: value.label }))
-                    }
-                    title={value.label}
-                  >
-                    <span
-                      className="pd-color-circle"
-                      style={
-                        value.value ? { "--pd-swatch-color": value.value } : undefined
-                      } /* inline-style: allowed */
-                    />
-                    <span className="pd-color-name">{value.label}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="pd-option-pills">
-                {group.values.map((value) => (
-                  <button
-                    key={value.id ?? `${group.kind}-${value.label}`}
-                    className={`pd-option-pill ${value.label === group.chosen.label ? "active" : ""}`}
-                    onClick={() =>
-                      setSelection((current) => ({ ...current, [group.kind]: value.label }))
-                    }
-                  >
-                    {value.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {/* Quantity Stepper */}
         <div className="pd-option-group">
