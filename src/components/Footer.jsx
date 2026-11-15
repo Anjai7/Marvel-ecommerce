@@ -3,6 +3,7 @@ import { useContent } from "../context/ContentContext";
 import { useSettings } from "../context/SettingsContext";
 import { SimpleTooltip } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
+import "./storefront/chrome.css";
 import {
   ShieldCheck,
   Truck,
@@ -198,7 +199,7 @@ export default function Footer() {
                       <a
                         href={href || "#"}
                         className={`social-icon-btn ${key}`}
-                        aria-label={label || undefined}
+                        aria-label={label || "Social media link"}
                       >
                         {Icon ? <Icon /> : label ? <span>{label}</span> : null}
                       </a>
@@ -212,7 +213,7 @@ export default function Footer() {
           {/* Nav Columns */}
           {notice ? (
             <div className="footer-col">
-              <p style={{ fontSize: 13, color: "var(--gray-400)" }}>{notice}</p>
+              <p className="footer-notice">{notice}</p>
             </div>
           ) : (
             columns.map((col) => (

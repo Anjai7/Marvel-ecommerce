@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ProductCard from "../ProductCard";
 import { apiFetchCategoryProducts } from "../../api/backendApi";
+import "../storefront/widgets.css";
 
 /**
  * The listing of one category: the products of the category path, with the
@@ -25,35 +26,6 @@ const SORT_OPTIONS = [
 ];
 
 const DEFAULT_SORT = "newest";
-
-const CONTROL_LABEL = {
-  display: "block",
-  fontSize: 12,
-  fontWeight: 700,
-  color: "#475569",
-  marginBottom: 4,
-};
-
-const CONTROL = {
-  padding: "8px 10px",
-  borderRadius: 8,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#0f172a",
-  fontSize: 13,
-  fontWeight: 600,
-};
-
-const BUTTON = {
-  padding: "8px 14px",
-  borderRadius: 8,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#0f172a",
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: "pointer",
-};
 
 function messageOf(error, fallback) {
   if (error instanceof Error && error.message) return error.message;
@@ -162,24 +134,15 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
   return (
     <div className="category-listing">
       {(settings.showSort || settings.showFilters) && (
-        <div
-          className="category-listing-controls"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            gap: 16,
-            marginBottom: 20,
-          }}
-        >
+        <div className="category-listing-controls">
           {settings.showSort && (
             <div>
-              <label htmlFor="category-listing-sort" style={CONTROL_LABEL}>
+              <label htmlFor="category-listing-sort" className="category-listing-label">
                 Sort by
               </label>
               <select
                 id="category-listing-sort"
-                style={CONTROL}
+                className="category-listing-control"
                 value={sort}
                 onChange={(event) => changeSort(event.target.value)}
               >
@@ -195,17 +158,8 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
           {settings.showFilters && (
             <>
               <div>
-                <span style={CONTROL_LABEL}>Availability</span>
-                <label
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "#0f172a",
-                  }}
-                >
+                <span className="category-listing-label">Availability</span>
+                <label className="category-listing-check">
                   <input
                     type="checkbox"
                     checked={inStock}
@@ -216,7 +170,7 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
               </div>
 
               <div>
-                <label htmlFor="category-listing-min-price" style={CONTROL_LABEL}>
+                <label htmlFor="category-listing-min-price" className="category-listing-label">
                   Min price
                 </label>
                 <input
@@ -225,7 +179,7 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
                   min="0"
                   step="1"
                   placeholder="0"
-                  style={{ ...CONTROL, width: 120 }}
+                  className="category-listing-control category-listing-price"
                   value={priceDraft.min}
                   onChange={(event) =>
                     setPriceDraft((current) => ({ ...current, min: event.target.value }))
@@ -238,7 +192,7 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
               </div>
 
               <div>
-                <label htmlFor="category-listing-max-price" style={CONTROL_LABEL}>
+                <label htmlFor="category-listing-max-price" className="category-listing-label">
                   Max price
                 </label>
                 <input
@@ -247,7 +201,7 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
                   min="0"
                   step="1"
                   placeholder="Any"
-                  style={{ ...CONTROL, width: 120 }}
+                  className="category-listing-control category-listing-price"
                   value={priceDraft.max}
                   onChange={(event) =>
                     setPriceDraft((current) => ({ ...current, max: event.target.value }))
@@ -259,7 +213,7 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
                 />
               </div>
 
-              <button type="button" style={BUTTON} onClick={commitPrices}>
+              <button type="button" className="category-listing-button" onClick={commitPrices}>
                 Apply
               </button>
             </>
@@ -268,18 +222,16 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
       )}
 
       {loading ? (
-        <p style={{ fontSize: 14, color: "#64748b", display: "flex", gap: 8 }}>
+        <p className="category-listing-status category-listing-loading">
           <Loader2 size={16} className="animate-spin" /> Loading products…
         </p>
       ) : listing.error ? (
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
-            Could not load products.
-          </h2>
-          <p style={{ fontSize: 14, color: "#64748b" }}>{listing.error}</p>
+          <h2 className="category-listing-error-title">Could not load products.</h2>
+          <p className="category-listing-status">{listing.error}</p>
         </div>
       ) : listing.items.length === 0 ? (
-        <p style={{ fontSize: 14, color: "#64748b" }}>No products in this category yet.</p>
+        <p className="category-listing-status">No products in this category yet.</p>
       ) : (
         <div
           className={`product-grid ${settings.layout === "list" ? "product-grid--list" : ""}`.trim()}
@@ -291,26 +243,26 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
       )}
 
       {showPagination && !loading && !listing.error && (
-        <div className="table-pagination-footer" style={{ marginTop: 24 }}>
+        <div className="table-pagination-footer category-listing-pagination">
           <span className="pagination-info">
             Page {page} of {totalPages}
           </span>
           <div className="pagination-buttons">
             <button
               type="button"
-              style={{ ...BUTTON, opacity: page === 1 ? 0.5 : 1 }}
+              className="category-listing-button"
               disabled={page === 1}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
             >
-              <ChevronLeft size={14} style={{ verticalAlign: "middle" }} /> Previous
+              <ChevronLeft size={14} /> Previous
             </button>
             <button
               type="button"
-              style={{ ...BUTTON, opacity: listing.hasMore ? 1 : 0.5 }}
+              className="category-listing-button"
               disabled={!listing.hasMore}
               onClick={() => setPage((current) => current + 1)}
             >
-              Next <ChevronRight size={14} style={{ verticalAlign: "middle" }} />
+              Next <ChevronRight size={14} />
             </button>
           </div>
         </div>

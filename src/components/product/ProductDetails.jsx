@@ -709,7 +709,7 @@ export default function ProductDetails({ product }) {
 
               {offers.coupon.length > 0 && (
                 <>
-                  <div className="pd-offers-group-label" style={{ marginTop: 14 }}>
+                  <div className="pd-offers-group-label pd-offers-group-label--spaced">
                     Promo Coupons
                   </div>
                   {offers.coupon.map((offer, index) => (

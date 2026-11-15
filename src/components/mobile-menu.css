@@ -1,0 +1,119 @@
+/* The mobile navigation drawer.
+ *
+ * The drawer used to be styled with inline styles, so nothing about it
+ * could be changed from one place: the logo height, the greeting, the
+ * category heading and the accordion rows were all written where they
+ * were used. They live here now.
+ *
+ * The rules are scoped to the drawer so they cannot leak into the
+ * accordion primitive used elsewhere in the app.
+ */
+
+.mobile-drawer .mobile-menu-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-menu-logo {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.mobile-drawer .mobile-menu-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-menu-user-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--gray-900);
+}
+
+.mobile-menu-user-sub {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.mobile-menu-signin {
+  width: 100%;
+}
+
+.mobile-menu-quick-icon {
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+}
+
+.mobile-menu-categories {
+  padding: 8px 0 16px;
+}
+
+.mobile-menu-heading {
+  padding: 8px 20px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+.mobile-menu-accordion {
+  padding: 0 12px;
+}
+
+.mobile-menu-notice {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+/* The accordion rows sit tighter inside the drawer than the primitive
+   does on its own, and the chevron stays on the right. */
+.mobile-drawer .mobile-menu-trigger {
+  padding: 12px 8px;
+  font-size: 13.5px;
+}
+
+.mobile-menu-trigger-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-menu-trigger-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mobile-menu-subitem {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.mobile-menu-subitem:hover {
+  color: var(--orange);
+  background: var(--orange-light);
+}
+
+/* A thumb needs room: the drawer's rows grow on a touch screen. */
+@media (pointer: coarse) {
+  .mobile-drawer .mobile-menu-trigger {
+    padding: 14px 8px;
+  }
+
+  .mobile-menu-subitem {
+    padding: 10px 12px;
+  }
+
+  .mobile-menu-quick-link {
+    padding: 15px 0;
+  }
+}

@@ -7,6 +7,8 @@ import FrequentlyVisited from "./FrequentlyVisited";
 import CustomerReviews from "./CustomerReviews";
 import { buildDynamicProductDetails } from "./dynamicProductBuilder";
 import { apiFetchProductDetails } from "../../api/productDetailsApi";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 /**
  * The product page.
@@ -59,86 +61,27 @@ export default function ProductViewPage({
 
   if (state.status === "loading") {
     return (
-      <div
-        style={{
-          minHeight: "70vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-        }}
-      >
+      <div className="pvp-loading">
         <Loader2 size={36} className="animate-spin" color="#2563eb" />
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#64748b" }}>
-          Loading product details…
-        </div>
+        <div className="pvp-loading-text">Loading product details…</div>
       </div>
     );
   }
 
   if (state.status !== "ready") {
     return (
-      <div
-        style={{
-          minHeight: "70vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: 16,
-            padding: "36px 32px",
-            maxWidth: 480,
-            width: "100%",
-            textAlign: "center",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <AlertCircle size={36} color="#ef4444" style={{ marginBottom: 12 }} />
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-            Product Unavailable
-          </h3>
-          <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20 }}>
-            {state.message ?? "No product was requested."}
-          </p>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+      <div className="pvp-error-wrap">
+        <div className="pvp-error-card">
+          <AlertCircle size={36} color="#ef4444" className="pvp-error-icon" />
+          <h3 className="pvp-error-title">Product Unavailable</h3>
+          <p className="pvp-error-message">{state.message ?? "No product was requested."}</p>
+          <div className="pvp-error-actions">
             {state.status === "error" && resolvedId && (
-              <button
-                onClick={load}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "10px 20px",
-                  borderRadius: 8,
-                  background: "#f1f5f9",
-                  color: "#0f172a",
-                  border: "1px solid #e2e8f0",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
+              <button onClick={load} className="pvp-error-retry">
                 <RefreshCw size={15} /> Try Again
               </button>
             )}
-            <button
-              onClick={onBack}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 8,
-                background: "#2563eb",
-                color: "#fff",
-                border: "none",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
+            <button onClick={onBack} className="pvp-error-back">
               Back to Marketplace
             </button>
           </div>

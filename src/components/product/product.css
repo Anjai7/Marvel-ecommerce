@@ -1,0 +1,467 @@
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCT SURFACES — ProductViewPage, ProductImageGallery,
+   ProductInfoTabs, QuickViewDialog, CustomerReviews, FrequentlyVisited
+
+   These rules exist for two reasons:
+   1. They carry the styles that used to live in `style={{ … }}` props,
+      so the components can be restyled and themed from one place.
+   2. They add the responsive and coarse-pointer rules the base
+      stylesheet does not have. They sit in this file because
+      `index.css` is read-only for this pass; being imported after it,
+      equal-specificity rules here win the cascade.
+
+   Keep the desktop look: everything device-shaped lives inside a
+   media query — only the inline-style replacements apply everywhere.
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── ProductViewPage — loading & error states ────────────────── */
+.pvp-loading {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.pvp-loading-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #64748b;
+}
+.pvp-error-wrap {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.pvp-error-card {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+.pvp-error-icon {
+  margin-bottom: 12px;
+}
+.pvp-error-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.pvp-error-message {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 20px;
+}
+.pvp-error-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.pvp-error-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  background: #f1f5f9;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  font-weight: 700;
+}
+.pvp-error-retry:hover {
+  background: #e2e8f0;
+}
+.pvp-error-back {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  background: #2563eb;
+  color: var(--white);
+  font-weight: 700;
+}
+.pvp-error-back:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 480px) {
+  .pvp-error-card {
+    padding: 28px 20px;
+  }
+}
+
+/* ─── ProductInfoTabs — prose & section spacing ───────────────── */
+.pit-body-text {
+  font-size: 13.5px;
+  color: var(--gray-600);
+  line-height: 1.7;
+}
+.pit-body-text--mb {
+  margin-bottom: 16px;
+}
+.pit-section-title--spaced {
+  margin-top: 24px;
+}
+.pit-section-title--spaced-sm {
+  margin-top: 22px;
+}
+
+/* A specification value can be a whole paragraph (long manufacturer
+   addresses, HSN remarks). Without wrapping it forces the table — and
+   the page — wider than a 360px screen. */
+.pit-table td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+@media (max-width: 480px) {
+  .pit-tab-content {
+    padding: 18px 14px;
+  }
+  .pit-table td {
+    padding: 8px 10px;
+  }
+  .pit-spec-group {
+    padding: 14px 14px;
+  }
+  /* The 160px score column leaves the bars no room at 360px. */
+  .pit-rating-summary {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+  .pit-rating-big {
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+/* ─── ProductImageGallery — empty state & phone layout ────────── */
+.pvg-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* Keep the five-thumb vertical rail scrollable instead of letting it
+   outgrow the square main viewer. */
+.pvg-root.pvg-layout-vertical .pvg-thumbs {
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+@media (max-width: 640px) {
+  /* The base sheet collapses the vertical rail by flipping
+     flex-direction on a grid container — a no-op, which left five
+     82px thumbs stacked above the picture on a phone. Lay the rail
+     out as a bottom strip that scrolls sideways instead; the picture
+     stays above it and nothing widens the page. */
+  .pvg-root.pvg-layout-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pvg-root.pvg-layout-vertical .pvg-toolbar {
+    order: 1;
+  }
+  .pvg-root.pvg-layout-vertical .pvg-main-wrap {
+    order: 2;
+  }
+  .pvg-root.pvg-layout-vertical .pvg-thumbstrip {
+    order: 3;
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .pvg-root.pvg-layout-vertical .pvg-thumbstrip::-webkit-scrollbar {
+    display: none;
+  }
+  .pvg-root.pvg-layout-vertical .pvg-thumbs {
+    flex-direction: row;
+    max-height: none;
+    overflow-y: hidden;
+    overflow-x: auto;
+    padding: 4px 0;
+  }
+
+  /* The arrows hover the picture; keep them narrow and translucent so
+     the centre of the image stays tappable for the lightbox. */
+  .pvg-arrow {
+    width: 36px;
+    height: 36px;
+    left: 6px;
+    opacity: 0.92;
+  }
+  .pvg-arrow-right {
+    left: auto;
+    right: 6px;
+  }
+
+  .pvg-zoom-hint {
+    font-size: 10px;
+    padding: 3px 9px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Thumb buttons were 82px with number badges; a row of five still
+     scrolls, but each thumb may shrink a little on the smallest
+     phones. */
+  .pvg-thumb-btn {
+    width: 64px;
+    height: 64px;
+  }
+  /* Lightbox arrows park 60px outside the inner column — off-screen on
+     a 360px phone. Bring them inside the frame. */
+  .pvg-lb-arrow:first-of-type {
+    left: 2px;
+  }
+  .pvg-lb-arrow:last-of-type {
+    right: 2px;
+  }
+  .pvg-lb-arrow {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.25);
+  }
+  .pvg-lb-close {
+    top: 12px;
+    right: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Toolbars wrap instead of overflowing when the zoom controls and
+     the autoplay toggle cannot share one line. */
+  .pvg-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* ─── CustomerReviews — empty state, avatar & phone wrap ───────── */
+.cr-empty {
+  font-size: 14px;
+  color: #64748b;
+  padding: 16px 0;
+}
+.cr-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+@media (max-width: 480px) {
+  /* A verified-purchase pill next to a five-star rating can exceed the
+     line on its own at 360px — let the rating row drop below the
+     author instead of overflowing the card. */
+  .cr-card-top {
+    flex-wrap: wrap;
+  }
+  .cr-card-rating {
+    margin-left: 0;
+  }
+  .cr-review-body,
+  .cr-review-title {
+    overflow-wrap: anywhere;
+  }
+  .cr-helpful-row {
+    flex-wrap: wrap;
+  }
+  .cr-card {
+    padding: 14px 14px;
+  }
+}
+
+/* ─── FrequentlyVisited — phone rail ───────────────────────────── */
+.fv-card.is-clickable {
+  cursor: pointer;
+}
+.fv-img-placeholder {
+  background: #f1f5f9;
+}
+@media (max-width: 640px) {
+  /* The arrows parked half outside the section pushed the body wide on
+     small phones; keep them inside the frame instead. */
+  .fv-arrow-left {
+    left: 2px;
+  }
+  .fv-arrow-right {
+    right: 2px;
+  }
+  /* Each column may not exceed the screen — a pair of 280px columns
+     plus gaps is wider than a 360px phone, which cut the second card
+     in half at every scroll position. */
+  .fv-pair-column {
+    flex-basis: min(250px, 78vw);
+  }
+}
+
+/* ─── ProductViewPage grid — track minimum fix ───────────────────
+   At ≤860px index.css stacks the product grid with a single `1fr`
+   column; an unqualified `fr` keeps a content-sized floor (~368px
+   here, wider than a 360px phone). Zero the items' automatic minimum
+   so the track can actually shrink. */
+@media (max-width: 860px) {
+  .pvp-product-grid > * {
+    min-width: 0;
+  }
+}
+
+/* ─── QuickViewDialog — dialog sizing & parts ─────────────────── */
+.quickview-header {
+  margin-bottom: 8px;
+}
+.quickview-stock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.quickview-title {
+  font-size: 20px;
+  margin-top: 8px;
+  line-height: 1.3;
+}
+.quickview-desc {
+  font-size: 13px;
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.quickview-rating {
+  margin-bottom: 14px;
+}
+.quickview-price {
+  margin-bottom: 16px;
+}
+.quickview-feature-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+.quickview-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.quickview-cart-btn {
+  flex: 1;
+}
+.quickview-view-full-wrap {
+  text-align: center;
+  margin-top: 14px;
+}
+.quickview-view-full {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--navy-light);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.quickview-view-full:hover {
+  color: var(--navy);
+}
+.quickview-image-placeholder {
+  background: #f1f5f9;
+  min-height: 220px;
+}
+/* The dialog must fit the viewport at every width and scroll its own
+   content — the base `.ui-dialog-content` only guarantees this above
+   the 768px breakpoint for this variant, so state it for all widths. */
+.quickview-dialog-content {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.quickview-grid > * {
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .quickview-actions {
+    flex-wrap: wrap;
+  }
+  .quickview-title {
+    font-size: 18px;
+  }
+}
+
+/* ─── Touch targets ─────────────────────────────────────────────
+   Only coarse pointers get bigger hit areas; the desktop layout is
+   pixel-identical. Every icon-only control lands at ≥ 40px (the
+   32px floor is the absolute minimum, 40–44px is the usable one). */
+@media (pointer: coarse) {
+  /* Gallery: arrows, zoom, expand, thumbnail navigation. */
+  .pvg-arrow,
+  .pvg-fullscreen-btn,
+  .pvg-lb-arrow {
+    width: 44px;
+    height: 44px;
+  }
+  .pvg-thumb-nav {
+    width: 44px;
+    height: 40px;
+  }
+  .pvg-zoom-level-btn {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+  .pvg-orientation-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  /* Info tabs: the carousel arrows and the coupon copy button are the
+     only icon-only controls there. */
+  .pit-tabs-arrow {
+    width: 44px;
+    height: 44px;
+  }
+  .pit-coupon-copy-btn {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+  }
+  .pit-code-pill {
+    min-height: 40px;
+  }
+
+  /* Frequently visited: slider arrows, wishlist heart, add to cart. */
+  .fv-arrow {
+    width: 44px;
+    height: 44px;
+  }
+  .fv-wish {
+    width: 36px;
+    height: 36px;
+  }
+  .fv-cart-btn {
+    min-height: 40px;
+  }
+
+  /* Reviews: the "Helpful" pill is shorter than a fingertip by default. */
+  .cr-helpful-btn {
+    min-height: 40px;
+    padding: 8px 14px;
+  }
+
+  /* The share button is rendered by ProductDetails.jsx (not restyled —
+     coarse-pointer target only, so desktop is untouched). */
+  .pd-share-btn {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+}

@@ -685,6 +685,14 @@
   display: inline-flex;
 }
 
+/* A finger needs more room than a mouse cursor: the star grows to a
+   target on a touch screen without changing the row height. */
+@media (pointer: coarse) {
+  .feature-star-btn {
+    padding: 10px;
+  }
+}
+
 /* ── Generic report filter pills row ──────────────────── */
 .report-pills-row {
   display: flex;

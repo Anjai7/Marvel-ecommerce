@@ -3,6 +3,7 @@ import ProductCard from "./ProductCard";
 import { ChevronLeft, ChevronRight, Award, Sparkles, RefreshCw } from "lucide-react";
 import { apiFetchProducts } from "../api/backendApi";
 import { ProductCarouselSkeleton } from "./ui/ProductSkeleton";
+import "./storefront/chrome.css";
 
 export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProduct }) {
   const [products, setProducts] = useState([]);
@@ -16,7 +17,7 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
     try {
       const liveProds = await apiFetchProducts();
       if (liveProds && Array.isArray(liveProds)) {
-        const featured = liveProds.filter(p => p.is_featured);
+        const featured = liveProds.filter((p) => p.is_featured);
         setProducts(featured.length > 0 ? featured : liveProds);
       }
     } catch (err) {
@@ -61,33 +62,18 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
   return (
     <section className="section-block section-block-featured" id="featured-products">
       <div className="container">
-        <div className="section-head" style={{ alignItems: "center", justifyContent: "space-between", paddingBottom: 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="section-head">
+          <div className="section-head-group">
             <div className="section-head-icon is-navy">
               <Award size={22} color="var(--navy)" />
             </div>
             <div>
-              <h2 className="section-title" style={{ margin: 0 }}>
-                ⭐ Editor's Choice &amp; Featured Products
-              </h2>
+              <h2 className="section-title">⭐ Editor's Choice &amp; Featured Products</h2>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              onClick={loadFeatured}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--gray-500)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 12
-              }}
-              title="Refresh from DB"
-            >
+          <div className="section-head-group">
+            <button onClick={loadFeatured} className="refresh-db-btn" title="Refresh from DB">
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
             </button>
 
@@ -109,15 +95,10 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
         {loading ? (
           <ProductCarouselSkeleton count={4} />
         ) : products.length === 0 ? (
-          <div style={{
-            padding: "36px 20px",
-            textAlign: "center",
-            background: "#ffffff",
-            borderRadius: 14,
-            border: "1px solid #e2e8f0"
-          }}>
-            <p style={{ fontSize: 14, color: "#64748b" }}>
-              No featured products marked yet. Open <strong>Admin Portal &gt; Product Moderation</strong> to feature items.
+          <div className="catalog-empty-state catalog-empty-state-featured">
+            <p className="catalog-empty-note">
+              No featured products marked yet. Open{" "}
+              <strong>Admin Portal &gt; Product Moderation</strong> to feature items.
             </p>
           </div>
         ) : (

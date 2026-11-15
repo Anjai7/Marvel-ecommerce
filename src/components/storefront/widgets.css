@@ -1,0 +1,558 @@
+/* The storefront widget styles: the recent-products slider, the recent-search
+ * chips, the category listing & page, the CMS state blocks and the auth gate.
+ *
+ * A component-scoped stylesheet, plain CSS, built on the design tokens of
+ * `src/index.css`. The slate/blue hexes are the values these surfaces were
+ * designed with; they have no token, so they live here instead of inline.
+ *
+ * The touch-target overrides live in one `@media (pointer: coarse)` block at
+ * the bottom of each section: desktop keeps the exact look it had, fingers
+ * get the ≥32px (icon-only) and ≥40px (chips, actions) targets the spec asks
+ * for. Width breakpoints are limited to the project's 1024/900/768/640/480 so
+ * these surfaces reflow with the rest of the app.
+ */
+
+/* ─── Shared state block (category page · CMS page) ─────────── */
+/* One block serves both pages so a missing page and a missing category
+   read the same; the long address line is unbreakable, so it has to break
+   somewhere or a long slug would push the page wide. */
+.state-block {
+  padding: 48px 16px;
+  text-align: center;
+}
+.state-block-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 8px 0;
+}
+.state-block-message {
+  font-size: 14px;
+  color: #64748b;
+}
+.state-block-message code {
+  word-break: break-word;
+}
+.state-block-action {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ─── Recent products slider ────────────────────────────────── */
+/* `.section-block` already gives 40px of vertical padding; the modifier is
+   kept explicit so the section stays intact if the base class changes. */
+.recent-products-section {
+  padding: 40px 0;
+}
+.recent-products-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.recent-products-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+.recent-products-head-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.recent-products-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+}
+.recent-products-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy);
+}
+.recent-products-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+.recent-products-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.slider-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: var(--white);
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s ease;
+}
+.slider-nav-btn:disabled {
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* The empty state reads as a dashed placeholder on purpose — it is a slot
+   waiting for products, not an error. */
+.recent-products-empty {
+  padding: 48px 24px;
+  text-align: center;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px dashed #cbd5e1;
+}
+.recent-products-empty-icon {
+  margin: 0 auto 12px;
+}
+.recent-products-empty-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.recent-products-empty-text {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+/* The track scrolls on its own axis; the page body must never inherit that
+   scroll or the whole storefront would slide sideways on a phone. */
+.recent-products-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 8px 4px 16px;
+}
+.recent-products-track::-webkit-scrollbar {
+  display: none;
+}
+.recent-products-slide {
+  flex: 0 0 280px;
+  scroll-snap-align: start;
+}
+
+@media (max-width: 480px) {
+  .recent-products-title {
+    font-size: 20px;
+  }
+  /* 280px cards overflow a 320px phone with side padding; cap the card so
+     the next card peeks in as the scroll affordance instead. */
+  .recent-products-slide {
+    flex-basis: min(240px, 78vw);
+  }
+}
+
+@media (pointer: coarse) {
+  /* Thumbs need a bigger target than the 36px mouse gets. */
+  .slider-nav-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ─── Recent searches chips ─────────────────────────────────── */
+.recent-searches-section {
+  padding: 32px 0 20px;
+}
+.recent-searches-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.recent-searches-card {
+  background: var(--white);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.recent-searches-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.recent-searches-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.recent-searches-icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.recent-searches-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.recent-searches-subtitle {
+  font-size: 12px;
+  color: #64748b;
+}
+.recent-searches-clear {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-decoration: underline;
+}
+.recent-searches-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.recent-search-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.recent-search-chip:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+/* The remove hit area is an icon-only control; the desktop chip stays
+   compact and the coarse-pointer block below enlarges it for thumbs. */
+.recent-search-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+  color: #94a3b8;
+  border-radius: 50%;
+}
+
+@media (max-width: 640px) {
+  .recent-searches-card {
+    padding: 16px;
+  }
+}
+
+@media (pointer: coarse) {
+  /* Chips are primary touch targets on a phone; 40px keeps them comfortably
+     tappable without growing the desktop pill. */
+  .recent-search-chip {
+    min-height: 40px;
+    padding: 8px 16px;
+  }
+  .recent-search-chip-remove {
+    min-width: 32px;
+    min-height: 32px;
+  }
+  .recent-searches-clear {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 4px 12px;
+  }
+}
+
+/* ─── Category listing ──────────────────────────────────────── */
+.category-listing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.category-listing-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 4px;
+}
+.category-listing-control {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: var(--white);
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+/* The price fields share one width so the pair reads as one control; the
+   min/max inputs on a 360px screen still fit two per row. */
+.category-listing-price {
+  width: 120px;
+}
+.category-listing-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.category-listing-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: var(--white);
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* The pagination arrows live inside the buttons; without this they sit on
+   the text baseline instead of the optical middle. */
+.category-listing-button svg {
+  vertical-align: middle;
+}
+.category-listing-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.category-listing-status {
+  font-size: 14px;
+  color: #64748b;
+}
+.category-listing-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.category-listing-error-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+.category-listing-pagination {
+  margin-top: 24px;
+}
+
+@media (max-width: 480px) {
+  /* A two-up card grid is unreadable on a 320–480px phone; the listing
+     gets one full-width column there. Scoped to the listing so the
+     storefront's shared .product-grid keeps its two-up default. */
+  .category-listing .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .category-listing-controls {
+    gap: 12px;
+  }
+}
+
+@media (pointer: coarse) {
+  .category-listing-control {
+    min-height: 40px;
+  }
+  .category-listing-button {
+    min-height: 40px;
+  }
+  .category-listing-check {
+    min-height: 40px;
+  }
+  .category-listing-check input {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ─── Category page ─────────────────────────────────────────── */
+.category-page-bc-node {
+  display: inline-flex;
+  align-items: center;
+}
+.category-page-intro {
+  padding: 28px 16px 0;
+}
+.category-page-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+  overflow-wrap: break-word;
+}
+.category-page-description {
+  font-size: 15px;
+  color: #475569;
+  max-width: 720px;
+}
+.category-page-subcat-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+.category-page-subcat {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: var(--white);
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.category-page-subcat svg {
+  vertical-align: middle;
+}
+.category-page-listing-wrap {
+  padding: 24px 16px 48px;
+}
+
+@media (max-width: 640px) {
+  /* A 30px heading wraps to three lines on a 360px screen; 24px keeps the
+     category name on one or two lines without losing hierarchy. */
+  .category-page-title {
+    font-size: 24px;
+  }
+}
+
+@media (pointer: coarse) {
+  .category-page-subcat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 40px;
+  }
+  .state-block-action {
+    min-height: 40px;
+  }
+}
+
+/* ─── Protected route (auth gate) ───────────────────────────── */
+.protected-route-loading {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+.protected-route-loading-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #64748b;
+  text-align: center;
+}
+.protected-route-gate {
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.protected-route-card {
+  background: var(--white);
+  border-radius: 16px;
+  padding: 36px 32px;
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+/* The 403 card is a hair wider and danger-tinted: the border is the one
+   signal before the copy that this is a permission state, not a login
+   state. */
+.protected-route-card--danger {
+  max-width: 480px;
+  border-color: #fee2e2;
+}
+.protected-route-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.protected-route-badge--danger {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.protected-route-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.protected-route-title--danger {
+  color: #991b1b;
+}
+.protected-route-text {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.protected-route-text--tight {
+  margin-bottom: 20px;
+}
+.protected-route-submit {
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  /* Side padding is the first thing to give on a 360px screen; the card
+     border and radius stay. */
+  .protected-route-card {
+    padding: 28px 20px;
+  }
+}

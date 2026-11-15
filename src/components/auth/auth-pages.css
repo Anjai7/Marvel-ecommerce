@@ -1,0 +1,740 @@
+/* ─── Auth pages (Login & Sign Up) ─────────────────────────────
+   The two account screens share one visual language: a full-bleed
+   backdrop, a split card (brand panel + form panel), and the same
+   error/submit vocabulary. Classes are named after the piece they
+   draw, not after the screen, so both pages share them.
+
+   One-off brand and status colors that have no matching token in
+   index.css are declared once on the page root as --auth-* custom
+   properties; everything else reads the design tokens directly. */
+
+.auth-shell {
+  /* Marketing-blue pair used by the brand gradients and CTAs; the
+     storefront tokens are Flipkart blue, which would change the age. */
+  --auth-blue: #2563eb;
+  --auth-blue-dark: #1e40af;
+  --auth-blue-deep: #1e3a8a;
+  --auth-cta-gradient: linear-gradient(135deg, var(--auth-blue-dark) 0%, var(--auth-blue) 100%);
+  --auth-brand-gradient-login: linear-gradient(
+    135deg,
+    var(--auth-blue-deep) 0%,
+    var(--auth-blue) 100%
+  );
+  --auth-brand-gradient-signup: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    var(--auth-blue-deep) 50%,
+    var(--auth-blue) 100%
+  );
+  --auth-violet: #7c3aed;
+  --auth-violet-dark: #6d28d9;
+  --auth-violet-bg: #f5f3ff;
+  --auth-ice: #93c5fd;
+  --auth-ice-soft: #eff6ff;
+  --auth-ice-border: rgba(37, 99, 235, 0.35);
+  --auth-error-bg: #fef2f2;
+  --auth-error-border: #fecaca;
+  --auth-error-text: #991b1b;
+  --auth-slate-900: #0f172a;
+  --auth-slate-700: #334155;
+  --auth-slate-500: #64748b;
+  --auth-slate-100: #f1f5f9;
+  --auth-success-bg: #dcfce7;
+  --auth-success-text: #16a34a;
+  --auth-gold: #ffd700;
+
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+/* The login page sits on the storefront hero photo, dimmed enough that
+   the card in front of it stays readable. */
+.auth-shell--login {
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.72) 0%, rgba(30, 58, 138, 0.82) 100%),
+    url("/ecommerce-bg.jpg") center/cover no-repeat fixed;
+}
+
+/* Sign up stays on the plain app backdrop; the photo belongs to sign in. */
+.auth-shell--signup {
+  background: var(--gray-50);
+}
+
+/* ── The split card ─────────────────────────────────────────── */
+
+.auth-card {
+  /* min() so the card shrinks with the viewport instead of overflowing it */
+  width: min(100%, 900px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.35),
+    0 0 1px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.auth-card--signup {
+  width: min(100%, 920px);
+  box-shadow:
+    0 20px 40px -15px rgba(0, 0, 0, 0.08),
+    0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Brand panel (left side) ────────────────────────────────── */
+
+.auth-brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--white);
+  padding: clamp(28px, 5vw, 44px) clamp(22px, 4vw, 36px);
+}
+
+.auth-brand--login {
+  background: var(--auth-brand-gradient-login);
+}
+
+.auth-brand--signup {
+  background: var(--auth-brand-gradient-signup);
+  padding: clamp(24px, 5vw, 44px) clamp(20px, 4vw, 36px);
+}
+
+/* Purely decorative light source; tucked behind the content (z-index)
+   so it never competes with the text. */
+.auth-brand-glow {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-brand-content {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 24px;
+}
+
+.auth-badge--signup {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  border: none;
+  box-shadow: none;
+}
+
+.auth-brand-title {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 12px;
+  color: var(--white);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.auth-brand--signup .auth-brand-title {
+  text-shadow: none;
+}
+
+.auth-brand-text {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.auth-brand--signup .auth-brand-text {
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: none;
+  margin-bottom: 32px;
+}
+
+.auth-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-feature-list--roomy {
+  gap: 18px;
+}
+
+/* Login: glassmorphic pill per selling point — the heavy blur keeps it
+   legible on top of the photo backdrop. */
+.auth-feature {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.auth-feature-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--auth-ice-border);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Sign up: plain icon + two-line copy; no card chrome, since this panel
+   sits on a flat gradient rather than a photo. */
+.auth-perk {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.auth-perk-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.auth-perk-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.auth-perk-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-brand-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 36px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-brand-footer--signup {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Form panel (right side) ────────────────────────────────── */
+
+.auth-form-panel {
+  padding: clamp(24px, 5vw, 44px) clamp(18px, 4vw, 38px);
+}
+
+/* Login centers a shorter form vertically; sign up's longer form just
+   flows from the top. */
+.auth-form-panel--center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-form-header {
+  margin-bottom: 28px;
+}
+
+.auth-form-header--compact {
+  margin-bottom: 20px;
+}
+
+.auth-form-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 6px;
+}
+
+.auth-form-title--flush {
+  margin-bottom: 0;
+}
+
+.auth-form-subtitle {
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.auth-form-subtitle--sm {
+  font-size: 13px;
+}
+
+/* Inline error notice; deliberately not an assertive live region so the
+   existing announcement behavior stays identical. */
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: var(--auth-error-bg);
+  border: 1px solid var(--auth-error-border);
+  color: var(--auth-error-text);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.auth-error--signup {
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.auth-error-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.auth-form--signup {
+  gap: 15px;
+}
+
+/* ── Labels ─────────────────────────────────────────────────── */
+
+.auth-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: 6px;
+}
+
+.auth-label--sm {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.auth-label--caps {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-label-inline {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.auth-password-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+/* ── Text buttons / links ──────────────────────────────────────
+   These used to be 14–15px-tall inline tap targets. They are now
+   real buttons/links with a 44px minimum hit area and nowrap text
+   so the label never wraps onto a second line. */
+
+.auth-text-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  margin: 0 -8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-family: var(--font);
+  font-size: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--navy-light);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.auth-text-button--sm {
+  font-size: 12px;
+}
+
+.auth-text-button--bold {
+  font-weight: 700;
+}
+
+/* Same treatment on the dark brand panel: lighter blue for contrast. */
+.auth-text-button--on-dark {
+  color: var(--auth-ice);
+  font-weight: 700;
+}
+
+/* ── Password field with visibility toggle ───────────────────── */
+
+.auth-password-field {
+  position: relative;
+}
+
+/* Room for the 44px toggle so typed text never runs underneath it. */
+.auth-password-input {
+  padding-right: 52px;
+}
+
+/* The icon stays 16px; the button grows to the 44px touch minimum. */
+.auth-eye-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--gray-400);
+  cursor: pointer;
+  transition: color 0.18s ease;
+}
+
+.auth-eye-toggle:hover {
+  color: var(--gray-600);
+}
+
+/* ── Remember me / checkbox rows ─────────────────────────────── */
+
+.auth-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.auth-checkbox {
+  border-radius: 4px;
+}
+
+.auth-checkbox--offset {
+  margin-top: 3px;
+}
+
+/* ── Account-type picker (sign up) ──────────────────────────── */
+
+.auth-role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-role-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-500);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.auth-role-option--user {
+  border: 2px solid var(--auth-blue);
+  background: var(--auth-ice-soft);
+  color: var(--auth-blue-dark);
+}
+
+.auth-role-option--vendor {
+  border: 2px solid var(--auth-violet);
+  background: var(--auth-violet-bg);
+  color: var(--auth-violet-dark);
+}
+
+.auth-role-text {
+  text-align: left;
+}
+
+.auth-role-title {
+  font-weight: 700;
+}
+
+.auth-role-sub {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+/* ── Terms row ──────────────────────────────────────────────── */
+
+.auth-terms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.auth-terms-label {
+  font-size: 12px;
+  color: var(--gray-600);
+  line-height: 1.5;
+}
+
+/* Inline sentence links: the tap target is 44px tall without letting the
+   sentence wrap onto two lines. No horizontal padding and no negative
+   margin to undo it — the pair made the link wider than the line it sits
+   in, which the page then had to clip. */
+.auth-terms-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  vertical-align: middle;
+  color: var(--auth-blue);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ── Submit button ───────────────────────────────────────────── */
+
+.auth-submit {
+  background: var(--auth-cta-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.auth-submit--signup {
+  margin-top: 4px;
+}
+
+.auth-submit-icon {
+  margin-left: 8px;
+}
+
+/* ── Switch-page footer (“Don’t have an account?”) ────────────── */
+
+.auth-switch {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+/* ── Forgot-password modal ────────────────────────────────────── */
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-modal {
+  position: relative;
+  background: var(--card);
+  border-radius: 16px;
+  max-width: 440px;
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: clamp(20px, 5vw, 30px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Icon-only; enlarged from 32px so a thumb can find it (44px minimum). */
+.auth-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--auth-slate-100);
+  border: none;
+  border-radius: 50%;
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+.auth-modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.auth-modal-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--auth-ice-soft);
+  color: var(--auth-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.auth-modal-icon--success {
+  width: 52px;
+  height: 52px;
+  background: var(--auth-success-bg);
+  color: var(--auth-success-text);
+  margin-bottom: 16px;
+}
+
+.auth-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--auth-slate-900);
+  margin: 0;
+}
+
+.auth-modal-title--spaced {
+  margin-bottom: 8px;
+}
+
+.auth-modal-text {
+  font-size: 13px;
+  color: var(--auth-slate-500);
+  margin-top: 6px;
+}
+
+.auth-modal-text--success {
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.auth-modal-error {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--auth-error-bg);
+  color: var(--auth-error-text);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.auth-modal-field {
+  margin-bottom: 20px;
+}
+
+.auth-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.auth-modal-hint {
+  font-size: 12px;
+  color: var(--auth-slate-500);
+  margin-top: 6px;
+}
+
+.auth-modal-submit {
+  width: 100%;
+  background: var(--auth-blue);
+  border-radius: var(--radius-sm);
+}
+
+.auth-modal-success {
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+
+/* Tablets and small laptops: the card stays two-column until the
+   panels would each get narrower than ~340px. */
+@media (max-width: 900px) {
+  .auth-brand {
+    padding: clamp(24px, 4vw, 36px) clamp(18px, 3vw, 28px);
+  }
+}
+
+/* Phones: one column, brand panel stacked on top of the form. */
+@media (max-width: 768px) {
+  .auth-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Small phones: the brand panel costs vertical space the form needs
+   more, so it is hidden entirely. */
+@media (max-width: 640px) {
+  .auth-brand {
+    display: none;
+  }
+}
+
+/* Short viewports: reclaim the outer breathing room. */
+@media (max-width: 480px) {
+  .auth-shell {
+    padding: 24px 12px;
+  }
+
+  .auth-role-grid {
+    grid-template-columns: 1fr;
+  }
+}

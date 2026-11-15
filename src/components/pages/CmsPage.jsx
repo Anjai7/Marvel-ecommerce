@@ -7,6 +7,7 @@ import { apiFetchProducts } from "../../api/backendApi";
 import { apiFetchCategoryTree } from "../../api/contentApi";
 import SeoHead from "./SeoHead";
 import { navigateToPath } from "../../lib/routes";
+import "../storefront/widgets.css";
 
 /**
  * The public CMS page: one slug, one page, its sections and the footer.
@@ -195,9 +196,9 @@ async function resolveReferences(sections) {
 /** The house state block: an icon, a title, a line of copy and an action. */
 function StateBlock({ icon, title, children, action }) {
   return (
-    <div className="container" style={{ padding: "48px 16px", textAlign: "center" }}>
+    <div className="container state-block">
       {icon}
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", margin: "8px 0" }}>{title}</h2>
+      <h2 className="state-block-title">{title}</h2>
       {children}
       {action}
     </div>
@@ -335,25 +336,12 @@ export default function CmsPage({ slug, onNavigate }) {
           icon={<AlertCircle size={32} color="#f59e0b" />}
           title="Page not found."
           action={
-            <button
-              type="button"
-              onClick={goHome}
-              style={{
-                marginTop: 12,
-                padding: "10px 20px",
-                borderRadius: 8,
-                border: "none",
-                background: "#2563eb",
-                color: "#fff",
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
+            <button type="button" onClick={goHome} className="state-block-action">
               Back to home
             </button>
           }
         >
-          <p style={{ fontSize: 14, color: "#64748b" }}>
+          <p className="state-block-message">
             No page matches the address <code>{slug}</code>.
           </p>
         </StateBlock>
@@ -369,7 +357,7 @@ export default function CmsPage({ slug, onNavigate }) {
           icon={<AlertCircle size={32} color="#ef4444" />}
           title="Could not load this page."
         >
-          <p style={{ fontSize: 14, color: "#64748b" }}>{state.message}</p>
+          <p className="state-block-message">{state.message}</p>
         </StateBlock>
         <Footer />
       </>

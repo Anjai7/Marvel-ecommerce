@@ -23,6 +23,8 @@ import {
 
 import { useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 /** Tab definitions. A tab is only offered when the product has its data. */
 const TAB_DEFINITIONS = [
@@ -58,7 +60,14 @@ function RatingBar({ percent, stars }) {
         {stars} <Star size={12} fill="#f59e0b" color="#f59e0b" />
       </span>
       <div className="pit-rbar-track">
-        <div className="pit-rbar-fill" style={{ width: `${percent}%` }} />
+        {/* The percentage is computed per rating row, so the width is set on the
+            element itself instead of shipping an inline style. */}
+        <div
+          className="pit-rbar-fill"
+          ref={(el) => {
+            if (el) el.style.width = `${percent}%`;
+          }}
+        />
       </div>
       <span className="pit-rbar-pct">{percent}%</span>
     </div>
@@ -220,9 +229,7 @@ export default function ProductInfoTabs({ product }) {
 
         {offers.bank.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
-              Partner Bank Offers
-            </div>
+            <div className="pit-section-title pit-section-title--spaced">Partner Bank Offers</div>
             <div className="pit-bank-list">
               {offers.bank.map((o, i) => (
                 <div className="pit-bank-row" key={i}>
@@ -252,16 +259,18 @@ export default function ProductInfoTabs({ product }) {
 
         {offers.coupon.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
-              Promo Codes
-            </div>
+            <div className="pit-section-title pit-section-title--spaced">Promo Codes</div>
             <div className="pit-coupon-grid">
               {offers.coupon.map((o, i) => (
                 <div className="pit-coupon-card" key={i}>
                   <div className="pit-coupon-top">
                     <span className="pit-coupon-code">{o.code ?? o.title}</span>
                     {o.code && (
-                      <button className="pit-coupon-copy-btn" onClick={() => copyCoupon(o.code)}>
+                      <button
+                        className="pit-coupon-copy-btn"
+                        onClick={() => copyCoupon(o.code)}
+                        aria-label={copiedCode === o.code ? "Coupon copied" : "Copy coupon code"}
+                      >
                         {copiedCode === o.code ? (
                           <Check size={14} color="#16a34a" />
                         ) : (
@@ -282,16 +291,7 @@ export default function ProductInfoTabs({ product }) {
     info: (
       <div className="pit-info-content">
         {product.description && (
-          <p
-            style={{
-              fontSize: 13.5,
-              color: "var(--gray-600, #475569)",
-              lineHeight: 1.7,
-              marginBottom: 16,
-            }}
-          >
-            {product.description}
-          </p>
+          <p className="pit-body-text pit-body-text--mb">{product.description}</p>
         )}
         {infoRows.length > 0 && (
           <table className="pit-table">
@@ -307,7 +307,7 @@ export default function ProductInfoTabs({ product }) {
         )}
         {certifications.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 22 }}>
+            <div className="pit-section-title pit-section-title--spaced-sm">
               Quality &amp; Safety Certifications
             </div>
             <div className="pit-cert-pills">
@@ -340,18 +340,14 @@ export default function ProductInfoTabs({ product }) {
 
         {product.warranty && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
-              Warranty
-            </div>
-            <p style={{ fontSize: 13.5, color: "var(--gray-600, #475569)", lineHeight: 1.7 }}>
-              {product.warranty}
-            </p>
+            <div className="pit-section-title pit-section-title--spaced">Warranty</div>
+            <p className="pit-body-text">{product.warranty}</p>
           </>
         )}
 
         {supportRows.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
+            <div className="pit-section-title pit-section-title--spaced">
               Manufacturer Contact &amp; Support
             </div>
             <table className="pit-table">
@@ -441,7 +437,7 @@ export default function ProductInfoTabs({ product }) {
 
         {careInstructions.length > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
+            <div className="pit-section-title pit-section-title--spaced">
               Care &amp; Maintenance Guidelines
             </div>
             <ul className="pit-care-list">
@@ -519,7 +515,7 @@ export default function ProductInfoTabs({ product }) {
 
         {reviewSummary.total > 0 && (
           <>
-            <div className="pit-section-title" style={{ marginTop: 24 }}>
+            <div className="pit-section-title pit-section-title--spaced">
               Rating Breakdown Summary
             </div>
             <div className="pit-rating-summary">

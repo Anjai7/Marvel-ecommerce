@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
+import "./auth-pages.css";
 
 export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
   const [email, setEmail] = useState("");
@@ -126,133 +127,27 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "calc(100vh - 120px)",
-        background:
-          "linear-gradient(135deg, rgba(15, 23, 42, 0.72) 0%, rgba(30, 58, 138, 0.82) 100%), url('/ecommerce-bg.jpg') center/cover no-repeat fixed",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 16px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 900,
-          width: "100%",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))",
-          background: "#ffffff",
-          borderRadius: 20,
-          boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.2)",
-          overflow: "hidden",
-        }}
-      >
+    <div className="auth-shell auth-shell--login">
+      <div className="auth-card">
         {/* Left Side: Clean Brand Panel */}
-        <div
-          style={{
-            position: "relative",
-            overflow: "hidden",
-            background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)",
-            color: "#ffffff",
-            padding: "clamp(28px, 5vw, 44px) clamp(22px, 4vw, 36px)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
+        <div className="auth-brand auth-brand--login">
           {/* Subtle Ambient Glow Effect */}
-          <div
-            style={{
-              position: "absolute",
-              top: -60,
-              right: -60,
-              width: 180,
-              height: 180,
-              borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%)",
-              pointerEvents: "none",
-            }}
-          />
+          <div className="auth-brand-glow" aria-hidden="true" />
 
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: "rgba(255, 255, 255, 0.14)",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                padding: "6px 14px",
-                borderRadius: 30,
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: "0.5px",
-                marginBottom: 24,
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-              }}
-            >
+          <div className="auth-brand-content">
+            <div className="auth-badge">
               <Sparkles size={14} color="#ffd700" /> Marvel Premium Tech
             </div>
 
-            <h2
-              style={{
-                fontSize: 28,
-                fontWeight: 800,
-                marginBottom: 12,
-                color: "#ffffff",
-                lineHeight: 1.3,
-                textShadow: "0 2px 12px rgba(0, 0, 0, 0.45)",
-              }}
-            >
-              Smart Tech for Smarter Living
-            </h2>
-            <p
-              style={{
-                fontSize: 14,
-                color: "rgba(255, 255, 255, 0.88)",
-                marginBottom: 32,
-                lineHeight: 1.6,
-                textShadow: "0 1px 6px rgba(0, 0, 0, 0.35)",
-              }}
-            >
+            <h2 className="auth-brand-title">Smart Tech for Smarter Living</h2>
+            <p className="auth-brand-text">
               Access your personalized recommendations, track your active shipments, and manage your
               wishlist.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                  fontSize: 13,
-                  color: "#ffffff",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: "rgba(37, 99, 235, 0.35)",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
+            <div className="auth-feature-list">
+              <div className="auth-feature">
+                <div className="auth-feature-icon">
                   <Award size={18} color="#93c5fd" />
                 </div>
                 <span>
@@ -260,35 +155,8 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                 </span>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                  fontSize: 13,
-                  color: "#ffffff",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: "rgba(37, 99, 235, 0.35)",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
+              <div className="auth-feature">
+                <div className="auth-feature-icon">
                   <Truck size={18} color="#93c5fd" />
                 </div>
                 <span>
@@ -296,35 +164,8 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                 </span>
               </div>
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                  fontSize: 13,
-                  color: "#ffffff",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255, 255, 255, 0.14)",
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  boxShadow: "0 4px 14px rgba(0, 0, 0, 0.12)",
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: "rgba(37, 99, 235, 0.35)",
-                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
+              <div className="auth-feature">
+                <div className="auth-feature-icon">
                   <ShieldCheck size={18} color="#93c5fd" />
                 </div>
                 <span>
@@ -334,80 +175,28 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             </div>
           </div>
 
-          <div
-            style={{
-              position: "relative",
-              zIndex: 1,
-              marginTop: 36,
-              fontSize: 12,
-              color: "rgba(255, 255, 255, 0.75)",
-            }}
-          >
-            {settings?.footer?.copyright || ""}
-          </div>
+          <div className="auth-brand-footer">{settings?.footer?.copyright || ""}</div>
         </div>
 
         {/* Right Side: Sign In Form */}
-        <div
-          style={{
-            padding: "clamp(24px, 5vw, 44px) clamp(18px, 4vw, 38px)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-          }}
-        >
-          <div style={{ marginBottom: 28 }}>
-            <h3
-              style={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: "var(--gray-900, #0f172a)",
-                marginBottom: 6,
-              }}
-            >
-              Sign In
-            </h3>
-            <p style={{ fontSize: 14, color: "var(--gray-500, #64748b)" }}>
+        <div className="auth-form-panel auth-form-panel--center">
+          <div className="auth-form-header">
+            <h3 className="auth-form-title">Sign In</h3>
+            <p className="auth-form-subtitle">
               Enter your email and password to access your account
             </p>
           </div>
 
           {errorMsg && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                padding: 14,
-                borderRadius: 10,
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                color: "#991b1b",
-                fontSize: 13,
-                marginBottom: 20,
-              }}
-            >
-              <AlertCircle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div className="auth-error">
+              <AlertCircle size={18} className="auth-error-icon" />
               <div>{errorMsg}</div>
             </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            style={{ display: "flex", flexDirection: "column", gap: 18 }}
-          >
+          <form onSubmit={handleSubmit} className="auth-form">
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--gray-700)",
-                  marginBottom: 6,
-                }}
-              >
-                Email Address
-              </label>
+              <label className="auth-label">Email Address</label>
               <Input
                 type="email"
                 placeholder="you@example.com"
@@ -419,19 +208,11 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             </div>
 
             <div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 6,
-                }}
-              >
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-700)" }}>
-                  Password
-                </label>
+              <div className="auth-password-row">
+                <label className="auth-label-inline">Password</label>
                 <button
                   type="button"
+                  className="auth-text-button auth-text-button--sm"
                   onClick={() => {
                     setForgotEmail(email);
                     setForgotStep(1);
@@ -441,42 +222,26 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                     setConfirmNewPassword("");
                     setShowForgotModal(true);
                   }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    fontSize: 12,
-                    color: "var(--navy-light, #1e40af)",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
                 >
                   Forgot password?
                 </button>
               </div>
 
-              <div style={{ position: "relative" }}>
+              <div className="auth-password-field">
                 <Input
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   leftIcon={<Lock size={16} />}
+                  className="auth-password-input"
                   required
                 />
                 <button
                   type="button"
+                  className="auth-eye-toggle"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: 12,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    color: "var(--gray-400)",
-                    cursor: "pointer",
-                  }}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -484,22 +249,13 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             </div>
 
             {/* Remember Me */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  color: "var(--gray-600)",
-                  cursor: "pointer",
-                }}
-              >
+            <div className="auth-remember-row">
+              <label className="auth-remember-label">
                 <input
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  style={{ borderRadius: 4 }}
+                  className="auth-checkbox"
                 />
                 Remember me on this browser
               </label>
@@ -511,35 +267,20 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
               variant="primary"
               size="lg"
               disabled={submitting}
-              style={{
-                background: "linear-gradient(135deg, #1e40af 0%, #2563eb 100%)",
-                border: "none",
-                borderRadius: 10,
-                fontWeight: 700,
-                marginTop: 10,
-              }}
+              className="auth-submit"
             >
               {submitting ? "Signing in..." : "Sign In"}
-              <ArrowRight size={16} style={{ marginLeft: 8 }} />
+              <ArrowRight size={16} className="auth-submit-icon" />
             </Button>
 
-            <div
-              style={{ textAlign: "center", marginTop: 14, fontSize: 13, color: "var(--gray-500)" }}
-            >
-              Don't have an account?{" "}
+            <div className="auth-switch">
+              Don&apos;t have an account?{" "}
               <button
                 type="button"
+                className="auth-text-button auth-text-button--bold"
                 onClick={() => {
                   if (onNavigateSignUp) onNavigateSignUp();
                   else navigateToPath("/signup");
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--navy-light, #1e40af)",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  padding: 0,
                 }}
               >
                 Create an account
@@ -551,103 +292,33 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
 
       {/* ── FORGOT PASSWORD MODAL ── */}
       {showForgotModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(15, 23, 42, 0.6)",
-            backdropFilter: "blur(4px)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: 16,
-              maxWidth: 440,
-              width: "100%",
-              padding: 30,
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              position: "relative",
-            }}
-          >
+        <div className="auth-modal-overlay">
+          <div className="auth-modal">
             <button
+              type="button"
+              className="auth-modal-close"
               onClick={() => setShowForgotModal(false)}
-              style={{
-                position: "absolute",
-                top: 18,
-                right: 18,
-                background: "#f1f5f9",
-                border: "none",
-                borderRadius: "50%",
-                width: 32,
-                height: 32,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
+              aria-label="Close"
             >
               <X size={16} />
             </button>
 
             {forgotStep === 1 && (
               <form onSubmit={handleForgotSubmit}>
-                <div style={{ textAlign: "center", marginBottom: 20 }}>
-                  <div
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: "50%",
-                      background: "#eff6ff",
-                      color: "#2563eb",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 12px",
-                    }}
-                  >
+                <div className="auth-modal-header">
+                  <div className="auth-modal-icon">
                     <Lock size={22} />
                   </div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                    Reset Password
-                  </h3>
-                  <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+                  <h3 className="auth-modal-title">Reset Password</h3>
+                  <p className="auth-modal-text">
                     Enter your registered email address to request a password reset
                   </p>
                 </div>
 
-                {forgotError && (
-                  <div
-                    style={{
-                      padding: 10,
-                      borderRadius: 8,
-                      background: "#fef2f2",
-                      color: "#991b1b",
-                      fontSize: 13,
-                      marginBottom: 16,
-                    }}
-                  >
-                    {forgotError}
-                  </div>
-                )}
+                {forgotError && <div className="auth-modal-error">{forgotError}</div>}
 
-                <div style={{ marginBottom: 20 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: "#334155",
-                      marginBottom: 6,
-                    }}
-                  >
-                    Email Address
-                  </label>
+                <div className="auth-modal-field">
+                  <label className="auth-label">Email Address</label>
                   <Input
                     type="email"
                     placeholder="you@example.com"
@@ -663,7 +334,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                   variant="primary"
                   size="md"
                   isLoading={forgotLoading}
-                  style={{ width: "100%", background: "#2563eb", borderRadius: 8 }}
+                  className="auth-modal-submit"
                 >
                   Continue to Set New Password
                 </Button>
@@ -672,46 +343,19 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
 
             {forgotStep === 2 && (
               <form onSubmit={handleForgotSubmit}>
-                <div style={{ textAlign: "center", marginBottom: 20 }}>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                    Set New Password
-                  </h3>
-                  <p style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>
+                <div className="auth-modal-header">
+                  <h3 className="auth-modal-title">Set New Password</h3>
+                  <p className="auth-modal-text">
                     Enter the reset token you received for <strong>{forgotEmail}</strong>. In local
                     development it is filled in automatically.
                   </p>
                 </div>
 
-                {forgotError && (
-                  <div
-                    style={{
-                      padding: 10,
-                      borderRadius: 8,
-                      background: "#fef2f2",
-                      color: "#991b1b",
-                      fontSize: 13,
-                      marginBottom: 16,
-                    }}
-                  >
-                    {forgotError}
-                  </div>
-                )}
+                {forgotError && <div className="auth-modal-error">{forgotError}</div>}
 
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}
-                >
+                <div className="auth-modal-fields">
                   <div>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#334155",
-                        marginBottom: 6,
-                      }}
-                    >
-                      Reset Token
-                    </label>
+                    <label className="auth-label">Reset Token</label>
                     <Input
                       type="text"
                       aria-label="Reset Token"
@@ -721,24 +365,14 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                       required
                       autoFocus={!resetToken}
                     />
-                    <p style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    <p className="auth-modal-hint">
                       Local development only: this field is prefilled when the server exposes the
                       reset token.
                     </p>
                   </div>
 
                   <div>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#334155",
-                        marginBottom: 6,
-                      }}
-                    >
-                      New Password (min 6 chars)
-                    </label>
+                    <label className="auth-label">New Password (min 6 chars)</label>
                     <Input
                       type="password"
                       aria-label="New Password (min 6 chars)"
@@ -750,17 +384,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                   </div>
 
                   <div>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#334155",
-                        marginBottom: 6,
-                      }}
-                    >
-                      Confirm New Password
-                    </label>
+                    <label className="auth-label">Confirm New Password</label>
                     <Input
                       type="password"
                       aria-label="Confirm New Password"
@@ -777,7 +401,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                   variant="primary"
                   size="md"
                   isLoading={forgotLoading}
-                  style={{ width: "100%", background: "#2563eb", borderRadius: 8 }}
+                  className="auth-modal-submit"
                 >
                   Update &amp; Save Password
                 </Button>
@@ -785,26 +409,14 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
             )}
 
             {forgotStep === 3 && (
-              <div style={{ textAlign: "center", padding: "10px 0" }}>
-                <div
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: "50%",
-                    background: "#dcfce7",
-                    color: "#16a34a",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    margin: "0 auto 16px",
-                  }}
-                >
+              <div className="auth-modal-success">
+                <div className="auth-modal-icon auth-modal-icon--success">
                   <CheckCircle2 size={30} />
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
+                <h3 className="auth-modal-title auth-modal-title--spaced">
                   Password Reset Complete!
                 </h3>
-                <p style={{ fontSize: 13, color: "#64748b", marginBottom: 24 }}>
+                <p className="auth-modal-text auth-modal-text--success">
                   Your password has been successfully updated. You can now log in with your new
                   credentials.
                 </p>
@@ -819,7 +431,7 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                     setNewPassword("");
                     setConfirmNewPassword("");
                   }}
-                  style={{ width: "100%", background: "#2563eb", borderRadius: 8 }}
+                  className="auth-modal-submit"
                 >
                   Back to Sign In
                 </Button>

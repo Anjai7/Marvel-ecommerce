@@ -1,0 +1,56 @@
+/* The storefront's shared layout pieces: the promo carousel, the category
+ * slider, the banner layout and the two navigation menus.
+ *
+ * They were written with inline styles, so a change to the spacing or the
+ * type of any of them had to be made in the markup. They live here now.
+ */
+
+/* A block that keeps the page gutter but stands off the flow. */
+.storefront-block {
+  margin: 20px auto;
+}
+
+/* The "nothing to show yet" line every carousel and slider falls back to. */
+.storefront-empty {
+  padding: 18px 12px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+/* The heading row of the promo carousel: the title on the left, the
+   controls on the right. It wraps on a phone instead of squeezing. */
+.storefront-promo-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.storefront-banner-badge {
+  margin-bottom: 6px;
+}
+
+/* The "Categories" heading inside the mega menu. */
+.storefront-menu-heading {
+  font-size: 13px;
+  color: var(--gray-500);
+  padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .storefront-block {
+    margin: 14px auto;
+  }
+}
+
+/* The chevron beside a navigation item turns over when its menu is open.
+   It was an inline transform, so the rotation could not be themed or
+   animated from one place. */
+.nav-arrow {
+  transition: transform 0.2s ease;
+}
+
+.nav-arrow--open {
+  transform: rotate(180deg);
+}

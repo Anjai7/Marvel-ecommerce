@@ -14,6 +14,8 @@ import { ShoppingCart, Check, Heart, ShieldCheck, Truck, RefreshCw } from "lucid
 import { useCart } from "../../context/CartContext";
 import { useSettings } from "../../context/SettingsContext";
 import { deliverySummary } from "./dynamicProductBuilder";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -127,11 +129,7 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
             {image ? (
               <img src={image} alt={title} className="quickview-image" />
             ) : (
-              <div
-                className="quickview-image"
-                style={{ background: "#f1f5f9", minHeight: 220 }}
-                aria-hidden="true"
-              />
+              <div className="quickview-image quickview-image-placeholder" aria-hidden="true" />
             )}
             {offerText && (
               <Badge variant="accent" className="quickview-badge">
@@ -142,45 +140,27 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
 
           {/* Right: Details */}
           <div className="quickview-details">
-            <DialogHeader style={{ marginBottom: 8 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
+            <DialogHeader className="quickview-header">
+              <div className="quickview-stock-row">
                 {stock !== null && (
                   <Badge variant={stock > 0 ? "success" : "danger"} size="sm">
                     {stock > 0 ? "In Stock" : "Out of Stock"}
                   </Badge>
                 )}
               </div>
-              <DialogTitle style={{ fontSize: 20, marginTop: 8 }}>{title}</DialogTitle>
+              <DialogTitle className="quickview-title">{title}</DialogTitle>
             </DialogHeader>
 
-            {desc && (
-              <p
-                style={{
-                  fontSize: 13,
-                  color: "var(--gray-600)",
-                  lineHeight: 1.5,
-                  marginBottom: 12,
-                }}
-              >
-                {desc}
-              </p>
-            )}
+            {desc && <p className="quickview-desc">{desc}</p>}
 
             {rating !== null && (
-              <div style={{ marginBottom: 14 }}>
+              <div className="quickview-rating">
                 <Rating rating={rating} count={reviews !== null ? reviews : undefined} size={16} />
               </div>
             )}
 
             {price !== null && (
-              <div style={{ marginBottom: 16 }}>
+              <div className="quickview-price">
                 <ProductPrice price={price} originalPrice={originalPrice} size="lg" />
               </div>
             )}
@@ -193,11 +173,7 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
                     <Icon size={16} color={color} />
                     <span>
                       {label}
-                      {subtitle && (
-                        <span style={{ display: "block", fontSize: 12, color: "var(--gray-500)" }}>
-                          {subtitle}
-                        </span>
-                      )}
+                      {subtitle && <span className="quickview-feature-sub">{subtitle}</span>}
                     </span>
                   </div>
                 ))}
@@ -205,11 +181,11 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
             )}
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+            <div className="quickview-actions">
               <Button
                 variant={cartState === "added" ? "secondary" : "accent"}
                 size="lg"
-                style={{ flex: 1 }}
+                className="quickview-cart-btn"
                 onClick={handleCart}
                 leftIcon={cartState === "added" ? <Check size={18} /> : <ShoppingCart size={18} />}
               >
@@ -225,15 +201,9 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
               </Button>
             </div>
 
-            <div style={{ textAlign: "center", marginTop: 14 }}>
+            <div className="quickview-view-full-wrap">
               <span
-                style={{
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  color: "var(--navy-light)",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
+                className="quickview-view-full"
                 onClick={() => {
                   onClose();
                   if (onViewFull) onViewFull();

@@ -18,7 +18,7 @@ export default function GallerySection({ images, columns, carousel, style }) {
     <SectionShell style={style} className="section-gallery">
       <div
         className={`section-gallery__track ${carousel ? "is-carousel" : "is-grid"}`}
-        style={{ "--section-gallery-columns": columnCount }}
+        style={{ "--section-gallery-columns": columnCount }} /* inline-style: allowed */
       >
         {items.map((image, index) => (
           <figure key={`${image?.url || "image"}-${index}`} className="section-gallery__item">

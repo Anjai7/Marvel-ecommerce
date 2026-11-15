@@ -67,7 +67,7 @@ export default function CategoryGridSection({
     <SectionShell style={style} className="section-category-grid">
       <div
         className="section-category-grid__items"
-        style={{ "--section-category-columns": columnCount }}
+        style={{ "--section-category-columns": columnCount }} /* inline-style: allowed */
       >
         {items.map((category, index) => {
           const path = categoryPath(category);

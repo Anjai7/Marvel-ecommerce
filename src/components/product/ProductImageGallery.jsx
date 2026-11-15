@@ -13,6 +13,8 @@ import {
   Columns,
   Sparkles,
 } from "lucide-react";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 export default function ProductImageGallery({ media = [] }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -31,6 +33,7 @@ export default function ProductImageGallery({ media = [] }) {
   const mainRef = useRef(null);
   const videoRef = useRef(null);
   const thumbsRef = useRef(null);
+  const lensRef = useRef(null);
 
   const THUMB_VISIBLE = 5;
   const activeMedia = media[activeIdx] || {};
@@ -82,6 +85,17 @@ export default function ProductImageGallery({ media = [] }) {
     }
   }, [activeIdx]);
 
+  // The lens paints a magnified slice of the active image; the offsets are
+  // computed per mouse position, so they are written to the element rather
+  // than shipped as an inline style attribute.
+  useEffect(() => {
+    const el = lensRef.current;
+    if (!el) return;
+    el.style.backgroundImage = `url(${activeMedia.url})`;
+    el.style.backgroundSize = `${zoomLevel}%`;
+    el.style.backgroundPosition = `${zoomPos.x}% ${zoomPos.y}%`;
+  }, [zoom, activeMedia.url, zoomLevel, zoomPos.x, zoomPos.y]);
+
   const handleMouseMove = useCallback(
     (e) => {
       if (isVideo || !mainRef.current) return;
@@ -115,19 +129,7 @@ export default function ProductImageGallery({ media = [] }) {
   if (media.length === 0) {
     return (
       <div className="pvg-root" id="product-gallery-root">
-        <div
-          className="pvg-main-wrap"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: 320,
-            color: "#64748b",
-            fontSize: 14,
-          }}
-        >
-          No images have been published for this product.
-        </div>
+        <div className="pvg-empty-state">No images have been published for this product.</div>
       </div>
     );
   }
@@ -224,10 +226,12 @@ export default function ProductImageGallery({ media = [] }) {
         {/* Dot indicators */}
         <div className="pvg-dots">
           {media.map((_, i) => (
-            <span
+            <button
               key={i}
+              type="button"
               className={`pvg-dot ${i === activeIdx ? "active" : ""}`}
               onClick={() => setActiveIdx(i)}
+              aria-label={`Go to media ${i + 1}`}
             />
           ))}
         </div>
@@ -305,16 +309,7 @@ export default function ProductImageGallery({ media = [] }) {
             />
 
             {/* Plugin-like Magnifier Lens Box */}
-            {zoom && (
-              <div
-                className="pvg-zoom-lens"
-                style={{
-                  backgroundImage: `url(${activeMedia.url})`,
-                  backgroundSize: `${zoomLevel}%`,
-                  backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
-                }}
-              />
-            )}
+            {zoom && <div ref={lensRef} className="pvg-zoom-lens" aria-hidden="true" />}
 
             {!zoom && (
               <div className="pvg-zoom-hint">
@@ -367,6 +362,7 @@ export default function ProductImageGallery({ media = [] }) {
               <button
                 key={i}
                 className={`pvg-lb-thumb ${i === activeIdx ? "active" : ""}`}
+                aria-label={`View media ${i + 1}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveIdx(i);

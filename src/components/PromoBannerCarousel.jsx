@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import "./storefront/layout.css";
 import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
@@ -80,14 +81,14 @@ export default function PromoBannerCarousel() {
 
   if (notice) {
     return (
-      <div className="container" style={{ margin: "20px auto" }}>
-        <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>{notice}</p>
+      <div className="container storefront-block">
+        <p className="storefront-empty">{notice}</p>
       </div>
     );
   }
 
   return (
-    <div className="container" style={{ margin: "20px auto" }}>
+    <div className="container storefront-block">
       <div
         className="promo-carousel"
         id="promo-carousel"
@@ -100,7 +101,7 @@ export default function PromoBannerCarousel() {
           return (
             <div key={slide.id ?? i} className={`promo-slide ${i === current ? "active" : ""}`}>
               <div className="promo-slide-content">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div className="storefront-promo-head">
                   {(slide.badge || slide.emoji) && (
                     <Badge variant="accent" size="sm" className="promo-slide-tag">
                       {slide.badge || slide.emoji}

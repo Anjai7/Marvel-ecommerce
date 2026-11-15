@@ -28,10 +28,9 @@
 
 /* Every other row carries a shade of white that is a hair off, so the eye
    can follow a row across the columns instead of losing it in a wall of
-   white. The shade is barely there: #f8fafc against #ffffff. Above 640px
-   only — below it every row is a card of its own and a stripe inside a
-   card would just muddy it. */
-@media (min-width: 641px) {
+   white. The shade is barely there: #f8fafc against #ffffff. Only while
+   the table is still a table — a stripe inside a card would muddy it. */
+@container (min-width: 881px) {
   .ui-table-body .ui-table-row:nth-child(even) > .ui-table-cell {
     background: #f8fafc;
   }
@@ -86,10 +85,16 @@
 }
 
 /* ── The table as cards ───────────────────────────────── */
-/* A wide table cannot be squeezed into a phone. Below 640 every row becomes
-   a card: the first cell is the card's headline and the rest sit in a
-   two-column grid of label/value pairs, so the record stays compact. */
-@media (max-width: 640px) {
+/* A wide table cannot be squeezed into a narrow column. When the space the
+   table has is too little for it, every row becomes a card: the first cell
+   is the card's headline and the rest sit in a two-column grid of
+   label/value pairs, so the record stays compact and nothing is cut off.
+
+   The decision is made on the space the table has, not on the width of the
+   window: the admin console keeps a 280px sidebar, so a table that fits
+   the screen can still be too wide for the column it sits in. The container
+   query asks the table's own wrapper how much room it has. */
+@container (max-width: 880px) {
   .ui-table--cards .ui-table-header {
     display: none;
   }

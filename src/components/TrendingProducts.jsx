@@ -3,6 +3,7 @@ import ProductCard from "./ProductCard";
 import { TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { apiFetchProducts } from "../api/backendApi";
 import { ProductGridSkeleton } from "./ui/ProductSkeleton";
+import "./storefront/chrome.css";
 
 const COLS = 4;
 const ROWS = 3;
@@ -47,34 +48,23 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
     <section className="section-block section-block-trending" id="trending-products">
       <div className="container">
         {/* Section Header */}
-        <div className="section-head" style={{ paddingBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="section-head section-head-trending">
+          <div className="section-head-group">
             <div className="section-head-icon is-orange">
               <TrendingUp size={22} color="var(--orange)" />
             </div>
             <div>
-              <h2 className="section-title" style={{ margin: 0 }}>
-                🔥 Trending Now
-              </h2>
+              <h2 className="section-title">🔥 Trending Now</h2>
               <p className="section-subtitle">
                 Live catalog &amp; trending items from verified vendors
               </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="section-head-group">
             <button
               onClick={loadDynamicProducts}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--gray-500)",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 12
-              }}
+              className="refresh-db-btn"
               title="Refresh from DB"
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
@@ -98,31 +88,12 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
         {loading ? (
           <ProductGridSkeleton count={12} />
         ) : products.length === 0 ? (
-          <div style={{
-            padding: "48px 24px",
-            textAlign: "center",
-            background: "#ffffff",
-            borderRadius: 14,
-            border: "1px solid #e2e8f0"
-          }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 6 }}>
-              No products found in live database
-            </div>
-            <p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+          <div className="catalog-empty-state">
+            <div className="catalog-empty-title">No products found in live database</div>
+            <p className="catalog-empty-text">
               Seed synthetic catalog or add products from the Vendor Store Hub.
             </p>
-            <button
-              onClick={loadDynamicProducts}
-              style={{
-                padding: "8px 18px",
-                borderRadius: 8,
-                background: "var(--navy-light, #2563eb)",
-                color: "#fff",
-                border: "none",
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
+            <button onClick={loadDynamicProducts} className="catalog-empty-retry">
               Retry Database Query
             </button>
           </div>
@@ -165,15 +136,10 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
 
         {/* Bottom Pagination / View More */}
         {!loading && products.length > PAGE_SIZE && (
-          <div style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 12,
-            marginTop: 24
-          }}>
-            <span style={{ fontSize: 13, color: "var(--gray-600)", fontWeight: 500 }}>
-              Showing {start + 1}–{Math.min(start + PAGE_SIZE, products.length)} of {products.length} Products (Page {page + 1} of {totalPages})
+          <div className="trending-pagination">
+            <span className="trending-pagination-text">
+              Showing {start + 1}–{Math.min(start + PAGE_SIZE, products.length)} of{" "}
+              {products.length} Products (Page {page + 1} of {totalPages})
             </span>
           </div>
         )}

@@ -1,10 +1,24 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useContent } from "../context/ContentContext";
 import { useSettings } from "../context/SettingsContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 import { navigateToPath } from "../lib/routes";
+import "./storefront/chrome.css";
+
+/**
+ * The CMS ships a full gradient string per slide, which cannot be a static
+ * class; apply it imperatively so the markup carries no inline style.
+ * An empty value falls back to the default gradient in chrome.css.
+ */
+function SlideBackground({ bg }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (ref.current) ref.current.style.background = bg || "";
+  }, [bg]);
+  return <div className="hero-slide-bg" ref={ref} />;
+}
 
 /** Map a DB hero_slides row to the render shape used by the carousel. */
 function toRenderSlide(row) {
@@ -17,7 +31,8 @@ function toRenderSlide(row) {
     btnEnabled: row.btn_enabled !== false,
     bgImage: row.bg_image_url || "",
     image: row.bg_image_url || row.product_image_url || "",
-    bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+    // Chrome.css owns the default gradient; an empty value selects it.
+    bg: row.bg_gradient || "",
     price: row.price_text || "",
   };
 }
@@ -37,7 +52,7 @@ function toFallbackSlide(row) {
     btnPath: row.btn_path || "/products",
     bgImage: "",
     image: "",
-    bg: row.bg_gradient || "linear-gradient(135deg, #091322 0%, #172a45 100%)",
+    bg: row.bg_gradient || "",
     price: "",
   };
 }
@@ -127,22 +142,7 @@ export default function HeroBanner({ onNavigate }) {
       onTouchEnd={handleTouchEnd}
     >
       {heroError && fallbackSlide && (
-        <div
-          role="status"
-          style={{
-            position: "absolute",
-            top: 10,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 5,
-            padding: "6px 14px",
-            borderRadius: 999,
-            background: "rgba(15, 23, 42, 0.82)",
-            color: "#f8fafc",
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
+        <div role="status" className="hero-fallback-notice">
           Live hero content is unavailable — showing the default slide.
         </div>
       )}
@@ -150,7 +150,7 @@ export default function HeroBanner({ onNavigate }) {
       {slides.map((slide, i) => (
         <div key={i} className={`hero-slide ${i === current ? "active" : ""}`}>
           {/* Base Background Gradient */}
-          <div className="hero-slide-bg" style={{ background: slide.bg }} />
+          <SlideBackground bg={slide.bg} />
 
           {/* Whole Banner Background Image */}
           {(slide.bgImage || slide.image) && (
@@ -189,7 +189,7 @@ export default function HeroBanner({ onNavigate }) {
                 )}
                 {slide.price && (
                   <span className="hero-price-pill">
-                    <Sparkles size={13} color="#f59e0b" />
+                    <Sparkles size={13} className="icon-amber-bright" />
                     {slide.price}
                   </span>
                 )}
@@ -206,7 +206,7 @@ export default function HeroBanner({ onNavigate }) {
         onClick={prev}
         aria-label="Previous slide"
       >
-        <ChevronLeft size={24} color="#fff" />
+        <ChevronLeft size={24} className="icon-white" />
       </button>
 
       <button
@@ -215,7 +215,7 @@ export default function HeroBanner({ onNavigate }) {
         onClick={next}
         aria-label="Next slide"
       >
-        <ChevronRight size={24} color="#fff" />
+        <ChevronRight size={24} className="icon-white" />
       </button>
 
       {/* Centered Slider Indicators (Dots) */}

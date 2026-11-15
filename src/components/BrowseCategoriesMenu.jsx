@@ -20,7 +20,7 @@ export default function BrowseCategoriesMenu({ onClose }) {
   return (
     <div className="vcm-overlay" role="menu" aria-label="Browse Categories Menu">
       {notice ? (
-        <p style={{ padding: 16, fontSize: 13, color: "var(--gray-500)" }}>{notice}</p>
+        <p className="vcm-notice">{notice}</p>
       ) : (
         <>
           {/* Main category list */}

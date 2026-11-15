@@ -3,6 +3,7 @@ import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { LiveMegaMenu } from "./navigation/DynamicMenu";
 import { useContent } from "../context/ContentContext";
 import { Menu, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import "./storefront/layout.css";
 
 const byOrder = (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0);
 
@@ -322,11 +323,7 @@ export default function HoverNav({ onDynamicNavigate }) {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
           >
-            {notice && (
-              <span style={{ fontSize: 13, color: "var(--gray-500)", padding: "8px 12px" }}>
-                {notice}
-              </span>
-            )}
+            {notice && <span className="storefront-menu-heading">{notice}</span>}
 
             {roots.map((root, idx) => {
               const alignRight = idx >= Math.floor(roots.length / 2);
@@ -377,11 +374,9 @@ export default function HoverNav({ onDynamicNavigate }) {
                     {hasLiveDropdown && (
                       <ChevronDown
                         size={14}
-                        className="nav-arrow"
-                        style={{
-                          transition: "transform 0.2s ease",
-                          transform: activeMenu === root.title ? "rotate(180deg)" : "none",
-                        }}
+                        className={`nav-arrow ${
+                          activeMenu === root.title ? "nav-arrow--open" : ""
+                        }`}
                       />
                     )}
                   </span>

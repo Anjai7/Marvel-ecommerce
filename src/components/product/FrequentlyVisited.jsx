@@ -4,6 +4,8 @@ import { useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
 import { apiFetchProducts } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -63,14 +65,13 @@ function FVCard({ product, onView }) {
 
   return (
     <div
-      className="fv-card"
+      className={onView ? "fv-card is-clickable" : "fv-card"}
       id={`fv-card-${product.id}`}
       onClick={handleView}
       onKeyDown={handleKeyDown}
       tabIndex={onView ? 0 : undefined}
       role={onView ? "link" : undefined}
       aria-label={onView ? `View ${title}` : undefined}
-      style={{ cursor: onView ? "pointer" : "default" }}
     >
       {discount !== null && discount > 0 && (
         <span className="fv-badge fv-badge-discount">{discount}% OFF</span>
@@ -87,7 +88,7 @@ function FVCard({ product, onView }) {
         {image ? (
           <img src={image} alt={title} className="fv-img" loading="lazy" />
         ) : (
-          <div className="fv-img" style={{ background: "#f1f5f9" }} aria-hidden="true" />
+          <div className="fv-img fv-img-placeholder" aria-hidden="true" />
         )}
         <div className="fv-overlay">
           <Eye size={15} /> View Product

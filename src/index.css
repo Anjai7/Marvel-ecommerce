@@ -598,6 +598,12 @@ input:focus:not(:focus-visible) {
   display: flex;
   align-items: flex-start;
 }
+/* The line the menu shows when there is nothing to list yet. */
+.vcm-notice {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
 .vcm-overlay-list {
   width: 248px;
   background: var(--white);
@@ -1913,6 +1919,12 @@ input:focus:not(:focus-visible) {
 }
 
 /* ─── Product Card (Enhanced Depth & Elevation) ──────────────── */
+/* A card that cannot be opened shows the default cursor instead of a
+   pointer, so nothing invites a click that will not happen. */
+.product-card--static {
+  cursor: default;
+}
+
 .product-card {
   background: #ffffff;
   border-radius: 14px;
@@ -2951,6 +2963,52 @@ input:focus:not(:focus-visible) {
   height: 36px;
   border-radius: 50%;
   justify-content: center;
+}
+
+/* ─── Touch targets ────────────────────────────────────────────────
+   A thumb needs roughly 44px to hit a control, and a finger is not a
+   mouse: the small sizes that keep the console dense are wrong on a
+   phone. The larger sizes are therefore switched on only when the
+   pointer is coarse, so a desktop mouse keeps the layout it has. */
+@media (pointer: coarse) {
+  .ui-btn {
+    min-height: 44px;
+  }
+
+  .ui-btn-sm {
+    min-height: 40px;
+  }
+
+  .ui-btn-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .chart-pill-btn {
+    min-height: 40px;
+    padding: 0 16px;
+  }
+
+  .ui-toast-close {
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+  }
+
+  /* The dot stays a dot; the area a finger aims at grows around it. */
+  .hero-dot::after,
+  .promo-dot::after {
+    width: 32px;
+    height: 32px;
+  }
+
+  .footer-link {
+    min-height: 44px;
+  }
+
+  .pvp-bc-link {
+    min-height: 32px;
+  }
 }
 
 /* Loading Spinner */
@@ -5610,6 +5668,10 @@ input:focus:not(:focus-visible) {
   text-transform: uppercase;
   margin-top: 4px;
 }
+/* The second group of offers sits a little further down the card. */
+.pd-offers-group-label--spaced {
+  margin-top: 14px;
+}
 .pd-offer-item {
   display: flex;
   align-items: flex-start;
@@ -8236,6 +8298,11 @@ input:focus:not(:focus-visible) {
 .table-responsive-wrapper {
   width: 100%;
   overflow-x: auto;
+  /* The table asks this wrapper how much room it has, not the window: the
+     admin console keeps a 280px sidebar, so a table can fit the screen and
+     still be too wide for the column it sits in. */
+  container-type: inline-size;
+  min-width: 0;
 }
 
 .user-table-row:hover {

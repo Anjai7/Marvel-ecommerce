@@ -1,3 +1,4 @@
+import "./storefront/layout.css";
 import { useRef, useState } from "react";
 import { useContent } from "../context/ContentContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -63,17 +64,11 @@ export default function CategorySlider({ onNavigate }) {
 
           <div className="cat-slider" ref={ref}>
             {error ? (
-              <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>
-                Categories are temporarily unavailable.
-              </p>
+              <p className="storefront-empty">Categories are temporarily unavailable.</p>
             ) : loading ? (
-              <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>
-                Loading categories…
-              </p>
+              <p className="storefront-empty">Loading categories…</p>
             ) : cats.length === 0 ? (
-              <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>
-                No categories to show yet.
-              </p>
+              <p className="storefront-empty">No categories to show yet.</p>
             ) : (
               cats.map((cat) => {
                 const isActive = activeCat === cat.name;

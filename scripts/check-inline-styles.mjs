@@ -4,8 +4,8 @@
  *
  * Inline `style={{…}}` cannot be found with a search and cannot be themed, so
  * every style that is not one-off geometry belongs in a stylesheet. This guard
- * keeps it that way: the panels, the shared primitives and the two dashboards
- * must carry named classes instead.
+ * keeps it that way across the whole app: the storefront, the console, the
+ * shared primitives and the two dashboards must all carry named classes.
  *
  * Usage: node scripts/check-inline-styles.mjs [dir ...]
  */
@@ -15,12 +15,8 @@ import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-const DIRECTORIES = [
-  "src/components/admin",
-  "src/components/ui",
-  "src/components/vendor",
-  "src/components/customer",
-];
+/** The whole of `src` — a component anywhere may not go back to inline styles. */
+const DIRECTORIES = ["src"];
 
 const INLINE_STYLE = /style=\{\{/;
 

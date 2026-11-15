@@ -1,3 +1,4 @@
+import "./storefront/layout.css";
 import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { ArrowRight } from "lucide-react";
@@ -29,7 +30,7 @@ function BannerCard({ banner, variant, id }) {
       <div className="banner-overlay" />
       <div className="banner-content">
         {large && banner.badge && (
-          <Badge variant="accent" size="sm" style={{ marginBottom: 6 }}>
+          <Badge variant="accent" size="sm" className="storefront-banner-badge">
             {banner.badge}
           </Badge>
         )}
@@ -73,9 +74,9 @@ export default function BannerLayout() {
         : null;
 
   return (
-    <div className="container" style={{ margin: "20px auto" }}>
+    <div className="container storefront-block">
       {notice ? (
-        <p style={{ padding: "18px 12px", fontSize: 13, color: "var(--gray-500)" }}>{notice}</p>
+        <p className="storefront-empty">{notice}</p>
       ) : (
         <div className="banner-layout">
           {/* Large left */}

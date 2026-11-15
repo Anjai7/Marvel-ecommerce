@@ -8,6 +8,7 @@ import { SectionRenderer } from "../../content/SectionRenderer";
 import CategoryListing from "./CategoryListing";
 import SeoHead from "../pages/SeoHead";
 import { navigateToPath } from "../../lib/routes";
+import "../storefront/widgets.css";
 
 /**
  * The category page: the category's own content, the custom page an editor
@@ -110,9 +111,9 @@ function categorySeo(category) {
 
 function StateBlock({ icon, title, children, action }) {
   return (
-    <div className="container" style={{ padding: "48px 16px", textAlign: "center" }}>
+    <div className="container state-block">
       {icon}
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", margin: "8px 0" }}>{title}</h2>
+      <h2 className="state-block-title">{title}</h2>
       {children}
       {action}
     </div>
@@ -286,25 +287,12 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
         icon={<AlertCircle size={32} color="#f59e0b" />}
         title="Category not found."
         action={
-          <button
-            type="button"
-            onClick={goHome}
-            style={{
-              marginTop: 12,
-              padding: "10px 20px",
-              borderRadius: 8,
-              border: "none",
-              background: "#2563eb",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
+          <button type="button" onClick={goHome} className="state-block-action">
             Back to home
           </button>
         }
       >
-        <p style={{ fontSize: 14, color: "#64748b" }}>
+        <p className="state-block-message">
           No category matches the address <code>{path}</code>.
         </p>
       </StateBlock>
@@ -317,7 +305,7 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
         icon={<AlertCircle size={32} color="#ef4444" />}
         title="Could not load this category."
       >
-        <p style={{ fontSize: 14, color: "#64748b" }}>{resolution.message}</p>
+        <p className="state-block-message">{resolution.message}</p>
       </StateBlock>
     );
   }
@@ -335,10 +323,7 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
               <Home size={13} /> Home
             </button>
             {[...(ancestors ?? []), category].map((node) => (
-              <span
-                key={node.id ?? node.slug}
-                style={{ display: "inline-flex", alignItems: "center" }}
-              >
+              <span key={node.id ?? node.slug} className="category-page-bc-node">
                 <span className="pvp-bc-sep" aria-hidden="true">
                   /
                 </span>
@@ -361,44 +346,30 @@ export default function CategoryPage({ path = "", onNavigate, onSelectProduct })
         />
       ))}
 
-      <div className="container" style={{ padding: "28px 16px 0" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-          {category.name}
-        </h1>
+      <div className="container category-page-intro">
+        <h1 className="category-page-title">{category.name}</h1>
         {category.description && (
-          <p style={{ fontSize: 15, color: "#475569", maxWidth: 720 }}>{category.description}</p>
+          <p className="category-page-description">{category.description}</p>
         )}
 
         {children.length > 0 && (
-          <nav
-            aria-label="Subcategories"
-            style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 }}
-          >
+          <nav aria-label="Subcategories" className="category-page-subcat-nav">
             {children.map((child) => (
               <button
                 key={child.id ?? child.slug}
                 type="button"
                 onClick={() => openChild(child)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 999,
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  color: "#0f172a",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className="category-page-subcat"
               >
                 {child.name}
-                <ChevronRight size={13} style={{ verticalAlign: "middle" }} />
+                <ChevronRight size={13} />
               </button>
             ))}
           </nav>
         )}
       </div>
 
-      <div className="container" style={{ padding: "24px 16px 48px" }}>
+      <div className="container category-page-listing-wrap">
         {!hasListingSection && (
           <CategoryListing path={path} config={listingConfig} onSelectProduct={onSelectProduct} />
         )}

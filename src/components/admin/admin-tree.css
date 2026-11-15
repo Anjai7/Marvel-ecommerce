@@ -65,6 +65,20 @@
   color: var(--gray-900);
 }
 
+/* On a touch screen the chevron is a target, not a glyph: it grows to
+   what a thumb can hit without the row changing height. */
+@media (pointer: coarse) {
+  .admin-tree-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .admin-tree-actions .ui-btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 .admin-tree-toggle-spacer {
   width: 26px;
   flex-shrink: 0;

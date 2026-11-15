@@ -75,14 +75,13 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
 
   return (
     <Card
-      className="product-card"
       id={`product-${product.id}`}
       onClick={handleCardClick}
       onKeyDown={handleCardKeyDown}
       tabIndex={onNavigate ? 0 : undefined}
       role={onNavigate ? "link" : undefined}
       aria-label={onNavigate ? `View ${title}` : undefined}
-      style={{ cursor: onNavigate ? "pointer" : "default" }}
+      className={onNavigate ? "product-card" : "product-card product-card--static"}
     >
       {/* Offer ribbon: only the stored `offer_text`, never a generated deal. */}
       {offerText && (

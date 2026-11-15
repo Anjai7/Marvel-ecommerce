@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Clock, Search, X, ArrowRight } from "lucide-react";
+import { Clock, Search, X } from "lucide-react";
 import { toAppHref } from "../ui/linkTarget";
 import { navigateToPath } from "../../lib/routes";
+import "./widgets.css";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
 
@@ -86,50 +87,19 @@ export default function RecentSearchesSection({ onNavigate, onSearchSelect }) {
 
   return (
     <section
-      className="section-block section-recent-searches"
+      className="section-block section-recent-searches recent-searches-section"
       id="recent-searches-section"
-      style={{ padding: "32px 0 20px" }}
     >
-      <div className="container" style={{ maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
-        <div
-          style={{
-            background: "#ffffff",
-            border: "1px solid #e2e8f0",
-            borderRadius: 16,
-            padding: "20px 24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 16,
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: "#eff6ff",
-                  color: "#2563eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+      <div className="container recent-searches-container">
+        <div className="recent-searches-card">
+          <div className="recent-searches-head">
+            <div className="recent-searches-title-group">
+              <div className="recent-searches-icon-badge">
                 <Clock size={16} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
-                  Your Recent Searches
-                </h3>
-                <span style={{ fontSize: 12, color: "#64748b" }}>
+                <h3 className="recent-searches-title">Your Recent Searches</h3>
+                <span className="recent-searches-subtitle">
                   Jump back to what you were looking for
                 </span>
               </div>
@@ -138,57 +108,20 @@ export default function RecentSearchesSection({ onNavigate, onSearchSelect }) {
             <button
               type="button"
               onClick={handleClearAll}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#64748b",
-                fontSize: 12,
-                cursor: "pointer",
-                padding: "4px 8px",
-                borderRadius: 6,
-                textDecoration: "underline",
-              }}
+              className="recent-searches-clear"
               aria-label="Clear search history"
             >
               Clear all
             </button>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              alignItems: "center",
-            }}
-          >
+          <div className="recent-searches-chips">
             {searches.map((term) => (
               <button
                 key={term}
                 type="button"
                 onClick={() => handleChipClick(term)}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "6px 14px",
-                  borderRadius: 9999,
-                  background: "#f1f5f9",
-                  border: "1px solid #e2e8f0",
-                  color: "#1e293b",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#e2e8f0";
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#f1f5f9";
-                  e.currentTarget.style.borderColor = "#e2e8f0";
-                }}
+                className="recent-search-chip"
               >
                 <Search size={13} color="#64748b" />
                 <span>{term}</span>
@@ -198,13 +131,7 @@ export default function RecentSearchesSection({ onNavigate, onSearchSelect }) {
                   aria-label={`Remove ${term}`}
                   onClick={(e) => handleRemove(e, term)}
                   onKeyDown={(e) => e.key === "Enter" && handleRemove(e, term)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginLeft: 2,
-                    color: "#94a3b8",
-                  }}
+                  className="recent-search-chip-remove"
                 >
                   <X size={12} />
                 </span>

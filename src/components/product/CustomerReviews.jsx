@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Star, ThumbsUp, CheckCircle } from "lucide-react";
+// Shared product-surface stylesheet (responsive rules, tap targets).
+import "./product.css";
 
 function StarsFill({ rating }) {
   return (
@@ -76,9 +78,7 @@ export default function CustomerReviews({ reviews }) {
       </div>
 
       {total === 0 ? (
-        <p style={{ fontSize: 14, color: "#64748b", padding: "16px 0" }}>
-          No reviews have been published for this product yet.
-        </p>
+        <p className="cr-empty">No reviews have been published for this product yet.</p>
       ) : (
         <>
           <div className="cr-summary-grid">
@@ -106,7 +106,14 @@ export default function CustomerReviews({ reviews }) {
                     {row.stars} <Star size={11} fill="#f59e0b" color="#f59e0b" />
                   </span>
                   <div className="cr-bar-track">
-                    <div className="cr-bar-fill" style={{ width: `${row.percent}%` }} />
+                    {/* Percentage is derived from stored counts, so the width is
+                        set on the element itself — no inline style attr. */}
+                    <div
+                      className="cr-bar-fill"
+                      ref={(el) => {
+                        if (el) el.style.width = `${row.percent}%`;
+                      }}
+                    />
                   </div>
                   <span className="cr-bar-count">{row.count.toLocaleString()}</span>
                 </div>
@@ -125,16 +132,7 @@ export default function CustomerReviews({ reviews }) {
                   <div className="cr-card-top">
                     <div className="cr-avatar">
                       {review.author_avatar ? (
-                        <img
-                          src={review.author_avatar}
-                          alt=""
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            borderRadius: "50%",
-                          }}
-                        />
+                        <img src={review.author_avatar} alt="" className="cr-avatar-img" />
                       ) : (
                         author.charAt(0)
                       )}

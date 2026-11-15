@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useSettings } from "../context/SettingsContext";
+import "./storefront/chrome.css";
 
 export default function Header({
   currentUser,
@@ -74,6 +75,10 @@ export default function Header({
     cartSubtotal >= freeThreshold;
 
   const userRole = currentUser?.role || "user";
+  // Role hues are fixed, so the class lookup replaces a computed inline style.
+  const roleKey = ["super_admin", "vendor", "admin"].includes(userRole)
+    ? userRole.replace("_", "-")
+    : "user";
   const userInitial = currentUser?.full_name ? currentUser.full_name[0].toUpperCase() : "U";
 
   return (
@@ -90,12 +95,7 @@ export default function Header({
         </button>
 
         {/* Logo */}
-        <button
-          className="logo"
-          onClick={onNavigateHome}
-          id="logo"
-          style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
-        >
+        <button className="logo logo-btn" onClick={onNavigateHome} id="logo">
           <img src="/header.png" alt="Marvel Logo" className="logo-img" />
         </button>
 
@@ -114,51 +114,16 @@ export default function Header({
               <DropdownMenuTrigger asChild>
                 <button type="button" className="header-action" id="account-btn">
                   <Avatar size="sm">
-                    <AvatarFallback
-                      style={{
-                        background:
-                          userRole === "super_admin"
-                            ? "#d97706"
-                            : userRole === "vendor"
-                              ? "#7c3aed"
-                              : userRole === "admin"
-                                ? "#0284c7"
-                                : "#2563eb",
-                        color: "#fff",
-                        fontWeight: 800,
-                      }}
-                    >
+                    <AvatarFallback className={`avatar-role-${roleKey}`}>
                       {userInitial}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <div
-                      className="ha-sub"
-                      style={{ display: "flex", alignItems: "center", gap: 4 }}
-                    >
+                  <div className="ha-account-text">
+                    <div className="ha-sub ha-row">
                       Hello, {currentUser?.full_name?.split(" ")[0] || "User"}
                     </div>
-                    <div
-                      className="ha-label"
-                      style={{ display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 800,
-                          padding: "1px 6px",
-                          borderRadius: 8,
-                          background:
-                            userRole === "super_admin"
-                              ? "#f59e0b"
-                              : userRole === "vendor"
-                                ? "#8b5cf6"
-                                : userRole === "admin"
-                                  ? "#0284c7"
-                                  : "#3b82f6",
-                          color: "#fff",
-                        }}
-                      >
+                    <div className="ha-label ha-row">
+                      <span className={`role-badge role-badge-${roleKey}`}>
                         {userRole.replace("_", " ").toUpperCase()}
                       </span>
                       ▾
@@ -167,12 +132,10 @@ export default function Header({
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" style={{ width: 230 }}>
+              <DropdownMenuContent align="end" className="account-menu-content">
                 <DropdownMenuLabel>
-                  <div style={{ fontWeight: 800 }}>{currentUser?.full_name}</div>
-                  <div style={{ fontSize: 11, color: "var(--gray-500)", fontWeight: 400 }}>
-                    {currentUser?.email}
-                  </div>
+                  <div className="menu-label-name">{currentUser?.full_name}</div>
+                  <div className="menu-label-email">{currentUser?.email}</div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
@@ -180,36 +143,36 @@ export default function Header({
                 {userRole === "super_admin" && (
                   <>
                     <DropdownMenuItem
-                      icon={<Zap size={16} color="#d97706" />}
+                      icon={<Zap size={16} className="icon-amber" />}
                       onClick={() =>
                         onNavigateRoute ? onNavigateRoute("super-admin") : onNavigateAdmin()
                       }
-                      style={{ fontWeight: 700, color: "#b45309" }}
+                      className="menu-item-super-admin"
                     >
                       Super Admin System
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<ShieldCheck size={16} color="#0284c7" />}
+                      icon={<ShieldCheck size={16} className="icon-sky" />}
                       onClick={() =>
                         onNavigateRoute ? onNavigateRoute("admin") : onNavigateAdmin()
                       }
-                      style={{ fontWeight: 700, color: "#0369a1" }}
+                      className="menu-item-admin"
                     >
                       Admin Panel
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<Store size={16} color="#7c3aed" />}
+                      icon={<Store size={16} className="icon-purple" />}
                       onClick={() =>
                         onNavigateRoute ? onNavigateRoute("vendor") : onNavigateAdmin()
                       }
-                      style={{ fontWeight: 700, color: "#6b21a8" }}
+                      className="menu-item-vendor"
                     >
                       Vendor Portal
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      icon={<ShoppingBag size={16} className="icon-blue" />}
                       onClick={onNavigateHome}
-                      style={{ fontWeight: 600 }}
+                      className="menu-item-semibold"
                     >
                       Storefront
                     </DropdownMenuItem>
@@ -220,18 +183,18 @@ export default function Header({
                 {userRole === "admin" && (
                   <>
                     <DropdownMenuItem
-                      icon={<ShieldCheck size={16} color="#0284c7" />}
+                      icon={<ShieldCheck size={16} className="icon-sky" />}
                       onClick={() =>
                         onNavigateRoute ? onNavigateRoute("admin") : onNavigateAdmin()
                       }
-                      style={{ fontWeight: 700, color: "#0369a1" }}
+                      className="menu-item-admin"
                     >
                       Admin Panel
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      icon={<ShoppingBag size={16} className="icon-blue" />}
                       onClick={onNavigateHome}
-                      style={{ fontWeight: 600 }}
+                      className="menu-item-semibold"
                     >
                       Storefront
                     </DropdownMenuItem>
@@ -242,18 +205,18 @@ export default function Header({
                 {userRole === "vendor" && (
                   <>
                     <DropdownMenuItem
-                      icon={<Store size={16} color="#7c3aed" />}
+                      icon={<Store size={16} className="icon-purple" />}
                       onClick={() =>
                         onNavigateRoute ? onNavigateRoute("vendor") : onNavigateAdmin()
                       }
-                      style={{ fontWeight: 700, color: "#6b21a8" }}
+                      className="menu-item-vendor"
                     >
                       Vendor Portal
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<ShoppingBag size={16} color="#2563eb" />}
+                      icon={<ShoppingBag size={16} className="icon-blue" />}
                       onClick={onNavigateHome}
-                      style={{ fontWeight: 600 }}
+                      className="menu-item-semibold"
                     >
                       Storefront
                     </DropdownMenuItem>
@@ -264,16 +227,16 @@ export default function Header({
                 {userRole !== "admin" && userRole !== "super_admin" && userRole !== "vendor" && (
                   <>
                     <DropdownMenuItem
-                      icon={<Package size={16} color="#2563eb" />}
+                      icon={<Package size={16} className="icon-blue" />}
                       onClick={onNavigateCustomerPortal}
-                      style={{ fontWeight: 600 }}
+                      className="menu-item-semibold"
                     >
                       My Orders & Deliveries
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      icon={<Heart size={16} color="#ef4444" />}
+                      icon={<Heart size={16} className="icon-red" />}
                       onClick={onNavigateCustomerPortal}
-                      style={{ fontWeight: 600 }}
+                      className="menu-item-semibold"
                     >
                       Saved Wishlist
                     </DropdownMenuItem>
@@ -318,9 +281,8 @@ export default function Header({
               <Button
                 variant="secondary"
                 size="sm"
-                className="signup-btn"
+                className="signup-btn header-signup-btn"
                 onClick={onNavigateSignUp}
-                style={{ fontSize: 13 }}
               >
                 Sign Up
               </Button>
@@ -351,7 +313,7 @@ export default function Header({
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="header-action" id="cart-btn">
-                <div className="ha-icon" style={{ position: "relative" }}>
+                <div className="ha-icon">
                   <ShoppingBag size={22} />
                   <Badge variant="accent" size="sm" className="cart-badge">
                     {cartCount}
@@ -360,77 +322,53 @@ export default function Header({
                 <div className="ha-label">Cart ▾</div>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" style={{ width: 280, padding: 16 }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 12,
-                }}
-              >
-                <span style={{ fontWeight: 700, fontSize: 14 }}>My Shopping Cart</span>
+            <PopoverContent align="end" className="cart-popover-content">
+              <div className="cart-popover-head">
+                <span className="cart-popover-title">My Shopping Cart</span>
                 <Badge variant="secondary" size="sm">
                   {cartCount} items
                 </Badge>
               </div>
               {qualifiesForFreeShipping && (
-                <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
+                <div className="cart-popover-note">
                   Items in your cart qualify for <strong>FREE Express Shipping</strong> across{" "}
                   {storeCountry}!
                 </div>
               )}
               {cartItems.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--gray-600)", marginBottom: 14 }}>
-                  Your cart is empty.
-                </div>
+                <div className="cart-popover-note">Your cart is empty.</div>
               ) : (
-                <div style={{ marginBottom: 14 }}>
+                <div className="cart-popover-list">
                   {cartItems.slice(0, 3).map((item) => (
-                    <div
-                      key={item.id}
-                      style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.title}
-                        style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 6 }}
-                      />
-                      <div style={{ minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            maxWidth: 170,
-                          }}
-                        >
-                          {item.title}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--gray-600)" }}>
+                    <div key={item.id} className="cart-popover-item">
+                      <img src={item.image} alt={item.title} className="cart-popover-item-img" />
+                      <div className="cart-popover-item-text">
+                        <div className="cart-popover-item-title">{item.title}</div>
+                        <div className="cart-popover-item-meta">
                           Qty {item.quantity} · {formatCurrency(item.price)}
                         </div>
                       </div>
                     </div>
                   ))}
                   {cartItems.length > 3 && (
-                    <div style={{ fontSize: 12, color: "var(--gray-600)" }}>
-                      +{cartItems.length - 3} more…
-                    </div>
+                    <div className="cart-popover-item-meta">+{cartItems.length - 3} more…</div>
                   )}
                 </div>
               )}
               <Button
                 variant="secondary"
                 size="sm"
-                style={{ width: "100%", marginBottom: 8 }}
+                className="cart-popover-btn"
                 onClick={onNavigateCart}
               >
                 View Cart
               </Button>
-              <Button variant="accent" size="sm" style={{ width: "100%" }} onClick={onNavigateCart}>
+              <Button
+                variant="accent"
+                size="sm"
+                className="cart-popover-checkout"
+                onClick={onNavigateCart}
+              >
                 Proceed to Checkout
               </Button>
             </PopoverContent>

@@ -81,7 +81,7 @@ export default function ProductGridSection({
     >
       <div
         className="section-product-grid__items"
-        style={{ "--section-product-columns": columnCount }}
+        style={{ "--section-product-columns": columnCount }} /* inline-style: allowed */
       >
         {items.map((product, index) => (
           <div

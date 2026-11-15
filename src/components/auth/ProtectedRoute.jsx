@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { ShieldAlert, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "../ui";
 import { navigateToPath } from "../../lib/routes";
+import "../storefront/widgets.css";
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, isLoggedIn, loading } = useAuth();
@@ -15,18 +16,9 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "60vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 16,
-        }}
-      >
+      <div className="protected-route-loading">
         <Loader2 size={36} className="animate-spin" color="#2563eb" />
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#64748b" }}>
+        <div className="protected-route-loading-text">
           Verifying security token & backend permissions...
         </div>
       </div>
@@ -35,51 +27,18 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (!isLoggedIn) {
     return (
-      <div
-        style={{
-          minHeight: "70vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: 16,
-            padding: "36px 32px",
-            maxWidth: 460,
-            width: "100%",
-            textAlign: "center",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "#eff6ff",
-              color: "#2563eb",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}
-          >
+      <div className="protected-route-gate">
+        <div className="protected-route-card">
+          <div className="protected-route-badge">
             <ShieldAlert size={28} />
           </div>
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-            Authentication Required
-          </h3>
-          <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24, lineHeight: 1.5 }}>
+          <h3 className="protected-route-title">Authentication Required</h3>
+          <p className="protected-route-text">
             You must be signed in with a valid account to access this workspace.
           </p>
           <Button
             variant="primary"
-            style={{ width: "100%" }}
+            className="protected-route-submit"
             onClick={() => navigateToPath("/login")}
           >
             Sign In to Your Account
@@ -91,46 +50,15 @@ export default function ProtectedRoute({ children, allowedRoles = [] }) {
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
     return (
-      <div
-        style={{
-          minHeight: "70vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
-      >
-        <div
-          style={{
-            background: "#ffffff",
-            borderRadius: 16,
-            padding: "36px 32px",
-            maxWidth: 480,
-            width: "100%",
-            textAlign: "center",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-            border: "1px solid #fee2e2",
-          }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: "#fef2f2",
-              color: "#dc2626",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}
-          >
+      <div className="protected-route-gate">
+        <div className="protected-route-card protected-route-card--danger">
+          <div className="protected-route-badge protected-route-badge--danger">
             <ShieldAlert size={28} />
           </div>
-          <h3 style={{ fontSize: 20, fontWeight: 800, color: "#991b1b", marginBottom: 8 }}>
+          <h3 className="protected-route-title protected-route-title--danger">
             Access Restricted (403 Forbidden)
           </h3>
-          <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
+          <p className="protected-route-text protected-route-text--tight">
             Your account role is <strong>{user?.role?.replace("_", " ").toUpperCase()}</strong>.
             This portal requires one of the following permissions:{" "}
             <strong>[{allowedRoles.join(", ").toUpperCase()}]</strong>.

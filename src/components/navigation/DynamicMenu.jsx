@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useContent } from "../../context/ContentContext";
 import { Badge, Button, Card, CardContent } from "../ui";
+import "../storefront/layout.css";
 
 // Icon mapping helper — unknown icon names fall back to Layers.
 const ICON_MAP = {
@@ -348,11 +349,7 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
       {hasDropdown && (
         <ChevronDown
           size={14}
-          className="nav-arrow"
-          style={{
-            transition: "transform 0.2s ease",
-            transform: activeMenu === name ? "rotate(180deg)" : "none",
-          }}
+          className={`nav-arrow ${activeMenu === name ? "nav-arrow--open" : ""}`}
         />
       )}
     </span>
@@ -372,20 +369,11 @@ export default function DynamicMenu({ onNavigate, activePath = "/" }) {
         : null;
 
   return (
-    <nav
-      className="hover-nav dynamic-menu"
-      style={{
-        background: "#ffffff",
-        borderBottom: "1px solid var(--gray-200, #e2e8f0)",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
-      }}
-    >
+    <nav className="hover-nav dynamic-menu">
       <div className="container hover-nav-inner">
         <div className="hover-nav-scroll-track">
           {notice ? (
-            <div style={{ fontSize: 13, color: "var(--gray-500)", padding: "8px 12px" }}>
-              {notice}
-            </div>
+            <div className="storefront-menu-heading">{notice}</div>
           ) : (
             barItems.map((root, idx) => {
               const alignRight = idx >= half;

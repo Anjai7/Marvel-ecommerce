@@ -12,7 +12,12 @@ export default function SpacerSection({ height, style }) {
 
   return (
     <SectionShell style={style} className="section-spacer">
-      <div className="section-spacer__gap" style={{ height: `${size}px` }} aria-hidden="true" />
+      {/* The gap is the one thing the admin sets, so it is set here. */}
+      <div
+        className="section-spacer__gap"
+        style={{ height: `${size}px` }} /* inline-style: allowed */
+        aria-hidden="true"
+      />
     </SectionShell>
   );
 }

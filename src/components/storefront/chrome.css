@@ -1,0 +1,537 @@
+/* ─── Storefront chrome (header / footer / hero / section heads) ──
+   Everything that used to be an inline style lives here so the chrome
+   can be themed and made responsive from one place. Values that have a
+   design token use it; one-off brand hues stay as literals here rather
+   than leaking into the JSX.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* ─── Header ─────────────────────────────────────────────────── */
+
+/* The logo is a <button> so it is keyboard-focusable, but it should keep
+   the reset from index.css without picking up button padding. */
+.logo-btn {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* "Hello, name" / role row share one layout: icon-badge followed by ▾. */
+.ha-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Who-am-I block next to the avatar; hidden on phones so the actions
+   row cannot overflow a 360px screen. */
+@media (max-width: 640px) {
+  .ha-account-text {
+    display: none;
+  }
+}
+
+/* Role-tinted avatar fallbacks. The hue is fixed per role so the four
+   variants ship as classes instead of an inline computed colour. */
+.avatar-role-super-admin {
+  background: #d97706;
+  color: var(--white);
+  font-weight: 800;
+}
+.avatar-role-vendor {
+  background: #7c3aed;
+  color: var(--white);
+  font-weight: 800;
+}
+.avatar-role-admin {
+  background: #0284c7;
+  color: var(--white);
+  font-weight: 800;
+}
+.avatar-role-user {
+  background: #2563eb;
+  color: var(--white);
+  font-weight: 800;
+}
+
+/* Role pill next to the account label; same palette as the avatar so
+   the two always agree. */
+.role-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 8px;
+  color: var(--white);
+}
+.role-badge-super-admin {
+  background: #f59e0b;
+}
+.role-badge-vendor {
+  background: #8b5cf6;
+}
+.role-badge-admin {
+  background: #0284c7;
+}
+.role-badge-user {
+  background: #3b82f6;
+}
+
+/* Account dropdown: slightly wider than the default so the role badge
+   and "Super Admin System" fit on one line. */
+.account-menu-content {
+  width: 230px;
+}
+.menu-label-name {
+  font-weight: 800;
+}
+.menu-label-email {
+  font-size: 11px;
+  color: var(--gray-500);
+  font-weight: 400;
+}
+
+/* Role-coloured menu entries. Colour carries meaning (which console the
+   item opens), so it must survive the move to classes. */
+.menu-item-super-admin {
+  font-weight: 700;
+  color: #b45309;
+}
+.menu-item-admin {
+  font-weight: 700;
+  color: #0369a1;
+}
+.menu-item-vendor {
+  font-weight: 700;
+  color: #6b21a8;
+}
+.menu-item-semibold {
+  font-weight: 600;
+}
+
+/* Lucide takes currentColor for stroke, so icons are tinted via classes. */
+.icon-amber {
+  color: #d97706;
+}
+.icon-amber-bright {
+  color: #f59e0b;
+}
+.icon-sky {
+  color: #0284c7;
+}
+.icon-purple {
+  color: #7c3aed;
+}
+.icon-blue {
+  color: #2563eb;
+}
+.icon-red {
+  color: #ef4444;
+}
+.icon-white {
+  color: #ffffff;
+}
+
+/* The signed-out "Sign Up" button is a secondary <Button>; it just needs
+   a slightly smaller label than the default. */
+.header-signup-btn {
+  font-size: 13px;
+}
+
+/* Cart preview popover */
+.cart-popover-content {
+  width: 280px;
+  padding: 16px;
+}
+.cart-popover-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.cart-popover-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.cart-popover-note {
+  font-size: 13px;
+  color: var(--gray-600);
+  margin-bottom: 14px;
+}
+.cart-popover-list {
+  margin-bottom: 14px;
+}
+.cart-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+/* min-width:0 lets the ellipsis shrink inside the flex row instead of
+   forcing the popover wider. */
+.cart-popover-item-text {
+  min-width: 0;
+}
+.cart-popover-item-img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+/* Long titles must ellipsize inside the fixed-width popover. */
+.cart-popover-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 170px;
+}
+.cart-popover-item-meta {
+  font-size: 12px;
+  color: var(--gray-600);
+}
+.cart-popover-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.cart-popover-checkout {
+  width: 100%;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────── */
+/* Shown when the CMS footer fails or is not configured yet. */
+.footer-notice {
+  font-size: 13px;
+  color: var(--gray-400);
+}
+
+/* ─── Hero ───────────────────────────────────────────────────── */
+/* CMS ships the slide gradient as a raw string, so it is applied to this
+   element imperatively (see HeroBanner.jsx); this is the default when the
+   backend sends none. */
+.hero-slide-bg {
+  background: linear-gradient(135deg, #091322 0%, #172a45 100%);
+}
+
+/* Sits above the carousel while the live fetch has failed and the rescue
+   slide is showing. */
+.hero-fallback-notice {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  /* The copy column is capped at 580px on desktop; a phone needs the full
+     width so the headline doesn't ragged-wrap under the fold. */
+  .hero-slide-inner-grid {
+    padding: 0 20px;
+  }
+  .hero-content {
+    max-width: 100%;
+  }
+  .hero-sub {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-slide-inner-grid {
+    padding: 0 16px;
+    gap: 20px;
+  }
+  .hero-badge {
+    margin-bottom: 10px;
+  }
+  .hero-title {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+  .hero-sub {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .hero-actions-row {
+    gap: 10px;
+  }
+  .hero-cta {
+    height: 44px;
+    padding: 0 20px;
+    font-size: 13px;
+  }
+  .hero-price-pill {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .hero-fallback-notice {
+    max-width: calc(100% - 32px);
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 19px;
+  }
+  .hero-sub {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .hero-price-pill {
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+}
+
+/* ─── Section heads (trending / featured) ────────────────────── */
+.section-head-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+/* Trending's head sits slightly tighter than the default section head. */
+.section-head-trending {
+  padding-bottom: 16px;
+}
+
+/* "Refresh from DB" is an action, not a caption — it gets a real button
+   shape instead of bare inline text (audit: 57×14 px hit area). */
+.refresh-db-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--gray-500);
+  cursor: pointer;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  transition: var(--transition);
+}
+.refresh-db-btn:hover {
+  color: var(--navy);
+  border-color: var(--navy);
+  background: var(--navy-bg);
+}
+
+/* Live-DB empty state. Exact panel greys kept from the original inline
+   styles; only the layout moved here. */
+.catalog-empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+}
+.catalog-empty-state-featured {
+  padding: 36px 20px;
+}
+.catalog-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+.catalog-empty-text {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+.catalog-empty-note {
+  font-size: 14px;
+  color: #64748b;
+}
+.catalog-empty-retry {
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: var(--navy-light);
+  color: var(--white);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* "Showing N–M of X" footer line under the trending grid. */
+.trending-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+.trending-pagination-text {
+  font-size: 13px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  /* Head row (icon + title | refresh + view-all) doesn't fit a phone;
+     stack the two groups instead of letting them collide. */
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .section-head-group {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .section-title {
+    font-size: 17px;
+  }
+  .section-subtitle {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .trending-pagination-text {
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
+/* ─── Header fit at the small tablet / large phone widths ────── */
+@media (max-width: 1024px) {
+  /* 20px of air between logo/search/cart is unaffordable below 1280. */
+  .header-inner {
+    gap: 12px;
+  }
+}
+
+/* ─── Footer at phone widths ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+  }
+  .footer-brand-col {
+    grid-column: span 2;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .payment-methods-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .footer-brand-col {
+    grid-column: span 1;
+  }
+  .footer-copyright {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* ─── Touch targets (pointer: coarse only) ─────────────────────
+   The audit measured these below the 32/44 px floor on phones. Desktop
+   keeps the original density, so the sizes are scoped to coarse pointers.
+   ─────────────────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  /* Dots: the button becomes 32×32 and the visible dot is drawn with a
+     pseudo-element, so the indicator looks the same but is tappable.
+     Width/active width/radius on the button itself are restated because
+     index.css sizes the 8px dot on the button. */
+  .hero-dot,
+  .promo-dot {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+  }
+  .hero-dot::after,
+  .promo-dot::after {
+    /* The 24px ::after hit overlay in index.css is superseded by the
+       32px button itself. */
+    content: none;
+  }
+  .hero-dot::before,
+  .promo-dot::before {
+    content: "";
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transition: all 0.25s ease;
+  }
+  .hero-dot::before {
+    width: 8px;
+    height: 8px;
+  }
+  .promo-dot::before {
+    width: 7px;
+    height: 7px;
+  }
+  .hero-dot.active::before {
+    width: 26px;
+    height: 8px;
+    border-radius: 6px;
+    background: var(--orange);
+    box-shadow: 0 0 10px rgba(255, 97, 0, 0.6);
+  }
+  .promo-dot.active::before {
+    width: 20px;
+    height: 7px;
+    border-radius: 4px;
+    background: var(--orange);
+  }
+  /* 32px buttons would otherwise leave the default 8/6px gaps between
+     hit areas; tighter gap keeps the row compact on a phone. */
+  .hero-dots {
+    gap: 2px;
+  }
+  .promo-carousel-dots {
+    gap: 2px;
+  }
+
+  /* Footer links are 13px text rows; pad them out to the 44px floor. */
+  .footer-link {
+    min-height: 44px;
+    padding: 12px 0;
+  }
+
+  /* Refresh-from-DB: comfortable thumb target on touch. */
+  .refresh-db-btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* The logo is a link home: it needs the height of a target on a phone,
+   and the search chips are pressed one after another. */
+@media (pointer: coarse) {
+  .logo-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .search-tag-chip {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
