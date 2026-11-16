@@ -26,26 +26,18 @@ const PRODUCT = {
 };
 
 describe("ProductCard", () => {
-  it("shows no offer label when the product has no offer_text", () => {
+  it("shows no ribbon when the product has no offer_text", () => {
     const container = renderCard(PRODUCT);
 
-    expect(container.querySelector(".product-card-offer-label")).toBeNull();
+    expect(container.querySelector(".product-card-offer-ribbon-left")).toBeNull();
     expect(screen.queryByText(/SPECIAL DEAL/)).not.toBeInTheDocument();
   });
 
-  it("shows the stored offer_text as a label", () => {
+  it("shows the stored offer_text as the ribbon", () => {
     const container = renderCard({ ...PRODUCT, offer_text: "Bank offer available" });
 
-    expect(container.querySelector(".product-card-offer-label")).not.toBeNull();
+    expect(container.querySelector(".product-card-offer-ribbon-left")).not.toBeNull();
     expect(screen.getByText("Bank offer available")).toBeInTheDocument();
-  });
-
-  it("shortens an offer that is a sentence to the words a label can hold", () => {
-    renderCard({ ...PRODUCT, offer_text: "No Cost EMI from \u20b924,249.65/Month" });
-
-    // The label says the offer's name; the figure stays with the price.
-    expect(screen.getByText("No Cost EMI")).toBeInTheDocument();
-    expect(screen.queryByText(/24,249.65/)).not.toBeInTheDocument();
   });
 
   it("uses only the stored rating and discount", () => {

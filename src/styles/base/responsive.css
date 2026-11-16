@@ -170,6 +170,16 @@
   .promo-carousel {
     height: 200px;
   }
+  .offer-ribbon {
+    width: 120px;
+    height: 120px;
+  }
+  .offer-ribbon-text {
+    font-size: 9px;
+    top: 22px;
+    right: -34px;
+    width: 130px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -235,6 +245,9 @@
   }
   .promo-slide-highlight {
     font-size: 16px;
+  }
+  .offer-ribbon {
+    display: none;
   }
   .section-block {
     padding: 28px 0;

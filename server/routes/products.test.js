@@ -616,24 +616,6 @@ describe("products API category binding", () => {
     ]);
   });
 
-  it("POST /api/products stores the offer the card shows", async () => {
-    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
-
-    const res = await send("POST", "/api/products", newProduct({ offer_text: "  No Cost EMI  " }));
-
-    expect(res.status).toBe(201);
-    expect(calls.insert[0][0].offer_text).toBe("No Cost EMI");
-  });
-
-  it("POST /api/products stores an emptied offer as null", async () => {
-    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
-
-    const res = await send("POST", "/api/products", newProduct({ offer_text: "   " }));
-
-    expect(res.status).toBe(201);
-    expect(calls.insert[0][0].offer_text).toBeNull();
-  });
-
   it("POST /api/products stores an option_value_id the catalogue does not know as null", async () => {
     const calls = makeDb({
       single: () => ({ data: product(), error: null }),

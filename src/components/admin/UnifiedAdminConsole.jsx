@@ -316,8 +316,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     stock: "",
     image_url: "",
     description: "",
-    // The offer the card shows, in the few words a badge can hold.
-    offer_text: "",
     // The product's option values and its sellable combinations. Empty until
     // the admin adds some — a product may have neither.
     variants: [],
@@ -534,7 +532,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       stock: "",
       image_url: "",
       description: "",
-      offer_text: "",
       // A new product starts with no options and no combinations.
       variants: [],
       combinations: [],
@@ -613,7 +610,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       stock: prod.stock !== undefined && prod.stock !== null ? String(prod.stock) : "",
       image_url: prod.image_url || prod.image || "",
       description: prod.description || "",
-      offer_text: prod.offer_text || "",
       // The stored options and combinations arrive with the read below.
       variants: [],
       combinations: [],
@@ -678,8 +674,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             : parseInt(productForm.stock, 10) || 0,
         image_url: productForm.image_url.trim(),
         description: productForm.description.trim(),
-        // The offer the card shows. An emptied field clears it.
-        offer_text: productForm.offer_text.trim() || null,
         // The options and the sellable combinations go with every save, on a
         // create and on an update alike. The server replaces the product's
         // rows when the fields are present, so a product the admin emptied
@@ -2734,26 +2728,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         {productErrors.description}
                       </span>
                     )}
-                  </div>
-                  <div className="form-group">
-                    <label
-                      className="form-label console-form-label"
-                      htmlFor="product-form-offer_text"
-                    >
-                      Offer label
-                    </label>
-                    <Input
-                      id="product-form-offer_text"
-                      placeholder="e.g. No Cost EMI"
-                      value={productForm.offer_text}
-                      onChange={(e) =>
-                        setProductForm((prev) => ({ ...prev, offer_text: e.target.value }))
-                      }
-                    />
-                    <span className="form-hint">
-                      Shown on the product card. Keep it to a few words — the badge cannot hold a
-                      sentence.
-                    </span>
                   </div>
                   <ProductVariantsEditor
                     value={{

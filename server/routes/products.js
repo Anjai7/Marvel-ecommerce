@@ -678,7 +678,6 @@ router.post("/", async (req, res) => {
       stock = 10,
       description,
       image_url,
-      offer_text,
       cloudinary_public_id = "",
       access_type = "authenticated",
       vendor_id,
@@ -742,9 +741,6 @@ router.post("/", async (req, res) => {
       cloudinary_public_id: cloudinary_public_id || undefined,
       access_type,
       description: description.trim(),
-      // The offer the product card shows. Empty means "no offer" — never a
-      // blank string, which would read as an empty badge.
-      offer_text: typeof offer_text === "string" && offer_text.trim() ? offer_text.trim() : null,
       vendor_id: vendor_id || null,
       vendor_name,
       moderation_status: "approved",
@@ -818,13 +814,6 @@ router.put("/:id", async (req, res) => {
         return res.status(400).json({ error: "Product image cannot be empty." });
       }
       updates.image_url = updates.image_url.trim();
-    }
-    if (updates.offer_text !== undefined) {
-      // An emptied field clears the offer rather than storing "".
-      updates.offer_text =
-        typeof updates.offer_text === "string" && updates.offer_text.trim()
-          ? updates.offer_text.trim()
-          : null;
     }
 
     // The options are validated before the product row is touched: a

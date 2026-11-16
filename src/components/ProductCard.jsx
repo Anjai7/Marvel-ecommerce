@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Card, Badge, Button, Rating, ProductPrice, SimpleTooltip, useToast } from "./ui";
 import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { offerBadgeLabel } from "../lib/offers";
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -69,9 +68,6 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     }
   };
 
-  // The badge carries the offer's name; the figures stay with the price.
-  const offerBadge = offerBadgeLabel(offerText);
-
   const discountPercent =
     price !== null && originalPrice !== null && originalPrice > price
       ? Math.round(((originalPrice - price) / originalPrice) * 100)
@@ -87,12 +83,11 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
       aria-label={onNavigate ? `View ${title}` : undefined}
       className={onNavigate ? "product-card" : "product-card product-card--static"}
     >
-      {/* The offer label: the stored offer, shortened to the words a badge
-          can hold. The full sentence belongs on the product page. */}
-      {offerBadge && (
-        <span className="product-card-offer-label" title={offerText}>
-          {offerBadge}
-        </span>
+      {/* Offer ribbon: only the stored `offer_text`, never a generated deal. */}
+      {offerText && (
+        <div className="product-card-offer-ribbon-left">
+          <span className="card-ribbon-text">{offerText}</span>
+        </div>
       )}
 
       {(product.tag || product.category) && (

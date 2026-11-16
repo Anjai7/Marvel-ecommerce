@@ -878,35 +878,40 @@
   background: linear-gradient(90deg, var(--navy), var(--orange));
 }
 
-/* The offer label on a product card.
- *
- * A small sharp-cornered label at the top-left of the image — the pattern
- * the shadcn Blocks product card uses. It replaces the diagonal ribbon
- * that stood here: a ribbon is built for two words, and the store's
- * offers are sentences ("No Cost EMI from ₹24,249.65/Month"), so the
- * ribbon clipped them into nonsense and fought the photo for attention.
- *
- * The label says the offer's name; the figures stay with the price. */
-.product-card-offer-label {
+/* 45° Slanted Gift Wrapper Offer Ribbon on Left Side of Product Cards */
+.product-card-offer-ribbon-left {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 5;
-  max-width: calc(100% - 24px);
-  padding: 5px 9px;
-  border-radius: 4px;
-  background: var(--navy);
-  color: #ffffff;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  line-height: 1.3;
-  white-space: nowrap;
+  top: 0;
+  left: 0;
+  width: 90px;
+  height: 90px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  box-shadow: 0 2px 8px rgba(40, 116, 240, 0.35);
   pointer-events: none;
+  z-index: 12;
+}
+
+.product-card-offer-ribbon-left .card-ribbon-text {
+  position: absolute;
+  top: 16px;
+  left: -28px;
+  width: 105px;
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 50%, #9f1239 100%);
+  color: #ffffff !important;
+  font-size: 8.5px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 4px 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-shadow: 0 3px 10px rgba(225, 29, 72, 0.45);
+  border-top: 1px dashed rgba(255, 255, 255, 0.85);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .product-badge {
@@ -1128,6 +1133,38 @@
 .promo-slide.active {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* ── 45° Offer Ribbon ───────────────────────────────────────── */
+.offer-ribbon {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+.offer-ribbon-text {
+  position: absolute;
+  top: 30px;
+  right: -38px;
+  width: 160px;
+  background: var(--orange);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  transform: rotate(45deg);
+  display: block;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  /* dashed inner border using outline */
+  outline: 1.5px dashed rgba(255, 255, 255, 0.5);
+  outline-offset: -4px;
 }
 
 .promo-timer-badge {
