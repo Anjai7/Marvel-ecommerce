@@ -1,6 +1,6 @@
 /* Admin console additions: sidebar submenus, sales reports, products/orders/customers views.
  * New classes only — existing console classes (kpi-*, chart-*, ui-table-*, modal-*)
- * are reused untouched from index.css. */
+ * are reused untouched from the base stylesheets. */
 
 /* ── Sidebar submenus ─────────────────────────────────── */
 /* ── Top bar: notifications + profile menu ───────────────── */

@@ -4,7 +4,6 @@ import ProductCard from "../ProductCard";
 import { apiFetchProducts } from "../../api/backendApi";
 import { useSettings } from "../../context/SettingsContext";
 import { ProductCarouselSkeleton } from "../ui/ProductSkeleton";
-import "./widgets.css";
 
 export default function RecentProductsSlider({ onQuickView, onNavigate, onSelectProduct }) {
   const [products, setProducts] = useState([]);

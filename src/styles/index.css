@@ -1,0 +1,75 @@
+/* ─────────────────────────────────────────────────────────────
+   The one stylesheet the app loads.
+   ─────────────────────────────────────────────────────────────
+   Every rule in the app lives in one of the sheets below. They are
+   imported here, in the order the cascade expects, so the order is
+   written down instead of happening by accident of the import graph.
+
+   The order is not decoration: a later sheet wins a tie. The list
+   below is the order the sheets have always been loaded in, so this
+   file changes nothing about how the app looks — it only makes the
+   order visible and editable in one place.
+
+   Where each sheet belongs:
+
+     base/         the reset, the tokens, the shared primitives and the
+                   app-wide responsive rules
+     storefront/   the header, the home page, the footer, the product
+                   page, the cart, the sign-in pages, the CMS sections
+     admin/        the console: its shell, its editors, its panels
+     portals/      the customer portal and the vendor dashboard
+     ui/           the primitives every screen shares: buttons, tables
+
+   A sheet never imports another sheet. Only this file does.
+   ───────────────────────────────────────────────────────────── */
+
+/* ── The base ────────────────────────────────────────────────── */
+@import "./base/tokens.css";
+@import "./base/shell.css";
+
+/* ── The storefront ──────────────────────────────────────────── */
+@import "./storefront/home.css";
+@import "./storefront/footer.css";
+
+/* ── The primitives every screen shares ──────────────────────── */
+@import "./base/primitives.css";
+@import "./base/responsive.css";
+
+/* ── The product page ────────────────────────────────────────── */
+@import "./storefront/product-page.css";
+
+/* ── The admin console ───────────────────────────────────────── */
+@import "./admin/console.css";
+@import "./base/motion.css";
+@import "./storefront/dynamic.css";
+
+/* ── The shared primitives ───────────────────────────────────── */
+@import "./ui/primitives.css";
+@import "./ui/table.css";
+
+/* ── The storefront's own areas, over the base ───────────────── */
+@import "./storefront/chrome.css";
+@import "./storefront/layout.css";
+@import "./storefront/mobile-menu.css";
+@import "./storefront/widgets.css";
+@import "./storefront/product-surfaces.css";
+@import "./storefront/sections.css";
+@import "./storefront/auth.css";
+@import "./storefront/cart.css";
+
+/* ── The two dashboards ─────────────────────────────────────── */
+@import "./portals/customer-portal.css";
+@import "./portals/vendor-dashboard.css";
+
+/* ── The console's own areas ─────────────────────────────────── */
+@import "./admin/forms.css";
+@import "./admin/reports.css";
+@import "./admin/console-area.css";
+@import "./admin/charts.css";
+@import "./admin/content.css";
+@import "./admin/editors.css";
+@import "./admin/tree.css";
+@import "./admin/inline-panel.css";
+@import "./admin/panels.css";
+@import "./admin/banners-editor.css";
+@import "./admin/variants-editor.css";

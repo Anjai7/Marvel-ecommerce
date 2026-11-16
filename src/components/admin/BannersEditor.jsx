@@ -22,8 +22,6 @@ import {
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import { ActiveToggle, cellValue, ImageField, OrderControls } from "./ContentEditorKit";
-import "./banners-editor.css";
-import "./admin-editors.css";
 
 const CONTENT_EVENT = "marvel_content_updated";
 

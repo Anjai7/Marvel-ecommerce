@@ -1,5 +1,4 @@
 import { Button, Input, RequiredMark } from "../ui";
-import "./vendor-dashboard.css";
 
 /**
  * Fulfillment and shipping update modal for Vendor Dashboard.

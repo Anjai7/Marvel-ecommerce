@@ -22,6 +22,7 @@ import {
 import { Badge, useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
 import { formatCurrency } from "../../lib/currency";
+import { OPTION_KIND_LABELS } from "../../lib/productOptions";
 
 function StarsDisplay({ rating, size = 14 }) {
   return (
@@ -81,18 +82,6 @@ function OfferCountdown({ endsAt }) {
 function offerText(offer) {
   return offer?.description || offer?.title || null;
 }
-
-/** The human label of every option kind — "color" reads as "Colour". */
-const OPTION_KIND_LABELS = {
-  color: "Colour",
-  size: "Size",
-  capacity: "Capacity",
-  storage: "Storage",
-  material: "Material",
-  style: "Style",
-  weight: "Weight",
-  flavour: "Flavour",
-};
 
 /** "color" → "Colour"; an unknown kind reads as its own capitalised word. */
 function optionKindLabel(kind) {

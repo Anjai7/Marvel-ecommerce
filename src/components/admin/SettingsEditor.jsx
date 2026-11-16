@@ -14,7 +14,6 @@ import { Loader2, RotateCcw, Save } from "lucide-react";
 import { apiFetchSettings, apiUpdateSettings } from "../../api/settingsApi";
 import { Button, Input, useToast } from "../ui";
 import Switch from "../ui/Switch";
-import "./admin-forms.css";
 
 /** Read `a.b.c` out of an object. */
 const readPath = (object, path) =>

@@ -8,7 +8,6 @@ import { SectionRenderer } from "../../content/SectionRenderer";
 import CategoryListing from "./CategoryListing";
 import SeoHead from "../pages/SeoHead";
 import { navigateToPath } from "../../lib/routes";
-import "../storefront/widgets.css";
 
 /**
  * The category page: the category's own content, the custom page an editor

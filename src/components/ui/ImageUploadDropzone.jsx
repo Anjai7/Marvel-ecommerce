@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { apiUploadImage } from "../../api/backendApi";
 import { Button, Input } from "./index";
-import "./ui-primitives.css";
 
 export default function ImageUploadDropzone({
   value,

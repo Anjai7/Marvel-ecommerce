@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import { AlertTriangle } from "lucide-react";
-import "./admin-inline-panel.css";
 
 /**
  * An inline confirmation strip for a destructive write.

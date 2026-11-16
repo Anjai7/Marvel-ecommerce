@@ -2,7 +2,6 @@ import { Edit2, RefreshCw, Check } from "lucide-react";
 import { Button, Input, RequiredMark } from "../../ui";
 import { EMPTY } from "../adminConstants";
 import AdminInlinePanel from "../AdminInlinePanel";
-import "../admin-forms.css";
 
 /**
  * The edit-user form, shown inline in the Users tab.

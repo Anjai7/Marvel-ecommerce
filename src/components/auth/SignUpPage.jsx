@@ -17,7 +17,6 @@ import {
 import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 import { navigateToPath } from "../../lib/routes";
-import "./auth-pages.css";
 
 export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
   const [role, setRole] = useState("user"); // Strictly "user" or "vendor"

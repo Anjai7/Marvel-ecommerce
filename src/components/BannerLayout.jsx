@@ -1,4 +1,3 @@
-import "./storefront/layout.css";
 import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { ArrowRight } from "lucide-react";

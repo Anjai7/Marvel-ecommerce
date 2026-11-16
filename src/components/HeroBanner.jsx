@@ -5,12 +5,12 @@ import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
 import { ChevronLeft, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 import { navigateToPath } from "../lib/routes";
-import "./storefront/chrome.css";
 
 /**
  * The CMS ships a full gradient string per slide, which cannot be a static
  * class; apply it imperatively so the markup carries no inline style.
- * An empty value falls back to the default gradient in chrome.css.
+ * An empty value falls back to the default gradient in
+ * `src/styles/storefront/chrome.css`.
  */
 function SlideBackground({ bg }) {
   const ref = useRef(null);

@@ -3,7 +3,6 @@ import ProductCard from "./ProductCard";
 import { TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { apiFetchProducts } from "../api/backendApi";
 import { ProductGridSkeleton } from "./ui/ProductSkeleton";
-import "./storefront/chrome.css";
 
 const COLS = 4;
 const ROWS = 3;

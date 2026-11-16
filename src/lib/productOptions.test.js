@@ -1,7 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { OPTION_KIND_LABELS, OPTION_KINDS, isOptionKind } from "./productOptions";
+import {
+  OPTION_KIND_LABELS,
+  OPTION_KINDS,
+  formatOptionChoices,
+  formatOptionValues,
+  isOptionKind,
+} from "./productOptions";
 import {
   OPTION_KIND_LABELS as SERVER_OPTION_KIND_LABELS,
   OPTION_KINDS as SERVER_OPTION_KINDS,
@@ -56,5 +62,40 @@ describe("option kinds", () => {
       expect(isOptionKind(kind)).toBe(false);
       expect(serverIsOptionKind(kind)).toBe(false);
     }
+  });
+});
+
+describe("the customer's choice", () => {
+  it("reads as one line: the axis and the choice", () => {
+    expect(
+      formatOptionChoices([
+        { kind: "color", label: "Blue", value: "#2563eb" },
+        { kind: "size", label: "M", value: "M" },
+      ])
+    ).toBe("Colour: Blue · Size: M");
+  });
+
+  it("drops a hex colour and falls back to the value when there is no label", () => {
+    expect(formatOptionChoices([{ kind: "color", label: "Blue", value: "#2563eb" }])).toBe(
+      "Colour: Blue"
+    );
+    expect(formatOptionChoices([{ kind: "color", value: "#2563eb" }])).toBe("");
+    expect(formatOptionChoices([{ kind: "size", value: "UK 9" }])).toBe("Size: UK 9");
+  });
+
+  it("reads as a short line when the axis is not needed", () => {
+    expect(
+      formatOptionValues([
+        { kind: "color", label: "Blue", value: "#2563eb" },
+        { kind: "size", label: "M", value: "M" },
+      ])
+    ).toBe("Blue / M");
+  });
+
+  it("says nothing when there is nothing to say", () => {
+    expect(formatOptionChoices([])).toBe("");
+    expect(formatOptionChoices(undefined)).toBe("");
+    expect(formatOptionValues(null)).toBe("");
+    expect(formatOptionChoices([{ kind: "color", value: "#2563eb" }])).toBe("");
   });
 });

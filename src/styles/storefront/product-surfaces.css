@@ -7,7 +7,7 @@
       so the components can be restyled and themed from one place.
    2. They add the responsive and coarse-pointer rules the base
       stylesheet does not have. They sit in this file because
-      `index.css` is read-only for this pass; being imported after it,
+      the base stylesheets are read-only for this pass; being imported after them,
       equal-specificity rules here win the cascade.
 
    Keep the desktop look: everything device-shaped lives inside a
@@ -312,7 +312,7 @@
 }
 
 /* ─── ProductViewPage grid — track minimum fix ───────────────────
-   At ≤860px index.css stacks the product grid with a single `1fr`
+   At ≤860px the base stylesheets stack the product grid with a single `1fr`
    column; an unqualified `fr` keeps a content-sized floor (~368px
    here, wider than a 360px phone). Zero the items' automatic minimum
    so the track can actually shrink. */

@@ -9,7 +9,6 @@ import {
   AccordionContent,
 } from "./ui";
 import { X, Package, ShoppingCart, Heart, MapPin, ChevronRight } from "lucide-react";
-import "./mobile-menu.css";
 
 export default function MobileMenu({ isOpen, onClose, isLoggedIn, onLogin }) {
   const { categoryTree, loading, errors } = useContent();

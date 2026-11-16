@@ -3,7 +3,6 @@ import ProductCard from "./ProductCard";
 import { ChevronLeft, ChevronRight, Award, Sparkles, RefreshCw } from "lucide-react";
 import { apiFetchProducts } from "../api/backendApi";
 import { ProductCarouselSkeleton } from "./ui/ProductSkeleton";
-import "./storefront/chrome.css";
 
 export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProduct }) {
   const [products, setProducts] = useState([]);

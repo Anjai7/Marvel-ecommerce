@@ -29,9 +29,6 @@ import {
   TableRow,
   useToast,
 } from "../ui";
-import "./admin-content.css";
-import "./admin-editors.css";
-import "./admin-tree.css";
 import {
   apiDeleteMenuItem,
   apiFetchCategoryTree,

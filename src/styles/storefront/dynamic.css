@@ -1,0 +1,30 @@
+/* The guards the dynamic menu needs: the touch targets of the navigation
+ * and the rules that keep it on the screen.
+ */
+
+/* Task 6: dynamic content responsive guards (appended; existing rules above untouched) */
+.mega-menu,
+.hero-slide-inner-grid,
+.cat-slider {
+  min-width: 0;
+}
+
+/* Touch targets >= 40px for new dynamic-menu interactive elements */
+.dynamic-menu .mega-menu-item-link {
+  min-height: 40px;
+}
+
+/* L1 bar targets: 44px via .hover-nav-item, restated here as an explicit guard */
+.dynamic-menu .hover-nav-item {
+  min-height: 40px;
+}
+
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+  .hero-slide-inner-grid {
+    grid-template-columns: 1fr;
+  }
+}

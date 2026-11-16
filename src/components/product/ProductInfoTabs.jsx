@@ -24,7 +24,6 @@ import {
 import { useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
 // Shared product-surface stylesheet (responsive rules, tap targets).
-import "./product.css";
 
 /** Tab definitions. A tab is only offered when the product has its data. */
 const TAB_DEFINITIONS = [

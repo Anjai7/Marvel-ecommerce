@@ -10,7 +10,6 @@ import {
   Legend,
 } from "recharts";
 import { formatCurrency } from "../../../lib/currency";
-import "./charts.css";
 
 export default function OrdersPlusRevenueChart({ data }) {
   if (!data || data.length === 0) {

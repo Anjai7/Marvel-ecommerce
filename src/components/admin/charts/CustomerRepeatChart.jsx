@@ -1,5 +1,4 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
-import "./charts.css";
 
 export default function CustomerRepeatChart({ data }) {
   if (!data || data.totalCustomers === 0) {

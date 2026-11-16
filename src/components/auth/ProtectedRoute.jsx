@@ -3,7 +3,6 @@ import { useAuth } from "../../context/AuthContext";
 import { ShieldAlert, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "../ui";
 import { navigateToPath } from "../../lib/routes";
-import "../storefront/widgets.css";
 
 export default function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, isLoggedIn, loading } = useAuth();

@@ -13,7 +13,6 @@ import {
 import Switch from "../ui/Switch";
 import { apiUploadImage } from "../../api/contentApi";
 import AdminConfirmStrip from "./AdminConfirmStrip";
-import "./admin-panels.css";
 
 /**
  * Lowercase, collapse every run outside [a-z0-9] to "-", then trim "-".

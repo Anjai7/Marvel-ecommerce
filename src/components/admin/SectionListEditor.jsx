@@ -23,8 +23,6 @@ import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import SectionConfigForm from "./SectionConfigForm";
 import { SECTION_STYLE_FIELDS, SECTION_TYPES } from "../../../server/lib/sectionTypes.js";
-import "./admin-content.css";
-import "./admin-panels.css";
 
 /**
  * The ordered section list of a page.

@@ -1,0 +1,189 @@
+/* The reset, the design tokens and the base type.
+ *
+ * Every colour, radius, shadow and spacing in the app comes from the
+ * `:root` block here. A component that needs a new value adds a token
+ * rather than a hex.
+ */
+
+/* ─── Reset & Base ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Core Colors - Flipkart-style vibrant blue (lighter than dark navy), orange, green, white, gray borders */
+  --navy: #2874f0;
+  --navy-dark: #1b5bc7;
+  --navy-light: #4387f3;
+  --navy-bg: #f0f5ff;
+  --orange: #ff6100;
+  --orange-dark: #e05300;
+  --orange-light: #fff7ed;
+  --green: #388e3c;
+  --green-light: #e8f5e9;
+  --white: #ffffff;
+  --gray-50: #f9fafb;
+  --gray-100: #f1f3f6;
+  --gray-200: #e0e0e0;
+  --gray-300: #d0d0d0;
+  --gray-400: #9e9e9e;
+  --gray-500: #757575;
+  --gray-600: #616161;
+  --gray-700: #424242;
+  --gray-800: #212121;
+  --gray-900: #111111;
+
+  /* Semantic Design Tokens */
+  --background: #f1f3f6;
+  --foreground: #212121;
+  --card: #ffffff;
+  --card-foreground: #212121;
+  --primary: #2874f0;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f5ff;
+  --secondary-foreground: #2874f0;
+  --accent: #ff6100;
+  --accent-foreground: #ffffff;
+  --success: #388e3c;
+  --muted: #f1f3f6;
+  --muted-foreground: #757575;
+  --border: #e0e0e0;
+  --ring: rgba(40, 116, 240, 0.25);
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.16);
+  --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  --font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.product-grid-4x3 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .product-grid-4x3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .product-grid-4x3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .product-grid-4x3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+body {
+  font-family: var(--font);
+  background: #edf1f6;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(40, 116, 240, 0.04) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(255, 97, 0, 0.03) 0px, transparent 60%);
+  color: var(--gray-800);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  overflow-x: clip;
+  width: 100%;
+}
+
+/* Balanced headings: avoid awkward single-word wraps in key titles */
+.hero-title,
+.section-title,
+.banner-content h3,
+.fv-title,
+.promo-slide-title,
+.pd-name {
+  text-wrap: balance;
+}
+#root,
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+a {
+  text-decoration: none;
+  color: inherit;
+}
+ul {
+  list-style: none;
+}
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  background: none;
+  font-family: var(--font);
+}
+input {
+  font-family: var(--font);
+  outline: none;
+  border: none;
+}
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 99px;
+}
+
+/* ─── Accessibility: visible keyboard focus ─────────────────── */
+:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible) {
+  outline: none;
+}

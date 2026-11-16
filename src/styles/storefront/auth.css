@@ -5,7 +5,7 @@
    draw, not after the screen, so both pages share them.
 
    One-off brand and status colors that have no matching token in
-   index.css are declared once on the page root as --auth-* custom
+   the base stylesheets are declared once on the page root as --auth-* custom
    properties; everything else reads the design tokens directly. */
 
 .auth-shell {

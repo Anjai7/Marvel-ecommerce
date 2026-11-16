@@ -2,7 +2,7 @@
  * chips, the category listing & page, the CMS state blocks and the auth gate.
  *
  * A component-scoped stylesheet, plain CSS, built on the design tokens of
- * `src/index.css`. The slate/blue hexes are the values these surfaces were
+ * `src/styles/base/tokens.css`. The slate/blue hexes are the values these surfaces were
  * designed with; they have no token, so they live here instead of inline.
  *
  * The touch-target overrides live in one `@media (pointer: coarse)` block at

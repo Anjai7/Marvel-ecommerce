@@ -100,8 +100,6 @@ import {
 import { buildAlerts } from "./adminAlerts";
 import { AdminNotifications, AdminProfileMenu } from "./AdminTopBar";
 import SettingsEditor from "./SettingsEditor";
-import "./admin-reports.css";
-import "./admin-console.css";
 import RevenueTrendChart from "./charts/RevenueTrendChart";
 import OrderStatusChart from "./charts/OrderStatusChart";
 import UserRolesChart from "./charts/UserRolesChart";
@@ -119,7 +117,7 @@ import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
 import OperationsHub from "./OperationsHub";
 import ProductVariantsEditor from "./ProductVariantsEditor";
-import { OPTION_KIND_LABELS } from "../../lib/productOptions";
+import { formatOptionChoices } from "../../lib/productOptions";
 import { formatAmount, formatCurrency } from "../../lib/currency";
 import useInactivityTimeout from "./useInactivityTimeout";
 
@@ -203,27 +201,15 @@ function toApiCombinations(combinations) {
  * The customer's choice for one order item, as one line of text:
  * "Colour: Blue · Size: M · SKU: TEE-BLUE-M".
  *
- * The axis comes from the option's kind ("color" reads as "Colour") and the
- * choice from the option's label — what the customer picked. A SKU is added
- * when the item has one. An item with no options has no line at all.
+ * The choice itself is read by the shared formatter, so the cart, the
+ * order, the customer's order list and the vendor's order list all read
+ * the customer's choice the same way.
  */
 function orderItemChoice(item) {
-  const options = Array.isArray(item?.options) ? item.options : [];
-  const parts = [];
-  for (const option of options) {
-    if (!option) continue;
-    const axis = OPTION_KIND_LABELS[option.kind] || option.kind || "";
-    const label = String(option.label ?? "").trim();
-    const value = String(option.value ?? "").trim();
-    // The label is the choice the customer reads; when it repeats the axis
-    // name the value carries the choice instead.
-    const choice = label && label !== axis ? label : value || label;
-    if (!axis && !choice) continue;
-    parts.push(`${axis || choice}: ${choice || axis}`);
-  }
+  const choice = formatOptionChoices(item?.options);
   const sku = String(item?.sku ?? "").trim();
-  if (sku) parts.push(`SKU: ${sku}`);
-  return parts.join(" · ");
+  if (!choice && !sku) return "";
+  return [choice, sku ? `SKU: ${sku}` : ""].filter(Boolean).join(" · ");
 }
 
 /**

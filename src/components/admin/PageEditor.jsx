@@ -23,7 +23,6 @@ import {
 } from "../../api/pagesApi";
 import { PAGE_KINDS, PAGE_TEMPLATES } from "../../../server/lib/pageRules.js";
 import { validateSection } from "../../../server/lib/sectionTypes.js";
-import "./admin-forms.css";
 
 /**
  * The editor of one CMS page.

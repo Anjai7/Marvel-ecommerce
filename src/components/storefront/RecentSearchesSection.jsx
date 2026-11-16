@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Clock, Search, X } from "lucide-react";
 import { toAppHref } from "../ui/linkTarget";
 import { navigateToPath } from "../../lib/routes";
-import "./widgets.css";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
 

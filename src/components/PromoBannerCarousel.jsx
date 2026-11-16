@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import "./storefront/layout.css";
 import { useContent } from "../context/ContentContext";
 import { Button, Badge } from "./ui";
 import { toAppHref } from "./ui/linkTarget";

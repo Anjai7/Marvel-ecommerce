@@ -1,7 +1,7 @@
 /* The CMS section styles.
  *
  * A component-scoped stylesheet, plain CSS, built on the design tokens of
- * `src/index.css`. Every rule is prefixed with `section-` so it cannot
+ * `src/styles/base/tokens.css`. Every rule is prefixed with `section-` so it cannot
  * collide with the storefront or the admin console.
  *
  * The `bg-*`, `pt-*`, `pb-*` and `mw-*` modifier classes are written by

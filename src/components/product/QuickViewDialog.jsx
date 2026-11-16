@@ -15,7 +15,6 @@ import { useCart } from "../../context/CartContext";
 import { useSettings } from "../../context/SettingsContext";
 import { deliverySummary } from "./dynamicProductBuilder";
 // Shared product-surface stylesheet (responsive rules, tap targets).
-import "./product.css";
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null;

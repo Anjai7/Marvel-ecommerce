@@ -14,7 +14,6 @@ import {
   Sparkles,
 } from "lucide-react";
 // Shared product-surface stylesheet (responsive rules, tap targets).
-import "./product.css";
 
 export default function ProductImageGallery({ media = [] }) {
   const [activeIdx, setActiveIdx] = useState(0);

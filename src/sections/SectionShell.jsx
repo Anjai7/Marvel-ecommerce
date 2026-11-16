@@ -4,7 +4,8 @@
  *
  * The shell is the only place that reads the `style` block: the background,
  * the vertical padding and the maximum width become the modifier classes
- * `bg-*`, `pt-*`, `pb-*` and `mw-*`, which `sections.css` styles.
+ * `bg-*`, `pt-*`, `pb-*` and `mw-*`, which
+ * `src/styles/storefront/sections.css` styles.
  *
  * `safeHref` is the single gate a stored link passes through. A stored link
  * is a hash route (`#/category/electronics`), a site-relative path
@@ -15,7 +16,6 @@
 
 import { isSafeUrl } from "../../server/lib/sectionTypes.js";
 import { toAppHref } from "../components/ui/linkTarget";
-import "./sections.css";
 
 export function SectionShell({ style, children, className = "" }) {
   return (

@@ -1,7 +1,6 @@
 import { Heart, ShoppingBag } from "lucide-react";
 import { Button } from "../ui";
 import { formatCurrency } from "../../lib/currency";
-import "./customer-portal.css";
 
 /**
  * Customer wishlist view tab.

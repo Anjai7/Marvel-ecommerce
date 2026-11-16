@@ -3,7 +3,6 @@ import BrowseCategoriesMenu from "./BrowseCategoriesMenu";
 import { LiveMegaMenu } from "./navigation/DynamicMenu";
 import { useContent } from "../context/ContentContext";
 import { Menu, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import "./storefront/layout.css";
 
 const byOrder = (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0);
 

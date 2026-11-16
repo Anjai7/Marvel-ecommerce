@@ -18,7 +18,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
-import "./auth-pages.css";
 
 export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
   const [email, setEmail] = useState("");

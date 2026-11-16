@@ -34,7 +34,7 @@ import {
   apiUpdateOrderStatus,
 } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
-import "./vendor-dashboard.css";
+import { formatOptionChoices, formatOptionValues } from "../../lib/productOptions";
 
 /** Depth-first lookup of one node in a category tree. */
 function findCategoryNode(nodes, id) {
@@ -72,69 +72,19 @@ function statusTone(status) {
   return "processing";
 }
 
-/** The human label of every option kind — "color" reads as "Colour". */
-const OPTION_KIND_LABELS = {
-  color: "Colour",
-  size: "Size",
-  capacity: "Capacity",
-  storage: "Storage",
-  material: "Material",
-  style: "Style",
-  weight: "Weight",
-  flavour: "Flavour",
-};
-
-/**
- * The readable text of one option: its label, or — when a stored option has
- * no label — its value. A hex colour value stands for nothing a seller can
- * read, so it is dropped.
- */
-function optionText(option) {
-  if (!option || typeof option !== "object") return "";
-  return [option.label, option.value]
-    .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
-    .find((candidate) => candidate && !candidate.startsWith("#"));
-}
-
-/**
- * The customer's choice for one item as a readable line: "Colour: Blue · Size: M".
- * "" means there is nothing to show, so the caller can leave the cell as it is.
- */
-function formatOptions(options) {
-  if (!Array.isArray(options)) return "";
-  const parts = [];
-  for (const option of options) {
-    const text = optionText(option);
-    if (!text) continue;
-    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
-    const kindLabel = OPTION_KIND_LABELS[kind];
-    parts.push(kindLabel ? `${kindLabel}: ${text}` : text);
-  }
-  return parts.join(" · ");
-}
-
-/** The same choice, short: "Blue / M" — one quiet line per item. */
-function formatOptionValues(options) {
-  if (!Array.isArray(options)) return "";
-  const parts = [];
-  for (const option of options) {
-    const text = optionText(option);
-    if (text) parts.push(text);
-  }
-  return parts.join(" / ");
-}
-
 /**
  * One short line per item of the order that carries a choice — "Blue / M" —
- * with the full reading ("Colour: Blue · Size: M") kept beside it. Orders
- * placed before the options existed simply have none.
+ * with the full reading ("Colour: Blue · Size: M") kept in the tooltip.
+ *
+ * Both readings come from the shared formatter, so the vendor's order list
+ * says the same thing as the customer's.
  */
 function orderOptionLines(items) {
   if (!Array.isArray(items)) return [];
   return items
     .map((item) => {
       const short = formatOptionValues(item?.options);
-      return short ? { short, full: formatOptions(item?.options) } : null;
+      return short ? { short, full: formatOptionChoices(item?.options) } : null;
     })
     .filter(Boolean);
 }

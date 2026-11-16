@@ -1,5 +1,4 @@
 import React from "react";
-import "./ui-primitives.css";
 
 export function ProductCardSkeleton() {
   return (

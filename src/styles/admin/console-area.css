@@ -6,7 +6,7 @@
    itself needs, so a change here never reaches the storefront.
 
    Every rule names what it is for. The colour, radius and shadow
-   values come from the design tokens in src/index.css.
+   values come from the design tokens in `src/styles/base/tokens.css`.
    ───────────────────────────────────────────────────────────── */
 
 /* ── The sales report ───────────────────────────────────── */

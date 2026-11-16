@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { useContent } from "../../context/ContentContext";
 import { Badge, Button, Card, CardContent } from "../ui";
-import "../storefront/layout.css";
 
 // Icon mapping helper — unknown icon names fall back to Layers.
 const ICON_MAP = {

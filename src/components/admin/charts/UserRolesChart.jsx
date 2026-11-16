@@ -1,6 +1,5 @@
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import { roleColor, roleLabel } from "./roleColors";
-import "./charts.css";
 
 export default function UserRolesChart({ data }) {
   const total = Array.isArray(data) ? data.reduce((sum, d) => sum + d.value, 0) : 0;

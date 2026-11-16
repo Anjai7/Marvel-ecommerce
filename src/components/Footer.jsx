@@ -3,7 +3,6 @@ import { useContent } from "../context/ContentContext";
 import { useSettings } from "../context/SettingsContext";
 import { SimpleTooltip } from "./ui";
 import { toAppHref } from "./ui/linkTarget";
-import "./storefront/chrome.css";
 import {
   ShieldCheck,
   Truck,

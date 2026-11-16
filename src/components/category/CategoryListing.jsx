@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ProductCard from "../ProductCard";
 import { apiFetchCategoryProducts } from "../../api/backendApi";
-import "../storefront/widgets.css";
 
 /**
  * The listing of one category: the products of the category path, with the

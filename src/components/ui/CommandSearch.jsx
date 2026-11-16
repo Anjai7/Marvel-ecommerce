@@ -3,7 +3,6 @@ import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles } from "lucide-rea
 import { ProductPrice } from "./ProductPrice";
 import { apiFetchProducts } from "../../api/backendApi";
 import { useContent } from "../../context/ContentContext";
-import "./ui-primitives.css";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
 const MAX_RECENT = 5;

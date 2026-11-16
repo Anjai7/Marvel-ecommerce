@@ -3,44 +3,10 @@ import { ShoppingBag, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../../context/CartContext.jsx";
 import { Button, Badge, useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
-import "./cart.css";
+import { formatOptionChoices } from "../../lib/productOptions";
 
 const FALLBACK_BANNER_IMG =
   "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=300&fit=crop";
-
-/** The human label of every option kind — "color" reads as "Colour". */
-const OPTION_KIND_LABELS = {
-  color: "Colour",
-  size: "Size",
-  capacity: "Capacity",
-  storage: "Storage",
-  material: "Material",
-  style: "Style",
-  weight: "Weight",
-  flavour: "Flavour",
-};
-
-/**
- * The customer's choice for one line as a readable line: "Colour: Blue · Size: M".
- *
- * A line without a choice carries none, and a stored option may be missing
- * its label, so the array is read defensively.
- */
-function formatOptions(options) {
-  if (!Array.isArray(options)) return "";
-  const parts = [];
-  for (const option of options) {
-    if (!option || typeof option !== "object") continue;
-    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
-    const kindLabel = OPTION_KIND_LABELS[kind];
-    const text = [option.label, option.value]
-      .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
-      .find((candidate) => candidate && !candidate.startsWith("#"));
-    if (!text) continue;
-    parts.push(kindLabel ? `${kindLabel}: ${text}` : text);
-  }
-  return parts.join(" · ");
-}
 
 export function CartPage({ onNavigateHome, onCheckout }) {
   const { items, cartCount, subtotal, savings, total, removeItem, updateQuantity } = useCart();
@@ -94,7 +60,7 @@ export function CartPage({ onNavigateHome, onCheckout }) {
               const lineTotal = Number(item?.price || 0) * qty;
               // A line is identified by the item and the combination it was bought as.
               const lineId = item.lineId ?? `${item.id}::${item.combination_id ?? ""}`;
-              const choice = formatOptions(item.options);
+              const choice = formatOptionChoices(item.options);
               return (
                 <li key={lineId} className="cart-item">
                   <img src={item.image} alt={title} className="cart-item-img" />

@@ -2,7 +2,6 @@ import { X, Sparkles, Eye, RefreshCw, Check, AlertCircle } from "lucide-react";
 import clsx from "clsx";
 import { Button, Input, RequiredMark } from "../../ui";
 import AdminInlinePanel from "../AdminInlinePanel";
-import "../admin-forms.css";
 
 /**
  * The create-user form, shown inline in the Users tab.

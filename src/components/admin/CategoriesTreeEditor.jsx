@@ -21,9 +21,6 @@ import {
   useToast,
 } from "../ui";
 import Switch from "../ui/Switch";
-import "./admin-content.css";
-import "./admin-editors.css";
-import "./admin-tree.css";
 import {
   apiDeleteCategory,
   apiFetchCategoryTree,

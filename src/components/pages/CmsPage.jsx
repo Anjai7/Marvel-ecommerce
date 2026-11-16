@@ -7,7 +7,6 @@ import { apiFetchProducts } from "../../api/backendApi";
 import { apiFetchCategoryTree } from "../../api/contentApi";
 import SeoHead from "./SeoHead";
 import { navigateToPath } from "../../lib/routes";
-import "../storefront/widgets.css";
 
 /**
  * The public CMS page: one slug, one page, its sections and the footer.

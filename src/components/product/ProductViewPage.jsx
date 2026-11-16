@@ -8,7 +8,6 @@ import CustomerReviews from "./CustomerReviews";
 import { buildDynamicProductDetails } from "./dynamicProductBuilder";
 import { apiFetchProductDetails } from "../../api/productDetailsApi";
 // Shared product-surface stylesheet (responsive rules, tap targets).
-import "./product.css";
 
 /**
  * The product page.

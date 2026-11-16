@@ -1,269 +1,214 @@
-# 🛒 Marvel - Premium Tech E-Commerce Marketplace
+# 🛒 Marvel — E-Commerce Marketplace
 
-A refined, high-performance, and visually stunning tech e-commerce platform built using **React** and **Vite**, featuring premium UX patterns inspired by industry leaders like Amazon and Flipkart.
+A tech marketplace with a storefront and an admin console: a product catalogue with
+categories, variants, offers and reviews; a customer portal with orders and a wishlist;
+a vendor dashboard; and a console where every word, banner, menu and category on the
+storefront is edited as data rather than as code.
 
----
-
-## ✨ Features & Interactions
-
-### 🛍️ Smart Shopping & Navigation
-
-- **Stable Category Dropdowns**: Hover-safe mega menu interaction with a 260ms mouseleave debounce and invisible cursor bridges preventing accidental closes or HMR flickers.
-- **Intelligent Mega Dropdown Alignment**: Dropdowns in the second half of the navigation bar automatically align to the right to prevent horizontal page overflow and clipping.
-- **Layered Elevation System**: Product cards designed with soft dual-layer shadows, vertical lift on hover, and an elegant gradient highlight top rim.
-
-### 🎧 Amazon-Style Product detail Page
-
-- **Sticky Media Gallery Column**: The product image gallery stays locked to the viewport side during scrolling, freeing naturally as soon as the details section ends to avoid overlapping other sections.
-- **Vertical & Horizontal Thumbnail Modes**: Dynamic vertical-to-horizontal thumbnail strip adjustments based on device size.
-- **Plugin-Style Magnifier Zoom**: Cursor-tracking main image lens magnifier supporting `2.5x` and `4x` selectable zoom levels.
-- **Full-Screen Lightbox**: Immersive fullscreen gallery with smooth navigation.
-
-### 📊 Rich Product Information Sections
-
-- **Horizontal Carousel Tabs**: Horizontal tab bar that scrolls smoothly on swipe or via circular navigation arrows. Active tabs dynamically slide into center view.
-- **Structured EMI & Partner Bank Offers**: Dash-border partner bank rows with one-click copyable promo codes and EMI breakdown cards.
-- **Multi-Step Feedback & Price Match Form**: Interactive 3-step reporting wizard.
-- **Regulatory Compliance**: Quality certifications, origin details, HSN, and GST compliance tables.
+- **Frontend** — React 19, Vite, plain CSS (no Tailwind), Radix UI, Material UI for
+  switches, Lucide icons, Recharts for the console charts.
+- **Backend** — Express, Supabase (Postgres + Auth + Storage), Cloudinary for images.
+- **Quality** — Oxlint, Prettier, Vitest, Testing Library, Playwright, axe-core, Knip
+  and Lefthook.
 
 ---
 
-## 🎨 Design System
+## Getting started
 
-Consistently styled according to a highly polished brand palette:
-
-- **Primary**: Lighter Flipkart-inspired Navy Blue (`#2874f0`) for primary navigation and core branding elements.
-- **Secondary / CTA**: Radiant action Orange (`#ff6100`) for primary buy flows and Add to Cart buttons.
-- **Success**: Rich Emerald Green for savings, promotions, and verified stock indicators.
-- **Base**: Clean solid white cards overlaying soft cool-gray gradients (`linear-gradient(180deg, #f1f4f8 0%, #e2e8f0 100%)`) for excellent visual contrast.
-
----
-
-## 🧩 Component system
-
-Shared UI lives in `src/components/ui/` and is imported from one barrel. Build a
-control once and every screen that needs it gets the same behaviour and the same
-look.
-
-| Primitive                                                               | For                                |
-| ----------------------------------------------------------------------- | ---------------------------------- |
-| `Button` `Badge` `Card` `Input` `Rating` `Toast` `Avatar`               | the everyday controls              |
-| `Dialog` `DropdownMenu` `Popover` `Select` `Tooltip` `Tabs` `Accordion` | overlays and disclosure            |
-| `Table` `TableHeader` `TableBody` `TableRow` `TableHead` `TableCell`    | **every** table in the app         |
-| `Switch`                                                                | every on/off control (Material UI) |
-| `RequiredMark`                                                          | the `*` on a required field        |
-| `SearchInput`                                                           | every search field                 |
-| `ImageUploadDropzone` `CommandSearch` `ProductPrice`                    | the rest                           |
-
-Two rules keep the app easy to change:
-
-1. **No inline styles.** A `style={{…}}` cannot be found with a search and cannot
-   be themed, so every style lives in the area's stylesheet — `admin-console.css`,
-   `admin-editors.css`, `admin-panels.css`, `admin-forms.css`,
-   `vendor-dashboard.css`, `customer-portal.css`, `ui-primitives.css` — and uses
-   the design tokens above. `npm run lint:styles` fails the build if an inline
-   style reappears in the admin console, the shared primitives or the two
-   dashboards.
-2. **One table structure.** Every table is built from the `Table` parts, so it
-   looks the same everywhere and can be restyled in one place. The
-   `ui-table--cards` modifier turns a wide table into a stack of cards below
-   640px; give every cell that is not the headline or the action column a
-   `data-label` so the card keeps its column name.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-Make sure you have Node.js 22.12 or newer and npm 10 or newer. The repository includes a `.nvmrc` for nvm users. Browser checks use the installed Chrome channel on Windows by default (override with `PLAYWRIGHT_CHANNEL`) and Playwright Chromium in CI.
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Anjai7/Marvel-ecommerce.git
-   cd Marvel-ecommerce
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the API and Vite together:
-   ```bash
-   npm run dev:all
-   ```
-   Open [http://localhost:5173/](http://localhost:5173/) in your browser. Use `npm run dev` when you only need the frontend.
-
-### Quality checks
+Node.js **22.12+** and npm **10+** are required (`.nvmrc` pins the version).
 
 ```bash
-npm run check       # Oxlint, style guard, unit/component tests, and production build
-npm run test:e2e    # Playwright browser and accessibility checks
-npm run audit       # high/critical npm vulnerability gate
+npm install
+npm run dev:all      # the API on :5000 and Vite on :5173, together
 ```
 
-Prettier, EditorConfig, and Lefthook keep formatting and pre-commit checks consistent. Run `npm run format` to format the project, or `npm run format:check` to inspect formatting without writing files. The repository currently has a legacy formatting baseline (97 files at setup time), so avoid a whole-tree `npm run format` during focused changes. `npm run build:analyze` creates `dist/bundle-report.html`, and `npm run analyze:unused` reports dead code and unused dependencies.
+Open <http://localhost:5173>. `npm run dev` runs the frontend alone.
 
-### Building for Production
+### Commands
 
-To build the application for deployment:
+| Command                  | What it does                                                          |
+| ------------------------ | --------------------------------------------------------------------- |
+| `npm run dev:all`        | the API and the frontend together                                     |
+| `npm run check`          | lint, the inline-style guard, the unit tests and the production build |
+| `npm run test:e2e`       | the Playwright browser and accessibility checks                       |
+| `npm run build`          | the production bundle in `dist/`                                      |
+| `npm run build:analyze`  | `dist/bundle-report.html`, a bundle breakdown                         |
+| `npm run analyze:unused` | dead files, exports and dependencies (Knip)                           |
+| `npm run audit`          | fails on a high or critical npm vulnerability                         |
+| `npm run format`         | Prettier over the project                                             |
 
-```bash
-npm run build
-```
+### The seeded accounts
 
-This generates a minified, production-ready bundle in the `dist` directory.
+| Role        | Email                   | Password        |
+| ----------- | ----------------------- | --------------- |
+| Admin       | `admin@marvel.com`      | `admin123`      |
+| Super admin | `superadmin@marvel.com` | `superadmin123` |
+| Vendor      | `vendor@marvel.com`     | `vendor123`     |
+| Customer    | `user@marvel.com`       | `user123`       |
+
+### Environment
+
+`JWT_SECRET` must be **at least 32 characters** — the API refuses to boot in
+production with a shorter one. `SUPABASE_SERVICE_ROLE_KEY` is required by the seed
+scripts. `ALLOWED_ORIGINS` is a comma-separated CORS allowlist that defaults to the two
+localhost dev origins. `.env.example` lists everything.
 
 ---
 
-## Dynamic Site Content
-
-Everything the storefront shows is a database row that an **admin** edits from the admin
-panel — the hero carousel, the navigation tree, the promo banners, the footer links, and
-the category taxonomy. There is no hardcoded content layer left except one fallback
-hero slide, so the homepage is never blank.
-
-### The admin editors
-
-Sign in as an admin and open **Site Content** in the sidebar:
-
-| Section        | What it edits                                                      |
-| -------------- | ------------------------------------------------------------------ |
-| **Menus**      | the 3-level navigation tree and the mega menu                      |
-| **Hero**       | the homepage hero carousel                                         |
-| **Categories** | the category / subcategory / leaf taxonomy                         |
-| **Pages**      | custom marketing, content and category landing pages               |
-| **Banners**    | the homepage banner layout, the promo carousel and the promo strip |
-| **Footer**     | the footer's link columns and popular-search tags                  |
-
-The full guide is **[docs/admin-content-guide.md](docs/admin-content-guide.md)**.
-
-### Dynamic Pages
-
-Custom marketing, campaign, policy, and category landing pages live at `#/pages/<slug>`
-(with a clean-path fallback for `/pages/<slug>`). Pages are assembled from an ordered
-stack of sections chosen from a 12-type registry:
-
-- **Hero banner** (`hero`) — full-width hero with heading, subheading, CTA, and theme
-- **Rich text** (`richtext`) — safe markdown body (headings, lists, blockquotes, links)
-- **Single image** (`image`) — responsive banner or brand asset with caption and link
-- **Image gallery** (`gallery`) — responsive 2/3/4-column image grid with lightbox captions
-- **Product grid** (`product_grid`) — curated or manual hand-picked products
-- **Category grid** (`category_grid`) — child or curated category tiles with badges
-- **Promo banner** (`promo_banner`) — promotional offer banner with countdown timer
-- **Call to action** (`cta`) — high-conversion action banner with primary and secondary buttons
-- **FAQ** (`faq`) — collapsible accordion of questions and answers
-- **Video embed** (`video`) — YouTube, Vimeo, or MP4 embed with responsive aspect ratio
-- **Category listing** (`category_listing`) — paginated category products with sort and layout controls
-- **Spacer** (`spacer`) — configurable vertical whitespace divider
-
-Pages support draft, scheduled, published, and expired states with zero-redeploy instant
-publishing: publishing a page or updating its sections is live on the storefront immediately.
-
-### The category taxonomy
-
-Three levels: a **category**, its **subcategories**, and the **leaves** under them. The
-seeded tree has 7 categories, 31 subcategories and 149 leaves.
-
-A category's URL is its **whole ancestor path** — `#/category/electronics/mobiles/smartphones`
-— because a slug is only unique within its parent (the default tree has three categories
-called "accessories"). Every category has its own page, and a product bound to a category
-appears on that category's page and on the pages of all its ancestors.
-
-### Applying the schema
-
-The content tables are created by SQL that **you** apply — this machine cannot reach the
-database. The bundles, their order, and their verification queries are in
-**[docs/sql/README.md](docs/sql/README.md)**:
+## How the project is laid out
 
 ```
-docs/sql/apply-01-content-taxonomy.sql   # the tables + the category seed
-docs/sql/apply-02-drop-site-categories.sql  # drops the old table, after the code ships
-docs/sql/apply-03-run-seeds.md           # populates banners, footer and products
+src/
+  api/          the client for every endpoint (one module per area)
+  components/   the React components, by area
+    admin/      the console: its editors, its panels, its forms
+    auth/       sign in and sign up
+    cart/       the cart page
+    category/   the category listing and the category page
+    customer/   the customer portal
+    product/    the product page, the gallery, the tabs, the reviews
+    storefront/ the home page's widgets
+    ui/         the shared primitives every screen uses
+    vendor/     the vendor dashboard
+  context/      auth, cart and content state
+  lib/          the route table, the currency helpers, the option kinds
+  sections/     the CMS section blocks a page is assembled from
+  styles/       every stylesheet in the app (see below)
+  App.jsx       the router and the shell
+  main.jsx      the entry point
+server/
+  routes/       one module per endpoint group
+  services/     Cloudinary and the other outside services
+  lib/          the server-side rules (page rules, option kinds)
+  app.js        the Express app
+docs/           the documentation index is in docs/README.md
 ```
 
-The seeds are also available as npm scripts and are safe to re-run — they upsert by
-deterministic id and never delete anything:
+### The styles
 
-```bash
-npm run seed:content     # 9 banners, 5 footer sections, 34 links
-npm run seed:products    # a product catalogue across the whole taxonomy
+**Every rule in the app lives in `src/styles/`.** There are no inline styles and no
+stylesheets next to the components: `src/main.jsx` imports `src/styles/index.css`, and
+that file imports every sheet in the order the cascade expects. The order is written
+down there instead of happening by accident of the import graph.
+
+```
+src/styles/
+  index.css      the entry point — the only stylesheet the app loads
+  base/          tokens.css (the design tokens), shell.css, primitives.css,
+                 responsive.css, motion.css
+  storefront/    home.css, footer.css, product-page.css, chrome.css, layout.css,
+                 mobile-menu.css, widgets.css, product-surfaces.css, auth.css,
+                 cart.css, sections.css, dynamic.css
+  admin/         console.css, console-area.css, content.css, editors.css, forms.css,
+                 panels.css, inline-panel.css, tree.css, reports.css,
+                 banners-editor.css, variants-editor.css, charts.css
+  portals/       customer-portal.css, vendor-dashboard.css
+  ui/            primitives.css, table.css
 ```
 
-### Environment variables
-
-`JWT_SECRET` must be **at least 32 characters** — the API refuses to boot in production
-with a shorter one. `SUPABASE_SERVICE_ROLE_KEY` is required by the seed scripts, because
-the content tables are behind scoped row-level-security policies. `ALLOWED_ORIGINS` is a
-comma-separated allowlist for the API's CORS; it defaults to the two localhost dev
-origins. See `.env.example` for the full list.
+A sheet never imports another sheet. To add a rule, put it in the sheet for the area it
+belongs to — the guide is **[docs/frontend-guide.md](docs/frontend-guide.md)**.
 
 ---
 
-## Dynamic Site Content
+## The rules that keep it consistent
 
-Every structured content block on the storefront is a database row that an admin can
-edit. Nothing on the page is hardcoded any more (the one exception is the homepage
-hero's fallback slide, so the homepage is never blank).
+**1. No inline styles.** A `style={{…}}` cannot be found with a search and cannot be
+themed, so every style is a named class in the area's stylesheet and uses the tokens in
+`src/styles/base/tokens.css`. `npm run lint:styles` fails the build if an inline style
+appears anywhere in `src/` — the four that remain are one-off geometry (a column count,
+a spacer height) and say so on the line.
 
-### What an admin can edit
+**2. One table structure.** Every table in the app is built from the `Table` parts in
+`src/components/ui/Table.jsx`, so they look the same and can be restyled in one place.
+A table becomes a stack of cards when the column it sits in is too narrow for it — the
+container query in `src/styles/ui/table.css` decides, not the width of the window,
+because the console keeps a 280px sidebar. Give every cell that is not the headline or
+the action column a `data-label` so the card keeps its column name.
 
-**Site Content** in the admin console has one editor per content type:
+**3. One search field.** Every list filters through `SearchInput`.
 
-| Editor         | What it controls                                       |
-| -------------- | ------------------------------------------------------ |
-| **Menus**      | The navigation tree and the mega-menu                  |
-| **Hero**       | The homepage hero carousel                             |
-| **Categories** | The three-level category / subcategory / leaf taxonomy |
-| **Pages**      | Custom marketing and category landing pages            |
-| **Banners**    | The homepage promo layout, carousel and offer strip    |
-| **Footer**     | The footer's link columns and popular search tags      |
+**4. One switch.** Every on/off control is the Material UI `Switch` in
+`src/components/ui/Switch.jsx`.
 
-Products pick a category from the same tree, and the storefront's category pages,
-navigation and promo blocks all read from the database. An admin edit reaches the
-storefront immediately — no reload, no cache to clear.
+**5. Tokens, not literals.** Colours, radii, shadows and spacing come from the
+`:root` block in `src/styles/base/tokens.css`. A new colour is a new token.
 
-### The category taxonomy
+**6. Nothing overflows.** At every width the document must not scroll sideways, and
+every control must be reachable by a thumb — 44×44px on a coarse pointer.
 
-Three levels, with the URL carrying the whole chain of ancestors:
+---
+
+## The features
+
+### Storefront
+
+- A homepage built from data: the hero carousel, the category slider, the promo
+  banners, the trending and featured carousels and the section blocks.
+- A category tree of three levels, where a category's URL is its whole ancestor path.
+- A product page with a sticky gallery, a magnifier zoom, a lightbox, the offers and
+  EMI cards, the specifications, the reviews and the rating breakdown.
+- **Product options and variants** — a product may carry colour, size, capacity,
+  storage, material, style, weight or flavour. The customer picks, the price and stock
+  follow the combination, and the cart, the order, the customer's order list and the
+  vendor's order list all show what was chosen. See
+  **[docs/product-variants-contract.md](docs/product-variants-contract.md)**.
+- A cart, a wishlist, the customer portal with its orders and tracking, and the vendor
+  dashboard with its catalogue, its orders and its shipments.
+- Marketing, policy and category landing pages at `#/pages/<slug>`, assembled from an
+  ordered stack of twelve section types, published with no redeploy.
+
+### Admin console
+
+- **Dashboard** — the store at a glance: what needs shipping, what is running out, the
+  revenue and order trends, the role split and the live order feed.
+- **Orders, products, customers and users** — each a searchable, filterable table.
+- **Site content** — the navigation tree, the hero slides, the category tree, the promo
+  banners and the footer, each edited in the page rather than in a popup.
+- **Settings** — the store's own configuration.
+
+Every editor writes straight to the database: what an admin saves is what the
+storefront shows, with no rebuild in between.
+
+---
+
+## The database
+
+The schema is applied by SQL that **you** run — the bundles, their order and their
+verification queries are in **[docs/sql/README.md](docs/sql/README.md)**:
 
 ```
-Electronics        #/category/electronics
-└── Mobiles        #/category/electronics/mobiles
-    └── Smartphones  #/category/electronics/mobiles/smartphones
+docs/sql/apply-01-content-taxonomy.sql      the tables and the category seed
+docs/sql/apply-02-drop-site-categories.sql  drops the old table, after the code ships
+docs/sql/apply-03-run-seeds.md              populates banners, footer and products
+docs/sql/apply-04-product-variants.sql      options, the shared catalogue, the variants
 ```
 
-A slug is unique only within its parent, so the path — not the last segment — is
-the identity. That is why the category page is routed on the full path.
+The seeds are also npm scripts, are safe to re-run (they upsert by deterministic id and
+never delete anything), and cover the whole taxonomy:
 
-### Applying the database side
+```bash
+npm run seed:content     # banners, footer sections and links
+npm run seed:products    # a catalogue across the whole taxonomy
+```
 
-The schema is applied by hand: this machine cannot reach the database. The
-hand-off, in order, is in **[`docs/sql/README.md`](docs/sql/README.md)**:
+The contract between the server and the storefront — every table, every column and
+every API shape — is **[docs/backend-owned-content.md](docs/backend-owned-content.md)**.
 
-1. `docs/sql/apply-01-content-taxonomy.sql` — the tables, the scoped RLS policies
-   and the seeded taxonomy;
-2. deploy the code that reads the new tables;
-3. `docs/sql/apply-02-drop-site-categories.sql` — drop the old table;
-4. `docs/sql/apply-03-run-seeds.md` — populate the banners, the footer and a
-   product catalogue across the taxonomy.
+---
 
-`npm run seed:content` and `npm run seed:products` are idempotent: they upsert by
-a deterministic id and never delete.
+## Tests
 
-### Guides
+```bash
+npm run test         # Vitest: unit and component tests
+npm run test:e2e     # Playwright: the browser flows and the accessibility checks
+```
 
-- [`docs/admin-content-guide.md`](docs/admin-content-guide.md) — how to use the
-  editors, and what happens on the storefront when you save.
-- [`docs/sql/README.md`](docs/sql/README.md) — the database hand-off, the
-  verification queries and the rollback.
-- [`docs/backend-owned-content.md`](docs/backend-owned-content.md) — the
-  contract every value in the app follows: which tables own which content,
-  the API shapes, and the rule that nothing is invented in the client.
+The browser checks cover the storefront, the console, the variants flow and the
+responsive behaviour at 360, 390, 414, 768, 1024, 1280 and 1440px.
 
-### Before deploying
+---
 
-`JWT_SECRET` must be **32 characters or more**. The API refuses to boot in
-production with a shorter one. Generate a real secret with
-`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
+## Documentation
+
+**[docs/README.md](docs/README.md)** is the index. Start there.

@@ -1,5 +1,3 @@
-import "./ui-table.css";
-
 /**
  * The required-field mark.
  *

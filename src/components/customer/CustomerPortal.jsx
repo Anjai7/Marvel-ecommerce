@@ -25,45 +25,7 @@ import { apiFetchOrders } from "../../api/backendApi";
 import { apiFetchWishlist, apiAddToWishlist, apiRemoveFromWishlist } from "../../api/wishlistApi";
 import { useCart } from "../../context/CartContext";
 import { formatCurrency } from "../../lib/currency";
-import "./customer-portal.css";
-
-/** The human label of every option kind — "color" reads as "Colour". */
-const OPTION_KIND_LABELS = {
-  color: "Colour",
-  size: "Size",
-  capacity: "Capacity",
-  storage: "Storage",
-  material: "Material",
-  style: "Style",
-  weight: "Weight",
-  flavour: "Flavour",
-};
-
-/**
- * The customer's choice for one item as a readable line: "Colour: Blue · Size: M".
- *
- * Older orders carry no options at all and a stored option may be missing its
- * label, so the array is read defensively and "" is returned whenever there is
- * nothing worth showing — the caller then leaves the cell exactly as it was.
- */
-function formatOptions(options) {
-  if (!Array.isArray(options)) return "";
-  const parts = [];
-  for (const option of options) {
-    if (!option || typeof option !== "object") continue;
-    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
-    const kindLabel = OPTION_KIND_LABELS[kind];
-    // The label is what the customer reads; the value is the machine value (a
-    // hex for a colour), so it only stands in when there is no label and it
-    // reads like a word.
-    const text = [option.label, option.value]
-      .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
-      .find((candidate) => candidate && !candidate.startsWith("#"));
-    if (!text) continue;
-    parts.push(kindLabel ? `${kindLabel}: ${text}` : text);
-  }
-  return parts.join(" · ");
-}
+import { formatOptionChoices } from "../../lib/productOptions";
 
 export default function CustomerPortal({ currentUser, onNavigateHome, onSelectProduct }) {
   const [activeTab, setActiveTab] = useState("orders"); // orders, wishlist, profile
@@ -297,7 +259,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                         <TableCell data-label="Items">
                           <div className="customer-order-items">
                             {ord.items?.map((item, i) => {
-                              const optionsText = formatOptions(item?.options);
+                              const optionsText = formatOptionChoices(item?.options);
                               const sku = typeof item?.sku === "string" ? item.sku.trim() : "";
                               return (
                                 <div key={i} className="customer-order-item">

@@ -29,3 +29,48 @@ export const OPTION_KIND_LABELS = {
 export function isOptionKind(kind) {
   return OPTION_KINDS.includes(kind);
 }
+
+/**
+ * The customer's choice for one item, as one line of readable text:
+ * "Colour: Blue · Size: M".
+ *
+ * The cart, the order, the customer's order list and the vendor's order
+ * list all show the same thing, so they all read it the same way. An item
+ * with no choice carries none, and an option without a label falls back to
+ * its value — a hex colour is dropped, because it is not something a person
+ * can read.
+ */
+export function formatOptionChoices(options) {
+  if (!Array.isArray(options)) return "";
+  const parts = [];
+  for (const option of options) {
+    if (!option || typeof option !== "object") continue;
+    const kind = typeof option.kind === "string" ? option.kind.trim().toLowerCase() : "";
+    const label = [option.label, option.value]
+      .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
+      .find((candidate) => candidate && !candidate.startsWith("#"));
+    if (!label) continue;
+    const axis = OPTION_KIND_LABELS[kind];
+    parts.push(axis ? `${axis}: ${label}` : label);
+  }
+  return parts.join(" · ");
+}
+
+/**
+ * The same choice, short: "Blue / M" — one quiet line per item.
+ *
+ * Used where the full reading would crowd the row, with the full reading
+ * in the tooltip.
+ */
+export function formatOptionValues(options) {
+  if (!Array.isArray(options)) return "";
+  const parts = [];
+  for (const option of options) {
+    if (!option || typeof option !== "object") continue;
+    const label = [option.label, option.value]
+      .map((candidate) => (typeof candidate === "string" ? candidate.trim() : ""))
+      .find((candidate) => candidate && !candidate.startsWith("#"));
+    if (label) parts.push(label);
+  }
+  return parts.join(" / ");
+}

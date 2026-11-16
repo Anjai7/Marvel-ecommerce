@@ -1,6 +1,5 @@
 import { Button, Input, ImageUploadDropzone, RequiredMark } from "../ui";
 import CategoryPicker from "../admin/CategoryPicker";
-import "./vendor-dashboard.css";
 
 /**
  * Add / Edit Product modal for Vendor Dashboard.

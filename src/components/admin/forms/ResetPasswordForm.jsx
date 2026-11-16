@@ -1,7 +1,6 @@
 import { Key } from "lucide-react";
 import { Button, Input, RequiredMark } from "../../ui";
 import AdminInlinePanel from "../AdminInlinePanel";
-import "../admin-forms.css";
 
 /**
  * The reset-password form, shown inline in the Users tab.

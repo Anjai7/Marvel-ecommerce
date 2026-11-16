@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Star, ThumbsUp, CheckCircle } from "lucide-react";
 // Shared product-surface stylesheet (responsive rules, tap targets).
-import "./product.css";
 
 function StarsFill({ rating }) {
   return (

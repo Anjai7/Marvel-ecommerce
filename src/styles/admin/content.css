@@ -1,6 +1,6 @@
 /* Admin content editors — Menus tree, page headers, editor form sections.
  * New classes only; the console shell (sidebar, navbar, modal) stays in
- * index.css. Imported by the editors that use it. */
+ * `src/styles/base/tokens.css`. */
 
 /* ── Page header ───────────────────────────────────────── */
 .admin-page-header {

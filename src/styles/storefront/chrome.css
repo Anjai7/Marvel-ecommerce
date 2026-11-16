@@ -8,7 +8,7 @@
 /* ─── Header ─────────────────────────────────────────────────── */
 
 /* The logo is a <button> so it is keyboard-focusable, but it should keep
-   the reset from index.css without picking up button padding. */
+   the reset from the base stylesheets without picking up button padding. */
 .logo-btn {
   padding: 0;
   background: none;
@@ -449,7 +449,7 @@
   /* Dots: the button becomes 32×32 and the visible dot is drawn with a
      pseudo-element, so the indicator looks the same but is tappable.
      Width/active width/radius on the button itself are restated because
-     index.css sizes the 8px dot on the button. */
+     the base stylesheets size the 8px dot on the button. */
   .hero-dot,
   .promo-dot {
     width: 32px;
@@ -465,7 +465,7 @@
   }
   .hero-dot::after,
   .promo-dot::after {
-    /* The 24px ::after hit overlay in index.css is superseded by the
+    /* The 24px ::after hit overlay in the base stylesheets is superseded by the
        32px button itself. */
     content: none;
   }

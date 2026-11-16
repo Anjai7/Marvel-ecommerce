@@ -1,6 +1,5 @@
 import React from "react";
 import { clsx } from "clsx";
-import "./ui-table.css";
 
 /**
  * The one table structure in the app.

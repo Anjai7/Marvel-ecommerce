@@ -1,5 +1,3 @@
-import "./customer-portal.css";
-
 /**
  * Customer profile details and addresses view tab.
  */

@@ -1,4 +1,3 @@
-import "./storefront/layout.css";
 import { useRef, useState } from "react";
 import { useContent } from "../context/ContentContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";

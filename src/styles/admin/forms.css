@@ -4,7 +4,7 @@
  * section form, the settings screen and the product picker. Each of them
  * imports this file, so a field looks the same wherever it is edited.
  *
- * The colours come from the design tokens of `src/index.css`; the ones that
+ * The colours come from the design tokens of `src/styles/base/tokens.css`; the ones that
  * have no token (the error red, the preview's own shadows) keep their value.
  */
 

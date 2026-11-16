@@ -3,7 +3,6 @@ import { X } from "lucide-react";
 import { Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui";
 import SearchInput from "../ui/SearchInput";
 import { apiFetchProducts } from "../../api/backendApi";
-import "./admin-forms.css";
 
 export default function ProductPicker({ value = [], onChange, disabled = false, max = 24, id }) {
   const selectedIds = Array.isArray(value) ? value : [];

@@ -10,7 +10,6 @@ import {
   SECTION_TYPES,
   validateSection,
 } from "../../../server/lib/sectionTypes.js";
-import "./admin-forms.css";
 
 /**
  * The generated form for one section.

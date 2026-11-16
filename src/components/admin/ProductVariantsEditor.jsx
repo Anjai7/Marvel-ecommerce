@@ -12,7 +12,6 @@ import {
 import { apiFetch } from "../../api/client";
 import { OPTION_KIND_LABELS, OPTION_KINDS } from "../../lib/productOptions";
 import { getCategorySuggestions } from "./productOptionSuggestions";
-import "./product-variants-editor.css";
 
 /**
  * The option values and the sellable variants of one product.

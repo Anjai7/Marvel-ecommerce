@@ -1,0 +1,325 @@
+/* The responsive rules that apply to the whole app.
+ *
+ * They come after the primitives they tighten up, so a rule here wins
+ * over the one it adjusts.
+ */
+
+/* ─── Responsive Breakdown & Mobile Rules ────────────────────── */
+@media (max-width: 1280px) {
+  .hero-carousel {
+    height: 440px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .footer-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .mega-menu {
+    max-width: calc(100vw - 32px);
+    flex-direction: column;
+    gap: 16px;
+  }
+  .mega-menu-grid {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+  .mega-menu-featured-column {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--gray-100);
+    padding-left: 0;
+    padding-top: 16px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Mobile Header 2-row layout */
+  .header-inner {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 8px 0;
+    min-height: auto;
+  }
+  .hamburger-btn {
+    order: 1;
+    display: flex;
+  }
+  .logo {
+    order: 2;
+  }
+  .logo-img {
+    height: 34px;
+  }
+  .header-actions {
+    order: 3;
+    margin-left: auto;
+    gap: 2px;
+  }
+  .search-wrap {
+    order: 4;
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+    height: 40px;
+  }
+  .search-cat {
+    display: none;
+  }
+  .header-action#orders-btn {
+    display: none;
+  }
+  .header-divider {
+    display: none;
+  }
+  .ha-sub {
+    display: none;
+  }
+  .header-action {
+    padding: 6px 8px;
+    gap: 5px;
+  }
+  .ha-label {
+    font-size: 12px;
+  }
+  .header-auth-actions {
+    gap: 6px;
+  }
+  .header-auth-actions .signin-btn,
+  .header-auth-actions .signup-btn {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .signin-btn {
+    padding-top: 7px;
+    padding-bottom: 7px;
+    font-size: 12px;
+  }
+
+  /* Hero */
+  .hero-carousel {
+    height: 340px;
+  }
+  .hero-title {
+    font-size: 30px;
+  }
+  .hero-sub {
+    font-size: 15px;
+  }
+
+  /* Banners */
+  .banner-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .banner-card-lg {
+    min-height: 240px;
+    height: 260px;
+  }
+  .banner-right {
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+  .banner-card-sm {
+    min-height: 160px;
+    height: 160px;
+    width: 100%;
+    flex: auto;
+  }
+
+  /* Grids */
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .promo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .hover-nav {
+    display: none;
+  }
+  .topbar-links {
+    display: none;
+  }
+  .footer-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Nav arrows */
+  .trending-grid-wrap {
+    padding: 0 !important;
+  }
+  .trending-nav-btn {
+    display: none !important;
+  }
+  .cat-scroll-btn {
+    display: none !important;
+  }
+  .cat-slider-wrap {
+    padding: 0 !important;
+  }
+
+  /* Promo */
+  .promo-slide-images {
+    display: none;
+  }
+  .promo-carousel {
+    height: 200px;
+  }
+  .offer-ribbon {
+    width: 120px;
+    height: 120px;
+  }
+  .offer-ribbon-text {
+    font-size: 9px;
+    top: 22px;
+    right: -34px;
+    width: 130px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Quick View Modal Responsive */
+  .quickview-dialog-content {
+    max-width: 92vw !important;
+    width: 92vw !important;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 16px !important;
+  }
+  .quickview-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .quickview-image-wrap {
+    max-height: 220px;
+  }
+}
+
+@media (max-width: 600px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .promo-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero-carousel {
+    height: 300px;
+  }
+  .hero-title {
+    font-size: 24px;
+    letter-spacing: -0.2px;
+  }
+  .hero-sub {
+    font-size: 14px;
+    margin-bottom: 20px;
+    max-width: 90%;
+  }
+  .hero-cta {
+    height: 42px;
+    font-size: 13px;
+    padding: 0 20px;
+  }
+  .hero-dots {
+    bottom: 12px;
+    left: 20px;
+  }
+  /* The arrows sat on top of the hero copy on a phone. The dots and a
+     swipe drive the carousel there, so the arrows step aside. */
+  .hero-nav-btn {
+    display: none;
+  }
+  .promo-carousel {
+    height: 180px;
+  }
+  .promo-slide-content {
+    padding: 0 20px;
+  }
+  .promo-slide-title {
+    font-size: 18px;
+  }
+  .promo-slide-highlight {
+    font-size: 16px;
+  }
+  .offer-ribbon {
+    display: none;
+  }
+  .section-block {
+    padding: 28px 0;
+  }
+  .section-head {
+    padding: 20px 0 12px;
+  }
+
+  /* Footer */
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .footer-nl-form {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .footer-nl-btn {
+    width: 100%;
+    padding: 10px;
+    justify-content: center;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .payment-methods-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .logo-img {
+    height: 30px;
+  }
+  #cart-btn .ha-label {
+    display: none;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero-carousel {
+    height: 260px;
+  }
+  .hero-title {
+    font-size: 20px;
+  }
+  .hero-sub {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .product-grid {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 340px) {
+  .logo-img {
+    height: 26px;
+  }
+  .header-auth-actions .signin-btn,
+  .header-auth-actions .signup-btn {
+    padding-right: 8px;
+    padding-left: 8px;
+    font-size: 11.5px;
+  }
+  .product-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
