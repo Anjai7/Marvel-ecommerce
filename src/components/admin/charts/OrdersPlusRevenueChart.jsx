@@ -10,6 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { formatCurrency } from "../../../lib/currency";
+import { AXIS_TICK } from "./chartTheme";
 
 export default function OrdersPlusRevenueChart({ data }) {
   if (!data || data.length === 0) {
@@ -27,8 +28,8 @@ export default function OrdersPlusRevenueChart({ data }) {
       <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickMargin={8} />
-          <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
+          <XAxis dataKey="label" tick={AXIS_TICK} tickMargin={8} />
+          <YAxis tick={AXIS_TICK} />
           <Tooltip
             formatter={(value, name) => (name === "revenue" ? formatCurrency(value) : value)}
           />

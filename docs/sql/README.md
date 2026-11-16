@@ -222,7 +222,51 @@ twice and the counts must not change.
 
 ---
 
-## 5. Check the site
+## 5. Product options and variants
+
+**File:** [`apply-04-product-variants.sql`](./apply-04-product-variants.sql)
+
+**Where:** the Supabase **SQL Editor**. Paste the whole file and run it.
+
+**What it does:**
+
+- widens `public.product_variants.kind` from `('color','size')` to the eight kinds a
+  product can be sold on — `color`, `size`, `capacity`, `storage`, `material`, `style`,
+  `weight`, `flavour` — and adds `option_value_id`, the link to the catalogue;
+- creates `public.product_option_values`, the **shared catalogue**: one row per
+  `(kind, label)` in the whole store. A product links its option values to it, so
+  renaming "Black" to "Obsidian Black" in the catalogue renames it on every product that
+  uses it;
+- creates `public.product_variant_combinations`, the **sellable variants**: one row per
+  combination ("Blue / M") with its own `sku`, `price`, `stock` and `image_url`;
+- backfills the catalogue from the option values that already exist, so nothing has to
+  be entered twice;
+- adds the indexes and the row-level-security policies for the two new tables.
+
+**It is additive and re-runnable**: every table is created `if not exists`, the widened
+`kind` check is dropped before it is added, and the backfill is an idempotent upsert.
+Pasting it twice changes nothing the second time.
+
+**Verify:** the queries and their expected results are in the bundle's trailing comment
+block. The short version:
+
+```sql
+select to_regclass('public.product_option_values'),
+       to_regclass('public.product_variant_combinations');
+-- both present
+
+select count(*) from public.product_variants v
+where v.option_value_id is null and btrim(v.label) <> '';
+-- 0: every option value is linked to the catalogue
+```
+
+**Until it is applied the site still works.** The product page falls back to the
+product's own price and stock, the catalogue is simply empty, and the admin's option
+editor tells you that the tables are missing rather than losing what you typed.
+
+---
+
+## 6. Check the site
 
 ```bash
 npm run dev:all
@@ -245,12 +289,13 @@ npm run test:e2e
 
 ## Rollback
 
-| Step       | How to undo it                                                                                                                                                                                                                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 — schema | The migrations are additive. `DROP TABLE public.categories;` (and `promo_banners`, `footer_sections`, `footer_links`) plus `ALTER TABLE public.products DROP COLUMN category_id;` and `ALTER TABLE public.menu_items DROP COLUMN category_id;` removes the feature. The `menu_items` and `products` tables keep their data. |
-| 2 — code   | Redeploy the previous commit. The old `GET /api/content/categories` path returns once the alias is gone.                                                                                                                                                                                                                    |
-| 3 — drop   | **Not reversible** without the backup in step 3.                                                                                                                                                                                                                                                                            |
-| 4 — seeds  | The seeds upsert; they do not delete. To undo, delete the rows the seeds created (they have deterministic `c1…` / `b1…` / `f1…` / `f2…` / `e1…` id prefixes).                                                                                                                                                               |
+| Step        | How to undo it                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — schema  | The migrations are additive. `DROP TABLE public.categories;` (and `promo_banners`, `footer_sections`, `footer_links`) plus `ALTER TABLE public.products DROP COLUMN category_id;` and `ALTER TABLE public.menu_items DROP COLUMN category_id;` removes the feature. The `menu_items` and `products` tables keep their data.                     |
+| 2 — code    | Redeploy the previous commit. The old `GET /api/content/categories` path returns once the alias is gone.                                                                                                                                                                                                                                        |
+| 3 — drop    | **Not reversible** without the backup in step 3.                                                                                                                                                                                                                                                                                                |
+| 4 — seeds   | The seeds upsert; they do not delete. To undo, delete the rows the seeds created (they have deterministic `c1…` / `b1…` / `f1…` / `f2…` / `e1…` id prefixes).                                                                                                                                                                                   |
+| 5 — options | Bundle 04 is additive too. `DROP TABLE public.product_variant_combinations; DROP TABLE public.product_option_values;` and `ALTER TABLE public.product_variants DROP COLUMN option_value_id;` undo it; the option values that were already stored stay in `product_variants` and the storefront falls back to the product's own price and stock. |
 
 `supabase/schema.sql` is a **stale snapshot** of an early migration state, not a complete
 schema. Do **not** bootstrap a database from it — use the migrations in

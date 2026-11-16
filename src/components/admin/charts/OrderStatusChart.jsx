@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "../adminConstants";
+import { AXIS_TICK } from "./chartTheme";
 
 /* Keyed by the `order_status` enum value, so every slice is a stage the
  * database can actually store. */
@@ -40,8 +41,8 @@ export default function OrderStatusChart({ data }) {
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#64748b" }} tickMargin={8} />
-          <YAxis tick={{ fontSize: 11, fill: "#64748b" }} hide />
+          <XAxis dataKey="name" tick={AXIS_TICK} tickMargin={8} />
+          <YAxis tick={AXIS_TICK} hide />
           <Tooltip />
           <Legend verticalAlign="top" height={36} />
           {chartData.map((entry) => (

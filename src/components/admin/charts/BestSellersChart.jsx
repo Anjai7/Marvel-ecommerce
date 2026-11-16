@@ -1,5 +1,6 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { formatCurrency } from "../../../lib/currency";
+import { AXIS_TICK } from "./chartTheme";
 
 export default function BestSellersChart({ data }) {
   if (!data || data.length === 0) {
@@ -24,8 +25,8 @@ export default function BestSellersChart({ data }) {
           layout="vertical"
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={true} />
-          <YAxis dataKey="titleShort" tick={{ fontSize: 11, fill: "#64748b" }} width={140} />
-          <XAxis tick={{ fontSize: 11, fill: "#64748b" }} hide />
+          <YAxis dataKey="titleShort" tick={AXIS_TICK} width={140} />
+          <XAxis tick={AXIS_TICK} hide />
           <Tooltip
             cursor={{ strokeDasharray: "3 3" }}
             formatter={(value) => formatCurrency(value)}
