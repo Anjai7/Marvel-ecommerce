@@ -531,3 +531,21 @@
 .customer-profile__value--regular {
   font-weight: 500;
 }
+
+.customer-orders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--gray-500);
+}
+
+.customer-orders-empty p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-600);
+}

@@ -30,6 +30,7 @@ function toRenderSlide(row) {
     btnPath: row.btn_path || "/products",
     btnEnabled: row.btn_enabled !== false,
     bgImage: row.bg_image_url || "",
+    productImage: row.product_image_url || (!row.bg_image_url ? row.fallback_image_url : "") || "",
     image: row.bg_image_url || row.product_image_url || "",
     // Chrome.css owns the default gradient; an empty value selects it.
     bg: row.bg_gradient || "",
@@ -152,11 +153,11 @@ export default function HeroBanner({ onNavigate }) {
           {/* Base Background Gradient */}
           <SlideBackground bg={slide.bg} />
 
-          {/* Whole Banner Background Image */}
-          {(slide.bgImage || slide.image) && (
+          {/* Whole Banner Background Image (when distinct from product image or full bg) */}
+          {slide.bgImage && (
             <img
               className="hero-slide-bg-img"
-              src={slide.bgImage || slide.image}
+              src={slide.bgImage}
               alt={slide.title}
               loading={i === 0 ? "eager" : "lazy"}
             />
@@ -195,6 +196,16 @@ export default function HeroBanner({ onNavigate }) {
                 )}
               </div>
             </div>
+
+            {/* Right Product Image Showcase Column */}
+            {slide.productImage && (
+              <div className="hero-png-showcase">
+                <div className="hero-png-card">
+                  <div className="hero-png-glow-circle" />
+                  <img className="hero-floating-png" src={slide.productImage} alt={slide.title} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ))}

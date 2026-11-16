@@ -18,6 +18,8 @@ import {
   loadActiveCategories,
   resolveCategoryPath,
 } from "./products.js";
+import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
+import { CATALOGUE_TTL_MS, cached } from "../lib/shortCache.js";
 
 const adminOnly = adminGuards;
 
@@ -401,36 +403,55 @@ router.get("/products", async (req, res) => {
       search: typeof req.query.search === "string" ? req.query.search.trim() : "",
     };
 
-    let pageQuery = applyListingFilters(supabase.from("products").select("*"), filters);
-    pageQuery = applyListingSort(pageQuery, req.query.sort);
-    if (filters.pageSize > 0) {
-      pageQuery = pageQuery.range(
-        (filters.page - 1) * filters.pageSize,
-        filters.page * filters.pageSize - 1
-      );
-    }
+    // The listing is asked for on every page view and the catalogue behind
+    // it changes a few times a day, so the answer is kept for a minute.
+    const result = await cached(
+      `listing:${JSON.stringify(req.query)}`,
+      CATALOGUE_TTL_MS,
+      async () => {
+        // Only the columns a listing shows: the whole row is nearly three
+        // kilobytes of JSON blobs that a card never reads.
+        let pageQuery = applyListingFilters(
+          supabase.from("products").select(PRODUCT_LIST_SELECT),
+          filters
+        );
+        pageQuery = applyListingSort(pageQuery, req.query.sort);
+        if (filters.pageSize > 0) {
+          pageQuery = pageQuery.range(
+            (filters.page - 1) * filters.pageSize,
+            filters.page * filters.pageSize - 1
+          );
+        }
 
-    const { data, error } = await pageQuery;
-    if (error) {
-      console.error("Supabase category listing query error:", error.message);
-      return res.status(500).json({ error: LISTING_ERROR });
-    }
+        const { data, error } = await pageQuery;
+        if (error) {
+          console.error("Supabase category listing query error:", error.message);
+          return { error: true };
+        }
 
-    const items = (data ?? []).map(formatProduct);
+        const items = (data ?? []).map(formatProduct);
 
-    const countQuery = applyListingFilters(
-      supabase.from("products").select("id", { count: "exact", head: true }),
-      filters
+        const countQuery = applyListingFilters(
+          supabase.from("products").select("id", { count: "exact", head: true }),
+          filters
+        );
+        const { count, error: countError } = await countQuery;
+        if (countError) {
+          console.error("Supabase category listing count error:", countError.message);
+          return { error: true };
+        }
+
+        const total = typeof count === "number" ? count : items.length;
+        const hasMore = filters.pageSize > 0 && filters.page * filters.pageSize < total;
+        return { items, total, page: filters.page, pageSize: filters.pageSize, hasMore };
+      }
     );
-    const { count, error: countError } = await countQuery;
-    if (countError) {
-      console.error("Supabase category listing count error:", countError.message);
+
+    if (result.error) {
       return res.status(500).json({ error: LISTING_ERROR });
     }
 
-    const total = typeof count === "number" ? count : items.length;
-    const hasMore = filters.pageSize > 0 && filters.page * filters.pageSize < total;
-    return res.json({ items, total, page: filters.page, pageSize: filters.pageSize, hasMore });
+    return res.json(result);
   } catch (thrown) {
     console.error("Supabase category listing exception:", thrown.message);
     return res.status(500).json({ error: LISTING_ERROR });

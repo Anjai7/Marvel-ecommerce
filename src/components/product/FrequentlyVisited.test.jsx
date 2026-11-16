@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import FrequentlyVisited from "./FrequentlyVisited";
 import { ToastProvider } from "../ui/Toast";
 import { CartProvider } from "../../context/CartContext";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts } from "../../api/backendApi";
 
 vi.mock("../../api/backendApi", () => ({
-  apiFetchProducts: vi.fn(),
+  apiFetchCategoryProducts: vi.fn(),
 }));
 
 function renderStrip(props = {}) {
@@ -25,7 +25,10 @@ describe("FrequentlyVisited", () => {
   });
 
   it("does not claim view-tracking behaviour it does not have", async () => {
-    apiFetchProducts.mockResolvedValue([{ id: "p2", title: "Second Shoe", price: "999.00" }]);
+    apiFetchCategoryProducts.mockResolvedValue({
+      items: [{ id: "p2", title: "Second Shoe", price: "999.00" }],
+      total: 1,
+    });
 
     renderStrip();
 
@@ -35,10 +38,13 @@ describe("FrequentlyVisited", () => {
   });
 
   it("lists other catalogue products and skips the one on screen", async () => {
-    apiFetchProducts.mockResolvedValue([
-      { id: "p1", title: "Current Shoe", price: "1499.00" },
-      { id: "p2", title: "Second Shoe", price: "999.00" },
-    ]);
+    apiFetchCategoryProducts.mockResolvedValue({
+      items: [
+        { id: "p1", title: "Current Shoe", price: "1499.00" },
+        { id: "p2", title: "Second Shoe", price: "999.00" },
+      ],
+      total: 2,
+    });
 
     renderStrip({ excludeId: "p1" });
 
@@ -47,7 +53,10 @@ describe("FrequentlyVisited", () => {
   });
 
   it("renders no placeholder rating, image or count", async () => {
-    apiFetchProducts.mockResolvedValue([{ id: "p3", title: "Bare Product" }]);
+    apiFetchCategoryProducts.mockResolvedValue({
+      items: [{ id: "p3", title: "Bare Product" }],
+      total: 1,
+    });
 
     const { container } = renderStrip();
 
@@ -56,6 +65,6 @@ describe("FrequentlyVisited", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(container.innerHTML).not.toMatch(/unsplash/i);
 
-    await waitFor(() => expect(apiFetchProducts).toHaveBeenCalled());
+    await waitFor(() => expect(apiFetchCategoryProducts).toHaveBeenCalled());
   });
 });

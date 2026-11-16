@@ -9,19 +9,29 @@ function formatOrder(o) {
   return {
     ...o,
     total_amount: parseFloat(o.total_amount) || 0,
-    items: Array.isArray(o.items) ? o.items : typeof o.items === "string" ? JSON.parse(o.items || "[]") : []
+    items: Array.isArray(o.items)
+      ? o.items
+      : typeof o.items === "string"
+        ? JSON.parse(o.items || "[]")
+        : [],
   };
 }
 
 // GET /api/orders (Role-filtered queries from Supabase DB)
 router.get("/", async (req, res) => {
   try {
-    const { userId, role } = req.query;
+    const { userId, role, email } = req.query;
 
     let query = supabase.from("orders").select("*").order("created_at", { ascending: false });
 
-    if (role === "user" && userId) {
-      query = query.eq("user_id", userId);
+    if (role === "user" && (userId || email)) {
+      if (userId && email) {
+        query = query.or(`user_id.eq.${userId},customer_email.eq.${email}`);
+      } else if (userId) {
+        query = query.eq("user_id", userId);
+      } else {
+        query = query.eq("customer_email", email);
+      }
     } else if (role === "vendor" && userId) {
       query = query.eq("vendor_id", userId);
     }
@@ -43,7 +53,8 @@ router.get("/", async (req, res) => {
 // POST /api/orders (Place new customer order)
 router.post("/", async (req, res) => {
   try {
-    const { userId, customerName, customerEmail, vendorId, items, totalAmount, shippingAddress } = req.body;
+    const { userId, customerName, customerEmail, vendorId, items, totalAmount, shippingAddress } =
+      req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "Order items cannot be empty." });
@@ -59,7 +70,7 @@ router.post("/", async (req, res) => {
       status: "processing",
       shipping_address: shippingAddress || "742 Evergreen Terrace, Springfield, OR",
       carrier: "Express Courier",
-      tracking_number: `TRK-${Math.floor(100000 + Math.random() * 900000)}`
+      tracking_number: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
     };
 
     const { data, error } = await supabase

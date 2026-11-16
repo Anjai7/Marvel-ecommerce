@@ -251,9 +251,9 @@ function AppMain() {
       {page === "cart" && (
         <CartPage
           onNavigateHome={() => navigateTo("")}
+          onNavigateAccount={() => navigateTo("account")}
           onCheckout={() => {
             if (!isLoggedIn) navigateTo("login");
-            else navigateTo("account");
           }}
         />
       )}

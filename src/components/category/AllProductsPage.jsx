@@ -28,9 +28,13 @@ export default function AllProductsPage({ onSelectProduct }) {
   // A search typed somewhere else (the header's search, a recent search)
   // moves the page with it.
   useEffect(() => {
-    const term = new URLSearchParams(window.location.search).get("search") ?? "";
-    setSearch(term);
-    setDraft(term);
+    const handleLocationChange = () => {
+      const term = new URLSearchParams(window.location.search).get("search") ?? "";
+      setSearch(term);
+      setDraft(term);
+    };
+    window.addEventListener("popstate", handleLocationChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
   }, []);
 
   const submitSearch = (event) => {

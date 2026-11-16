@@ -351,6 +351,22 @@ describe("products API category binding", () => {
     expect(calls.tables).toEqual(["products"]);
   });
 
+  it("GET /api/products reads only the columns a list needs", async () => {
+    const calls = makeDb({ select: () => ({ data: [], error: null }) });
+
+    const res = await get("/api/products");
+
+    expect(res.status).toBe(200);
+    // The whole row is nearly three kilobytes of JSON blobs that a card
+    // never reads; a list asks for the columns it shows.
+    const columns = calls.select[0].columns;
+    expect(columns).toContain("title");
+    expect(columns).toContain("price");
+    expect(columns).not.toContain("specifications");
+    expect(columns).not.toContain("user_guide");
+    expect(columns).not.toContain("highlights");
+  });
+
   it("GET /api/products surfaces a list database error as 500, never an empty list", async () => {
     makeDb({ select: () => ({ data: null, error: { message: "db list boom" } }) });
     vi.spyOn(console, "error").mockImplementation(() => {});

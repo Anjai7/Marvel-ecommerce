@@ -100,7 +100,7 @@
   margin: 0 auto;
   padding: 0 clamp(24px, 5vw, 64px);
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 36px;
 }

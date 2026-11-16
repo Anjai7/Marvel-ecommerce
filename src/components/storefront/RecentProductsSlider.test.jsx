@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import RecentProductsSlider from "./RecentProductsSlider";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts, apiFetchProductById } from "../../api/backendApi";
 import { CartProvider } from "../../context/CartContext";
 import { ToastProvider } from "../ui/Toast";
 import { SettingsProvider } from "../../context/SettingsContext";
 
 vi.mock("../../api/backendApi", () => ({
-  apiFetchProducts: vi.fn(),
+  apiFetchCategoryProducts: vi.fn(),
+  apiFetchProductById: vi.fn(),
   apiFetchSettings: vi.fn().mockResolvedValue({
     settings: {
       recent_products_slider: {
@@ -78,7 +79,10 @@ const renderComponent = () =>
 describe("RecentProductsSlider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    apiFetchProducts.mockResolvedValue([...MOCK_PRODUCTS]);
+    // The configured ids are fetched one by one, not the whole catalogue.
+    apiFetchProductById.mockImplementation(async (id) =>
+      MOCK_PRODUCTS.find((product) => product.id === id)
+    );
   });
 
   it("renders the recent products slider with title and navigation", async () => {
@@ -98,7 +102,8 @@ describe("RecentProductsSlider", () => {
   });
 
   it("handles empty products list gracefully", async () => {
-    apiFetchProducts.mockResolvedValue([]);
+    // Nothing comes back for the configured ids — the rail says so.
+    apiFetchProductById.mockResolvedValue(null);
     renderComponent();
 
     expect(await screen.findByText("No recent products selected yet")).toBeVisible();

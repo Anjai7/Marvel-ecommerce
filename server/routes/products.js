@@ -2,6 +2,8 @@ import express from "express";
 import { supabase } from "../db.js";
 import { getSignedCloudinaryUrl } from "../services/cloudinary.js";
 import { OPTION_KINDS, isOptionKind } from "../lib/productOptions.js";
+import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
+import { CATALOGUE_TTL_MS, cached, clearCache } from "../lib/shortCache.js";
 
 const router = express.Router();
 
@@ -593,52 +595,70 @@ router.get("/", async (req, res) => {
   try {
     const { vendorId, category, moderation_status, search, is_featured } = req.query;
 
-    const taxonomy = await resolveTaxonomyFilter(req);
-    if (taxonomy.error) {
+    // The catalogue is asked for on every page view and it changes a few
+    // times a day, so the answer is kept for a minute. A cache is not a
+    // store: the entry lives in this process's memory and is dropped when
+    // the catalogue is written.
+    const result = await cached(
+      `products:${JSON.stringify(req.query)}`,
+      CATALOGUE_TTL_MS,
+      async () => {
+        const taxonomy = await resolveTaxonomyFilter(req);
+        if (taxonomy.error) return { error: true };
+        if (taxonomy.notFound) return { notFound: true };
+
+        // Only the columns a list shows: the whole row is nearly three
+        // kilobytes of JSON blobs that a card never reads.
+        let query = supabase
+          .from("products")
+          .select(PRODUCT_LIST_SELECT)
+          .order("created_at", { ascending: false });
+
+        if (vendorId) {
+          query = query.eq("vendor_id", vendorId);
+        }
+
+        if (taxonomy.ids) {
+          query = query.in("category_id", taxonomy.ids);
+        } else if (category && category !== "All") {
+          // Free-text display label: the legacy filter, not the taxonomy filter.
+          query = query.ilike("category", category);
+        }
+
+        if (moderation_status) {
+          query = query.eq("moderation_status", moderation_status);
+        }
+
+        if (is_featured !== undefined) {
+          query = query.eq("is_featured", is_featured === "true");
+        }
+
+        if (search) {
+          // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term
+          // must never be able to add another clause.
+          const safeSearch = String(search).replace(/[,.()]/g, " ");
+          query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.error("Supabase products query error:", error.message);
+          return { error: true };
+        }
+
+        return { rows: (data || []).map(formatProduct) };
+      }
+    );
+
+    if (result.error) {
       return res.status(500).json({ error: "Could not load products." });
     }
-    if (taxonomy.notFound) {
+    if (result.notFound) {
       res.set("X-Category-Not-Found", "true");
       return res.json([]);
     }
 
-    let query = supabase.from("products").select("*").order("created_at", { ascending: false });
-
-    if (vendorId) {
-      query = query.eq("vendor_id", vendorId);
-    }
-
-    if (taxonomy.ids) {
-      query = query.in("category_id", taxonomy.ids);
-    } else if (category && category !== "All") {
-      // Free-text display label: the legacy filter, not the taxonomy filter.
-      query = query.ilike("category", category);
-    }
-
-    if (moderation_status) {
-      query = query.eq("moderation_status", moderation_status);
-    }
-
-    if (is_featured !== undefined) {
-      query = query.eq("is_featured", is_featured === "true");
-    }
-
-    if (search) {
-      // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term must
-      // never be able to add another clause.
-      const safeSearch = String(search).replace(/[,.()]/g, " ");
-      query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Supabase products query error:", error.message);
-      return res.status(500).json({ error: "Could not load products." });
-    }
-
-    const formatted = (data || []).map(formatProduct);
-    res.json(formatted);
+    res.json(result.rows);
   } catch (err) {
     console.error("Products GET route error:", err);
     res.status(500).json({ error: "Failed to fetch products from database." });
@@ -767,6 +787,9 @@ router.post("/", async (req, res) => {
       return res.status(500).json({ error: written.message });
     }
 
+    // The catalogue changed: the next read must see it.
+    clearCache();
+
     res.status(201).json({ message: "Product created in Supabase", product: formatProduct(data) });
   } catch (err) {
     console.error("Products POST route error:", err);
@@ -860,6 +883,9 @@ router.put("/:id", async (req, res) => {
       return res.status(500).json({ error: written.message });
     }
 
+    // The catalogue changed: the next read must see it.
+    clearCache();
+
     res.json({ message: "Product updated in database", product: formatProduct(data) });
   } catch (err) {
     console.error("Products PUT route error:", err);
@@ -889,6 +915,9 @@ router.patch("/:id/moderation", async (req, res) => {
       return res.status(500).json({ error: "Failed to save product." });
     }
 
+    // The catalogue changed: the next read must see it.
+    clearCache();
+
     res.json({ message: "Moderation status updated", product: formatProduct(data) });
   } catch (err) {
     console.error("Products moderation route error:", err);
@@ -906,6 +935,9 @@ router.delete("/:id", async (req, res) => {
       console.error("Supabase delete product error:", error.message);
       return res.status(500).json({ error: "Failed to delete product." });
     }
+
+    // The catalogue changed: the next read must see it.
+    clearCache();
 
     res.json({ message: "Product deleted from database successfully" });
   } catch (err) {

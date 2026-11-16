@@ -46,6 +46,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 67px;
 }
 
 .admin-mobile-menu-toggle,
@@ -60,9 +61,7 @@
   gap: 12px;
 }
 
-/* The logo is a wide wordmark (3:1). Squeezed into a square tile it was an
-   unreadable smudge, so it keeps its own shape and sits straight on the
-   band — no plate, no frame, nothing to break the line. */
+/* The logo keeps its own shape and sits straight on the band */
 .brand-logo-img-box {
   height: 38px;
   display: flex;
@@ -72,9 +71,9 @@
 }
 
 .brand-logo-img {
-  height: 26px;
+  height: 30px;
   width: auto;
-  max-width: 104px;
+  max-width: 140px;
   object-fit: contain;
   display: block;
 }
@@ -120,12 +119,12 @@
 
 /* Sidebar Navigation Tabs */
 .sidebar-navigation {
-  padding: 20px 14px;
+  padding: 18px 14px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -135,8 +134,8 @@
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  color: rgba(255, 255, 255, 0.72);
-  padding: 0 10px 8px 10px;
+  color: rgba(255, 255, 255, 0.65);
+  padding: 10px 10px 6px 10px;
   text-transform: uppercase;
 }
 
@@ -145,35 +144,35 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 11px 14px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   text-align: left;
 }
 
 .sidebar-tab-button:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  border-color: transparent;
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-tab-button.active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .tab-icon-box {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,10 +180,14 @@
   transition: all 0.2s ease;
 }
 
+.sidebar-tab-button:hover .tab-icon-box {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 .sidebar-tab-button.active .tab-icon-box {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
-  box-shadow: none;
+  background: #ffffff;
+  color: #1b5bc7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .tab-text-box {
@@ -196,9 +199,9 @@
 }
 
 .tab-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.15px;
 }
 
 .tab-description {
@@ -211,27 +214,29 @@
 
 .tab-badge-counter {
   font-size: 11px;
-  font-weight: 800;
-  padding: 2px 7px;
+  font-weight: 700;
+  padding: 2px 8px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .sidebar-tab-button.active .tab-badge-counter {
   background: rgba(255, 255, 255, 0.25);
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .active-glow-indicator {
   position: absolute;
   left: 0;
-  top: 15%;
-  height: 70%;
-  width: 4px;
+  top: 18%;
+  height: 64%;
+  width: 3.5px;
   border-radius: 0 4px 4px 0;
   background: #ffffff;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
 }
 
 /* Pinned bottom footer for admin sign out */

@@ -147,4 +147,26 @@ describe("CartPage", () => {
     expect(screen.getByText("Savings")).toBeVisible();
     expect(screen.getByText("Total")).toBeVisible();
   });
+
+  it("prompts to sign in when logged out and checkout is clicked", async () => {
+    const user = userEvent.setup();
+    setupCart({
+      items: sampleItems,
+      cartCount: 3,
+      total: 2497,
+    });
+    const onCheckout = vi.fn();
+
+    render(<CartPage onNavigateHome={vi.fn()} onCheckout={onCheckout} />);
+
+    const checkoutBtn = screen.getByRole("button", { name: /Proceed to Checkout/i });
+    await user.click(checkoutBtn);
+
+    expect(mockAddToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Sign In Required",
+      })
+    );
+    expect(onCheckout).toHaveBeenCalledOnce();
+  });
 });

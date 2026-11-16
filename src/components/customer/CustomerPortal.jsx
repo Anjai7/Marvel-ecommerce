@@ -72,9 +72,14 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const data = await apiFetchOrders({ userId: currentUser?.id, role: "user" });
-      setOrders(data);
-      if (data.length > 0) setSelectedOrder(data[0]);
+      const data = await apiFetchOrders({
+        userId: currentUser?.id,
+        email: currentUser?.email,
+        role: "user",
+      });
+      const list = Array.isArray(data) ? data : [];
+      setOrders(list);
+      if (list.length > 0) setSelectedOrder(list[0]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -231,6 +236,19 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {orders.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <div className="customer-orders-empty">
+                          <Package size={36} className="text-muted" />
+                          <p>You haven't placed any orders yet.</p>
+                          <Button variant="secondary" size="sm" onClick={onNavigateHome}>
+                            Start Shopping
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {orders.map((ord) => {
                     const isSelected = selectedOrder?.id === ord.id;
                     return (

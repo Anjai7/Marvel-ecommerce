@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles } from "lucide-react";
 import { ProductPrice } from "./ProductPrice";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts } from "../../api/backendApi";
+import { navigateToPath } from "../../lib/routes";
 import { useContent } from "../../context/ContentContext";
 
 const RECENT_STORAGE_KEY = "marvel_recent_searches";
@@ -33,8 +34,11 @@ function saveRecentSearches(searches) {
 export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) {
   const [isOpen, setIsOpen] = useState(false);
   const [recent, setRecent] = useState(loadRecentSearches);
-  const [allProducts, setAllProducts] = useState([]);
+  // The matches for the term the visitor is typing, asked of the server —
+  // the whole catalogue is a thousand rows and the panel shows five.
+  const [matches, setMatches] = useState([]);
   const containerRef = useRef(null);
+  const debounceRef = useRef(null);
 
   let content = null;
   try {
@@ -59,19 +63,34 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
     )
   ).slice(0, MAX_CATEGORIES);
 
+  // The panel shows the top five matches for the term. Searching the whole
+  // catalogue in the browser would mean downloading it on every page, so the
+  // server answers instead — a few kilobytes, and the catalogue is only
+  // downloaded when there is a term to search for.
   useEffect(() => {
-    const fetchLiveProducts = async () => {
+    const term = searchQuery.trim();
+    if (!term) {
+      setMatches([]);
+      return undefined;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
       try {
-        const liveProds = await apiFetchProducts();
-        if (liveProds && Array.isArray(liveProds)) {
-          setAllProducts(liveProds);
-        }
-      } catch (err) {
-        console.error("Error loading products for search:", err);
+        const data = await apiFetchCategoryProducts({
+          scope: "all",
+          search: term,
+          pageSize: 5,
+          sort: "featured",
+        });
+        setMatches(Array.isArray(data?.items) ? data.items : []);
+      } catch {
+        setMatches([]);
       }
+    }, 250);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    fetchLiveProducts();
-  }, []);
+  }, [searchQuery]);
 
   useEffect(() => {
     saveRecentSearches(recent);
@@ -87,15 +106,7 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredProducts = searchQuery.trim()
-    ? allProducts
-        .filter(
-          (p) =>
-            (p.title || p.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (p.description || p.category || "").toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .slice(0, 5)
-    : [];
+  const filteredProducts = matches;
 
   /** Record the visitor's own search, newest first, without duplicates. */
   const rememberSearch = (term) => {
@@ -106,10 +117,17 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
     );
   };
 
+  const executeSearch = (rawTerm) => {
+    const term = String(rawTerm !== undefined ? rawTerm : searchQuery).trim();
+    if (!term) return;
+    rememberSearch(term);
+    setIsOpen(false);
+    navigateToPath(`/products?search=${encodeURIComponent(term)}`);
+  };
+
   const handleSelectRecent = (term) => {
     setSearchQuery(term);
-    rememberSearch(term);
-    setIsOpen(true);
+    executeSearch(term);
   };
 
   const removeRecent = (e, term) => {
@@ -129,7 +147,10 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
             value={searchQuery}
             onFocus={() => setIsOpen(true)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") rememberSearch(searchQuery);
+              if (e.key === "Enter") {
+                e.preventDefault();
+                executeSearch();
+              }
             }}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -148,7 +169,13 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
           )}
         </div>
 
-        <button className="search-btn" id="search-submit-btn" aria-label="Search">
+        <button
+          className="search-btn"
+          id="search-submit-btn"
+          aria-label="Search"
+          type="button"
+          onClick={() => executeSearch()}
+        >
           <Search size={18} />
         </button>
       </div>
@@ -164,9 +191,22 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
               </div>
               <div className="search-chips">
                 {recent.map((item) => (
-                  <div key={item} className="search-chip" onClick={() => handleSelectRecent(item)}>
+                  <div
+                    key={item}
+                    className="search-chip"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSelectRecent(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectRecent(item);
+                      }
+                    }}
+                  >
                     <span>{item}</span>
                     <button
+                      type="button"
                       className="search-chip-remove"
                       onClick={(e) => removeRecent(e, item)}
                       aria-label="Remove search"
@@ -190,10 +230,18 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
                   <div
                     key={cat}
                     className="search-category-item"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => {
                       setSearchQuery(cat);
-                      rememberSearch(cat);
-                      setIsOpen(true);
+                      executeSearch(cat);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSearchQuery(cat);
+                        executeSearch(cat);
+                      }
                     }}
                   >
                     <span>{cat}</span>

@@ -115,7 +115,6 @@ import FooterEditor from "./FooterEditor";
 import { CreateUserForm, ViewUserPanel, EditUserForm, ResetPasswordForm } from "./forms";
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
-import OperationsHub from "./OperationsHub";
 import ProductVariantsEditor from "./ProductVariantsEditor";
 import { formatOptionChoices } from "../../lib/productOptions";
 import { formatAmount, formatCurrency } from "../../lib/currency";
@@ -1322,16 +1321,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="brand-logo-img-box">
               <img src="/logo.png" alt="Marvel Market" className="brand-logo-img" />
             </div>
-            <div className="brand-text-container">
-              <div className="brand-title-row">
-                <span className={`brand-role-tag ${isSuperAdmin ? "super" : "admin"}`}>
-                  {isSuperAdmin ? "ROOT" : "ADMIN"}
-                </span>
-              </div>
-              <span className="brand-subtitle">
-                {isSuperAdmin ? "Super Admin Platform" : "Management Console"}
-              </span>
-            </div>
           </div>
           <button
             type="button"
@@ -1798,19 +1787,6 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {!dataUnavailable && activeTab === "dashboard" && dashboardView === "overview" && (
           <div className="dashboard-tab-view animate-fade-in">
-            <OperationsHub
-              metrics={metrics}
-              salesReport={salesReport}
-              onNavigateTab={(tab, subView) => {
-                setActiveTab(tab);
-                if (tab === "orders" && subView) setOrdersView(subView);
-                else if (tab === "products" && subView) setProductsView(subView);
-                else if (tab === "customers" && subView) setCustomersView(subView);
-              }}
-              onOpenAddProduct={handleOpenAddProduct}
-              userName={currentUser?.name || currentUser?.email?.split("@")[0] || "Admin"}
-            />
-
             {/* KPI STATS CARDS GRID */}
             <div className="metrics-cards-grid">
               {/* Card 1: Total Revenue */}

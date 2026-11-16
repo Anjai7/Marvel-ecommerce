@@ -533,21 +533,40 @@ export default function HeroSlidesEditor() {
                   editing.bgGradient ? { "--editor-preview-bg": editing.bgGradient } : undefined
                 }
               >
-                {editing.badge && <span className="role-pill admin">{editing.badge}</span>}
-                <strong>{editing.title}</strong>
-                {editing.subtitle && <p className="chart-subtitle">{editing.subtitle}</p>}
-                {editing.priceText && <span>{editing.priceText}</span>}
-                {editing.btnEnabled && editing.btnText && <span>{editing.btnText}</span>}
-                {editing.ribbonText && <span>{editing.ribbonText}</span>}
-                {previewImage(editing) && (
-                  <img
-                    src={previewImage(editing)}
-                    alt="Slide preview"
-                    width={96}
-                    height={64}
-                    className="editor-thumbnail"
-                  />
-                )}
+                <div className="hero-preview-grid">
+                  <div className="hero-preview-content">
+                    {editing.badge && <span className="hero-preview-badge">{editing.badge}</span>}
+                    <strong className="hero-preview-title">{editing.title}</strong>
+                    {editing.subtitle && (
+                      <p className="hero-preview-subtitle">{editing.subtitle}</p>
+                    )}
+                    <div className="hero-preview-actions">
+                      {editing.btnEnabled && editing.btnText && (
+                        <span className="editor-preview-cta hero-preview-cta-btn">
+                          {editing.btnText} →
+                        </span>
+                      )}
+                      {editing.priceText && (
+                        <span className="hero-preview-price-tag">{editing.priceText}</span>
+                      )}
+                      {editing.ribbonText && (
+                        <span className="hero-preview-ribbon-tag">{editing.ribbonText}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="hero-preview-media">
+                    {previewImage(editing) ? (
+                      <img
+                        src={previewImage(editing)}
+                        alt="Slide preview"
+                        className="hero-preview-showcase-img"
+                      />
+                    ) : (
+                      <div className="hero-preview-no-media">No image selected</div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -590,27 +609,44 @@ export default function HeroSlidesEditor() {
                 viewing.bg_gradient ? { "--editor-preview-bg": viewing.bg_gradient } : undefined
               }
             >
-              {viewing.badge && <span className="role-pill admin">{viewing.badge}</span>}
-              <strong>{viewing.title}</strong>
-              {viewing.subtitle && <p className="chart-subtitle">{viewing.subtitle}</p>}
-              {viewing.price_text && <span>{viewing.price_text}</span>}
-              {viewing.btn_enabled !== false && viewing.btn_text && (
-                <span className="editor-preview-cta">{viewing.btn_text}</span>
-              )}
-              {viewing.ribbon_text && <span>{viewing.ribbon_text}</span>}
-              {(viewing.product_image_url ||
-                viewing.bg_image_url ||
-                viewing.fallback_image_url) && (
-                <img
-                  src={
-                    viewing.product_image_url || viewing.bg_image_url || viewing.fallback_image_url
-                  }
-                  alt={viewing.title}
-                  width={96}
-                  height={64}
-                  className="editor-thumbnail"
-                />
-              )}
+              <div className="hero-preview-grid">
+                <div className="hero-preview-content">
+                  {viewing.badge && <span className="hero-preview-badge">{viewing.badge}</span>}
+                  <strong className="hero-preview-title">{viewing.title}</strong>
+                  {viewing.subtitle && <p className="hero-preview-subtitle">{viewing.subtitle}</p>}
+                  <div className="hero-preview-actions">
+                    {viewing.btn_enabled !== false && viewing.btn_text && (
+                      <span className="editor-preview-cta hero-preview-cta-btn">
+                        {viewing.btn_text} →
+                      </span>
+                    )}
+                    {viewing.price_text && (
+                      <span className="hero-preview-price-tag">{viewing.price_text}</span>
+                    )}
+                    {viewing.ribbon_text && (
+                      <span className="hero-preview-ribbon-tag">{viewing.ribbon_text}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="hero-preview-media">
+                  {viewing.product_image_url ||
+                  viewing.bg_image_url ||
+                  viewing.fallback_image_url ? (
+                    <img
+                      src={
+                        viewing.product_image_url ||
+                        viewing.bg_image_url ||
+                        viewing.fallback_image_url
+                      }
+                      alt={viewing.title}
+                      className="hero-preview-showcase-img"
+                    />
+                  ) : (
+                    <div className="hero-preview-no-media">No image selected</div>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="editor-detail-grid">

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucide-react";
 import { useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
 // Shared product-surface stylesheet (responsive rules, tap targets).
 
@@ -153,10 +153,14 @@ export default function FrequentlyVisited({ onView, excludeId }) {
 
     const loadItems = async () => {
       try {
-        const products = await apiFetchProducts();
-        if (cancelled || !Array.isArray(products)) return;
+        const data = await apiFetchCategoryProducts({
+          scope: "all",
+          pageSize: 8,
+          sort: "featured",
+        });
+        if (cancelled || !Array.isArray(data?.items)) return;
         setItems(
-          products
+          data.items
             .filter((product) => product && String(product.id) !== String(excludeId))
             .slice(0, 8)
         );

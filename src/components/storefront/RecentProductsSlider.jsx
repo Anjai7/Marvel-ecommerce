@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Sparkles, ShoppingBag } from "lucide-react";
 import ProductCard from "../ProductCard";
-import { apiFetchProducts } from "../../api/backendApi";
+import { apiFetchCategoryProducts, apiFetchProductById } from "../../api/backendApi";
 import { useSettings } from "../../context/SettingsContext";
 import { ProductCarouselSkeleton } from "../ui/ProductSkeleton";
 
@@ -19,20 +19,23 @@ export default function RecentProductsSlider({ onQuickView, onNavigate, onSelect
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const all = await apiFetchProducts();
-      if (all && Array.isArray(all)) {
-        // If admin has configured specific product IDs, honor that list and ordering
-        const configuredIds = config?.product_ids;
-        if (Array.isArray(configuredIds) && configuredIds.length > 0) {
-          const idMap = new Map(all.map((p) => [p.id, p]));
-          const selected = configuredIds
-            .map((id) => idMap.get(id))
-            .filter((p) => Boolean(p && p.moderation_status !== "rejected"));
-          setProducts(selected.length > 0 ? selected : all.slice(0, 10));
-        } else {
-          // Fallback to recent products
-          setProducts(all.slice(0, 10));
-        }
+      // If admin has configured specific product IDs, honour that list and
+      // its ordering; otherwise the rail shows the most recent ten. Either
+      // way a few rows come back, never the whole catalogue.
+      const configuredIds = config?.product_ids;
+      if (Array.isArray(configuredIds) && configuredIds.length > 0) {
+        const selected = await Promise.all(
+          configuredIds.map((id) => apiFetchProductById(id).catch(() => null))
+        );
+        const rows = selected.filter((row) => Boolean(row && row.moderation_status !== "rejected"));
+        setProducts(rows.length > 0 ? rows : []);
+      } else {
+        const data = await apiFetchCategoryProducts({
+          scope: "all",
+          pageSize: 10,
+          sort: "newest",
+        });
+        setProducts(Array.isArray(data?.items) ? data.items : []);
       }
     } catch (err) {
       console.error("Could not fetch recent products:", err);
