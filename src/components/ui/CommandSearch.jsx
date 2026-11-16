@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Search, Clock, TrendingUp, ChevronRight, X, Sparkles, Grid } from "lucide-react";
 import { ProductPrice } from "./ProductPrice";
 import { apiFetchCategoryProducts } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
@@ -49,19 +49,23 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
   }
 
   // The popular category list is the real category table, not a copy of it.
-  const categorySource =
-    Array.isArray(content?.categories) && content.categories.length > 0
+  const categorySource = useMemo(() => {
+    return Array.isArray(content?.categories) && content.categories.length > 0
       ? content.categories.map((category) => category?.name)
       : Array.isArray(content?.categoryTree)
         ? content.categoryTree.map((category) => category?.name)
         : [];
-  const categories = Array.from(
-    new Set(
-      categorySource
-        .filter((name) => typeof name === "string" && name.trim() !== "")
-        .map((n) => n.trim())
-    )
-  ).slice(0, MAX_CATEGORIES);
+  }, [content?.categories, content?.categoryTree]);
+
+  const categories = useMemo(() => {
+    return Array.from(
+      new Set(
+        categorySource
+          .filter((name) => typeof name === "string" && name.trim() !== "")
+          .map((n) => n.trim())
+      )
+    ).slice(0, MAX_CATEGORIES);
+  }, [categorySource]);
 
   // The panel shows the top five matches for the term. Searching the whole
   // catalogue in the browser would mean downloading it on every page, so the
@@ -107,6 +111,18 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
   }, []);
 
   const filteredProducts = matches;
+
+  const matchingCategories = useMemo(() => {
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return [];
+    return Array.from(
+      new Set(
+        categorySource.filter(
+          (name) => typeof name === "string" && name.toLowerCase().includes(term)
+        )
+      )
+    ).slice(0, 4);
+  }, [searchQuery, categorySource]);
 
   /** Record the visitor's own search, newest first, without duplicates. */
   const rememberSearch = (term) => {
@@ -252,6 +268,39 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
             </div>
           )}
 
+          {/* Matching Categories */}
+          {searchQuery && matchingCategories.length > 0 && (
+            <div className="search-section">
+              <div className="search-section-title">
+                <Grid size={14} /> Matching Categories ({matchingCategories.length})
+              </div>
+              <div className="search-categories-grid">
+                {matchingCategories.map((cat) => (
+                  <div
+                    key={cat}
+                    className="search-category-item"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      setSearchQuery(cat);
+                      executeSearch(cat);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSearchQuery(cat);
+                        executeSearch(cat);
+                      }
+                    }}
+                  >
+                    <span>{cat}</span>
+                    <ChevronRight size={14} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Matching Products */}
           {searchQuery && (
             <div className="search-section">
@@ -276,6 +325,9 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
                         {img && <img src={img} alt={title} className="search-product-img" />}
                         <div className="search-product-info">
                           <div className="search-product-name">{title}</div>
+                          {product.sku && (
+                            <div className="search-product-meta">Code: {product.sku}</div>
+                          )}
                           <ProductPrice
                             price={product.price}
                             originalPrice={product.original_price || product.originalPrice}

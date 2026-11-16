@@ -43,6 +43,9 @@ import {
   Boxes,
   LogOut,
   Settings as SettingsIcon,
+  Download,
+  FileSpreadsheet,
+  Printer,
 } from "lucide-react";
 import {
   Button,
@@ -107,6 +110,8 @@ import BestSellersChart from "./charts/BestSellersChart";
 import OrdersPlusRevenueChart from "./charts/OrdersPlusRevenueChart";
 import InventoryChart from "./charts/InventoryChart";
 import CustomerRepeatChart from "./charts/CustomerRepeatChart";
+import { generateProductCode } from "../../lib/productCode";
+import { exportToCsv, exportToExcel, exportToPdf } from "./reportExport";
 import MenuTreeEditor from "./MenuTreeEditor";
 import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
@@ -308,6 +313,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [productErrors, setProductErrors] = useState({});
   const [productForm, setProductForm] = useState({
     title: "",
+    sku: "",
     price: "",
     original_price: "",
     category: "",
@@ -599,6 +605,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setProductErrors({});
     setProductForm({
       title: prod.title || "",
+      sku: prod.sku || generateProductCode(prod.title, prod.category, prod.id),
       price: prod.price !== undefined && prod.price !== null ? String(prod.price) : "",
       original_price:
         prod.original_price !== undefined && prod.original_price !== null
@@ -659,6 +666,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     try {
       const payload = {
         title: productForm.title.trim(),
+        sku:
+          (productForm.sku && productForm.sku.trim()) ||
+          generateProductCode(productForm.title, productForm.category),
         price: parseFloat(productForm.price),
         original_price: productForm.original_price
           ? parseFloat(productForm.original_price)
@@ -1293,6 +1303,56 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setActiveTab(tab);
   };
 
+  const handleExportReport = (format) => {
+    const summaryCards = [
+      { label: "Total Platform Revenue", value: `₹${formatAmount(metrics.totalRevenue)}` },
+      { label: "Total Orders Placed", value: String(metrics.totalOrders) },
+      { label: "Registered Users", value: String(metrics.totalUsers) },
+      { label: "Active Products", value: String(metrics.totalProducts) },
+    ];
+
+    const columns = [
+      { label: "Order Reference", key: "ref" },
+      { label: "Customer Name", key: "customer" },
+      { label: "Customer Email", key: "email" },
+      { label: "Items Count", key: "itemsCount" },
+      { label: "Total Amount", key: "totalFormatted" },
+      { label: "Order Status", key: "status" },
+      { label: "Date", key: "date" },
+    ];
+
+    const rows = orders.map((o) => ({
+      ref: orderRef(o),
+      customer: o.customer_name || o.customerName || "Customer",
+      email: o.customer_email || o.customerEmail || "",
+      itemsCount: Array.isArray(o.items) ? o.items.length : 1,
+      totalFormatted: formatCurrency(o.total_amount ?? o.total ?? 0),
+      status: ORDER_STATUS_LABELS[o.status] || o.status || "Pending",
+      date: formatAdminDate(o.created_at),
+    }));
+
+    const dateSlug = new Date().toISOString().split("T")[0];
+    const filename = `marvel-sales-report-${dateSlug}`;
+
+    if (format === "csv") {
+      exportToCsv(filename, columns, rows);
+      addToast({
+        title: "CSV Downloaded",
+        message: "Sales report exported as CSV.",
+        type: "success",
+      });
+    } else if (format === "excel") {
+      exportToExcel(filename, "Sales Report", columns, rows);
+      addToast({
+        title: "Excel Downloaded",
+        message: "Sales report exported as Excel spreadsheet (.xlsx compatible).",
+        type: "success",
+      });
+    } else if (format === "pdf") {
+      exportToPdf("Marvel Marketplace — Sales & Operations Report", summaryCards, columns, rows);
+    }
+  };
+
   /** The profile menu's Settings entry. */
   const handleOpenSettings = () => setActiveTab("settings");
 
@@ -1923,8 +1983,28 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       { name: "user", value: metrics.customersCount },
                     ]}
                   />
-                  <OrderStatusChart data={salesReport.statuses} />
-                  <BestSellersChart data={salesReport.sellers} />
+                  <div className="role-distribution-legend">
+                    <div className="role-legend-item">
+                      <span className="role-dot dot-superadmin" />
+                      <span className="role-name">Super Admins</span>
+                      <span className="role-count">{metrics.superAdminsCount}</span>
+                    </div>
+                    <div className="role-legend-item">
+                      <span className="role-dot dot-admin" />
+                      <span className="role-name">Admins</span>
+                      <span className="role-count">{metrics.adminsCount}</span>
+                    </div>
+                    <div className="role-legend-item">
+                      <span className="role-dot dot-vendor" />
+                      <span className="role-name">Vendors</span>
+                      <span className="role-count">{metrics.vendorsCount}</span>
+                    </div>
+                    <div className="role-legend-item">
+                      <span className="role-dot dot-customer" />
+                      <span className="role-name">Customers</span>
+                      <span className="role-count">{metrics.customersCount}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="chart-card-footer-action">
@@ -2011,6 +2091,42 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         )}
         {!dataUnavailable && activeTab === "dashboard" && dashboardView === "sales" && (
           <div className="dashboard-tab-view animate-fade-in">
+            {/* Report Export Toolbar */}
+            <div className="report-export-toolbar">
+              <div className="report-export-title-group">
+                <h2 className="report-export-heading">Sales &amp; Operations Report</h2>
+                <span className="report-export-sub">
+                  Download real platform metrics and orders in CSV, Excel, or PDF format
+                </span>
+              </div>
+              <div className="report-export-actions">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportReport("csv")}
+                  leftIcon={<Download size={14} />}
+                >
+                  Download CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExportReport("excel")}
+                  leftIcon={<FileSpreadsheet size={14} />}
+                >
+                  Download Excel (.xlsx)
+                </Button>
+                <Button
+                  variant="accent"
+                  size="sm"
+                  onClick={() => handleExportReport("pdf")}
+                  leftIcon={<Printer size={14} />}
+                >
+                  Download PDF
+                </Button>
+              </div>
+            </div>
+
             {/* Sales window KPI cards */}
             <div className="sales-mini-grid">
               <div className="sales-mini-card teal">
@@ -2298,6 +2414,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="users-table ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">S.NO</TableHead>
                       <TableHead scope="col">USER</TableHead>
                       <TableHead scope="col">ROLE</TableHead>
                       <TableHead scope="col">STATUS</TableHead>
@@ -2311,7 +2428,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <TableBody>
                     {paginatedUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} data-empty className="empty-table-cell">
+                        <TableCell colSpan={7} data-empty className="empty-table-cell">
                           <Users size={32} className="empty-icon" />
                           <p>No user accounts found matching your filters.</p>
                           <Button
@@ -2328,8 +2445,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedUsers.map((userItem) => (
+                      paginatedUsers.map((userItem, index) => (
                         <TableRow key={userItem.id} className="user-table-row">
+                          {/* S.No */}
+                          <TableCell data-label="S.No" className="table-sno">
+                            {(userPage - 1) * usersPerPage + index + 1}
+                          </TableCell>
+
                           {/* User Avatar + Name + Email */}
                           <TableCell>
                             <div className="user-profile-cell">
@@ -2531,7 +2653,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         value={productForm.title}
                         className={productErrors.title ? "console-field-invalid" : undefined}
                         onChange={(e) => {
-                          setProductForm((prev) => ({ ...prev, title: e.target.value }));
+                          const val = e.target.value;
+                          setProductForm((prev) => ({
+                            ...prev,
+                            title: val,
+                            sku: prev.sku ? prev.sku : generateProductCode(val, prev.category),
+                          }));
                           clearProductError("title");
                         }}
                       />
@@ -2541,6 +2668,20 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                           {productErrors.title}
                         </span>
                       )}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="product-form-sku">
+                        Product Code / SKU
+                      </label>
+                      <Input
+                        id="product-form-sku"
+                        type="text"
+                        placeholder="e.g. LAP001"
+                        value={productForm.sku}
+                        onChange={(e) => {
+                          setProductForm((prev) => ({ ...prev, sku: e.target.value }));
+                        }}
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label" htmlFor="product-form-category">
@@ -2555,6 +2696,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             ...prev,
                             category_id: id,
                             category: name ?? prev.category,
+                            sku: prev.sku
+                              ? prev.sku
+                              : generateProductCode(prev.title, name ?? prev.category),
                           }))
                         }
                       />
@@ -2766,6 +2910,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">S.NO</TableHead>
                       <TableHead scope="col">PRODUCT</TableHead>
                       <TableHead scope="col">CATEGORY</TableHead>
                       <TableHead scope="col">PRICE</TableHead>
@@ -2779,7 +2924,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <TableBody>
                     {paginatedProducts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} data-empty className="empty-table-cell">
+                        <TableCell colSpan={7} data-empty className="empty-table-cell">
                           <Package size={28} className="empty-icon" />
                           <p>
                             {productSearch
@@ -2802,10 +2947,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedProducts.map((prod) => {
+                      paginatedProducts.map((prod, index) => {
                         const stockCount = parseInt(prod.stock, 10) || 0;
                         return (
                           <TableRow key={prod.id}>
+                            <TableCell data-label="S.No" className="table-sno">
+                              {productStartIndex + index + 1}
+                            </TableCell>
                             <TableCell>
                               <div className="product-cell">
                                 {prod.image_url || prod.image ? (
@@ -2989,6 +3137,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">S.NO</TableHead>
                       <TableHead scope="col">ORDER ID</TableHead>
                       <TableHead scope="col">CUSTOMER</TableHead>
                       <TableHead scope="col">ITEMS</TableHead>
@@ -3003,7 +3152,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <TableBody>
                     {visibleOrders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} data-empty className="empty-table-cell">
+                        <TableCell colSpan={8} data-empty className="empty-table-cell">
                           <ClipboardList size={28} className="empty-icon" />
                           <p>
                             {orderSearch.trim()
@@ -3015,6 +3164,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       paginatedOrders.map((order, idx) => (
                         <TableRow key={order.id || idx}>
+                          <TableCell data-label="S.No" className="table-sno">
+                            {idx + 1}
+                          </TableCell>
                           <TableCell className="font-mono text-primary font-bold">
                             {orderRef(order)}
                           </TableCell>
@@ -3145,6 +3297,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">S.NO</TableHead>
                       <TableHead scope="col">CUSTOMER</TableHead>
                       <TableHead scope="col">ORDERS</TableHead>
                       <TableHead scope="col">TOTAL SPENT</TableHead>
@@ -3155,7 +3308,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <TableBody>
                     {visibleCustomers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} data-empty className="empty-table-cell">
+                        <TableCell colSpan={6} data-empty className="empty-table-cell">
                           <Users size={28} className="empty-icon" />
                           <p>
                             {customerSearch.trim()
@@ -3165,8 +3318,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedCustomers.map((cust) => (
+                      paginatedCustomers.map((cust, idx) => (
                         <TableRow key={cust.id || cust.email}>
+                          <TableCell data-label="S.No" className="table-sno">
+                            {(customerPage - 1) * customerPageSize + idx + 1}
+                          </TableCell>
                           <TableCell>
                             <div className="user-profile-cell">
                               <div className="user-table-avatar user">

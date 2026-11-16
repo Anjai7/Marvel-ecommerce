@@ -190,11 +190,21 @@ export function AuthProvider({ children }) {
     clearStoredToken();
     if (typeof localStorage !== "undefined") {
       localStorage.removeItem(ADMIN_INACTIVITY_KEY);
+      localStorage.removeItem("marvel_cart");
+      localStorage.removeItem("marvel_recent_searches");
+    }
+    if (typeof sessionStorage !== "undefined") {
+      try {
+        sessionStorage.clear();
+      } catch {}
     }
     setToken("");
     setUser(null);
     setAuthError(null);
     if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("marvel:auth:logout"));
+      } catch {}
       try {
         if (window.history && window.history.pushState) {
           window.history.pushState(null, "", "/login");

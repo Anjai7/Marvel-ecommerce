@@ -4,6 +4,7 @@ import { getSignedCloudinaryUrl } from "../services/cloudinary.js";
 import { OPTION_KINDS, isOptionKind } from "../lib/productOptions.js";
 import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
 import { CATALOGUE_TTL_MS, cached, clearCache } from "../lib/shortCache.js";
+import { generateProductCode } from "../lib/productCode.js";
 
 const router = express.Router();
 
@@ -29,12 +30,7 @@ export function formatProduct(p) {
     }
   }
 
-  const generatedSku =
-    p.sku ||
-    `MRV-${String(p.title || "PROD")
-      .replace(/[^a-zA-Z0-9]/g, "")
-      .substring(0, 6)
-      .toUpperCase()}-${p.id ? String(p.id).substring(0, 4).toUpperCase() : "101"}`;
+  const generatedSku = p.sku || generateProductCode(p.title, p.category, p.id);
 
   return {
     ...p,
@@ -637,7 +633,9 @@ router.get("/", async (req, res) => {
           // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term
           // must never be able to add another clause.
           const safeSearch = String(search).replace(/[,.()]/g, " ");
-          query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+          query = query.or(
+            `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%,sku.ilike.%${safeSearch}%`
+          );
         }
 
         const { data, error } = await query;
@@ -695,6 +693,7 @@ router.post("/", async (req, res) => {
       price,
       original_price,
       category,
+      sku,
       stock = 10,
       description,
       image_url,
@@ -748,8 +747,12 @@ router.post("/", async (req, res) => {
       categoryLabel = "Electronics";
     }
 
+    const assignedSku =
+      (sku && typeof sku === "string" && sku.trim()) || generateProductCode(title, categoryLabel);
+
     const newProductRecord = {
       title: title.trim(),
+      sku: assignedSku,
       price: parseFloat(price),
       original_price: original_price ? parseFloat(original_price) : parseFloat(price) * 1.25,
       category: categoryLabel,

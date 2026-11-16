@@ -12,6 +12,8 @@ import {
 } from "../ui";
 import { ShoppingCart, Check, Heart, ShieldCheck, Truck, RefreshCw } from "lucide-react";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { navigateToPath } from "../../lib/routes";
 import { useSettings } from "../../context/SettingsContext";
 import { deliverySummary } from "./dynamicProductBuilder";
 // Shared product-surface stylesheet (responsive rules, tap targets).
@@ -97,7 +99,24 @@ export function QuickViewDialog({ product, isOpen, onClose, onViewFull }) {
   const offerText = textOrNull(product.offer_text);
   const promises = trustPromises(product, settings);
 
+  let auth = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    auth = useAuth();
+  } catch {
+    auth = null;
+  }
+
   const handleCart = () => {
+    if (auth && !auth.isLoggedIn) {
+      addToast({
+        title: "Sign In Required",
+        message: "Please sign in or create an account to add items to your cart.",
+        type: "info",
+      });
+      navigateToPath("/login");
+      return;
+    }
     if (cartState === "added") return;
     setCartState("added");
     addItem(product, 1);

@@ -12,8 +12,9 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 /** The whole of `src` — a component anywhere may not go back to inline styles. */
 const DIRECTORIES = ["src"];

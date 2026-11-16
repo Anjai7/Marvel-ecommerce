@@ -207,6 +207,26 @@ export function CartPage({ onNavigateHome, onCheckout, onNavigateAccount }) {
             </div>
             <p className="cart-tax-note">Inclusive of all taxes & free express delivery</p>
 
+            {!isLoggedIn && (
+              <div className="cart-guest-warning">
+                <p className="cart-guest-warning-text">
+                  Please <strong>sign in</strong> or <strong>create an account</strong> to save your
+                  cart and proceed to checkout.
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="cart-guest-signin-btn"
+                  onClick={() => {
+                    if (onCheckout) onCheckout();
+                    else navigateToPath("/login");
+                  }}
+                >
+                  Sign In / Sign Up
+                </Button>
+              </div>
+            )}
+
             <div className="cart-summary-actions">
               <Button
                 variant="accent"

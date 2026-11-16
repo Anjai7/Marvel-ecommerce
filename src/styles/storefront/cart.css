@@ -366,3 +366,25 @@
     padding: 16px;
   }
 }
+
+.cart-guest-warning {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cart-guest-warning-text {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.cart-guest-signin-btn {
+  width: 100%;
+}

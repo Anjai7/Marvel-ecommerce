@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart, Star, Eye } from "lucide-react";
 import { useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { navigateToPath } from "../../lib/routes";
 import { apiFetchCategoryProducts } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
 // Shared product-surface stylesheet (responsive rules, tap targets).
@@ -29,8 +31,25 @@ function FVCard({ product, onView }) {
   const rating = numberOrNull(product.rating);
   const reviews = numberOrNull(product.reviews_count ?? product.reviews);
 
+  let auth = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    auth = useAuth();
+  } catch {
+    auth = null;
+  }
+
   const handleCart = (e) => {
     e.stopPropagation();
+    if (auth && !auth.isLoggedIn) {
+      addToast({
+        title: "Sign In Required",
+        message: "Please sign in or create an account to add items to your cart.",
+        type: "info",
+      });
+      navigateToPath("/login");
+      return;
+    }
     setCartAdded(true);
     addItem(product, 1);
     addToast({ title: "Added to Cart", message: `${title} added to cart.`, type: "success" });

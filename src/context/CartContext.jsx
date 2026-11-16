@@ -154,7 +154,23 @@ export function CartProvider({ children }) {
 
   const clearCart = () => {
     setItems([]);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
   };
+
+  useEffect(() => {
+    const handleLogout = () => {
+      setItems([]);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {}
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("marvel:auth:logout", handleLogout);
+      return () => window.removeEventListener("marvel:auth:logout", handleLogout);
+    }
+  }, []);
 
   const { cartCount, subtotal, savings, total } = useMemo(() => {
     let count = 0;

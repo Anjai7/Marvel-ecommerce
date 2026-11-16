@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { Badge, useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import { navigateToPath } from "../../lib/routes";
 import { formatCurrency } from "../../lib/currency";
 import { OPTION_KIND_LABELS } from "../../lib/productOptions";
 
@@ -310,7 +312,24 @@ export default function ProductDetails({ product }) {
   const hasRating = typeof reviewSummary?.overall === "number";
   const hasReviews = (reviewSummary?.total ?? 0) > 0;
 
+  let auth = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    auth = useAuth();
+  } catch {
+    auth = null;
+  }
+
   const handleCart = () => {
+    if (auth && !auth.isLoggedIn) {
+      addToast({
+        title: "Sign In Required",
+        message: "Please sign in or create an account to add items to your cart.",
+        type: "info",
+      });
+      navigateToPath("/login");
+      return;
+    }
     if (cartState === "added") return;
     setCartState("added");
     addItem(
@@ -332,11 +351,17 @@ export default function ProductDetails({ product }) {
   };
 
   const handleBuyNow = () => {
-    addToast({
-      title: "Proceeding to Checkout",
-      message: "Redirecting to checkout...",
-      type: "info",
-    });
+    if (auth && !auth.isLoggedIn) {
+      addToast({
+        title: "Sign In Required",
+        message: "Please sign in or create an account to proceed.",
+        type: "info",
+      });
+      navigateToPath("/login");
+      return;
+    }
+    handleCart();
+    navigateToPath("/cart");
   };
 
   const checkPincode = () => {

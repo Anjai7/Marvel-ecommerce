@@ -25,8 +25,12 @@ export default function BestSellersChart({ data }) {
           layout="vertical"
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={true} />
-          <YAxis dataKey="titleShort" tick={AXIS_TICK} width={140} />
-          <XAxis tick={AXIS_TICK} hide />
+          <YAxis dataKey="titleShort" type="category" tick={AXIS_TICK} width={140} />
+          <XAxis
+            type="number"
+            tick={AXIS_TICK}
+            tickFormatter={(v) => formatCurrency(v, { decimals: 0 })}
+          />
           <Tooltip
             cursor={{ strokeDasharray: "3 3" }}
             formatter={(value) => formatCurrency(value)}

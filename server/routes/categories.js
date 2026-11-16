@@ -354,7 +354,9 @@ function applyListingFilters(query, filters) {
     // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term must
     // never be able to add another clause.
     const safeSearch = String(filters.search).replace(/[,.()]/g, " ");
-    next = next.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+    next = next.or(
+      `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%,sku.ilike.%${safeSearch}%`
+    );
   }
   return next;
 }

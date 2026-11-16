@@ -112,6 +112,11 @@ function AppMain() {
     navigateTo(route, role);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigateTo("login");
+  };
+
   const handleNavigateAdmin = () => {
     navigateTo(getDashboardRouteForRole(userRole));
   };
@@ -147,7 +152,7 @@ function AppMain() {
             onNavigateAdmin={handleNavigateAdmin}
             onNavigateCustomerPortal={() => navigateTo("account")}
             onNavigateHome={() => navigateTo("")}
-            onLogout={logout}
+            onLogout={handleLogout}
             cartCount={cartCount}
             onMenuOpen={() => setMobileOpen(true)}
             onSelectProduct={handleSelectProduct}
@@ -155,11 +160,17 @@ function AppMain() {
             onNavigateRoute={(route) => navigateTo(route)}
           />
 
-          {/* Dynamic & Hover Navigation Bars */}
+          {/* Dynamic & Hover Navigation Bars (hidden on auth pages) */}
           {isStorefront ? (
             <HoverNav onDynamicNavigate={handleDynamicMenuClick} />
           ) : (
-            <DynamicMenu onNavigate={handleDynamicMenuClick} activePath={`/${currentRoute.page}`} />
+            page !== "login" &&
+            page !== "signup" && (
+              <DynamicMenu
+                onNavigate={handleDynamicMenuClick}
+                activePath={`/${currentRoute.page}`}
+              />
+            )
           )}
         </div>
       )}

@@ -347,7 +347,9 @@ describe("products API category binding", () => {
     const res = await get(`/api/products?search=${encodeURIComponent("a,b.c(d)e")}`);
 
     expect(res.status).toBe(200);
-    expect(calls.or).toEqual(["title.ilike.%a b c d e%,description.ilike.%a b c d e%"]);
+    expect(calls.or).toEqual([
+      "title.ilike.%a b c d e%,description.ilike.%a b c d e%,category.ilike.%a b c d e%,sku.ilike.%a b c d e%",
+    ]);
     expect(calls.tables).toEqual(["products"]);
   });
 

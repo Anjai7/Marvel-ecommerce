@@ -997,6 +997,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.search-product-meta {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  margin-top: 1px;
+  margin-bottom: 2px;
+}
 .search-no-results {
   padding: 12px;
   font-size: 13px;
