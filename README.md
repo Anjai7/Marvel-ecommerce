@@ -31,11 +31,14 @@ Open <http://localhost:5173>. `npm run dev` runs the frontend alone.
 | `npm run dev:all`        | the API and the frontend together                                     |
 | `npm run check`          | lint, the inline-style guard, the unit tests and the production build |
 | `npm run test:e2e`       | the Playwright browser and accessibility checks                       |
+| `npm run a11y`           | the accessibility checks on their own                                 |
 | `npm run build`          | the production bundle in `dist/`                                      |
 | `npm run build:analyze`  | `dist/bundle-report.html`, a bundle breakdown                         |
 | `npm run analyze:unused` | dead files, exports and dependencies (Knip)                           |
 | `npm run audit`          | fails on a high or critical npm vulnerability                         |
 | `npm run format`         | Prettier over the project                                             |
+| `npm run db:apply`       | applies the outstanding database migrations (needs a DDL credential)  |
+| `npm run seed:content`   | the content, the catalogue and the filler seeds                       |
 
 ### The seeded accounts
 
