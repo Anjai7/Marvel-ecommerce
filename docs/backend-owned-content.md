@@ -126,18 +126,12 @@ alter table public.products add column if not exists user_guide jsonb;
 All of them are nullable and have no default. A null column means "not
 configured", never "invent a value".
 
-### `product_option_values` — the shared catalogue of option values
+### `product_option_values` and `product_variant_combinations`
 
-One row per `(kind, label)` in the whole store. A product links its option
-values here through `product_variants.option_value_id`, so renaming the
-catalogue row renames the option on every product that uses it. Full DDL in
-`docs/sql/apply-04-product-variants.sql`.
-
-### `product_variant_combinations` — the sellable variants
-
-One row per sellable combination of a product's options ("Blue / M"), each
-carrying its own `sku`, `price`, `stock` and `image_url`. Full DDL in
-`docs/sql/apply-04-product-variants.sql`.
+The shared catalogue of option values and the sellable variants that go with
+them. Their DDL, the API that writes them and the response that reads them
+are described in **[product-variants-contract.md](product-variants-contract.md)** —
+one home for the whole feature.
 
 ## 2. API
 
@@ -150,15 +144,17 @@ carrying its own `sku`, `price`, `stock` and `image_url`. Full DDL in
 `settings` is a flat map of `key` → the stored JSON value. Missing keys are
 omitted. Known keys and their shapes:
 
-| key         | shape                                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `currency`  | `{ code, symbol, locale }`                                                                                                                                   |
-| `store`     | `{ name, tagline, description, country, support_email, support_phone, logo_url }`                                                                            |
-| `shipping`  | `{ free_threshold, standard_days, express_available, return_days }`                                                                                          |
-| `inventory` | `{ low_stock_threshold }`                                                                                                                                    |
-| `footer`    | `{ value_props: [{ icon, title, subtitle }], payment_methods: [string], socials: [{ label, href, icon }], copyright, security_note, brand_logo, brand_alt }` |
-| `trust`     | `{ promises: [{ title, subtitle }] }`                                                                                                                        |
-| `reviews`   | `{ allow_write: true }`                                                                                                                                      |
+| key                      | shape                                                                                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `currency`               | `{ code, symbol, locale }`                                                                                                                                   |
+| `store`                  | `{ name, tagline, description, country, support_email, support_phone, logo_url }`                                                                            |
+| `shipping`               | `{ free_threshold, standard_days, express_available, return_days }`                                                                                          |
+| `inventory`              | `{ low_stock_threshold }`                                                                                                                                    |
+| `footer`                 | `{ value_props: [{ icon, title, subtitle }], payment_methods: [string], socials: [{ label, href, icon }], copyright, security_note, brand_logo, brand_alt }` |
+| `trust`                  | `{ promises: [{ title, subtitle }] }`                                                                                                                        |
+| `reviews`                | `{ allow_write: true }`                                                                                                                                      |
+| `hero_fallback`          | the fallback hero slide, used when a product carries no slide of its own                                                                                     |
+| `recent_products_slider` | the products the storefront's "recently visited" rail offers                                                                                                 |
 
 ### `GET /api/products/:id/details` — public
 
@@ -224,7 +220,8 @@ omitted. Known keys and their shapes:
 ```
 
 - `reviews.overall` is the average of the stored review rows, rounded to one
-  decimal. It is **not** `products.rating`.
+  decimal. It is **not** `products.rating`. It is `null` when there are no
+  stored rows — never a zero, which would read as a rating of no stars.
 - `reviews.total` is the number of stored review rows.
 - `reviews.breakdown` counts stored rows per star, keys `"1"`–`"5"`, only the
   stars that occur.
@@ -284,10 +281,9 @@ require a logged-in user and act only on the caller's own rows.
 
 ## 5. Rules that already exist and must be kept
 
-- `src/components/ContentDrivenSurfaces.test.jsx` locks the content contract.
-  The footer chrome and the hero rescue slide were _required_ to stay in code
-  by that file; they now come from the backend, so **that file must be
-  updated** to assert the new source. Do not weaken the rest of its contract.
+- `src/components/ContentDrivenSurfaces.test.jsx` locks the content contract:
+  the footer chrome and the hero rescue slide come from the backend, and the
+  test asserts that they do. Do not weaken the rest of its contract.
 - `src/context/ContentContext.test.jsx` locks the content-context contract.
 - The admin console has **no** demo or mock data path, and must keep it that
   way.

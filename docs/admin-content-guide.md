@@ -2,9 +2,12 @@
 
 Everything on the storefront that used to be hardcoded is now editable from the admin
 panel: the hero carousel, the navigation tree, the promo banners, the footer links, and
-the category taxonomy.
+the category taxonomy. This is the guide for the admins who edit that content day to
+day — the API contract behind these screens is in
+[`backend-owned-content.md`](./backend-owned-content.md), and the option/variant matrix
+in the product form is in [`product-variants-contract.md`](./product-variants-contract.md).
 
-Open the admin panel and find **Site Content** in the sidebar. It has five sections:
+Open the admin panel and find **Site Content** in the sidebar. It has five sub-tabs:
 
 | Section        | What it edits                               | Where it shows up                                                   |
 | -------------- | ------------------------------------------- | ------------------------------------------------------------------- |
@@ -13,17 +16,36 @@ Open the admin panel and find **Site Content** in the sidebar. It has five secti
 | **Categories** | the category taxonomy (3 levels)            | the homepage category strip, the navigation, and the category pages |
 | **Banners**    | the promo blocks                            | the homepage banner layout and the promo carousel                   |
 | **Footer**     | the footer link columns and the search tags | the page footer                                                     |
-| **Pages**      | custom campaign, policy & landing pages     | public route `#/pages/<slug>` and custom category page layouts      |
+
+Where things live: the console is `src/components/admin/` (the tabs are wired in
+`UnifiedAdminConsole.jsx`; the editors are `MenuTreeEditor.jsx`, `HeroSlidesEditor.jsx`,
+`CategoriesTreeEditor.jsx`, `BannersEditor.jsx` and `FooterEditor.jsx`), and its styles are
+`src/styles/admin/` (`console.css` for the shell, `content.css` and `editors.css` for the
+editors, `tree.css` for the trees). The shared primitives the console builds on are in
+`src/components/ui/`, styled by `src/styles/ui/`.
 
 ---
 
 ## Pages
 
-The CMS page builder allows creating dynamic marketing, campaign, policy, and landing pages with rich composable section components.
+The CMS page builder exists in the codebase: the API (`server/routes/pages.js`, backed by
+the `pages` and `page_sections` tables), the section validation (`server/lib/sectionTypes.js`),
+the editor (`src/components/admin/PageEditor.jsx`), the per-category binding
+(`src/components/admin/CategoryPagePanel.jsx`) and the public renderer
+(`src/components/pages/CmsPage.jsx`, served at `/pages/<slug>` — the hash alias
+`#/pages/<slug>` works too).
+
+**It is not reachable from the current admin console.** The only button that opens the
+editor lives in the Categories tree, and it is disabled on `main` ("Category page editor
+button hidden on main; available on admin-managed-pages branch"). There is no **Pages**
+tab in Site Content, so pages cannot be created, edited, published or deleted from the UI
+right now — an admin can see them on the storefront only once they exist in the database.
+Everything below describes the builder as it exists in code, not a screen you can open
+today.
 
 ### Dynamic URL and Slug Rules
 
-- Each page is mapped to `#/pages/<slug>`.
+- Each page is mapped to `/pages/<slug>` (or the hash alias `#/pages/<slug>`).
 - The slug must match `/^[a-z0-9]+(-[a-z0-9]+)*$/` (lowercase letters, numbers, single hyphens, no slashes). Reserved system slugs (such as `admin`, `api`, `login`, `cart`, `checkout`) are disallowed.
 
 ### Section Types
@@ -55,8 +77,8 @@ Inside the page editor, sections can be:
 
 ### Publishing, Scheduling, and Preview
 
-- **Draft**: Page is saved but only visible via authenticated admin preview (`#/pages/<slug>?preview=1`). Public requests answer 404.
-- **Published**: The page is immediately live on `#/pages/<slug>` without requiring any site build or redeploy.
+- **Draft**: Page is saved but only visible via authenticated admin preview (`/pages/<slug>?preview=1`). Public requests answer 404.
+- **Published**: The page is immediately live on `/pages/<slug>` without requiring any site build or redeploy.
 - **Scheduled**: Specify a future `scheduled_at` timestamp. The page becomes public automatically once the clock passes the schedule time.
 - **Expired**: Optional `expired_at` timestamp automatically unpublishes the page once past.
 - **Archived**: Archived pages are hidden from public view and marked archived in the admin list.
@@ -132,8 +154,10 @@ The homepage hero carousel. Each slide has a badge, a title, a subtitle, a butto
 three images (background, product, fallback). The **up** and **down** arrows reorder the
 slides.
 
-The button's **path** is where the shopper lands when they click it — a hash route such as
-`#/category/electronics` or `#/products`.
+The button's **path** is where the shopper lands when they click it — a site route such as
+`/category/electronics` or `/products` (or an absolute `https://` URL). Stored values pass
+through a normaliser that strips any leading `#/` and slashes, so `#/products` and
+`/products` both work.
 
 ---
 
@@ -158,9 +182,10 @@ Two panes. The left lists the **sections** (the footer's columns); the right lis
 
 - A section is either **links** or **tags**. A tags section renders as a row of pills
   (the "Popular Searches" row).
-- A link's **href** is a **hash route** — `#/category/electronics`, `#/account`,
-  `#/products`, `#/`. A bare path such as `/help` is not a route in this app and would
-  reload the page into a 404, so always use the `#/` form.
+- A link's **href** is a **site route** — `/category/electronics`, `/account`,
+  `/products`, `/` — or an absolute `https://` URL. Stored values pass through
+  `toAppHref`, which strips any leading `#/` or slashes, so `#/products`, `/products` and
+  `products` all resolve the same way.
 - Deleting a section deletes its links. The confirmation says how many.
 
 ---
@@ -177,7 +202,7 @@ cached in memory for the life of the tab.
 
 ## Who can change what
 
-Only an **admin** or a **super admin** can write to the content API, create, edit, publish or delete pages. Every write route answers `401` without a token and `403` for any other role, and the server checks this before it touches the database.
+Only an **admin** or a **super admin** can write to the content API or the pages API. Every write route answers `401` without a token and `403` for any other role, and the server checks this before it touches the database.
 
 | Role                | Categories    | Menus, Hero, Banners, Footer | CMS Pages                                   |
 | ------------------- | ------------- | ---------------------------- | ------------------------------------------- |
@@ -190,4 +215,4 @@ Only an **admin** or a **super admin** can write to the content API, create, edi
 
 ## Where the data lives
 
-The content is in these tables: `categories`, `hero_slides`, `promo_banners`, `footer_sections`, `footer_links`, `menu_items`, `pages`, and `page_sections`. The schema and migrations are described in [`docs/sql/README.md`](./sql/README.md).
+The content is in these tables: `categories`, `hero_slides`, `promo_banners`, `footer_sections`, `footer_links`, `menu_items`, `pages`, and `page_sections`. The schema and migrations are described in [`docs/sql/README.md`](./sql/README.md). The API contract for the data these screens write — the routes, the settings keys and how the storefront consumes it — is in [`backend-owned-content.md`](./backend-owned-content.md).

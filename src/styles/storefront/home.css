@@ -552,6 +552,16 @@
   color: #fff;
   margin-bottom: 4px;
 }
+/* The small slot of the banner layout draws its title a little smaller
+   and its button on a light plate, so the two slots do not shout over
+   each other. */
+.banner-content h3.banner-content__title--small {
+  font-size: 16px;
+}
+.banner-btn--small {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--gray-900);
+}
 .banner-content p {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.85);

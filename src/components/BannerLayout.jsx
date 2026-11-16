@@ -33,16 +33,13 @@ function BannerCard({ banner, variant, id }) {
             {banner.badge}
           </Badge>
         )}
-        <h3 style={large ? undefined : { fontSize: 16 }}>{banner.title}</h3>
+        <h3 className={large ? undefined : "banner-content__title--small"}>{banner.title}</h3>
         {banner.subtitle && <p>{banner.subtitle}</p>}
         <Button
           variant={large ? "accent" : "outline"}
           size={large ? "md" : "sm"}
-          className="banner-btn"
+          className={large ? "banner-btn" : "banner-btn banner-btn--small"}
           id={`${id}-btn`}
-          style={
-            large ? undefined : { background: "rgba(255,255,255,0.9)", color: "var(--gray-900)" }
-          }
           rightIcon={<ArrowRight size={large ? 16 : 14} />}
           onClick={() => followCta(banner.cta_path)}
         >

@@ -245,7 +245,7 @@ The Add/Edit Product form gains a **"Options & Variants"** section:
 
 ## 7. Rules for everyone
 
-- No inline `style={{…}}` anywhere — the build has a guard for it.
+- No inline `style={{…}}` anywhere — `npm run lint:styles` fails the build if one appears.
 - Every behaviour change gets a test.
 - No `git add`, `git commit` or `git push`.
 - Do not reformat files you were not asked to change.
