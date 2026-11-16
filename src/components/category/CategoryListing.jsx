@@ -47,7 +47,20 @@ function readSettings(config) {
   };
 }
 
-export default function CategoryListing({ path = "", config, onSelectProduct }) {
+/**
+ * The listing of one category — or of the whole catalogue when `scope` is
+ * "all", which is what the shop's "All products" page shows.
+ *
+ * `search` narrows the listing by name; it belongs in the request, not in the
+ * browser, so the page and the link that opened it show the same products.
+ */
+export default function CategoryListing({
+  path = "",
+  scope = "category",
+  search = "",
+  config,
+  onSelectProduct,
+}) {
   const settings = useMemo(() => readSettings(config), [config]);
 
   const [sort, setSort] = useState(settings.sort);
@@ -74,12 +87,17 @@ export default function CategoryListing({ path = "", config, onSelectProduct }) 
   };
 
   const params = useMemo(() => {
-    const next = { path, sort, page, pageSize: settings.pageSize };
+    // The whole catalogue has no category path; the scope says so instead.
+    const next = scope === "all" ? { scope: "all" } : { path };
+    next.sort = sort;
+    next.page = page;
+    next.pageSize = settings.pageSize;
     if (inStock) next.inStock = "true";
     if (price.min !== "") next.minPrice = price.min;
     if (price.max !== "") next.maxPrice = price.max;
+    if (search.trim() !== "") next.search = search.trim();
     return next;
-  }, [path, sort, page, inStock, price.min, price.max, settings.pageSize]);
+  }, [path, scope, search, sort, page, inStock, price.min, price.max, settings.pageSize]);
 
   // The key of the request a result belongs to: a result of another request is
   // stale, so the listing is loading until this one lands.

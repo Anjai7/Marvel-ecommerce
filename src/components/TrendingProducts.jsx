@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import ProductCard from "./ProductCard";
 import { TrendingUp, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { apiFetchProducts } from "../api/backendApi";
+import { apiFetchCategoryProducts } from "../api/backendApi";
+import { navigateToPath } from "../lib/routes";
 import { ProductGridSkeleton } from "./ui/ProductSkeleton";
 
 const COLS = 4;
@@ -10,16 +11,23 @@ const PAGE_SIZE = COLS * ROWS; // 12 items (3 rows x 4 columns)
 
 export default function TrendingProducts({ onQuickView, onNavigate, onSelectProduct }) {
   const [products, setProducts] = useState([]);
+  // How many products the store has, so the section can say "View all (1,000)"
+  // and page through them without downloading the whole catalogue.
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
 
   const loadDynamicProducts = async () => {
     setLoading(true);
     try {
-      const liveProds = await apiFetchProducts();
-      if (liveProds && Array.isArray(liveProds)) {
-        setProducts(liveProds);
-      }
+      const data = await apiFetchCategoryProducts({
+        scope: "all",
+        page,
+        pageSize: PAGE_SIZE,
+        sort: "newest",
+      });
+      setProducts(Array.isArray(data?.items) ? data.items : []);
+      setTotal(Number.isFinite(data?.total) ? data.total : 0);
     } catch (err) {
       console.error("Could not fetch live trending products:", err);
     } finally {
@@ -29,11 +37,13 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
 
   useEffect(() => {
     loadDynamicProducts();
-  }, []);
+    // `page` is in the request, so a new page is a new request.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
-  const totalPages = Math.ceil(products.length / PAGE_SIZE) || 1;
-  const start = page * PAGE_SIZE;
-  const visibleProducts = products.slice(start, start + PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE;
+  const visibleProducts = products;
 
   const handleCardClick = (product) => {
     if (onSelectProduct) {
@@ -70,15 +80,16 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
             </button>
 
             <a
-              href="#all-products"
+              href="/products"
               onClick={(e) => {
                 e.preventDefault();
-                if (onNavigate && products.length > 0) onNavigate(products[0]);
+                // The whole catalogue, not the first product of it.
+                navigateToPath("/products");
               }}
               className="view-all-link"
               id="trending-view-all"
             >
-              View all ({products.length}) →
+              View all ({total}) →
             </a>
           </div>
         </div>
@@ -101,8 +112,8 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
             {totalPages > 1 && (
               <button
                 className="trending-nav-btn trending-nav-left"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
                 aria-label="Previous"
               >
                 <ChevronLeft size={20} />
@@ -123,8 +134,8 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
             {totalPages > 1 && (
               <button
                 className="trending-nav-btn trending-nav-right"
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page === totalPages - 1}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
                 aria-label="Next"
               >
                 <ChevronRight size={20} />
@@ -134,11 +145,11 @@ export default function TrendingProducts({ onQuickView, onNavigate, onSelectProd
         )}
 
         {/* Bottom Pagination / View More */}
-        {!loading && products.length > PAGE_SIZE && (
+        {!loading && products.length > 0 && (
           <div className="trending-pagination">
             <span className="trending-pagination-text">
-              Showing {start + 1}–{Math.min(start + PAGE_SIZE, products.length)} of{" "}
-              {products.length} Products (Page {page + 1} of {totalPages})
+              Showing {start + 1}–{Math.min(start + PAGE_SIZE, total)} of {total} Products (Page{" "}
+              {page} of {totalPages})
             </span>
           </div>
         )}

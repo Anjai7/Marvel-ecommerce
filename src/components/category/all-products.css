@@ -1,0 +1,134 @@
+/* The shop's "All products" page.
+ *
+ * It sits beside the category pages and borrows their rhythm: the same
+ * breadcrumb, the same intro, the same listing. The search field is the one
+ * thing it adds — the catalogue is browsed from here, so the term belongs
+ * in the URL and in the field.
+ */
+
+.all-products-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 28px 16px 0;
+}
+
+.all-products-intro-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--navy-bg);
+  color: var(--navy);
+}
+
+.all-products-intro-text {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.all-products-title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 8px;
+  overflow-wrap: break-word;
+}
+
+.all-products-subtitle {
+  font-size: 15px;
+  color: #475569;
+  margin: 0;
+  max-width: 640px;
+}
+
+/* The search field */
+.all-products-search {
+  flex: 0 1 340px;
+  min-width: 260px;
+}
+
+.all-products-search-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+.all-products-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  height: 44px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #64748b;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.all-products-search-field:focus-within {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(40, 116, 240, 0.18);
+}
+
+.all-products-search-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.all-products-search-field input::placeholder {
+  color: #94a3b8;
+}
+
+.all-products-search-btn {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.all-products-search-btn:hover {
+  background: var(--navy-dark);
+}
+
+.all-products-listing-wrap {
+  padding-top: 18px;
+  padding-bottom: 40px;
+}
+
+@media (max-width: 640px) {
+  .all-products-intro {
+    padding: 20px 12px 0;
+    gap: 12px;
+  }
+
+  .all-products-title {
+    font-size: 24px;
+  }
+
+  .all-products-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+}

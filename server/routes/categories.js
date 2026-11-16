@@ -337,12 +337,23 @@ function applyListingSort(query, sort) {
   }
 }
 
-/** The same filters on both the page query and the count query. */
+/**
+ * The same filters on both the page query and the count query.
+ *
+ * `ids` is null when the listing is the whole catalogue rather than one
+ * category, and then no category filter is applied at all.
+ */
 function applyListingFilters(query, filters) {
-  let next = query.in("category_id", filters.ids);
+  let next = filters.ids ? query.in("category_id", filters.ids) : query;
   if (filters.inStock) next = next.gt("stock", 0);
   if (filters.minPrice !== null) next = next.gte("price", filters.minPrice);
   if (filters.maxPrice !== null) next = next.lte("price", filters.maxPrice);
+  if (filters.search) {
+    // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term must
+    // never be able to add another clause.
+    const safeSearch = String(filters.search).replace(/[,.()]/g, " ");
+    next = next.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
+  }
   return next;
 }
 
@@ -354,8 +365,14 @@ function applyListingFilters(query, filters) {
  * the default listing matches the plain category page exactly.
  */
 router.get("/products", async (req, res) => {
+  // `scope=all` lists the whole catalogue — the shop's "All products" page.
+  // Without it the listing is one category, and the path says which.
+  const scopeAll =
+    String(req.query.scope ?? "")
+      .trim()
+      .toLowerCase() === "all";
   const rawPath = req.query.path;
-  if (typeof rawPath !== "string") {
+  if (!scopeAll && typeof rawPath !== "string") {
     return res.status(400).json({ error: "The 'path' query parameter is required." });
   }
 
@@ -372,13 +389,17 @@ router.get("/products", async (req, res) => {
       return res.status(500).json({ error: LISTING_ERROR });
     }
 
-    const row = resolveCategoryPath(loaded.rows, rawPath);
+    const row = scopeAll ? null : resolveCategoryPath(loaded.rows, rawPath);
     // An unknown path is not an error: the category has no products.
-    if (!row) {
+    if (!scopeAll && !row) {
       return res.json({ items: [], total: 0, page: 1, pageSize: 0, hasMore: false });
     }
 
-    const filters = { ...parsed, ids: collectCategoryIds(row, loaded.rows) };
+    const filters = {
+      ...parsed,
+      ids: row ? collectCategoryIds(row, loaded.rows) : null,
+      search: typeof req.query.search === "string" ? req.query.search.trim() : "",
+    };
 
     let pageQuery = applyListingFilters(supabase.from("products").select("*"), filters);
     pageQuery = applyListingSort(pageQuery, req.query.sort);

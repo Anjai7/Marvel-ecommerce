@@ -9,6 +9,7 @@ import { ToastProvider } from "./components/ui";
 import { QuickViewDialog } from "./components/product/QuickViewDialog";
 import ProductViewPage from "./components/product/ProductViewPage";
 import CategoryPage from "./components/category/CategoryPage";
+import AllProductsPage from "./components/category/AllProductsPage";
 import CmsPage from "./components/pages/CmsPage";
 import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
@@ -37,6 +38,7 @@ import {
   isCategoryRoute,
   isPageRoute,
   isProductRoute,
+  isProductsRoute,
   isAccountRoute,
   isVendorRoute,
   isAdminRoute,
@@ -183,6 +185,10 @@ function AppMain() {
       {/* 2b. CMS PAGE — the page builder's public route. The footer lives
           inside the page, because the storefront home owns its own copy. */}
       {isPageRoute(page) && <CmsPage slug={currentRoute.id} onNavigate={handleDynamicMenuClick} />}
+
+      {/* 2c. THE CATALOGUE — every "View all" link and every hero
+          call-to-action lands here. */}
+      {isProductsRoute(page) && <AllProductsPage onSelectProduct={handleSelectProduct} />}
 
       {/* 3. AUTHENTICATION (LOGIN & SIGNUP) */}
       {page === "login" && (

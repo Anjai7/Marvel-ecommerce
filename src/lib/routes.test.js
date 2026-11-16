@@ -160,6 +160,10 @@ describe("routes module", () => {
 
     it("handles products and categories", () => {
       expect(resolveMenuNavigation("product", false)).toEqual({ route: "product" });
+      // The catalogue listing is a route of its own: "/products" is the shop's
+      // "All products" page, not a single product.
+      expect(resolveMenuNavigation("products", false)).toEqual({ route: "products" });
+      expect(resolveMenuNavigation("/products", false)).toEqual({ route: "products" });
       expect(resolveMenuNavigation("/category/electronics", false)).toEqual({
         route: "category/electronics",
       });

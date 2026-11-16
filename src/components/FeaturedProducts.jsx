@@ -1,11 +1,18 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import ProductCard from "./ProductCard";
 import { ChevronLeft, ChevronRight, Award, Sparkles, RefreshCw } from "lucide-react";
-import { apiFetchProducts } from "../api/backendApi";
+import { apiFetchCategoryProducts } from "../api/backendApi";
+import { navigateToPath } from "../lib/routes";
 import { ProductCarouselSkeleton } from "./ui/ProductSkeleton";
+
+// The carousel shows one screenful of the featured products. The whole
+// catalogue is a thousand rows, so it is never downloaded to fill a rail.
+const FEATURED_COUNT = 12;
 
 export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProduct }) {
   const [products, setProducts] = useState([]);
+  // How many products the store has, so the link can say "View all (1,000)".
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -14,11 +21,13 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
   const loadFeatured = useCallback(async () => {
     setLoading(true);
     try {
-      const liveProds = await apiFetchProducts();
-      if (liveProds && Array.isArray(liveProds)) {
-        const featured = liveProds.filter((p) => p.is_featured);
-        setProducts(featured.length > 0 ? featured : liveProds);
-      }
+      const data = await apiFetchCategoryProducts({
+        scope: "all",
+        pageSize: FEATURED_COUNT,
+        sort: "featured",
+      });
+      setProducts(Array.isArray(data?.items) ? data.items : []);
+      setTotal(Number.isFinite(data?.total) ? data.total : 0);
     } catch (err) {
       console.error("Could not fetch featured products:", err);
     } finally {
@@ -77,15 +86,16 @@ export default function FeaturedProducts({ onQuickView, onNavigate, onSelectProd
             </button>
 
             <a
-              href="#featured-all"
+              href="/products"
               onClick={(e) => {
                 e.preventDefault();
-                if (products.length > 0) handleCardClick(products[0]);
+                // The whole catalogue, not the first product of it.
+                navigateToPath("/products");
               }}
               className="view-all-link"
               id="featured-view-all"
             >
-              View all ({products.length}) →
+              View all ({total}) →
             </a>
           </div>
         </div>

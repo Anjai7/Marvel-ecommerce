@@ -217,7 +217,11 @@ export function resolveMenuNavigation(path, isLoggedIn) {
     return !isLoggedIn ? { route: "login", role: "user" } : { route: "account" };
   }
 
-  if (cleanPath === "products" || cleanPath === "product") {
+  if (cleanPath === "products") {
+    return { route: "products" };
+  }
+
+  if (cleanPath === "product") {
     return { route: "product" };
   }
 
@@ -277,8 +281,21 @@ export function isPageRoute(page) {
   return page === "pages" || page === "page";
 }
 
+/** The single product page: `/product/<id>`. */
 export function isProductRoute(page) {
-  return page === "product" || page === "products";
+  return page === "product";
+}
+
+/**
+ * The catalogue listing: `/products`.
+ *
+ * It is a route of its own: the shop's "All products" page, the target of
+ * every "View all" link, every hero call-to-action and every recent search.
+ * It used to share the single-product route, which is why `/products` showed
+ * "No product was requested".
+ */
+export function isProductsRoute(page) {
+  return page === "products";
 }
 
 export function isAccountRoute(page) {
