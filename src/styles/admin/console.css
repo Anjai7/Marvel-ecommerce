@@ -119,73 +119,74 @@
 
 /* Sidebar Navigation Tabs */
 .sidebar-navigation {
-  padding: 18px 14px;
+  padding: 14px 12px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
 }
 
 .nav-section-label {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  color: rgba(255, 255, 255, 0.75);
-  padding: 14px 10px 8px 10px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 12px 10px 6px 10px;
   text-transform: uppercase;
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  margin-top: 8px;
 }
 
 .nav-section-label:first-of-type {
   border-top: none;
   margin-top: 0;
-  padding-top: 6px;
+  padding-top: 4px;
 }
 
 .sidebar-tab-button {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  padding: 10px 14px;
-  border-radius: 10px;
+  padding: 8px 12px;
+  min-height: 40px;
+  border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.88);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   text-align: left;
 }
 
 .sidebar-tab-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
 .sidebar-tab-button.active {
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .tab-icon-box {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .sidebar-tab-button:hover .tab-icon-box {
@@ -195,7 +196,7 @@
 .sidebar-tab-button.active .tab-icon-box {
   background: #ffffff;
   color: #1b5bc7;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
 }
 
 .tab-text-box {
@@ -207,9 +208,9 @@
 }
 
 .tab-title {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.15px;
+  letter-spacing: 0.1px;
 }
 
 .tab-description {
@@ -223,28 +224,29 @@
 .tab-badge-counter {
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.14);
+  font-family: monospace, system-ui;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .sidebar-tab-button.active .tab-badge-counter {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.28);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.38);
 }
 
 .active-glow-indicator {
   position: absolute;
   left: 0;
-  top: 18%;
-  height: 64%;
+  top: 15%;
+  height: 70%;
   width: 3.5px;
   border-radius: 0 4px 4px 0;
   background: #ffffff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
 }
 
 /* Pinned bottom footer for admin sign out */

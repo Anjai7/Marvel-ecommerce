@@ -18,7 +18,7 @@ import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 import { navigateToPath } from "../../lib/routes";
 
-export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
+export default function SignUpPage({ onSignUpSuccess, onNavigateLogin, onNavigateHome }) {
   const [role, setRole] = useState("user"); // Strictly "user" or "vendor"
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -310,6 +310,19 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
                 : `Sign Up as ${role === "vendor" ? "Vendor" : "Customer"}`}
               <ArrowRight size={16} className="auth-submit-icon" />
             </Button>
+
+            <div className="auth-back-home">
+              <button
+                type="button"
+                className="auth-back-link"
+                onClick={() => {
+                  if (onNavigateHome) onNavigateHome();
+                  else navigateToPath("/");
+                }}
+              >
+                ← Back to Marvel Marketplace
+              </button>
+            </div>
           </form>
         </div>
       </div>

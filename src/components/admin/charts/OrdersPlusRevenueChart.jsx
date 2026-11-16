@@ -1,3 +1,4 @@
+import React from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -21,12 +22,16 @@ export default function OrdersPlusRevenueChart({ data }) {
     );
   }
 
-  const chartData = data.map((d) => ({ ...d, orders: d.ordersCount }));
+  const chartData = data.map((d) => ({
+    label: d.label || d.day || d.key,
+    orders: Number(d.orders ?? d.ordersCount ?? 0),
+    revenue: Number(d.revenue ?? 0),
+  }));
 
   return (
     <div className="recharts-wrapper">
-      <ResponsiveContainer width="100%" height={300}>
-        <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+      <ResponsiveContainer width="100%" height={260}>
+        <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis dataKey="label" tick={AXIS_TICK} tickMargin={8} />
           <YAxis yAxisId="left" tick={AXIS_TICK} allowDecimals={false} />

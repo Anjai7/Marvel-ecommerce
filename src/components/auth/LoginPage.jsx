@@ -19,7 +19,7 @@ import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
 
-export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
+export default function LoginPage({ onLoginSuccess, onNavigateSignUp, onNavigateHome }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -283,6 +283,19 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
                 }}
               >
                 Create an account
+              </button>
+            </div>
+
+            <div className="auth-back-home">
+              <button
+                type="button"
+                className="auth-back-link"
+                onClick={() => {
+                  if (onNavigateHome) onNavigateHome();
+                  else navigateToPath("/");
+                }}
+              >
+                ← Back to Marvel Marketplace
               </button>
             </div>
           </form>

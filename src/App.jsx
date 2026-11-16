@@ -132,6 +132,7 @@ function AppMain() {
   const page = currentRoute.page;
   const isStorefront = isStorefrontRoute(page);
   const isStandaloneAdmin = isStandaloneAdminView(page);
+  const isAuthPage = page === "login" || page === "signup";
 
   return (
     <div className="app">
@@ -142,7 +143,7 @@ function AppMain() {
         onLogin={() => navigateTo("login")}
       />
 
-      {!isStandaloneAdmin && (
+      {!isStandaloneAdmin && !isAuthPage && (
         <div className="sticky-header-wrapper">
           <Header
             currentUser={user}
@@ -160,17 +161,11 @@ function AppMain() {
             onNavigateRoute={(route) => navigateTo(route)}
           />
 
-          {/* Dynamic & Hover Navigation Bars (hidden on auth pages) */}
+          {/* Dynamic & Hover Navigation Bars */}
           {isStorefront ? (
             <HoverNav onDynamicNavigate={handleDynamicMenuClick} />
           ) : (
-            page !== "login" &&
-            page !== "signup" && (
-              <DynamicMenu
-                onNavigate={handleDynamicMenuClick}
-                activePath={`/${currentRoute.page}`}
-              />
-            )
+            <DynamicMenu onNavigate={handleDynamicMenuClick} activePath={`/${currentRoute.page}`} />
           )}
         </div>
       )}
@@ -207,6 +202,7 @@ function AppMain() {
           defaultRole={loginDefaultRole}
           onLoginSuccess={handleAuthSuccess}
           onNavigateSignUp={() => navigateTo("signup")}
+          onNavigateHome={() => navigateTo("")}
         />
       )}
 
@@ -214,6 +210,7 @@ function AppMain() {
         <SignUpPage
           onSignUpSuccess={handleAuthSuccess}
           onNavigateLogin={() => navigateTo("login")}
+          onNavigateHome={() => navigateTo("")}
         />
       )}
 

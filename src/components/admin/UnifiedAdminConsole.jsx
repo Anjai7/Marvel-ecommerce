@@ -89,6 +89,8 @@ import {
   aggregateBestSellers,
   summarizeInventory,
   customerStats,
+  flexibleOrderBuckets,
+  aggregateCategoryShare,
 } from "./reportUtils";
 import {
   EMPTY,
@@ -110,6 +112,7 @@ import BestSellersChart from "./charts/BestSellersChart";
 import OrdersPlusRevenueChart from "./charts/OrdersPlusRevenueChart";
 import InventoryChart from "./charts/InventoryChart";
 import CustomerRepeatChart from "./charts/CustomerRepeatChart";
+import CategoryShareChart from "./charts/CategoryShareChart";
 import { generateProductCode } from "../../lib/productCode";
 import { exportToCsv, exportToExcel, exportToPdf } from "./reportExport";
 import MenuTreeEditor from "./MenuTreeEditor";
@@ -286,6 +289,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   // Time Range for Dashboard Charts
   const [timeRange, setTimeRange] = useState("7d"); // "7d" | "30d"
+  const [salesTimeRange, setSalesTimeRange] = useState("all"); // "7d" | "30d" | "all"
 
   // Mobile drawer state
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -832,11 +836,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
   // Dynamic Chart Data points generated from DB orders timestamps & counts
   const chartData = useMemo(() => {
-    const points = lastNDayBuckets(orders, timeRange === "30d" ? 30 : 7);
+    const points = flexibleOrderBuckets(orders, timeRange);
 
     const maxRev = Math.max(...points.map((r) => r.revenue), 100);
     return { points, maxRevenue: maxRev };
   }, [orders, timeRange]);
+
+  const salesChartData = useMemo(() => {
+    return flexibleOrderBuckets(orders, salesTimeRange);
+  }, [orders, salesTimeRange]);
 
   // ----------------------------------------------------
   // SALES / CUSTOMER / INVENTORY REPORTS (real DB data)
@@ -848,6 +856,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     const repeat = computeRepeatCustomers(orders);
     const sellers = aggregateBestSellers(orders, 5);
     const inventory = summarizeInventory(products);
+    const categoryShare = aggregateCategoryShare(orders, products);
     return {
       windows,
       growth,
@@ -855,6 +864,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
       repeat,
       sellers,
       inventory,
+      categoryShare,
       deliveredRate: statuses.total > 0 ? (statuses.delivered / statuses.total) * 100 : null,
     };
   }, [orders, products]);
@@ -2167,17 +2177,38 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
             </div>
 
-            {/* Pipeline + best sellers */}
+            {/* Row 1: Orders & Revenue Trends + Best Selling Products */}
             <div className="reports-grid-2">
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
-                    <h3 className="chart-title">Orders & Revenue</h3>
-                    <p className="chart-subtitle">Orders and revenue trends over time</p>
+                    <h3 className="chart-title">Orders &amp; Revenue</h3>
+                    <p className="chart-subtitle">
+                      Dynamic timeline of orders and platform revenue
+                    </p>
                   </div>
-                  <ClipboardList size={18} className="text-muted" />
+                  <div className="chart-controls-group">
+                    <button
+                      onClick={() => setSalesTimeRange("7d")}
+                      className={`chart-pill-btn ${salesTimeRange === "7d" ? "active" : ""}`}
+                    >
+                      7D
+                    </button>
+                    <button
+                      onClick={() => setSalesTimeRange("30d")}
+                      className={`chart-pill-btn ${salesTimeRange === "30d" ? "active" : ""}`}
+                    >
+                      30D
+                    </button>
+                    <button
+                      onClick={() => setSalesTimeRange("all")}
+                      className={`chart-pill-btn ${salesTimeRange === "all" ? "active" : ""}`}
+                    >
+                      All Time (Monthly)
+                    </button>
+                  </div>
                 </div>
-                <OrdersPlusRevenueChart data={chartData.points} />
+                <OrdersPlusRevenueChart data={salesChartData} />
               </div>
               <div className="report-card">
                 <div className="chart-card-header">
@@ -2191,12 +2222,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </div>
             </div>
 
-            {/* Repeat buyers + inventory */}
+            {/* Row 2: Customer Retention & Top Buyers + Category Sales Distribution */}
             <div className="reports-grid-2">
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
-                    <h3 className="chart-title">Repeat Customers</h3>
+                    <h3 className="chart-title">Customer Retention &amp; Top Buyers</h3>
                     <p className="chart-subtitle">Shoppers who ordered more than once</p>
                   </div>
                   <Repeat size={18} className="text-muted" />
@@ -2226,18 +2257,22 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
-                    <h3 className="chart-title">Repeat Customers</h3>
-                    <p className="chart-subtitle">Shoppers who ordered more than once</p>
+                    <h3 className="chart-title">Category Revenue Distribution</h3>
+                    <p className="chart-subtitle">Sales contribution by merchandise category</p>
                   </div>
-                  <Repeat size={18} className="text-muted" />
+                  <Layers size={18} className="text-muted" />
                 </div>
-                <CustomerRepeatChart data={salesReport.repeat} />
+                <CategoryShareChart data={salesReport.categoryShare} />
               </div>
+            </div>
+
+            {/* Row 3: Inventory Valuation & Order Fulfillment Pipeline */}
+            <div className="reports-grid-2">
               <div className="report-card">
                 <div className="chart-card-header">
                   <div>
                     <h3 className="chart-title">Inventory Snapshot</h3>
-                    <p className="chart-subtitle">Catalog value at current selling price</p>
+                    <p className="chart-subtitle">Stock availability and catalog asset value</p>
                   </div>
                   <Boxes size={18} className="text-muted" />
                 </div>
@@ -2252,6 +2287,28 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     }}
                   >
                     Manage Product Catalog <ChevronRight size={14} />
+                  </Button>
+                </div>
+              </div>
+              <div className="report-card">
+                <div className="chart-card-header">
+                  <div>
+                    <h3 className="chart-title">Order Fulfillment Pipeline</h3>
+                    <p className="chart-subtitle">Dispatch, delivery, and cancellation stages</p>
+                  </div>
+                  <ClipboardList size={18} className="text-muted" />
+                </div>
+                <OrderStatusChart data={salesReport.statuses} />
+                <div className="chart-card-footer-action">
+                  <Button
+                    variant="outline"
+                    className="full-width-btn"
+                    onClick={() => {
+                      setActiveTab("orders");
+                      setOrdersView("all");
+                    }}
+                  >
+                    Manage Orders Pipeline <ChevronRight size={14} />
                   </Button>
                 </div>
               </div>

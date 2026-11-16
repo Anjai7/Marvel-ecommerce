@@ -1,18 +1,17 @@
+import React from "react";
 import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts";
 import { ORDER_STATUSES, ORDER_STATUS_LABELS } from "../adminConstants";
 import { AXIS_TICK } from "./chartTheme";
 
-/* Keyed by the `order_status` enum value, so every slice is a stage the
- * database can actually store. */
 const STATUS_COLORS = {
   pending: "#f59e0b",
   processing: "#3b82f6",
@@ -23,12 +22,14 @@ const STATUS_COLORS = {
 
 export default function OrderStatusChart({ data }) {
   const chartData = ORDER_STATUSES.map((status) => ({
-    name: ORDER_STATUS_LABELS[status],
+    name: ORDER_STATUS_LABELS[status] || status,
     value: Number(data?.[status]) || 0,
-    color: STATUS_COLORS[status],
+    color: STATUS_COLORS[status] || "#64748b",
   }));
 
-  if (!data || !chartData.some((entry) => entry.value > 0)) {
+  const total = chartData.reduce((sum, d) => sum + d.value, 0);
+
+  if (!data || total === 0) {
     return (
       <div className="chart-empty">
         <span className="chart-empty-text">No orders yet</span>
@@ -36,20 +37,39 @@ export default function OrderStatusChart({ data }) {
     );
   }
 
+  const deliveredCount = data?.delivered || 0;
+  const fulfillmentRate = total > 0 ? ((deliveredCount / total) * 100).toFixed(1) : 0;
+
   return (
-    <div className="recharts-wrapper">
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
-          <XAxis dataKey="name" tick={AXIS_TICK} tickMargin={8} />
-          <YAxis tick={AXIS_TICK} hide />
-          <Tooltip />
-          <Legend verticalAlign="top" height={36} />
-          {chartData.map((entry) => (
-            <Bar key={entry.name} dataKey="value" fill={entry.color} radius={[4, 4, 0, 0]} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="pipeline-chart-wrap">
+      <div className="pipeline-stat-banner">
+        <span className="pipeline-stat-label">Fulfillment Rate:</span>
+        <strong className="pipeline-stat-val text-emerald">{fulfillmentRate}% Delivered</strong>
+        <span className="pipeline-stat-sub">
+          ({deliveredCount} of {total} orders)
+        </span>
+      </div>
+      <div className="recharts-wrapper">
+        <ResponsiveContainer width="100%" height={210}>
+          <BarChart data={chartData} margin={{ top: 10, right: 20, left: -10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <XAxis dataKey="name" tick={AXIS_TICK} tickMargin={8} />
+            <YAxis tick={AXIS_TICK} allowDecimals={false} />
+            <Tooltip
+              formatter={(val, name, props) => [
+                `${val} orders (${((val / total) * 100).toFixed(1)}%)`,
+                props?.payload?.name || name,
+              ]}
+              cursor={{ fill: "rgba(0,0,0,0.04)" }}
+            />
+            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

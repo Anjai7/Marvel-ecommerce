@@ -1,6 +1,17 @@
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import React from "react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import { LOW_STOCK_THRESHOLD } from "../adminConstants";
 import { AXIS_TICK, STOCK_COLORS } from "./chartTheme";
+import { formatCurrency } from "../../../lib/currency";
 
 export default function InventoryChart({ data }) {
   if (!data) {
@@ -11,33 +22,47 @@ export default function InventoryChart({ data }) {
     );
   }
 
+  const healthyStock = Math.max(0, (data.inStock || 0) - (data.lowStock || 0));
   const chartData = [
-    { name: "In Stock", value: data.inStock, color: STOCK_COLORS.inStock },
+    { name: "Healthy Stock (>5)", value: healthyStock, color: STOCK_COLORS.inStock },
     {
-      name: `Low Stock (${LOW_STOCK_THRESHOLD} or fewer)`,
-      value: data.lowStock,
+      name: `Low Stock (1-${LOW_STOCK_THRESHOLD})`,
+      value: data.lowStock || 0,
       color: STOCK_COLORS.lowStock,
     },
-    { name: "Out of Stock", value: data.outOfStock, color: STOCK_COLORS.outOfStock },
+    { name: "Out of Stock (0)", value: data.outOfStock || 0, color: STOCK_COLORS.outOfStock },
   ];
 
   return (
-    <div className="recharts-wrapper">
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart
-          data={chartData}
-          margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
-          layout="vertical"
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={true} />
-          <YAxis dataKey="name" tick={AXIS_TICK} width={150} />
-          <XAxis tick={AXIS_TICK} hide />
-          <Tooltip />
-          {chartData.map((entry) => (
-            <Bar key={entry.name} dataKey="value" fill={entry.color} radius={[0, 4, 4, 0]} />
-          ))}
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="inventory-chart-wrap">
+      {data.value > 0 && (
+        <div className="inventory-stat-banner">
+          <span className="inventory-stat-label">Total Catalog Asset Value:</span>
+          <strong className="inventory-stat-val text-emerald">{formatCurrency(data.value)}</strong>
+        </div>
+      )}
+      <div className="recharts-wrapper">
+        <ResponsiveContainer width="100%" height={210}>
+          <BarChart
+            data={chartData}
+            margin={{ top: 10, right: 30, left: 10, bottom: 5 }}
+            layout="vertical"
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={true} />
+            <YAxis dataKey="name" type="category" tick={AXIS_TICK} width={140} />
+            <XAxis type="number" tick={AXIS_TICK} allowDecimals={false} />
+            <Tooltip
+              formatter={(val) => [`${val} products`, "Catalog Count"]}
+              cursor={{ fill: "rgba(0,0,0,0.04)" }}
+            />
+            <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

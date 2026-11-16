@@ -50,10 +50,134 @@ export function lastNDayBuckets(orders = [], days = 7, now = new Date()) {
       label: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
       day: d.toLocaleDateString("en-IN", { weekday: "short" }),
       revenue,
+      orders: ordersCount,
       ordersCount,
     });
   }
   return result;
+}
+
+/** Revenue + order counts grouped by calendar month across all orders. */
+export function monthlyBuckets(orders = []) {
+  const list = Array.isArray(orders) ? orders : [];
+  const map = new Map();
+
+  for (const order of list) {
+    const od = orderDate(order);
+    if (!od) continue;
+    const y = od.getFullYear();
+    const m = od.getMonth();
+    const key = `${y}-${String(m + 1).padStart(2, "0")}`;
+    const label = od.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+    const current = map.get(key) || { key, label, revenue: 0, orders: 0, ordersCount: 0 };
+    const rev = parseAmount(order.total_amount);
+    current.revenue += rev;
+    current.orders += 1;
+    current.ordersCount += 1;
+    map.set(key, current);
+  }
+
+  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, val]) => val);
+}
+
+/**
+ * Flexible order bucketing for dashboards.
+ * - "7d" / "30d": returns daily buckets. If orders exist but all are older than the
+ *   live window, anchors to the latest order's date so historical data displays clearly.
+ * - "all": returns monthly buckets.
+ */
+export function flexibleOrderBuckets(orders = [], timeRange = "7d") {
+  const list = Array.isArray(orders) ? orders : [];
+  if (timeRange === "all") {
+    const months = monthlyBuckets(list);
+    return months.length > 0 ? months : lastNDayBuckets(list, 7);
+  }
+
+  const days = timeRange === "30d" ? 30 : 7;
+  let anchor = new Date();
+
+  // If the dataset has orders but all are outside the window, anchor to latest order
+  if (list.length > 0) {
+    let latestOrderTime = 0;
+    for (const o of list) {
+      const od = orderDate(o);
+      if (od && od.getTime() > latestOrderTime) latestOrderTime = od.getTime();
+    }
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    if (latestOrderTime > 0 && latestOrderTime < cutoff) {
+      anchor = new Date(latestOrderTime);
+    }
+  }
+
+  return lastNDayBuckets(list, days, anchor);
+}
+
+/** Category share aggregation joining order line items with product catalog categories. */
+const CATEGORY_PALETTE = [
+  "#2563eb", // blue
+  "#10b981", // emerald
+  "#8b5cf6", // purple
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#64748b", // slate
+];
+
+export function aggregateCategoryShare(orders = [], products = []) {
+  const productCategoryMap = new Map();
+  if (Array.isArray(products)) {
+    for (const p of products) {
+      if (p?.id && p?.category) productCategoryMap.set(String(p.id), p.category);
+      if (p?.title && p?.category) productCategoryMap.set(p.title.trim().toLowerCase(), p.category);
+    }
+  }
+
+  const byCategory = new Map();
+  let grandTotal = 0;
+
+  for (const order of Array.isArray(orders) ? orders : []) {
+    const items = Array.isArray(order?.items) ? order.items : [];
+    for (const item of items) {
+      let cat = String(item?.category || "").trim();
+      if (!cat && item?.id) cat = productCategoryMap.get(String(item.id)) || "";
+      if (!cat && item?.title) cat = productCategoryMap.get(item.title.trim().toLowerCase()) || "";
+      if (!cat && item?.title && item.title.includes("/")) {
+        cat = item.title.split("/")[0].trim();
+      }
+      if (!cat) cat = "General";
+
+      const qty = itemQty(item);
+      const rev = parseAmount(item?.price) * qty;
+      const current = byCategory.get(cat) || { name: cat, revenue: 0, units: 0 };
+      current.revenue += rev;
+      current.units += qty;
+      grandTotal += rev;
+      byCategory.set(cat, current);
+    }
+  }
+
+  const list = [...byCategory.values()].sort((a, b) => b.revenue - a.revenue);
+  const topCategories = list.slice(0, 5);
+  const otherRevenue = list.slice(5).reduce((sum, c) => sum + c.revenue, 0);
+  const otherUnits = list.slice(5).reduce((sum, c) => sum + c.units, 0);
+
+  const displayList = [...topCategories];
+  if (otherRevenue > 0) {
+    displayList.push({
+      name: "Other Categories",
+      revenue: otherRevenue,
+      units: otherUnits,
+    });
+  }
+
+  return displayList.map((c, idx) => ({
+    name: c.name,
+    value: Math.round(c.revenue),
+    revenue: c.revenue,
+    units: c.units,
+    percentage: grandTotal > 0 ? (c.revenue / grandTotal) * 100 : 0,
+    color: CATEGORY_PALETTE[idx % CATEGORY_PALETTE.length],
+  }));
 }
 
 function inSameDay(a, b) {
