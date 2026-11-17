@@ -20,33 +20,32 @@
   max-width: 280px;
   height: 100vh;
   max-height: 100vh;
-  background: linear-gradient(180deg, #2874f0 0%, #1b5bc7 100%);
+  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid #1e293b;
   flex-shrink: 0;
   /* The sidebar itself must not scroll: the nav list is the only scroll
      container, otherwise items get sliced mid-row by a nested scroller. */
   overflow: hidden;
   position: relative;
   z-index: 50;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
 }
 
 /* Top-Left Logo & Brand Area.
-   The brand block and the top bar are one light band: the same colour,
-   the same height and the same hairline under them, so the line runs
-   unbroken from the logo across to the actions. */
+   Housed in a clean, elevated container that utilizes the full width
+   of the sidebar header without awkward empty margins. */
 .sidebar-brand-header {
-  padding: 14px 20px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 16px;
+  background: #0b1120;
+  border-bottom: 1px solid #1e293b;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 67px;
+  min-height: 72px;
 }
 
 .admin-mobile-menu-toggle,
@@ -58,12 +57,17 @@
 .brand-logo-wrapper {
   display: flex;
   align-items: center;
-  gap: 12px;
+  width: 100%;
 }
 
-/* The logo keeps its own shape and sits straight on the band */
+/* The logo box utilizes the full space with a crisp, high-contrast backdrop card */
 .brand-logo-img-box {
-  height: 38px;
+  width: 100%;
+  height: 44px;
+  padding: 6px 14px;
+  border-radius: 9px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -71,9 +75,9 @@
 }
 
 .brand-logo-img {
-  height: 30px;
-  width: auto;
-  max-width: 140px;
+  height: 32px;
+  width: 100%;
+  max-width: 210px;
   object-fit: contain;
   display: block;
 }
@@ -134,10 +138,10 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  color: rgba(255, 255, 255, 0.7);
-  padding: 12px 10px 6px 10px;
+  color: #64748b;
+  padding: 14px 10px 6px 10px;
   text-transform: uppercase;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
   margin-top: 8px;
 }
 
@@ -152,12 +156,12 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 9px 12px;
   min-height: 40px;
   border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.88);
+  color: #94a3b8;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -165,23 +169,23 @@
 }
 
 .sidebar-tab-button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar-tab-button.active {
-  background: rgba(255, 255, 255, 0.2);
+  background: #1e293b;
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .tab-icon-box {
   width: 30px;
   height: 30px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -190,13 +194,14 @@
 }
 
 .sidebar-tab-button:hover .tab-icon-box {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .sidebar-tab-button.active .tab-icon-box {
-  background: #ffffff;
-  color: #1b5bc7;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 .tab-text-box {
@@ -227,15 +232,15 @@
   font-family: monospace, system-ui;
   padding: 1px 7px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar-tab-button.active .tab-badge-counter {
-  background: rgba(255, 255, 255, 0.28);
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.38);
+  background: rgba(37, 99, 235, 0.25);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
 .active-glow-indicator {
@@ -245,8 +250,8 @@
   height: 70%;
   width: 3.5px;
   border-radius: 0 4px 4px 0;
-  background: #ffffff;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+  background: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
 }
 
 /* Pinned bottom footer for admin sign out */
@@ -254,9 +259,8 @@
   margin-top: auto;
   flex-shrink: 0;
   padding: 14px 16px;
-  background: rgba(10, 30, 80, 0.45);
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px);
+  background: #090d16;
+  border-top: 1px solid #1e293b;
   position: sticky;
   bottom: 0;
   z-index: 20;
@@ -270,9 +274,9 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -280,16 +284,24 @@
 }
 
 .sidebar-logout-pinned-btn svg {
-  color: #ffffff;
-  stroke: #ffffff;
+  color: #f87171;
+  stroke: #f87171;
+  transition:
+    color 0.2s ease,
+    stroke 0.2s ease;
 }
 
 .sidebar-logout-pinned-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: #ffffff;
+  background: rgba(239, 68, 68, 0.22);
+  border-color: #ef4444;
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
   transform: translateY(-1px);
+}
+
+.sidebar-logout-pinned-btn:hover svg {
+  color: #ffffff;
+  stroke: #ffffff;
 }
 
 .navbar-live-store-btn {
