@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
+import { AuthContext } from "./AuthContext";
+import { navigateToPath } from "../lib/routes";
 
 const CartContext = createContext(null);
 
@@ -96,10 +98,9 @@ export function normalizeProduct(product = {}) {
   };
 }
 
-function loadInitialCart() {
+function parseStoredItems(raw) {
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.map((item) =>
@@ -110,18 +111,97 @@ function loadInitialCart() {
   }
 }
 
-export function CartProvider({ children }) {
-  const [items, setItems] = useState(loadInitialCart);
+function getUserStorageKey(user) {
+  if (!user) return null;
+  if (user.id !== undefined && user.id !== null) {
+    return `marvel_cart_user_${user.id}`;
+  }
+  if (user.email && typeof user.email === "string") {
+    return `marvel_cart_user_${user.email.trim().toLowerCase()}`;
+  }
+  return null;
+}
 
+function loadInitialCart() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return parseStoredItems(raw);
+  } catch {
+    return [];
+  }
+}
+
+export function CartProvider({ children }) {
+  const auth = useContext(AuthContext);
+  const user = auth?.user ?? null;
+  const isLoggedIn = auth?.isLoggedIn ?? false;
+  const userKey = getUserStorageKey(user);
+
+  // When auth is wired up, an unauthenticated visitor sees an empty cart.
+  // Standalone unit tests without AuthProvider fall back to localStorage STORAGE_KEY.
+  const [items, setItems] = useState(() => {
+    if (auth) {
+      if (isLoggedIn && userKey) {
+        try {
+          return parseStoredItems(localStorage.getItem(userKey));
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    }
+    return loadInitialCart();
+  });
+
+  const activeUserKeyRef = useRef(userKey);
+
+  // Sync cart contents when user logs in or switches accounts
+  useEffect(() => {
+    if (!auth) return;
+
+    if (isLoggedIn && userKey) {
+      try {
+        const stored = parseStoredItems(localStorage.getItem(userKey));
+        setItems(stored);
+        activeUserKeyRef.current = userKey;
+      } catch {
+        setItems([]);
+      }
+    } else {
+      // Logged out: the active cart must appear empty
+      setItems([]);
+      activeUserKeyRef.current = null;
+    }
+  }, [auth, isLoggedIn, userKey]);
+
+  // Persist items to storage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      if (auth) {
+        if (isLoggedIn && userKey) {
+          localStorage.setItem(userKey, JSON.stringify(items));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        } else {
+          // Empty guest state
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      }
     } catch {
       // storage unavailable — ignore
     }
-  }, [items]);
+  }, [items, auth, isLoggedIn, userKey]);
 
   const addItem = (product, qty = 1) => {
+    // If not logged in, reject addition and redirect to login
+    if (auth && !isLoggedIn) {
+      if (typeof window !== "undefined") {
+        navigateToPath("/login");
+      }
+      return false;
+    }
+
     const normalized = normalizeProduct(product);
     const amount = Number(qty) || 1;
     setItems((prev) => {
@@ -133,6 +213,7 @@ export function CartProvider({ children }) {
       }
       return [...prev, { ...normalized, lineId: lineIdFor(normalized), quantity: amount }];
     });
+    return true;
   };
 
   const removeItem = (id, combinationId) => {
@@ -155,6 +236,9 @@ export function CartProvider({ children }) {
   const clearCart = () => {
     setItems([]);
     try {
+      if (userKey) {
+        localStorage.removeItem(userKey);
+      }
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
   };

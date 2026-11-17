@@ -31,6 +31,25 @@ function saveRecentSearches(searches) {
   }
 }
 
+function extractCategoryNames(nodes) {
+  if (!Array.isArray(nodes)) return [];
+  const list = [];
+  for (const node of nodes) {
+    if (!node) continue;
+    const name = typeof node === "string" ? node : node.name || node.title;
+    if (typeof name === "string" && name.trim()) {
+      list.push(name.trim());
+    }
+    if (Array.isArray(node.children)) {
+      list.push(...extractCategoryNames(node.children));
+    }
+    if (Array.isArray(node.subcategories)) {
+      list.push(...extractCategoryNames(node.subcategories));
+    }
+  }
+  return list;
+}
+
 export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) {
   const [isOpen, setIsOpen] = useState(false);
   const [recent, setRecent] = useState(loadRecentSearches);
@@ -48,13 +67,11 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
     content = null;
   }
 
-  // The popular category list is the real category table, not a copy of it.
+  // The category list extracts all top-level and nested subcategories
   const categorySource = useMemo(() => {
-    return Array.isArray(content?.categories) && content.categories.length > 0
-      ? content.categories.map((category) => category?.name)
-      : Array.isArray(content?.categoryTree)
-        ? content.categoryTree.map((category) => category?.name)
-        : [];
+    const fromCategories = extractCategoryNames(content?.categories);
+    const fromTree = extractCategoryNames(content?.categoryTree);
+    return Array.from(new Set([...fromCategories, ...fromTree]));
   }, [content?.categories, content?.categoryTree]);
 
   const categories = useMemo(() => {
@@ -67,7 +84,7 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
     ).slice(0, MAX_CATEGORIES);
   }, [categorySource]);
 
-  // The panel shows the top five matches for the term. Searching the whole
+  // The panel shows top matches for the term. Searching the whole
   // catalogue in the browser would mean downloading it on every page, so the
   // server answers instead — a few kilobytes, and the catalogue is only
   // downloaded when there is a term to search for.
@@ -83,7 +100,7 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
         const data = await apiFetchCategoryProducts({
           scope: "all",
           search: term,
-          pageSize: 5,
+          pageSize: 8,
           sort: "featured",
         });
         setMatches(Array.isArray(data?.items) ? data.items : []);
@@ -115,13 +132,9 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
   const matchingCategories = useMemo(() => {
     const term = searchQuery.trim().toLowerCase();
     if (!term) return [];
-    return Array.from(
-      new Set(
-        categorySource.filter(
-          (name) => typeof name === "string" && name.toLowerCase().includes(term)
-        )
-      )
-    ).slice(0, 4);
+    return categorySource
+      .filter((name) => typeof name === "string" && name.toLowerCase().includes(term))
+      .slice(0, 6);
   }, [searchQuery, categorySource]);
 
   /** Record the visitor's own search, newest first, without duplicates. */
@@ -325,9 +338,14 @@ export function CommandSearch({ searchQuery, setSearchQuery, onSelectProduct }) 
                         {img && <img src={img} alt={title} className="search-product-img" />}
                         <div className="search-product-info">
                           <div className="search-product-name">{title}</div>
-                          {product.sku && (
-                            <div className="search-product-meta">Code: {product.sku}</div>
-                          )}
+                          <div className="search-product-meta">
+                            {product.category && (
+                              <span className="search-product-category-tag">
+                                {product.category}
+                              </span>
+                            )}
+                            {product.sku && <span>Code: {product.sku}</span>}
+                          </div>
                           <ProductPrice
                             price={product.price}
                             originalPrice={product.original_price || product.originalPrice}

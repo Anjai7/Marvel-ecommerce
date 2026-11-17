@@ -12,7 +12,7 @@ import {
 const ADMIN_INACTIVITY_KEY = "marvel_admin_last_activity";
 const DEFAULT_INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);

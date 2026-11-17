@@ -157,7 +157,7 @@ function AppMain() {
             cartCount={cartCount}
             onMenuOpen={() => setMobileOpen(true)}
             onSelectProduct={handleSelectProduct}
-            onNavigateCart={() => navigateTo("cart")}
+            onNavigateCart={() => (isLoggedIn ? navigateTo("cart") : navigateTo("login"))}
             onNavigateRoute={(route) => navigateTo(route)}
           />
 
@@ -256,15 +256,23 @@ function AppMain() {
         </ProtectedRoute>
       )}
 
-      {page === "cart" && (
-        <CartPage
-          onNavigateHome={() => navigateTo("")}
-          onNavigateAccount={() => navigateTo("account")}
-          onCheckout={() => {
-            if (!isLoggedIn) navigateTo("login");
-          }}
-        />
-      )}
+      {page === "cart" &&
+        (isLoggedIn ? (
+          <CartPage
+            onNavigateHome={() => navigateTo("")}
+            onNavigateAccount={() => navigateTo("account")}
+            onCheckout={() => {
+              if (!isLoggedIn) navigateTo("login");
+            }}
+          />
+        ) : (
+          <LoginPage
+            defaultRole="user"
+            onLoginSuccess={handleAuthSuccess}
+            onNavigateSignUp={() => navigateTo("signup")}
+            onNavigateHome={() => navigateTo("")}
+          />
+        ))}
 
       {/* Floating Return to Top Button */}
       <ScrollToTop />

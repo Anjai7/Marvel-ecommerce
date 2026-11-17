@@ -8,6 +8,7 @@ import {
   EyeOff,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   ShieldCheck,
   Truck,
@@ -88,6 +89,22 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin, onNavigat
 
   return (
     <div className="auth-shell auth-shell--signup">
+      {/* Dedicated Top Back Navigation */}
+      <div className="auth-top-bar">
+        <button
+          type="button"
+          className="auth-back-btn"
+          onClick={() => {
+            if (onNavigateHome) onNavigateHome();
+            else navigateToPath("/");
+          }}
+          aria-label="Back to store"
+        >
+          <ArrowLeft size={18} />
+          <span>Back to Store</span>
+        </button>
+      </div>
+
       <div className="auth-card auth-card--signup">
         {/* Left Side: Brand Showcase */}
         <div className="auth-brand auth-brand--signup">
@@ -310,19 +327,6 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin, onNavigat
                 : `Sign Up as ${role === "vendor" ? "Vendor" : "Customer"}`}
               <ArrowRight size={16} className="auth-submit-icon" />
             </Button>
-
-            <div className="auth-back-home">
-              <button
-                type="button"
-                className="auth-back-link"
-                onClick={() => {
-                  if (onNavigateHome) onNavigateHome();
-                  else navigateToPath("/");
-                }}
-              >
-                ← Back to Marvel Marketplace
-              </button>
-            </div>
           </form>
         </div>
       </div>

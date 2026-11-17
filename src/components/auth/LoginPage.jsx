@@ -5,6 +5,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   Sparkles,
   AlertCircle,
   ShieldCheck,
@@ -127,6 +128,22 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp, onNavigate
 
   return (
     <div className="auth-shell auth-shell--login">
+      {/* Dedicated Top Back Navigation */}
+      <div className="auth-top-bar">
+        <button
+          type="button"
+          className="auth-back-btn"
+          onClick={() => {
+            if (onNavigateHome) onNavigateHome();
+            else navigateToPath("/");
+          }}
+          aria-label="Back to store"
+        >
+          <ArrowLeft size={18} />
+          <span>Back to Store</span>
+        </button>
+      </div>
+
       <div className="auth-card">
         {/* Left Side: Clean Brand Panel */}
         <div className="auth-brand auth-brand--login">
@@ -283,19 +300,6 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp, onNavigate
                 }}
               >
                 Create an account
-              </button>
-            </div>
-
-            <div className="auth-back-home">
-              <button
-                type="button"
-                className="auth-back-link"
-                onClick={() => {
-                  if (onNavigateHome) onNavigateHome();
-                  else navigateToPath("/");
-                }}
-              >
-                ← Back to Marvel Marketplace
               </button>
             </div>
           </form>

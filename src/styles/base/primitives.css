@@ -998,11 +998,24 @@
   text-overflow: ellipsis;
 }
 .search-product-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: #2563eb;
   margin-top: 1px;
   margin-bottom: 2px;
+}
+.search-product-category-tag {
+  display: inline-block;
+  padding: 1px 6px;
+  background: var(--navy-bg);
+  border-radius: 4px;
+  color: var(--navy);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 .search-no-results {
   padding: 12px;

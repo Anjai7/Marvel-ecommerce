@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
 import { CartProvider, useCart, normalizeProduct } from "./CartContext";
+import { AuthContext } from "./AuthContext";
 
 const STORAGE_KEY = "marvel_cart";
 
@@ -165,5 +166,76 @@ describe("CartContext", () => {
     expect(items).toHaveLength(1);
     expect(items[0].id).toBe("a");
     expect(items[0].quantity).toBe(2);
+  });
+
+  it("restores user-scoped cart on login and clears it on logout", () => {
+    const userA = { id: 101, email: "alice@example.com" };
+    const userStorageKey = `marvel_cart_user_${userA.id}`;
+
+    // Pre-seed userA's cart in localStorage
+    localStorage.setItem(
+      userStorageKey,
+      JSON.stringify([{ ...productA, lineId: "a::", quantity: 3 }])
+    );
+
+    let authValue = { isLoggedIn: true, user: userA };
+    const MockAuthProvider = ({ children }) => (
+      <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
+    );
+
+    const { rerender } = render(
+      <MockAuthProvider>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </MockAuthProvider>
+    );
+
+    // Should load alice's pre-seeded cart
+    expect(screen.getByTestId("count").textContent).toBe("3");
+
+    // Alice logs out
+    authValue = { isLoggedIn: false, user: null };
+    rerender(
+      <MockAuthProvider>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </MockAuthProvider>
+    );
+
+    // Cart is now empty on logout
+    expect(screen.getByTestId("count").textContent).toBe("0");
+
+    // Alice logs back in
+    authValue = { isLoggedIn: true, user: userA };
+    rerender(
+      <MockAuthProvider>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </MockAuthProvider>
+    );
+
+    // Alice's cart is restored
+    expect(screen.getByTestId("count").textContent).toBe("3");
+  });
+
+  it("blocks addItem and returns false when user is not logged in with active auth", () => {
+    const authValue = { isLoggedIn: false, user: null };
+    render(
+      <AuthContext.Provider value={authValue}>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </AuthContext.Provider>
+    );
+
+    act(() => {
+      const added = latest.addItem(productA, 1);
+      expect(added).toBe(false);
+    });
+
+    expect(screen.getByTestId("count").textContent).toBe("0");
   });
 });
