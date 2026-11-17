@@ -116,6 +116,7 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
             <Table className="ui-table--cards">
               <TableHeader>
                 <TableRow>
+                  <TableHead scope="col">Sl. No.</TableHead>
                   <TableHead scope="col">Product</TableHead>
                   <TableHead scope="col" className="text-right">
                     Price
@@ -126,10 +127,13 @@ export default function ProductPicker({ value = [], onChange, disabled = false, 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map((product) => {
+                {results.map((product, index) => {
                   const isSelected = selectedIds.includes(product.id);
                   return (
                     <TableRow key={product.id}>
+                      <TableCell data-label="Sl. No." className="table-sno">
+                        {index + 1}
+                      </TableCell>
                       <TableCell>
                         <div className="product-picker-result-main">
                           {product.image_url ? (

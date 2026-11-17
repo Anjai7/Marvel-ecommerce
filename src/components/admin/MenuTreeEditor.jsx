@@ -781,7 +781,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
   };
 
   /** One row of the table: a flattened node and the depth it sits at. */
-  const renderRow = ({ node: item, depth }) => {
+  const renderRow = ({ node: item, depth }, rowIndex = 0) => {
     const children = item.children ?? [];
     const parent = findParent(tree, item.id);
     const siblings = siblingsFor(tree, parent?.id ?? null);
@@ -791,6 +791,9 @@ export default function MenuTreeEditor({ role = "admin" }) {
 
     return (
       <TableRow key={item.id} className="admin-tree-row" data-testid={`menu-row-${item.id}`}>
+        <TableCell data-label="Sl. No." className="table-sno">
+          {rowIndex + 1}
+        </TableCell>
         <TableCell>
           <div className="admin-tree-name" data-depth={depth}>
             {children.length > 0 ? (
@@ -1396,6 +1399,7 @@ export default function MenuTreeEditor({ role = "admin" }) {
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">Name</TableHead>
                       <TableHead scope="col">Path</TableHead>
                       <TableHead scope="col">Status</TableHead>
@@ -1404,7 +1408,9 @@ export default function MenuTreeEditor({ role = "admin" }) {
                       </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>{treeRows.map((entry) => renderRow(entry))}</TableBody>
+                  <TableBody>
+                    {treeRows.map((entry, rowIndex) => renderRow(entry, rowIndex))}
+                  </TableBody>
                 </Table>
               </div>
               {totalPages > 1 && (

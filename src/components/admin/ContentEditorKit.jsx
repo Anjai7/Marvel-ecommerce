@@ -182,6 +182,7 @@ export function EditorTable({
         <Table className="ui-table--cards">
           <TableHeader>
             <TableRow>
+              <TableHead scope="col">Sl. No.</TableHead>
               {columns.map((column) => (
                 <TableHead key={column} scope="col">
                   {humanize(column)}
@@ -195,6 +196,9 @@ export function EditorTable({
               const rowId = row?.id ?? index;
               return (
                 <TableRow key={rowId} data-testid={`editor-row-${rowId}`}>
+                  <TableCell data-label="Sl. No." className="table-sno">
+                    {index + 1}
+                  </TableCell>
                   {columns.map((column) => (
                     <TableCell key={column} data-label={humanize(column)}>
                       {cellValue(row?.[column])}

@@ -443,7 +443,7 @@ export default function CategoriesTreeEditor() {
     }
   };
 
-  const renderRow = ({ node, depth }) => {
+  const renderRow = ({ node, depth }, rowIndex = 0) => {
     const children = node.children ?? [];
     const siblings = siblingsFor(tree, node.parent_id ?? null);
     const index = siblings.findIndex((sibling) => sibling.id === node.id);
@@ -451,6 +451,9 @@ export default function CategoriesTreeEditor() {
 
     return (
       <TableRow key={node.id} className="admin-tree-row" data-testid={`category-node-${node.id}`}>
+        <TableCell data-label="Sl. No." className="table-sno">
+          {rowIndex + 1}
+        </TableCell>
         <TableCell>
           <div className="admin-tree-name" data-depth={depth}>
             {children.length > 0 ? (
@@ -923,6 +926,7 @@ export default function CategoriesTreeEditor() {
           <Table className="ui-table--cards">
             <TableHeader>
               <TableRow>
+                <TableHead scope="col">Sl. No.</TableHead>
                 <TableHead scope="col">Name</TableHead>
                 <TableHead scope="col">Slug</TableHead>
                 <TableHead scope="col">Level</TableHead>
@@ -932,7 +936,7 @@ export default function CategoriesTreeEditor() {
                 </TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>{treeRows.map((entry) => renderRow(entry))}</TableBody>
+            <TableBody>{treeRows.map((entry, rowIndex) => renderRow(entry, rowIndex))}</TableBody>
           </Table>
         </div>
       )}

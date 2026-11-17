@@ -406,6 +406,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">Order</TableHead>
                       <TableHead scope="col">Details</TableHead>
                       <TableHead scope="col" className="text-right">
@@ -415,10 +416,13 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.slice(0, 3).map((order) => {
+                    {orders.slice(0, 3).map((order, index) => {
                       const optionLines = orderOptionLines(order.items);
                       return (
                         <TableRow key={order.id}>
+                          <TableCell data-label="Sl. No." className="table-sno">
+                            {index + 1}
+                          </TableCell>
                           <TableCell>
                             <div className="vendor-order-card__title">
                               Order #{order.id.toUpperCase()}
@@ -533,6 +537,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               <Table className="ui-table--cards">
                 <TableHeader>
                   <TableRow>
+                    <TableHead scope="col">Sl. No.</TableHead>
                     <TableHead scope="col">Product Item</TableHead>
                     <TableHead scope="col">Category</TableHead>
                     <TableHead scope="col">Price</TableHead>
@@ -544,8 +549,11 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.map((prod) => (
+                  {filteredProducts.map((prod, index) => (
                     <TableRow key={prod.id}>
+                      <TableCell data-label="Sl. No." className="table-sno">
+                        {index + 1}
+                      </TableCell>
                       <TableCell>
                         <div className="vendor-product">
                           <img
@@ -617,6 +625,7 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
               <Table className="ui-table--cards">
                 <TableHeader>
                   <TableRow>
+                    <TableHead scope="col">Sl. No.</TableHead>
                     <TableHead scope="col">Order</TableHead>
                     <TableHead scope="col">Customer</TableHead>
                     <TableHead scope="col">Tracking</TableHead>
@@ -629,10 +638,13 @@ export default function VendorDashboard({ currentUser, onNavigateHome }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((ord) => {
+                  {orders.map((ord, index) => {
                     const optionLines = orderOptionLines(ord.items);
                     return (
                       <TableRow key={ord.id}>
+                        <TableCell data-label="Sl. No." className="table-sno">
+                          {index + 1}
+                        </TableCell>
                         <TableCell>
                           <div className="vendor-shipment__heading">
                             <span className="vendor-shipment__title">

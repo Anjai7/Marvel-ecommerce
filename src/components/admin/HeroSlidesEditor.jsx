@@ -707,6 +707,7 @@ export default function HeroSlidesEditor() {
           <Table className="ui-table--cards">
             <TableHeader>
               <TableRow>
+                <TableHead scope="col">Sl. No.</TableHead>
                 <TableHead scope="col">Slide</TableHead>
                 <TableHead scope="col">Badge</TableHead>
                 <TableHead scope="col">Order</TableHead>
@@ -719,6 +720,9 @@ export default function HeroSlidesEditor() {
             <TableBody>
               {slides.map((slide, index) => (
                 <TableRow key={slide.id}>
+                  <TableCell data-label="Sl. No." className="table-sno">
+                    {index + 1}
+                  </TableCell>
                   <TableCell>
                     <div className="hero-slide-cell">
                       {slide.product_image_url || slide.bg_image_url || slide.fallback_image_url ? (

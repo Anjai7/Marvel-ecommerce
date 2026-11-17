@@ -606,6 +606,7 @@ export default function FooterEditor() {
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">Heading</TableHead>
                       <TableHead scope="col">Type</TableHead>
                       <TableHead scope="col">Column</TableHead>
@@ -624,6 +625,9 @@ export default function FooterEditor() {
                           aria-current={isSelected ? "true" : undefined}
                           data-selected={isSelected ? "true" : undefined}
                         >
+                          <TableCell data-label="Sl. No." className="table-sno">
+                            {index + 1}
+                          </TableCell>
                           <TableCell>
                             <button
                               type="button"
@@ -733,6 +737,7 @@ export default function FooterEditor() {
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">Label</TableHead>
                       <TableHead scope="col">Href</TableHead>
                       <TableHead scope="col">Order</TableHead>
@@ -743,6 +748,9 @@ export default function FooterEditor() {
                   <TableBody>
                     {links.map((link, index) => (
                       <TableRow key={link.id} data-testid={`footer-link-${link.id}`}>
+                        <TableCell data-label="Sl. No." className="table-sno">
+                          {index + 1}
+                        </TableCell>
                         <TableCell className="footer-link-label">{link.label}</TableCell>
                         <TableCell data-label="Href">
                           <code className="footer-link-href">{link.href}</code>

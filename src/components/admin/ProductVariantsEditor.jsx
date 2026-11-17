@@ -578,6 +578,7 @@ export default function ProductVariantsEditor({
               <Table className="ui-table--cards">
                 <TableHeader>
                   <TableRow>
+                    <TableHead scope="col">Sl. No.</TableHead>
                     {kinds.map((kind) => (
                       <TableHead key={kind} scope="col">
                         {kindLabel(kind)}
@@ -595,6 +596,9 @@ export default function ProductVariantsEditor({
                     const options = Array.isArray(combo?.options) ? combo.options : [];
                     return (
                       <TableRow key={index} data-testid={`product-variants-row-${index}`}>
+                        <TableCell data-label="Sl. No." className="table-sno">
+                          {index + 1}
+                        </TableCell>
                         {kinds.map((kind) => {
                           const entry = options.find((option) => option?.kind === kind);
                           return (

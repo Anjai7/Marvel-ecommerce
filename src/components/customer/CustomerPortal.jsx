@@ -223,6 +223,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
               <Table className="ui-table--cards">
                 <TableHeader>
                   <TableRow>
+                    <TableHead scope="col">Sl. No.</TableHead>
                     <TableHead scope="col">Order</TableHead>
                     <TableHead scope="col">Date</TableHead>
                     <TableHead scope="col">Status</TableHead>
@@ -238,7 +239,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                 <TableBody>
                   {orders.length === 0 && !loading && (
                     <TableRow>
-                      <TableCell colSpan={6}>
+                      <TableCell colSpan={7}>
                         <div className="customer-orders-empty">
                           <Package size={36} className="text-muted" />
                           <p>You haven't placed any orders yet.</p>
@@ -249,7 +250,7 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                       </TableCell>
                     </TableRow>
                   )}
-                  {orders.map((ord) => {
+                  {orders.map((ord, index) => {
                     const isSelected = selectedOrder?.id === ord.id;
                     return (
                       <TableRow
@@ -258,6 +259,9 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                         data-selected={isSelected}
                         className="customer-order-row"
                       >
+                        <TableCell data-label="Sl. No." className="table-sno">
+                          {index + 1}
+                        </TableCell>
                         <TableCell>
                           <div className="customer-order-card__title">
                             Order #{ord.id.toUpperCase()}
