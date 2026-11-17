@@ -57,6 +57,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
   useToast,
 } from "../ui";
 import SearchInput from "../ui/SearchInput";
@@ -214,9 +218,9 @@ function toApiCombinations(combinations) {
  */
 function orderItemChoice(item) {
   const choice = formatOptionChoices(item?.options);
-  const sku = String(item?.sku ?? "").trim();
-  if (!choice && !sku) return "";
-  return [choice, sku ? `SKU: ${sku}` : ""].filter(Boolean).join(" · ");
+  const code = String(item?.code || item?.sku || "").trim();
+  if (!choice && !code) return "";
+  return [choice, code ? `Code: ${code}` : ""].filter(Boolean).join(" · ");
 }
 
 /**
@@ -2043,6 +2047,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">ORDER ID</TableHead>
                       <TableHead scope="col">CUSTOMER</TableHead>
                       <TableHead scope="col">ITEMS</TableHead>
@@ -2054,7 +2059,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <TableBody>
                     {orders.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} data-empty className="empty-table-cell">
+                        <TableCell colSpan={7} data-empty className="empty-table-cell">
                           <ShoppingBag size={28} className="empty-icon" />
                           <p>No orders recorded in database yet.</p>
                         </TableCell>
@@ -2062,6 +2067,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       orders.slice(0, 5).map((order, idx) => (
                         <TableRow key={order.id || idx}>
+                          <TableCell data-label="Sl. No." className="table-sno">
+                            {idx + 1}
+                          </TableCell>
                           <TableCell className="font-mono text-primary font-bold">
                             {orderRef(order)}
                           </TableCell>
@@ -2110,30 +2118,39 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </span>
               </div>
               <div className="report-export-actions">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleExportReport("csv")}
-                  leftIcon={<Download size={14} />}
-                >
-                  Download CSV
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleExportReport("excel")}
-                  leftIcon={<FileSpreadsheet size={14} />}
-                >
-                  Download Excel (.xlsx)
-                </Button>
-                <Button
-                  variant="accent"
-                  size="sm"
-                  onClick={() => handleExportReport("pdf")}
-                  leftIcon={<Printer size={14} />}
-                >
-                  Download PDF
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="accent"
+                      size="sm"
+                      leftIcon={<Download size={14} />}
+                      rightIcon={<ChevronDown size={14} />}
+                      id="admin-export-report-btn"
+                    >
+                      Download Report
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="admin-export-dropdown">
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("csv")}
+                      icon={<Download size={14} />}
+                    >
+                      Download CSV (.csv)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("excel")}
+                      icon={<FileSpreadsheet size={14} />}
+                    >
+                      Download Excel (.xlsx)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExportReport("pdf")}
+                      icon={<Printer size={14} />}
+                    >
+                      Download PDF Document (.pdf)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -2471,7 +2488,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="users-table ui-table--cards">
                   <TableHeader>
                     <TableRow>
-                      <TableHead scope="col">S.NO</TableHead>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">USER</TableHead>
                       <TableHead scope="col">ROLE</TableHead>
                       <TableHead scope="col">STATUS</TableHead>
@@ -2504,8 +2521,8 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       paginatedUsers.map((userItem, index) => (
                         <TableRow key={userItem.id} className="user-table-row">
-                          {/* S.No */}
-                          <TableCell data-label="S.No" className="table-sno">
+                          {/* Sl. No. */}
+                          <TableCell data-label="Sl. No." className="table-sno">
                             {(userPage - 1) * usersPerPage + index + 1}
                           </TableCell>
 
@@ -2967,7 +2984,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
-                      <TableHead scope="col">S.NO</TableHead>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">PRODUCT</TableHead>
                       <TableHead scope="col">CATEGORY</TableHead>
                       <TableHead scope="col">PRICE</TableHead>
@@ -3008,7 +3025,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                         const stockCount = parseInt(prod.stock, 10) || 0;
                         return (
                           <TableRow key={prod.id}>
-                            <TableCell data-label="S.No" className="table-sno">
+                            <TableCell data-label="Sl. No." className="table-sno">
                               {productStartIndex + index + 1}
                             </TableCell>
                             <TableCell>
@@ -3024,7 +3041,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                                   <div className="product-title-text">
                                     {displayValue(prod.title)}
                                   </div>
-                                  <div className="product-sku-text">{displayValue(prod.sku)}</div>
+                                  <div className="product-sku-text">
+                                    {prod.sku || prod.code ? (
+                                      <span className="product-code-badge">
+                                        Code: {displayValue(prod.code || prod.sku)}
+                                      </span>
+                                    ) : (
+                                      displayValue(prod.sku)
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </TableCell>
@@ -3194,7 +3219,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
-                      <TableHead scope="col">S.NO</TableHead>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">ORDER ID</TableHead>
                       <TableHead scope="col">CUSTOMER</TableHead>
                       <TableHead scope="col">ITEMS</TableHead>
@@ -3221,7 +3246,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       paginatedOrders.map((order, idx) => (
                         <TableRow key={order.id || idx}>
-                          <TableCell data-label="S.No" className="table-sno">
+                          <TableCell data-label="Sl. No." className="table-sno">
                             {idx + 1}
                           </TableCell>
                           <TableCell className="font-mono text-primary font-bold">
@@ -3354,7 +3379,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <Table className="ui-table--cards">
                   <TableHeader>
                     <TableRow>
-                      <TableHead scope="col">S.NO</TableHead>
+                      <TableHead scope="col">Sl. No.</TableHead>
                       <TableHead scope="col">CUSTOMER</TableHead>
                       <TableHead scope="col">ORDERS</TableHead>
                       <TableHead scope="col">TOTAL SPENT</TableHead>
@@ -3377,7 +3402,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     ) : (
                       paginatedCustomers.map((cust, idx) => (
                         <TableRow key={cust.id || cust.email}>
-                          <TableCell data-label="S.No" className="table-sno">
+                          <TableCell data-label="Sl. No." className="table-sno">
                             {(customerPage - 1) * customerPageSize + idx + 1}
                           </TableCell>
                           <TableCell>

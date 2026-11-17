@@ -4,6 +4,7 @@ import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import { navigateToPath } from "../lib/routes";
+import { generateProductCode } from "../lib/productCode";
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -30,6 +31,10 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
   const originalPrice = numberOrNull(product?.original_price ?? product?.originalPrice);
   const desc = textOrNull(product?.description) || textOrNull(product?.desc);
   const offerText = textOrNull(product?.offer_text);
+  const productCode =
+    textOrNull(product?.code) ||
+    textOrNull(product?.sku) ||
+    (product?.title ? generateProductCode(product.title, product?.category, product?.id) : null);
 
   const handleWishlist = (e) => {
     e.stopPropagation();
@@ -167,6 +172,11 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
         <div className="product-name" title={title}>
           {title}
         </div>
+        {productCode && (
+          <span className="product-card-code-badge" title={`Item Code: ${productCode}`}>
+            Code: {productCode}
+          </span>
+        )}
         {desc && <div className="product-desc">{desc}</div>}
 
         {rating !== null && (

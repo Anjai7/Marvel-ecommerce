@@ -20,18 +20,18 @@
   max-width: 280px;
   height: 100vh;
   max-height: 100vh;
-  background: linear-gradient(180deg, #0b1120 0%, #0f172a 100%);
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%);
   color: #ffffff;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #1e293b;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
   flex-shrink: 0;
   /* The sidebar itself must not scroll: the nav list is the only scroll
      container, otherwise items get sliced mid-row by a nested scroller. */
   overflow: hidden;
   position: relative;
   z-index: 50;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
 }
 
 /* Top-Left Logo & Brand Area.
@@ -39,8 +39,8 @@
    of the sidebar header without awkward empty margins. */
 .sidebar-brand-header {
   padding: 14px 16px;
-  background: #0b1120;
-  border-bottom: 1px solid #1e293b;
+  background: #1e40af;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -138,10 +138,10 @@
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  color: #64748b;
+  color: #bfdbfe;
   padding: 14px 10px 6px 10px;
   text-transform: uppercase;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   margin-top: 8px;
 }
 
@@ -161,7 +161,7 @@
   border-radius: 8px;
   background: transparent;
   border: 1px solid transparent;
-  color: #94a3b8;
+  color: #e2e8f0;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -169,39 +169,41 @@
 }
 
 .sidebar-tab-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f1f5f9;
-  border-color: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .sidebar-tab-button.active {
-  background: #1e293b;
+  background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+  border-left: 3.5px solid #14b8a6;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
 .tab-icon-box {
   width: 30px;
   height: 30px;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: #e2e8f0;
   transition: all 0.18s ease;
 }
 
 .sidebar-tab-button:hover .tab-icon-box {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
 }
 
 .sidebar-tab-button.active .tab-icon-box {
-  background: #2563eb;
+  background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+  box-shadow: none;
 }
 
 .tab-text-box {
@@ -230,17 +232,17 @@
   font-size: 11px;
   font-weight: 700;
   font-family: monospace, system-ui;
-  padding: 1px 7px;
+  padding: 2px 8px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.07);
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #f43f5e;
+  color: #ffffff;
+  border: none;
 }
 
 .sidebar-tab-button.active .tab-badge-counter {
-  background: rgba(37, 99, 235, 0.25);
-  color: #93c5fd;
-  border-color: rgba(59, 130, 246, 0.35);
+  background: #f43f5e;
+  color: #ffffff;
+  border: none;
 }
 
 .active-glow-indicator {
@@ -250,8 +252,8 @@
   height: 70%;
   width: 3.5px;
   border-radius: 0 4px 4px 0;
-  background: #3b82f6;
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.8);
+  background: #14b8a6;
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.85);
 }
 
 /* Pinned bottom footer for admin sign out */
@@ -259,8 +261,8 @@
   margin-top: auto;
   flex-shrink: 0;
   padding: 14px 16px;
-  background: #090d16;
-  border-top: 1px solid #1e293b;
+  background: #1e3a8a;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   position: sticky;
   bottom: 0;
   z-index: 20;
@@ -274,9 +276,9 @@
   width: 100%;
   padding: 11px 14px;
   border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #f87171;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -284,18 +286,18 @@
 }
 
 .sidebar-logout-pinned-btn svg {
-  color: #f87171;
-  stroke: #f87171;
+  color: #ffffff;
+  stroke: #ffffff;
   transition:
     color 0.2s ease,
     stroke 0.2s ease;
 }
 
 .sidebar-logout-pinned-btn:hover {
-  background: rgba(239, 68, 68, 0.22);
+  background: rgba(239, 68, 68, 0.85);
   border-color: #ef4444;
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
   transform: translateY(-1px);
 }
 

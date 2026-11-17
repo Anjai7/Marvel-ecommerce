@@ -132,8 +132,9 @@ export default function ProductInfoTabs({ product }) {
 
   const infoRows = presentRows([
     ["Brand", product.brand],
+    ["Product Code", product.code || product.sku],
     ["Model Name", additionalDetails.modelNumber],
-    ["SKU / Product ID", product.sku],
+    ["SKU", product.sku],
     ["Country of Origin", additionalDetails.countryOfOrigin],
     ["Manufacturer", manufacturer?.name],
     ["Importer / Packer", manufacturer?.importedBy],

@@ -30,7 +30,9 @@ export function formatProduct(p) {
     }
   }
 
-  const generatedSku = p.sku || generateProductCode(p.title, p.category, p.id);
+  const generatedCode = generateProductCode(p.title, p.category, p.id);
+  const resolvedSku =
+    p.sku && typeof p.sku === "string" && !p.sku.startsWith("MRV-") ? p.sku : generatedCode;
 
   return {
     ...p,
@@ -41,8 +43,9 @@ export function formatProduct(p) {
     reviews_count: parseInt(p.reviews_count, 10) || 0,
     image_url: displayImage || p.image_url,
     image: displayImage || p.image_url,
-    sku: generatedSku,
-    model_name: p.model_name || generatedSku,
+    sku: resolvedSku,
+    code: generatedCode,
+    model_name: p.model_name || resolvedSku,
     // `country_of_origin`, `manufacturer_name`, `importer_packer`,
     // `manufacturing_date`, `hsn_code`, `gst_rate`, `certifications` and
     // `in_box` are stored columns now. They are nullable, and a null means
@@ -638,13 +641,34 @@ router.get("/", async (req, res) => {
           );
         }
 
-        const { data, error } = await query;
-        if (error) {
-          console.error("Supabase products query error:", error.message);
-          return { error: true };
+        let allData = [];
+        if (typeof query.range === "function") {
+          const PAGE_SIZE = 1000;
+          let from = 0;
+          while (true) {
+            const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+            if (error) {
+              console.error("Supabase products query error:", error.message);
+              return { error: true };
+            }
+            if (data && data.length > 0) {
+              allData.push(...data);
+            }
+            if (!data || data.length < PAGE_SIZE) {
+              break;
+            }
+            from += PAGE_SIZE;
+          }
+        } else {
+          const { data, error } = await query;
+          if (error) {
+            console.error("Supabase products query error:", error.message);
+            return { error: true };
+          }
+          allData = data || [];
         }
 
-        return { rows: (data || []).map(formatProduct) };
+        return { rows: allData.map(formatProduct) };
       }
     );
 
