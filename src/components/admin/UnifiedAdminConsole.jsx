@@ -46,6 +46,8 @@ import {
   Download,
   FileSpreadsheet,
   Printer,
+  ArrowUpDown,
+  RotateCcw,
 } from "lucide-react";
 import {
   Button,
@@ -105,6 +107,7 @@ import {
   displayValue,
   formatAdminDate,
   isLowStock,
+  LOW_STOCK_THRESHOLD,
 } from "./adminConstants";
 import { buildAlerts } from "./adminAlerts";
 import { AdminNotifications, AdminProfileMenu } from "./AdminTopBar";
@@ -318,6 +321,12 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [productSearch, setProductSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(25);
+  const [productStockFilter, setProductStockFilter] = useState("all"); // "all" | "healthy" | "low" | "out" | "featured"
+  const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  const [productSortOrder, setProductSortOrder] = useState("newest"); // "newest" | "stock_asc" | "stock_desc" | "price_asc" | "price_desc" | "title_asc" | "title_desc"
+  const [orderSortOrder, setOrderSortOrder] = useState("newest"); // "newest" | "oldest" | "amount_desc" | "amount_asc" | "items_desc"
+  const [customerSortOrder, setCustomerSortOrder] = useState("orders_desc"); // "orders_desc" | "spent_desc" | "name_asc" | "recent"
+  const [userSortOrder, setUserSortOrder] = useState("name_asc"); // "name_asc" | "name_desc" | "role" | "newest"
   const [productErrors, setProductErrors] = useState({});
   const [productForm, setProductForm] = useState({
     title: "",
@@ -873,16 +882,97 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     };
   }, [orders, products]);
 
+  const productCounts = useMemo(() => {
+    let healthy = 0;
+    let low = 0;
+    let out = 0;
+    let featured = 0;
+    for (const p of products) {
+      const stock = Number(p.stock ?? 0);
+      if (stock === 0) {
+        out += 1;
+      } else if (stock <= LOW_STOCK_THRESHOLD) {
+        low += 1;
+      } else {
+        healthy += 1;
+      }
+      if (p.is_featured) {
+        featured += 1;
+      }
+    }
+    return {
+      total: products.length,
+      healthy,
+      low,
+      out,
+      featured,
+    };
+  }, [products]);
+
+  const uniqueCategories = useMemo(() => {
+    const counts = new Map();
+    for (const p of products) {
+      const cat = (p.category || "").trim();
+      if (cat) {
+        counts.set(cat, (counts.get(cat) || 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     const q = productSearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
-        (p.title || "").toLowerCase().includes(q) ||
-        (p.category || "").toLowerCase().includes(q) ||
-        (p.sku || "").toLowerCase().includes(q)
-    );
-  }, [products, productSearch]);
+    let result = products;
+
+    if (productStockFilter === "healthy") {
+      result = result.filter((p) => Number(p.stock ?? 0) > LOW_STOCK_THRESHOLD);
+    } else if (productStockFilter === "low") {
+      result = result.filter((p) => {
+        const s = Number(p.stock ?? 0);
+        return s > 0 && s <= LOW_STOCK_THRESHOLD;
+      });
+    } else if (productStockFilter === "out") {
+      result = result.filter((p) => Number(p.stock ?? 0) === 0);
+    } else if (productStockFilter === "featured") {
+      result = result.filter((p) => Boolean(p.is_featured));
+    }
+
+    if (productCategoryFilter !== "all") {
+      result = result.filter((p) => (p.category || "").trim() === productCategoryFilter);
+    }
+
+    if (q) {
+      result = result.filter((p) => {
+        const title = (p.title || "").toLowerCase();
+        const category = (p.category || "").toLowerCase();
+        const sku = (p.sku || "").toLowerCase();
+        const code = (p.code || generateProductCode(p)).toLowerCase();
+        return title.includes(q) || category.includes(q) || sku.includes(q) || code.includes(q);
+      });
+    }
+
+    return [...result].sort((a, b) => {
+      switch (productSortOrder) {
+        case "stock_asc":
+          return Number(a.stock ?? 0) - Number(b.stock ?? 0);
+        case "stock_desc":
+          return Number(b.stock ?? 0) - Number(a.stock ?? 0);
+        case "price_asc":
+          return Number(a.price ?? 0) - Number(b.price ?? 0);
+        case "price_desc":
+          return Number(b.price ?? 0) - Number(a.price ?? 0);
+        case "title_asc":
+          return (a.title || "").localeCompare(b.title || "");
+        case "title_desc":
+          return (b.title || "").localeCompare(a.title || "");
+        case "newest":
+        default:
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+    });
+  }, [products, productSearch, productStockFilter, productCategoryFilter, productSortOrder]);
 
   const totalProductPages = Math.max(1, Math.ceil(filteredProducts.length / productPageSize));
   const validProductPage = Math.min(Math.max(1, productPage), totalProductPages);
@@ -919,6 +1009,27 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     });
   }, [filteredOrders, orderSearch]);
 
+  const sortedOrders = useMemo(() => {
+    return [...visibleOrders].sort((a, b) => {
+      switch (orderSortOrder) {
+        case "oldest":
+          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        case "amount_desc":
+          return Number(b.total_amount || 0) - Number(a.total_amount || 0);
+        case "amount_asc":
+          return Number(a.total_amount || 0) - Number(b.total_amount || 0);
+        case "items_desc": {
+          const aCount = Array.isArray(a.items) ? a.items.length : 0;
+          const bCount = Array.isArray(b.items) ? b.items.length : 0;
+          return bCount - aCount;
+        }
+        case "newest":
+        default:
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+    });
+  }, [visibleOrders, orderSortOrder]);
+
   const customerRows = useMemo(() => customerStats(users, orders), [users, orders]);
 
   // Registered customers carry a store name on the account (not on the order
@@ -954,15 +1065,31 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     );
   }, [customerSegment, customerSearch, storeNameByUserId]);
 
-  const totalOrderPages = Math.max(1, Math.ceil(visibleOrders.length / orderPageSize));
+  const sortedCustomers = useMemo(() => {
+    return [...visibleCustomers].sort((a, b) => {
+      switch (customerSortOrder) {
+        case "spent_desc":
+          return Number(b.spent || 0) - Number(a.spent || 0);
+        case "name_asc":
+          return (a.name || a.email || "").localeCompare(b.name || b.email || "");
+        case "recent":
+          return new Date(b.lastOrderAt || 0) - new Date(a.lastOrderAt || 0);
+        case "orders_desc":
+        default:
+          return (b.orders || 0) - (a.orders || 0);
+      }
+    });
+  }, [visibleCustomers, customerSortOrder]);
+
+  const totalOrderPages = Math.max(1, Math.ceil(sortedOrders.length / orderPageSize));
   const validOrderPage = Math.min(Math.max(1, orderPage), totalOrderPages);
   const orderStartIndex = (validOrderPage - 1) * orderPageSize;
-  const paginatedOrders = visibleOrders.slice(orderStartIndex, orderStartIndex + orderPageSize);
+  const paginatedOrders = sortedOrders.slice(orderStartIndex, orderStartIndex + orderPageSize);
 
-  const totalCustomerPages = Math.max(1, Math.ceil(visibleCustomers.length / customerPageSize));
+  const totalCustomerPages = Math.max(1, Math.ceil(sortedCustomers.length / customerPageSize));
   const validCustomerPage = Math.min(Math.max(1, customerPage), totalCustomerPages);
   const customerStartIndex = (validCustomerPage - 1) * customerPageSize;
-  const paginatedCustomers = visibleCustomers.slice(
+  const paginatedCustomers = sortedCustomers.slice(
     customerStartIndex,
     customerStartIndex + customerPageSize
   );
@@ -986,11 +1113,27 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     });
   }, [users, searchUser, roleFilter, statusFilter]);
 
-  const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage) || 1;
+  const sortedUsers = useMemo(() => {
+    return [...filteredUsers].sort((a, b) => {
+      switch (userSortOrder) {
+        case "name_desc":
+          return (b.full_name || "").localeCompare(a.full_name || "");
+        case "role":
+          return (a.role || "").localeCompare(b.role || "");
+        case "newest":
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        case "name_asc":
+        default:
+          return (a.full_name || "").localeCompare(b.full_name || "");
+      }
+    });
+  }, [filteredUsers, userSortOrder]);
+
+  const totalUserPages = Math.ceil(sortedUsers.length / usersPerPage) || 1;
   const paginatedUsers = useMemo(() => {
     const start = (userPage - 1) * usersPerPage;
-    return filteredUsers.slice(start, start + usersPerPage);
-  }, [filteredUsers, userPage]);
+    return sortedUsers.slice(start, start + usersPerPage);
+  }, [sortedUsers, userPage]);
 
   // Create User Account Handler
   const handleCreateUser = async (e) => {
@@ -2293,7 +2436,15 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </div>
                   <Boxes size={18} className="text-muted" />
                 </div>
-                <InventoryChart data={salesReport.inventory} />
+                <InventoryChart
+                  data={salesReport.inventory}
+                  onSelectFilter={(stockFilterKey) => {
+                    setActiveTab("products");
+                    setProductsView("list");
+                    setProductStockFilter(stockFilterKey);
+                    setProductPage(1);
+                  }}
+                />
                 <div className="chart-card-footer-action">
                   <Button
                     variant="outline"
@@ -2301,6 +2452,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     onClick={() => {
                       setActiveTab("products");
                       setProductsView("list");
+                      setProductStockFilter("all");
                     }}
                   >
                     Manage Product Catalog <ChevronRight size={14} />
@@ -2315,7 +2467,14 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   </div>
                   <ClipboardList size={18} className="text-muted" />
                 </div>
-                <OrderStatusChart data={salesReport.statuses} />
+                <OrderStatusChart
+                  data={salesReport.statuses}
+                  onSelectStatus={(statusKey) => {
+                    setActiveTab("orders");
+                    setOrdersView(statusKey);
+                    setOrderPage(1);
+                  }}
+                />
                 <div className="chart-card-footer-action">
                   <Button
                     variant="outline"
@@ -2387,6 +2546,47 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     <option value="pending">Pending</option>
                   </select>
                 </div>
+
+                {/* Sort Order */}
+                <div className="filter-select-wrapper">
+                  <ArrowUpDown size={14} className="filter-icon" />
+                  <select
+                    id="user-sort-order"
+                    aria-label="Sort users"
+                    value={userSortOrder}
+                    onChange={(e) => {
+                      setUserSortOrder(e.target.value);
+                      setUserPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="name_asc">Sort: Name (A to Z)</option>
+                    <option value="name_desc">Sort: Name (Z to A)</option>
+                    <option value="role">Sort: By Role</option>
+                    <option value="newest">Sort: Newest First</option>
+                  </select>
+                </div>
+
+                {(searchUser ||
+                  roleFilter !== "all" ||
+                  statusFilter !== "all" ||
+                  userSortOrder !== "name_asc") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchUser("");
+                      setRoleFilter("all");
+                      setStatusFilter("all");
+                      setUserSortOrder("name_asc");
+                      setUserPage(1);
+                    }}
+                    className="reset-filters-btn"
+                    title="Reset user filters"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2654,6 +2854,59 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* ================================================== */}
         {!dataUnavailable && activeTab === "products" && (
           <div className="dashboard-tab-view animate-fade-in">
+            <div className="report-pills-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setProductStockFilter("all");
+                  setProductPage(1);
+                }}
+                className={`chart-pill-btn ${productStockFilter === "all" ? "active" : ""}`}
+              >
+                All Items <span className="pill-count">{productCounts.total}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProductStockFilter("healthy");
+                  setProductPage(1);
+                }}
+                className={`chart-pill-btn ${productStockFilter === "healthy" ? "active" : ""}`}
+              >
+                Healthy Stock <span className="pill-count">{productCounts.healthy}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProductStockFilter("low");
+                  setProductPage(1);
+                }}
+                className={`chart-pill-btn ${productStockFilter === "low" ? "active" : ""}`}
+              >
+                Low Stock <span className="pill-count">{productCounts.low}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProductStockFilter("out");
+                  setProductPage(1);
+                }}
+                className={`chart-pill-btn ${productStockFilter === "out" ? "active" : ""}`}
+              >
+                Out of Stock <span className="pill-count">{productCounts.out}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProductStockFilter("featured");
+                  setProductPage(1);
+                }}
+                className={`chart-pill-btn ${productStockFilter === "featured" ? "active" : ""}`}
+              >
+                Featured <span className="pill-count">{productCounts.featured}</span>
+              </button>
+            </div>
+
             <div className="products-toolbar">
               <SearchInput
                 value={productSearch}
@@ -2661,11 +2914,94 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   setProductSearch(next);
                   setProductPage(1);
                 }}
-                placeholder="Search catalog by title, category, or SKU..."
+                placeholder="Search catalog by title, category, SKU, or code..."
                 ariaLabel="Search the product catalog"
                 clearLabel="Clear product search"
               />
-              <div className="console-toolbar-controls">
+              <div className="products-toolbar-filters">
+                <div className="filter-select-wrapper">
+                  <Filter size={14} className="filter-icon" />
+                  <select
+                    id="product-category-filter"
+                    aria-label="Filter by category"
+                    value={productCategoryFilter}
+                    onChange={(e) => {
+                      setProductCategoryFilter(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="all">All Categories ({uniqueCategories.length})</option>
+                    {uniqueCategories.map((cat) => (
+                      <option key={cat.name} value={cat.name}>
+                        {cat.name} ({cat.count})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filter-select-wrapper">
+                  <select
+                    id="product-stock-dropdown"
+                    aria-label="Filter by stock status"
+                    value={productStockFilter}
+                    onChange={(e) => {
+                      setProductStockFilter(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="all">All Stock Statuses</option>
+                    <option value="healthy">Healthy Stock (&gt;5)</option>
+                    <option value="low">Low Stock (1–5)</option>
+                    <option value="out">Out of Stock (0)</option>
+                    <option value="featured">Featured Only</option>
+                  </select>
+                </div>
+
+                <div className="filter-select-wrapper">
+                  <ArrowUpDown size={14} className="filter-icon" />
+                  <select
+                    id="product-sort-order"
+                    aria-label="Sort products"
+                    value={productSortOrder}
+                    onChange={(e) => {
+                      setProductSortOrder(e.target.value);
+                      setProductPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="newest">Sort: Newest First</option>
+                    <option value="stock_asc">Sort: Stock (Low to High)</option>
+                    <option value="stock_desc">Sort: Stock (High to Low)</option>
+                    <option value="price_asc">Sort: Price (Low to High)</option>
+                    <option value="price_desc">Sort: Price (High to Low)</option>
+                    <option value="title_asc">Sort: Title (A to Z)</option>
+                    <option value="title_desc">Sort: Title (Z to A)</option>
+                  </select>
+                </div>
+
+                {(productSearch ||
+                  productStockFilter !== "all" ||
+                  productCategoryFilter !== "all" ||
+                  productSortOrder !== "newest") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductSearch("");
+                      setProductStockFilter("all");
+                      setProductCategoryFilter("all");
+                      setProductSortOrder("newest");
+                      setProductPage(1);
+                    }}
+                    className="reset-filters-btn"
+                    title="Reset all filters"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset</span>
+                  </button>
+                )}
+
                 <div className="console-page-size">
                   <label htmlFor="product-page-size" className="text-muted font-medium">
                     Show:
@@ -3199,21 +3535,65 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="users-control-toolbar">
               <SearchInput
                 value={orderSearch}
-                onValueChange={setOrderSearch}
+                onValueChange={(val) => {
+                  setOrderSearch(val);
+                  setOrderPage(1);
+                }}
                 placeholder="Search orders by reference, customer, or item..."
                 ariaLabel="Search orders"
                 clearLabel="Clear order search"
               />
+              <div className="toolbar-filters-group">
+                <div className="filter-select-wrapper">
+                  <ArrowUpDown size={14} className="filter-icon" />
+                  <select
+                    id="order-sort-order"
+                    aria-label="Sort orders"
+                    value={orderSortOrder}
+                    onChange={(e) => {
+                      setOrderSortOrder(e.target.value);
+                      setOrderPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="newest">Sort: Newest First</option>
+                    <option value="oldest">Sort: Oldest First</option>
+                    <option value="amount_desc">Sort: Amount (High to Low)</option>
+                    <option value="amount_asc">Sort: Amount (Low to High)</option>
+                    <option value="items_desc">Sort: Items Count (High to Low)</option>
+                  </select>
+                </div>
+
+                {(orderSearch || ordersView !== "all" || orderSortOrder !== "newest") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderSearch("");
+                      setOrdersView("all");
+                      setOrderSortOrder("newest");
+                      setOrderPage(1);
+                    }}
+                    className="reset-filters-btn"
+                    title="Reset all order filters"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="users-table-card console-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{visibleOrders.length}</strong> of{" "}
-                  <strong>{filteredOrders.length}</strong> order records
-                  {visibleOrders.length > ORDER_ROW_LIMIT
-                    ? ` (first ${ORDER_ROW_LIMIT} shown — narrow the search or the stage)`
-                    : ""}
+                  Showing <strong>{sortedOrders.length}</strong> of <strong>{orders.length}</strong>{" "}
+                  order records
+                  {ordersView !== "all" && ` (${ORDER_STATUS_LABELS[ordersView] || ordersView})`}
                 </span>
+                {totalOrderPages > 1 && (
+                  <span className="text-muted text-sm">
+                    Page <strong>{validOrderPage}</strong> of <strong>{totalOrderPages}</strong>
+                  </span>
+                )}
               </div>
               <div className="table-responsive-wrapper">
                 <Table className="ui-table--cards">
@@ -3232,7 +3612,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {visibleOrders.length === 0 ? (
+                    {sortedOrders.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} data-empty className="empty-table-cell">
                           <ClipboardList size={28} className="empty-icon" />
@@ -3247,7 +3627,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       paginatedOrders.map((order, idx) => (
                         <TableRow key={order.id || idx}>
                           <TableCell data-label="Sl. No." className="table-sno">
-                            {idx + 1}
+                            {orderStartIndex + idx + 1}
                           </TableCell>
                           <TableCell className="font-mono text-primary font-bold">
                             {orderRef(order)}
@@ -3362,18 +3742,66 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
             <div className="users-control-toolbar">
               <SearchInput
                 value={customerSearch}
-                onValueChange={setCustomerSearch}
+                onValueChange={(val) => {
+                  setCustomerSearch(val);
+                  setCustomerPage(1);
+                }}
                 placeholder="Search customers by name, email, or store..."
                 ariaLabel="Search customers"
                 clearLabel="Clear customer search"
               />
+              <div className="toolbar-filters-group">
+                <div className="filter-select-wrapper">
+                  <ArrowUpDown size={14} className="filter-icon" />
+                  <select
+                    id="customer-sort-order"
+                    aria-label="Sort customers"
+                    value={customerSortOrder}
+                    onChange={(e) => {
+                      setCustomerSortOrder(e.target.value);
+                      setCustomerPage(1);
+                    }}
+                    className="filter-dropdown"
+                  >
+                    <option value="orders_desc">Sort: Most Orders First</option>
+                    <option value="spent_desc">Sort: Highest Spent First</option>
+                    <option value="name_asc">Sort: Name (A to Z)</option>
+                    <option value="recent">Sort: Most Recent Order</option>
+                  </select>
+                </div>
+
+                {(customerSearch ||
+                  customersView !== "all" ||
+                  customerSortOrder !== "orders_desc") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomerSearch("");
+                      setCustomersView("all");
+                      setCustomerSortOrder("orders_desc");
+                      setCustomerPage(1);
+                    }}
+                    className="reset-filters-btn"
+                    title="Reset all customer filters"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset</span>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="users-table-card console-table-card">
               <div className="table-card-top-info">
                 <span className="results-count">
-                  Showing <strong>{visibleCustomers.length}</strong> of{" "}
+                  Showing <strong>{sortedCustomers.length}</strong> of{" "}
                   <strong>{customerSegment.length}</strong> customers
                 </span>
+                {totalCustomerPages > 1 && (
+                  <span className="text-muted text-sm">
+                    Page <strong>{validCustomerPage}</strong> of{" "}
+                    <strong>{totalCustomerPages}</strong>
+                  </span>
+                )}
               </div>
               <div className="table-responsive-wrapper">
                 <Table className="ui-table--cards">

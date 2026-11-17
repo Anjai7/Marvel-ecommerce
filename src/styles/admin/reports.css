@@ -1329,3 +1329,108 @@
   font-weight: 700;
   color: #0f172a;
 }
+
+.inventory-legend-card.clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  position: relative;
+}
+
+.inventory-legend-card.clickable:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.inventory-legend-card.clickable:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.inventory-card-arrow {
+  margin-left: auto;
+  color: #94a3b8;
+  transition: transform 0.15s ease;
+}
+
+.inventory-legend-card.clickable:hover .inventory-card-arrow {
+  color: #2563eb;
+  transform: translateX(2px);
+}
+
+/* ── Interactive filter pills & counts ────────────────── */
+.report-pills-row .chart-pill-btn {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.report-pills-row .chart-pill-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.report-pills-row .chart-pill-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.report-pills-row .chart-pill-btn .pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.report-pills-row .chart-pill-btn.active .pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.products-toolbar-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reset-filters-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reset-filters-btn:hover {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: #fef2f2;
+}

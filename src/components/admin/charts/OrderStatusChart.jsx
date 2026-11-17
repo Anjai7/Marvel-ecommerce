@@ -20,9 +20,10 @@ const STATUS_COLORS = {
   cancelled: "#ef4444",
 };
 
-export default function OrderStatusChart({ data }) {
+export default function OrderStatusChart({ data, onSelectStatus }) {
   const chartData = ORDER_STATUSES.map((status) => ({
     name: ORDER_STATUS_LABELS[status] || status,
+    statusKey: status,
     value: Number(data?.[status]) || 0,
     color: STATUS_COLORS[status] || "#64748b",
   }));
@@ -62,9 +63,21 @@ export default function OrderStatusChart({ data }) {
               ]}
               cursor={{ fill: "rgba(0,0,0,0.04)" }}
             />
-            <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+            <Bar
+              dataKey="value"
+              radius={[6, 6, 0, 0]}
+              onClick={(entry) => {
+                if (entry?.statusKey && onSelectStatus) {
+                  onSelectStatus(entry.statusKey);
+                }
+              }}
+            >
               {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color}
+                  cursor={onSelectStatus ? "pointer" : "default"}
+                />
               ))}
             </Bar>
           </BarChart>

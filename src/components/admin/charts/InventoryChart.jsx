@@ -1,10 +1,11 @@
 import React from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
+import { ChevronRight } from "lucide-react";
 import { LOW_STOCK_THRESHOLD } from "../adminConstants";
 import { STOCK_COLORS } from "./chartTheme";
 import { formatCurrency } from "../../../lib/currency";
 
-export default function InventoryChart({ data }) {
+export default function InventoryChart({ data, onSelectFilter }) {
   if (!data) {
     return (
       <div className="chart-empty">
@@ -20,13 +21,24 @@ export default function InventoryChart({ data }) {
   const healthRate = totalItems > 0 ? Math.round((healthyStock / totalItems) * 100) : 100;
 
   const rawData = [
-    { name: "Healthy Stock (>5)", value: healthyStock, color: STOCK_COLORS.inStock },
+    {
+      name: "Healthy Stock (>5)",
+      value: healthyStock,
+      color: STOCK_COLORS.inStock,
+      filterKey: "healthy",
+    },
     {
       name: `Low Stock (1-${LOW_STOCK_THRESHOLD})`,
       value: lowStock,
       color: STOCK_COLORS.lowStock,
+      filterKey: "low",
     },
-    { name: "Out of Stock (0)", value: outOfStock, color: STOCK_COLORS.outOfStock },
+    {
+      name: "Out of Stock (0)",
+      value: outOfStock,
+      color: STOCK_COLORS.outOfStock,
+      filterKey: "out",
+    },
   ];
 
   const chartData = rawData.filter((item) => item.value > 0);
@@ -64,9 +76,18 @@ export default function InventoryChart({ data }) {
                 paddingAngle={3}
                 dataKey="value"
                 isAnimationActive={false}
+                onClick={(entry) => {
+                  if (entry?.filterKey && onSelectFilter) {
+                    onSelectFilter(entry.filterKey);
+                  }
+                }}
               >
                 {displayData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    cursor={entry.filterKey && onSelectFilter ? "pointer" : "default"}
+                  />
                 ))}
               </Pie>
             </PieChart>
@@ -78,26 +99,67 @@ export default function InventoryChart({ data }) {
         </div>
 
         <div className="inventory-legend-cards">
-          <div className="inventory-legend-card healthy">
+          <div
+            className={`inventory-legend-card healthy ${onSelectFilter ? "clickable" : ""}`}
+            role={onSelectFilter ? "button" : undefined}
+            tabIndex={onSelectFilter ? 0 : undefined}
+            onClick={() => onSelectFilter?.("healthy")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectFilter?.("healthy");
+              }
+            }}
+            title={onSelectFilter ? "Filter catalog by Healthy Stock" : undefined}
+          >
             <div className="inventory-legend-dot healthy" />
             <div className="inventory-legend-info">
               <span className="inventory-legend-title">Healthy Stock (&gt;5)</span>
               <strong className="inventory-legend-num">{healthyStock} items</strong>
             </div>
+            {onSelectFilter && <ChevronRight size={14} className="inventory-card-arrow" />}
           </div>
-          <div className="inventory-legend-card low">
+
+          <div
+            className={`inventory-legend-card low ${onSelectFilter ? "clickable" : ""}`}
+            role={onSelectFilter ? "button" : undefined}
+            tabIndex={onSelectFilter ? 0 : undefined}
+            onClick={() => onSelectFilter?.("low")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectFilter?.("low");
+              }
+            }}
+            title={onSelectFilter ? "Filter catalog by Low Stock" : undefined}
+          >
             <div className="inventory-legend-dot low" />
             <div className="inventory-legend-info">
               <span className="inventory-legend-title">Low Stock (1-{LOW_STOCK_THRESHOLD})</span>
               <strong className="inventory-legend-num">{lowStock} items</strong>
             </div>
+            {onSelectFilter && <ChevronRight size={14} className="inventory-card-arrow" />}
           </div>
-          <div className="inventory-legend-card out">
+
+          <div
+            className={`inventory-legend-card out ${onSelectFilter ? "clickable" : ""}`}
+            role={onSelectFilter ? "button" : undefined}
+            tabIndex={onSelectFilter ? 0 : undefined}
+            onClick={() => onSelectFilter?.("out")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onSelectFilter?.("out");
+              }
+            }}
+            title={onSelectFilter ? "Filter catalog by Out of Stock" : undefined}
+          >
             <div className="inventory-legend-dot out" />
             <div className="inventory-legend-info">
               <span className="inventory-legend-title">Out of Stock (0)</span>
               <strong className="inventory-legend-num">{outOfStock} items</strong>
             </div>
+            {onSelectFilter && <ChevronRight size={14} className="inventory-card-arrow" />}
           </div>
         </div>
       </div>

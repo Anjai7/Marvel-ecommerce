@@ -666,4 +666,65 @@ describe("UnifiedAdminConsole", () => {
     expect(liveStoreLink).toHaveAttribute("target", "_blank");
     expect(liveStoreLink).toHaveClass("navbar-live-store-btn");
   });
+
+  it("filters product catalog by quick status pills and category dropdown", async () => {
+    const user = userEvent.setup();
+    apiFetchProducts.mockResolvedValueOnce([
+      { id: "p1", title: "Wireless Headphones", category: "Electronics", price: 2999, stock: 10 },
+      { id: "p2", title: "Smart Watch", category: "Electronics", price: 4999, stock: 3 },
+      { id: "p3", title: "Running Shoes", category: "Footwear", price: 1999, stock: 0 },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
+
+    expect(await screen.findByText("Wireless Headphones")).toBeInTheDocument();
+    expect(screen.getByText("Smart Watch")).toBeInTheDocument();
+    expect(screen.getByText("Running Shoes")).toBeInTheDocument();
+
+    // Click Low Stock pill
+    const lowStockPill = screen.getByRole("button", { name: /Low Stock 1/i });
+    await user.click(lowStockPill);
+
+    expect(screen.getByText("Smart Watch")).toBeInTheDocument();
+    expect(screen.queryByText("Wireless Headphones")).toBeNull();
+    expect(screen.queryByText("Running Shoes")).toBeNull();
+
+    // Click Out of Stock pill
+    const outStockPill = screen.getByRole("button", { name: /Out of Stock 1/i });
+    await user.click(outStockPill);
+
+    expect(screen.getByText("Running Shoes")).toBeInTheDocument();
+    expect(screen.queryByText("Smart Watch")).toBeNull();
+
+    // Reset filters
+    const resetBtn = screen.getByRole("button", { name: /Reset/i });
+    await user.click(resetBtn);
+
+    expect(screen.getByText("Wireless Headphones")).toBeInTheDocument();
+    expect(screen.getByText("Smart Watch")).toBeInTheDocument();
+    expect(screen.getByText("Running Shoes")).toBeInTheDocument();
+  });
+
+  it("navigates to product catalog pre-filtered when inventory chart card is clicked", async () => {
+    const user = userEvent.setup();
+    apiFetchProducts.mockResolvedValueOnce([
+      { id: "p1", title: "Camera Lens", category: "Electronics", price: 15000, stock: 20 },
+      { id: "p2", title: "USB Cable", category: "Electronics", price: 299, stock: 2 },
+    ]);
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    const salesReportBtn = within(nav).getByRole("button", { name: "Sales Report" });
+    await user.click(salesReportBtn);
+
+    // On Sales Report, find and click the Low Stock inventory card
+    const lowStockCard = await screen.findByRole("button", { name: /Low Stock/i });
+    await user.click(lowStockCard);
+
+    // Should now be in Product Catalog filtered to Low Stock
+    expect(await screen.findByText("USB Cable")).toBeInTheDocument();
+    expect(screen.queryByText("Camera Lens")).toBeNull();
+  });
 });
