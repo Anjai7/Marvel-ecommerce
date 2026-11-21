@@ -270,58 +270,6 @@
   margin: 4px 0 0 0;
 }
 
-.customer-tracker__steps {
-  background: var(--gray-50);
-  padding: 18px 16px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-}
-
-.customer-tracker__steps-row {
-  display: flex;
-  justify-content: space-between;
-  position: relative;
-  margin-bottom: 8px;
-}
-
-.customer-tracker__step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-  text-align: center;
-  z-index: 1;
-}
-
-.customer-tracker__step-dot {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--gray-300);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.customer-tracker__step-dot--done {
-  background: var(--navy);
-}
-
-.customer-tracker__step-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--gray-400);
-}
-
-.customer-tracker__step-label--done {
-  font-weight: 700;
-  color: var(--gray-900);
-}
-
 .customer-tracker__details {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
@@ -383,6 +331,11 @@
 .customer-tracker__actions {
   display: flex;
   gap: 10px;
+}
+
+/* The return request sits below the tracker's actions. */
+.customer-tracker__return {
+  margin-top: 16px;
 }
 
 /* ── Wishlist ──────────────────────────────────────────── */
@@ -548,4 +501,320 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--gray-600);
+}
+
+/* ── Lifecycle timeline ────────────────────────────────── */
+.customer-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 20px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.customer-timeline__step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 2px;
+}
+
+/* A step's mark: a filled circle when reached, the step number when not. */
+.customer-timeline__step-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 50%;
+  border: 2px solid var(--gray-300);
+  background: var(--white);
+  color: var(--gray-400);
+}
+
+.customer-timeline__step-mark > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.customer-timeline__step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.customer-timeline__step--done .customer-timeline__step-mark {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--white);
+}
+
+.customer-timeline__step-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-400);
+}
+
+.customer-timeline__step--done .customer-timeline__step-name,
+.customer-timeline__step--current .customer-timeline__step-name {
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+/* The Placed step is the only one with a date: created_at, when there is one. */
+.customer-timeline__step-date {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* The Shipped step carries the carrier and the tracking number when reached. */
+.customer-timeline__step-detail {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+/* A cancelled order shows one state instead of the steps. */
+.customer-timeline--cancelled .customer-timeline__step {
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+  color: var(--gray-500);
+}
+
+.customer-timeline--cancelled .customer-timeline__step-mark {
+  border-color: var(--gray-400);
+  background: var(--white);
+  color: var(--gray-400);
+}
+
+/* The tracking number: a link to the carrier's page when we know the carrier,
+ * the number alone with a note when we don't. */
+.customer-tracker__track-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.customer-tracker__track-note {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* ── Return request ───────────────────────────────────── */
+.customer-return {
+  margin-top: 16px;
+}
+
+.customer-return__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.customer-return__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.customer-return__field-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--gray-600);
+}
+
+.customer-return__select,
+.customer-return__notes {
+  padding: 10px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--gray-900);
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+.customer-return__select:focus,
+.customer-return__notes:focus {
+  outline: none;
+  border-color: var(--navy);
+  box-shadow: var(--ring);
+}
+
+.customer-return__notes {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.customer-return__error {
+  margin: 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.customer-return__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.customer-return__confirmed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.customer-return__detail {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+/* ── Invoice (printable) ──────────────────────────────── */
+.customer-invoice-panel {
+  margin: 20px auto 0;
+  max-width: 880px;
+}
+
+.customer-invoice-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.customer-invoice {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  color: var(--gray-800);
+}
+
+.customer-invoice__header {
+  margin-bottom: 18px;
+}
+
+.customer-invoice__brand {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+
+.customer-invoice__title {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--gray-900);
+}
+
+.customer-invoice__meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.customer-invoice__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px 20px;
+  margin-bottom: 18px;
+}
+
+.customer-invoice__detail {
+  display: grid;
+  gap: 3px;
+}
+
+.customer-invoice__detail dt {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--gray-500);
+}
+
+.customer-invoice__detail dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gray-900);
+  white-space: pre-wrap;
+}
+
+.customer-invoice__detail-name {
+  font-weight: 700;
+}
+
+.customer-invoice__items {
+  margin-bottom: 18px;
+}
+
+.customer-invoice__sku {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-top: 2px;
+}
+
+.customer-invoice__totals {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.customer-invoice__total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.customer-invoice__total--grand {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.customer-invoice__total--grand dt,
+.customer-invoice__total--grand dd {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--navy);
+}
+
+/* ── The invoice when printed ─────────────────────────── */
+@media print {
+  body {
+    background: var(--white);
+  }
+
+  .customer-invoice-panel {
+    margin-top: 0;
+  }
+
+  .customer-invoice-actions {
+    display: none;
+  }
+
+  .customer-invoice {
+    border: none;
+    padding: 0;
+    box-shadow: none;
+    width: 100%;
+  }
 }

@@ -51,6 +51,30 @@ router.get("/", async (req, res) => {
 });
 
 // POST /api/orders (Place new customer order)
+// GET /api/orders/:id — the order the checkout just created. The confirmation
+// screen needs one order, not the whole list.
+router.get("/:id", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("id", req.params.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Supabase order read error:", error.message);
+      return res.status(500).json({ error: "Failed to fetch the order." });
+    }
+    if (!data) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+
+    res.json(formatOrder(data));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/", async (req, res) => {
   try {
     const { userId, customerName, customerEmail, vendorId, items, totalAmount, shippingAddress } =
@@ -115,6 +139,79 @@ router.patch("/:id/status", async (req, res) => {
     res.json({ message: "Order status updated in database", order: formatOrder(data) });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+/* -------------------------------------------------------------------------- */
+/* Return requests (customer-side, after delivery)                            */
+/* -------------------------------------------------------------------------- */
+
+const RETURN_REASONS = ["damaged", "wrong_item", "changed_mind", "other"];
+const RETURN_ERROR = "Could not save the return request.";
+
+/** The caller's id, or null when the token carries no usable id. */
+function callerId(req) {
+  const id = req.user?.id;
+  return typeof id === "string" && id.trim() !== "" ? id : null;
+}
+
+function unauthorized(res) {
+  return res.status(401).json({ error: "Authentication required." });
+}
+
+/**
+ * POST /api/orders/:id/return — `{ reason, notes }`.
+ *
+ * The order must belong to the caller: a request for someone else's order is
+ * refused, not silently stored. The request itself is stored in the
+ * `returns` table (docs/sql/apply-05-returns.sql).
+ */
+router.post("/:id/return", verifyToken, async (req, res) => {
+  const userId = callerId(req);
+  if (!userId) return unauthorized(res);
+
+  const orderId = typeof req.params.id === "string" ? req.params.id.trim() : "";
+  if (!orderId) {
+    return res.status(400).json({ error: "Order id is required." });
+  }
+
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+  if (!RETURN_REASONS.includes(reason)) {
+    return res.status(400).json({ error: "A valid return reason is required." });
+  }
+  const notes = typeof req.body?.notes === "string" ? req.body.notes : "";
+
+  try {
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", orderId)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (orderError) {
+      console.error("Supabase return-order lookup error:", orderError.message);
+      return res.status(500).json({ error: RETURN_ERROR });
+    }
+    if (!order) {
+      return res.status(404).json({ error: "Order not found." });
+    }
+
+    const { data: created, error: insertError } = await supabase
+      .from("returns")
+      .insert([{ order_id: orderId, user_id: userId, reason, notes }])
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Supabase return insert error:", insertError.message);
+      return res.status(500).json({ error: RETURN_ERROR });
+    }
+
+    res.status(201).json({ return: created });
+  } catch (err) {
+    console.error("Returns POST route error:", err);
+    res.status(500).json({ error: RETURN_ERROR });
   }
 });
 

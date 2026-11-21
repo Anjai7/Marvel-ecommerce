@@ -2670,6 +2670,134 @@
   color: var(--navy);
 }
 
+/* ─── Write-a-review form ─────────────────────────────────────── */
+.cr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 24px;
+}
+.cr-form-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+.cr-form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cr-rating-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.cr-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  padding: 0;
+}
+.cr-optional {
+  font-weight: 500;
+  color: #64748b;
+}
+.cr-field-error {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+.cr-rating-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cr-rating-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.cr-rating-option:hover {
+  border-color: var(--navy);
+  color: var(--navy);
+}
+.cr-rating-option.is-selected {
+  border-color: var(--navy);
+  background: var(--navy-bg);
+  color: var(--navy);
+}
+.cr-rating-option:focus-within {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+/* The native radio stays in the tab order and carries the label; only its
+   default paint is removed. */
+.cr-rating-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.cr-textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 10px 14px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--gray-800);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  resize: vertical;
+  transition: var(--transition);
+}
+.cr-textarea:focus {
+  outline: none;
+  border-color: var(--navy-light);
+  box-shadow: 0 0 0 3px rgba(37, 99, 168, 0.15);
+}
+.cr-textarea[aria-invalid="true"] {
+  border-color: #ef4444;
+}
+.cr-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
 /* ─── Responsive Breakpoints for Product View Page ────────────── */
 @media (max-width: 1080px) {
   .pvp-product-grid {
@@ -2759,4 +2887,108 @@
     "Open Sans",
     "Helvetica Neue",
     sans-serif;
+}
+
+/* ── Stock, per option and at the call to action ────────────────── */
+/* The shop publishes a stock count for each sellable combination. A card
+   shows it on the option itself, so the customer does not have to pick a
+   losing combination to learn it is gone. */
+.pd-option-pill {
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 58px;
+}
+
+.pd-option-pill small {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pd-option-pill.active small {
+  color: var(--navy);
+}
+
+.pd-low-stock {
+  color: #b45309 !important;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.pd-out-of-stock {
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.pd-cta-cart:disabled,
+.pd-cta-buynow:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pd-notify {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.pd-notify-form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+}
+
+.pd-notify-row {
+  display: flex;
+  gap: 8px;
+}
+
+.pd-notify-row input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 8px;
+  font-size: 13px;
+  background: #ffffff;
+}
+
+.pd-notify-row button {
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--navy);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pd-notify-form > small {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
+.pd-notify-done {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16a34a;
 }

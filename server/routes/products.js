@@ -5,6 +5,8 @@ import { OPTION_KINDS, isOptionKind } from "../lib/productOptions.js";
 import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
 import { CATALOGUE_TTL_MS, cached, clearCache } from "../lib/shortCache.js";
 import { generateProductCode } from "../lib/productCode.js";
+import { recordAudit } from "../lib/audit.js";
+import { adminGuards } from "../lib/guards.js";
 
 const router = express.Router();
 
@@ -817,6 +819,10 @@ router.post("/", async (req, res) => {
     // The catalogue changed: the next read must see it.
     clearCache();
 
+    // The write is audited after it landed; the helper swallows a missing
+    // audit table so a save is never lost to an undelivered log line.
+    await recordAudit("product.create", "product", data.id, { title: newProductRecord.title });
+
     res.status(201).json({ message: "Product created in Supabase", product: formatProduct(data) });
   } catch (err) {
     console.error("Products POST route error:", err);
@@ -913,10 +919,150 @@ router.put("/:id", async (req, res) => {
     // The catalogue changed: the next read must see it.
     clearCache();
 
+    await recordAudit("product.update", "product", id, { title: updates.title });
+
     res.json({ message: "Product updated in database", product: formatProduct(data) });
   } catch (err) {
     console.error("Products PUT route error:", err);
     res.status(500).json({ error: "Failed to save product." });
+  }
+});
+
+// PATCH /api/products/stock — bulk stock adjustment. Admin only.
+//
+// The body is the array of `{ id, stock }` rows to write: the console sends
+// the same adjustment to many products when the admin fixes a whole batch of
+// low-stock SKUs at once.
+router.patch("/stock", ...adminGuards, async (req, res) => {
+  try {
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const adjustments = Array.isArray(body)
+      ? body
+      : Array.isArray(body.adjustments)
+        ? body.adjustments
+        : null;
+
+    if (!Array.isArray(adjustments) || adjustments.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Body must carry a non-empty array of { id, stock } adjustments." });
+    }
+
+    const cleaned = [];
+    for (const entry of adjustments) {
+      const id = entry && typeof entry.id === "string" ? entry.id.trim() : "";
+      const stock = readInteger(entry && entry.stock);
+      if (!id || stock === null || stock < 0) {
+        return res
+          .status(400)
+          .json({ error: "Every adjustment needs a product id and a stock integer of 0 or more." });
+      }
+      cleaned.push({ id, stock });
+    }
+
+    const results = [];
+    for (const adjustment of cleaned) {
+      const { data, error: readError } = await supabase
+        .from("products")
+        .select("id, stock, title, sku, category, price")
+        .eq("id", adjustment.id)
+        .maybeSingle();
+
+      if (readError) {
+        console.error("Supabase stock read error:", readError.message);
+        return res.status(500).json({ error: "Could not read the product stock." });
+      }
+      if (!data) {
+        return res.status(404).json({ error: "Product not found." });
+      }
+
+      const oldStock = parseInt(data.stock, 10) || 0;
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({ stock: adjustment.stock })
+        .eq("id", adjustment.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Supabase stock update error:", updateError.message);
+        return res.status(500).json({ error: "Could not update the product stock." });
+      }
+
+      results.push({ id: adjustment.id, old_stock: oldStock, new_stock: adjustment.stock });
+
+      await recordAudit("stock_adjustment", "product", adjustment.id, {
+        old_stock: oldStock,
+        new_stock: adjustment.stock,
+        bulk: true,
+      });
+    }
+
+    // The catalogue changed: the next read must see it.
+    clearCache();
+
+    res.json({ message: "Stock adjustments applied.", results });
+  } catch (err) {
+    console.error("Products bulk stock route error:", err);
+    res.status(500).json({ error: "Failed to save the stock adjustments." });
+  }
+});
+
+// PATCH /api/products/:id/stock — set one product's stock. Admin only.
+//
+// The body is `{ stock: <integer >= 0>, reason?: <string> }`. The stock is
+// the absolute value on hand after the write; the reason is the operator's own
+// note, kept beside the before/after numbers in the audit log.
+router.patch("/:id/stock", ...adminGuards, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const stock = readInteger(body.stock);
+
+    if (stock === null || stock < 0) {
+      return res.status(400).json({ error: "Stock must be an integer of 0 or more." });
+    }
+
+    const { data, error: readError } = await supabase
+      .from("products")
+      .select("id, stock, title, sku, category, price")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (readError) {
+      console.error("Supabase stock read error:", readError.message);
+      return res.status(500).json({ error: "Could not read the product stock." });
+    }
+    if (!data) {
+      return res.status(404).json({ error: "Product not found." });
+    }
+
+    const oldStock = parseInt(data.stock, 10) || 0;
+    const { data: updated, error: updateError } = await supabase
+      .from("products")
+      .update({ stock })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Supabase stock update error:", updateError.message);
+      return res.status(500).json({ error: "Could not update the product stock." });
+    }
+
+    // The catalogue changed: the next read must see it.
+    clearCache();
+
+    await recordAudit("stock_adjustment", "product", id, {
+      old_stock: oldStock,
+      new_stock: stock,
+      reason: typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null,
+    });
+
+    res.json({ message: "Stock updated.", product: formatProduct(updated) });
+  } catch (err) {
+    console.error("Products stock route error:", err);
+    res.status(500).json({ error: "Failed to save the stock." });
   }
 });
 
@@ -965,6 +1111,8 @@ router.delete("/:id", async (req, res) => {
 
     // The catalogue changed: the next read must see it.
     clearCache();
+
+    await recordAudit("product.delete", "product", id, { deleted_id: id });
 
     res.json({ message: "Product deleted from database successfully" });
   } catch (err) {

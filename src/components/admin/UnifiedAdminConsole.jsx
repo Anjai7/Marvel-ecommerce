@@ -84,6 +84,8 @@ import {
   apiUpdateOrderStatus,
   apiUploadImage,
   apiFetchProductDetails,
+  apiUpdateProductStock,
+  apiUpdateProductStockBulk,
 } from "../../api/backendApi";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -127,6 +129,10 @@ import HeroSlidesEditor from "./HeroSlidesEditor";
 import CategoriesTreeEditor from "./CategoriesTreeEditor";
 import BannersEditor from "./BannersEditor";
 import FooterEditor from "./FooterEditor";
+import InventoryTools from "./InventoryTools";
+import AuditLog from "./AuditLog";
+import OpsReports from "./OpsReports";
+import CouponsManager from "./CouponsManager";
 import { CreateUserForm, ViewUserPanel, EditUserForm, ResetPasswordForm } from "./forms";
 import AdminConfirmStrip from "./AdminConfirmStrip";
 import AdminInlinePanel from "./AdminInlinePanel";
@@ -305,7 +311,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   // at most one section is open, and the open section follows the active tab.
   const [expandedMenus, setExpandedMenus] = useState({ dashboard: true });
   const [dashboardView, setDashboardView] = useState("overview"); // "overview" | "sales"
-  const [productsView, setProductsView] = useState("list"); // "list" | "add"
+  const [productsView, setProductsView] = useState("list"); // "list" | "add" | "inventory"
   const [ordersView, setOrdersView] = useState("all"); // "all" | order status
   const [orderSearch, setOrderSearch] = useState("");
   const [orderPage, setOrderPage] = useState(1);
@@ -324,6 +330,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [productStockFilter, setProductStockFilter] = useState("all"); // "all" | "healthy" | "low" | "out" | "featured"
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
   const [productSortOrder, setProductSortOrder] = useState("newest"); // "newest" | "stock_asc" | "stock_desc" | "price_asc" | "price_desc" | "title_asc" | "title_desc"
+  const [inventoryThreshold, setInventoryThreshold] = useState(LOW_STOCK_THRESHOLD); // low-stock cutoff the Inventory sub-tab works from
   const [orderSortOrder, setOrderSortOrder] = useState("newest"); // "newest" | "oldest" | "amount_desc" | "amount_asc" | "items_desc"
   const [customerSortOrder, setCustomerSortOrder] = useState("orders_desc"); // "orders_desc" | "spent_desc" | "name_asc" | "recent"
   const [userSortOrder, setUserSortOrder] = useState("name_asc"); // "name_asc" | "name_desc" | "role" | "newest"
@@ -770,6 +777,33 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     } catch (err) {
       addToast({ title: "Update Failed", message: err.message, type: "error" });
     }
+  };
+
+  // ----------------------------------------------------
+  // INVENTORY ADJUSTMENTS (Admin)
+  // ----------------------------------------------------
+  const handleAdjustStock = async (id, { stock, reason } = {}) => {
+    const updated = await apiUpdateProductStock(id, { stock, reason });
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    addToast({
+      title: "Stock Updated",
+      message: `Stock set to ${stock} units${reason ? ` — ${reason}` : ""}.`,
+      type: "success",
+    });
+    return updated;
+  };
+
+  const handleBulkAdjustStock = async (adjustments) => {
+    const result = await apiUpdateProductStockBulk(adjustments);
+    const updates = new Map((result?.results ?? []).map((row) => [row.id, row.new_stock]));
+    setProducts((prev) =>
+      prev.map((p) => (updates.has(p.id) ? { ...p, stock: updates.get(p.id) } : p))
+    );
+    addToast({
+      title: "Stock Adjusted",
+      message: `${adjustments.length} product${adjustments.length === 1 ? "" : "s"} updated.`,
+      type: "success",
+    });
   };
 
   // ----------------------------------------------------
@@ -1703,6 +1737,20 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 <span className="sidebar-submenu-count">{products.length}</span>
               </button>
               <button
+                id="admin-tab-products-inventory"
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setActiveTab("products");
+                    setProductsView("inventory");
+                    setProductPage(1);
+                  })
+                }
+                className={`sidebar-submenu-btn ${activeTab === "products" && productsView === "inventory" ? "active" : ""}`}
+              >
+                <Boxes size={14} />
+                <span>Inventory</span>
+              </button>
+              <button
                 id="admin-tab-products-add"
                 onClick={() =>
                   handleNavSelect(() => {
@@ -2091,6 +2139,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                 </div>
               </div>
             </div>
+
+            {/* STORE ANALYTICS — derived from the orders/products/users the console already loads */}
+            <OpsReports orders={orders} products={products} users={users} />
 
             {/* DYNAMIC CHARTS & ANALYTICS SECTION */}
             <div className="dashboard-charts-grid">
@@ -2850,9 +2901,24 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         )}
 
         {/* ================================================== */}
+        {/* TAB 2.5: PRODUCT INVENTORY (stock watchlist + writes)  */}
+        {/* ================================================== */}
+        {!dataUnavailable && activeTab === "products" && productsView === "inventory" && (
+          <div className="dashboard-tab-view animate-fade-in">
+            <InventoryTools
+              products={products}
+              threshold={inventoryThreshold}
+              onThresholdChange={setInventoryThreshold}
+              onAdjustStock={handleAdjustStock}
+              onBulkAdjustStock={handleBulkAdjustStock}
+            />
+          </div>
+        )}
+
+        {/* ================================================== */}
         {/* TAB 3: PRODUCT CATALOG (list, add, edit, feature)  */}
         {/* ================================================== */}
-        {!dataUnavailable && activeTab === "products" && (
+        {!dataUnavailable && activeTab === "products" && productsView !== "inventory" && (
           <div className="dashboard-tab-view animate-fade-in">
             <div className="report-pills-row">
               <button
@@ -3932,8 +3998,16 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
 
-        {/* TAB 12: SETTINGS — the store's own configuration */}
-        {activeTab === "settings" && <SettingsEditor />}
+        {/* TAB 12: SETTINGS — the store's own configuration + ops sections */}
+        {activeTab === "settings" && (
+          <>
+            {/* The admin writes that matter, newest first. */}
+            <AuditLog />
+            {/* The coupon catalogue the admin manages; checkout reads via validate/redeem. */}
+            <CouponsManager />
+            <SettingsEditor />
+          </>
+        )}
       </main>
     </div>
   );

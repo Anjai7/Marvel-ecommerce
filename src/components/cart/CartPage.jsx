@@ -15,17 +15,15 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { Button, Badge, useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
 import { formatOptionChoices } from "../../lib/productOptions";
-import { apiCreateOrder } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
 
 const FALLBACK_BANNER_IMG =
   "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=300&fit=crop";
 
-export function CartPage({ onNavigateHome, onCheckout, onNavigateAccount }) {
+export function CartPage({ onNavigateHome, onCheckout }) {
   const { items, cartCount, subtotal, savings, total, removeItem, updateQuantity, clearCart } =
     useCart();
   const { addToast } = useToast();
-  const [checkingOut, setCheckingOut] = useState(false);
 
   let auth = null;
   try {
@@ -40,18 +38,20 @@ export function CartPage({ onNavigateHome, onCheckout, onNavigateAccount }) {
   const bannerImg =
     items && items.length > 0 && items[0]?.image ? items[0].image : FALLBACK_BANNER_IMG;
 
-  const handleCheckout = async () => {
+  /**
+   * The cart no longer places the order itself. It hands over to the
+   * checkout page, which collects an address, applies a coupon and shows
+   * the total before writing the order.
+   */
+  const handleCheckout = () => {
     if (!isLoggedIn) {
       addToast({
         title: "Sign In Required",
         message: "Please sign in to complete your checkout and track your order.",
         type: "info",
       });
-      if (onCheckout) {
-        onCheckout();
-      } else {
-        navigateToPath("/login");
-      }
+      if (onCheckout) onCheckout();
+      else navigateToPath("/login");
       return;
     }
 
@@ -64,47 +64,8 @@ export function CartPage({ onNavigateHome, onCheckout, onNavigateAccount }) {
       return;
     }
 
-    setCheckingOut(true);
-    try {
-      const orderPayload = {
-        userId: user?.id || null,
-        customerName: user?.full_name || user?.name || user?.email?.split("@")[0] || "Customer",
-        customerEmail: user?.email || "customer@marvel.com",
-        vendorId: items[0]?.vendor_id || null,
-        items: items.map((item) => ({
-          id: item.id,
-          title: item.title,
-          price: item.price,
-          quantity: item.quantity,
-          image: item.image,
-          sku: item.sku,
-          options: item.options,
-        })),
-        totalAmount: total,
-        shippingAddress: user?.address || "742 Evergreen Terrace, Springfield, OR",
-      };
-
-      const placed = await apiCreateOrder(orderPayload);
-      clearCart();
-      addToast({
-        title: "Order Placed Successfully!",
-        message: `Your order #${placed?.id ? String(placed.id).slice(-8).toUpperCase() : ""} has been confirmed!`,
-        type: "success",
-      });
-      if (onNavigateAccount) {
-        onNavigateAccount();
-      } else {
-        navigateToPath("/account");
-      }
-    } catch (err) {
-      addToast({
-        title: "Checkout Error",
-        message: err?.message || "Failed to place order. Please try again.",
-        type: "error",
-      });
-    } finally {
-      setCheckingOut(false);
-    }
+    if (onCheckout) onCheckout();
+    else navigateToPath("/checkout");
   };
 
   return (
@@ -228,19 +189,8 @@ export function CartPage({ onNavigateHome, onCheckout, onNavigateAccount }) {
             )}
 
             <div className="cart-summary-actions">
-              <Button
-                variant="accent"
-                className="cart-checkout-btn"
-                disabled={checkingOut}
-                onClick={handleCheckout}
-              >
-                {checkingOut ? (
-                  "Placing Order..."
-                ) : (
-                  <>
-                    <Lock size={15} /> Proceed to Checkout
-                  </>
-                )}
+              <Button variant="accent" className="cart-checkout-btn" onClick={handleCheckout}>
+                <Lock size={15} /> Proceed to Checkout
               </Button>
               <Button variant="secondary" onClick={onNavigateHome}>
                 Continue Shopping

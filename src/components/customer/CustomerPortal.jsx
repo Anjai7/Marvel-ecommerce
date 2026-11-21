@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  Package,
-  Heart,
-  User,
-  MapPin,
-  CheckCircle2,
-  Truck,
-  ChevronRight,
-  ArrowLeft,
-} from "lucide-react";
+import { Package, Heart, User, MapPin, Truck, ChevronRight, ArrowLeft } from "lucide-react";
 import {
   Button,
   Table,
@@ -21,17 +12,24 @@ import {
 } from "../ui";
 import CustomerWishlistTab from "./CustomerWishlistTab";
 import CustomerProfileTab from "./CustomerProfileTab";
+import OrderTimeline from "./OrderTimeline";
+import OrderInvoice from "./OrderInvoice";
+import ReturnRequest from "./ReturnRequest";
 import { apiFetchOrders } from "../../api/backendApi";
 import { apiFetchWishlist, apiAddToWishlist, apiRemoveFromWishlist } from "../../api/wishlistApi";
 import { useCart } from "../../context/CartContext";
 import { formatCurrency } from "../../lib/currency";
 import { formatOptionChoices } from "../../lib/productOptions";
+import { carrierTrackingUrl } from "../../lib/trackingUrls";
 
 export default function CustomerPortal({ currentUser, onNavigateHome, onSelectProduct }) {
   const [activeTab, setActiveTab] = useState("orders"); // orders, wishlist, profile
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  // The order whose invoice is open, if any: deriving visibility from the
+  // selection means a new selection closes the panel on its own.
+  const [openInvoiceFor, setOpenInvoiceFor] = useState(null);
   const { addToast } = useToast();
   const { addItem } = useCart();
 
@@ -84,19 +82,6 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
       console.error(e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusStep = (status) => {
-    switch (status) {
-      case "processing":
-        return 1;
-      case "shipped":
-        return 2;
-      case "delivered":
-        return 3;
-      default:
-        return 0;
     }
   };
 
@@ -154,6 +139,12 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
       });
     }
   };
+
+  // The carrier's tracking page when we know the carrier and number; null
+  // otherwise — never an invented link.
+  const trackingUrl = selectedOrder
+    ? carrierTrackingUrl(selectedOrder.carrier, selectedOrder.tracking_number)
+    : null;
 
   // A row without its joined product cannot be rendered honestly; the empty
   // state describes the visible list rather than a blank grid.
@@ -358,33 +349,8 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                   {getStatusBadge(selectedOrder.status)}
                 </div>
 
-                {/* Progress Step Bar */}
-                <div className="customer-tracker__steps">
-                  <div className="customer-tracker__steps-row">
-                    {["Order Confirmed", "Processing", "Shipped", "Delivered"].map((step, idx) => {
-                      const currentStep = getStatusStep(selectedOrder.status);
-                      const isComplete = idx <= currentStep;
-                      return (
-                        <div key={step} className="customer-tracker__step">
-                          <div
-                            className={`customer-tracker__step-dot${
-                              isComplete ? " customer-tracker__step-dot--done" : ""
-                            }`}
-                          >
-                            {isComplete ? <CheckCircle2 size={16} /> : idx + 1}
-                          </div>
-                          <span
-                            className={`customer-tracker__step-label${
-                              isComplete ? " customer-tracker__step-label--done" : ""
-                            }`}
-                          >
-                            {step}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                {/* Lifecycle timeline: Placed → Packed → Shipped → Delivered */}
+                <OrderTimeline order={selectedOrder} />
 
                 {/* Courier & Tracking Details */}
                 <div className="customer-tracker__details">
@@ -399,7 +365,21 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                   <div className="customer-tracker__detail">
                     <div className="customer-tracker__detail-label">Tracking Number</div>
                     <div className="customer-tracker__detail-value customer-tracker__detail-value--accent">
-                      {selectedOrder.tracking_number || "TRK-9849201"}
+                      {selectedOrder.tracking_number || "Not provided yet"}
+                      {trackingUrl ? (
+                        <a
+                          className="customer-tracker__track-link"
+                          href={trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Track
+                        </a>
+                      ) : (
+                        <span className="customer-tracker__track-note">
+                          Tracking updates appear here
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -418,15 +398,9 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                   <Button
                     variant="primary"
                     className="customer-button--grow"
-                    onClick={() =>
-                      addToast({
-                        title: "Order Receipt",
-                        message: "Receipt sent to your email",
-                        type: "success",
-                      })
-                    }
+                    onClick={() => setOpenInvoiceFor(selectedOrder.id)}
                   >
-                    Download Invoice PDF
+                    View invoice
                   </Button>
                   <Button
                     variant="secondary"
@@ -441,7 +415,18 @@ export default function CustomerPortal({ currentUser, onNavigateHome, onSelectPr
                     Need Help?
                   </Button>
                 </div>
+
+                {/* A return is requested on a delivered order. */}
+                {selectedOrder.status === "delivered" && (
+                  <div className="customer-tracker__return">
+                    <ReturnRequest order={selectedOrder} />
+                  </div>
+                )}
               </div>
+            )}
+
+            {openInvoiceFor && selectedOrder?.id === openInvoiceFor && (
+              <OrderInvoice order={selectedOrder} onClose={() => setOpenInvoiceFor(null)} />
             )}
           </div>
         )}

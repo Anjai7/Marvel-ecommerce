@@ -27,6 +27,15 @@ vi.mock("../../api/backendApi", () => ({
   apiModerateProduct: vi.fn(),
   apiUpdateOrderStatus: vi.fn(),
   apiUploadImage: vi.fn(),
+  apiUpdateProductStock: vi.fn(),
+  apiUpdateProductStockBulk: vi.fn(),
+  apiFetchAdminAudit: vi.fn().mockResolvedValue({ entries: [] }),
+  apiFetchCoupons: vi.fn().mockResolvedValue([]),
+  apiCreateCoupon: vi.fn(),
+  apiUpdateCoupon: vi.fn(),
+  apiDeleteCoupon: vi.fn(),
+  apiValidateCoupon: vi.fn(),
+  apiRedeemCoupon: vi.fn(),
 }));
 
 vi.mock("../../api/contentApi", () => ({

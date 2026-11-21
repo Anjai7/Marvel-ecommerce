@@ -183,10 +183,104 @@ export async function apiCreateOrder(orderData) {
   return data.order;
 }
 
+/** One order, for the confirmation screen after checkout. */
+export async function apiFetchOrderById(id) {
+  return apiFetch(`/orders/${encodeURIComponent(id)}`);
+}
+
 export async function apiUpdateOrderStatus(id, statusData) {
   const data = await apiFetch(`/orders/${encodeURIComponent(id)}/status`, {
     method: "PATCH",
     body: statusData,
   });
   return data.order;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Admin operations: stock adjustments, audit log, coupons                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Set one product's stock. Returns the formatted product the write produced.
+ */
+export async function apiUpdateProductStock(id, stockPayload) {
+  const data = await apiFetch(`/products/${encodeURIComponent(id)}/stock`, {
+    method: "PATCH",
+    body: stockPayload,
+  });
+  return data?.product;
+}
+
+/**
+ * Apply one stock adjustment to many products. Returns the per-row results.
+ */
+export async function apiUpdateProductStockBulk(adjustments) {
+  const data = await apiFetch("/products/stock", { method: "PATCH", body: adjustments });
+  return data;
+}
+
+/**
+ * The admin audit log, newest first. Admin-only on the server.
+ */
+export async function apiFetchAdminAudit(limit = 50) {
+  const query = new URLSearchParams({ limit: String(limit) }).toString();
+  return apiFetch(`/admin/audit?${query}`);
+}
+
+/**
+ * The coupon list. Admin-only on the server.
+ */
+export async function apiFetchCoupons() {
+  const data = await apiFetch("/coupons");
+  return data?.coupons ?? [];
+}
+
+export async function apiCreateCoupon(coupon) {
+  const data = await apiFetch("/coupons", { method: "POST", body: coupon });
+  return data.coupon;
+}
+
+export async function apiUpdateCoupon(id, coupon) {
+  const data = await apiFetch(`/coupons/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: coupon,
+  });
+  return data.coupon;
+}
+
+export async function apiDeleteCoupon(id) {
+  const data = await apiFetch(`/coupons/${encodeURIComponent(id)}`, { method: "DELETE" });
+  return data;
+}
+
+/**
+ * Pre-check a coupon against a subtotal. Public: an unknown or unusable code
+ * answers `{ valid: false, reason }` with a 200, so the storefront can show the
+ * reason instead of catching an error.
+ */
+export async function apiValidateCoupon({ code, subtotal }) {
+  return apiFetch("/coupons/validate", { method: "POST", body: { code, subtotal }, auth: false });
+}
+
+/**
+ * Count a coupon use after the order that consumes it was created. Public: the
+ * checkout calls this once per placed order.
+ */
+export async function apiRedeemCoupon({ code }) {
+  return apiFetch("/coupons/redeem", { method: "POST", body: { code }, auth: false });
+}
+
+/**
+ * POST /api/orders/:id/return — `{ reason, notes }`: the customer's request
+ * to return a delivered order. The backend stores it and returns the row.
+ */
+export async function apiRequestReturn(orderId, payload = {}) {
+  const data = await apiFetch(`/orders/${encodeURIComponent(orderId)}/return`, {
+    method: "POST",
+    body: {
+      reason: payload.reason,
+      notes: typeof payload.notes === "string" ? payload.notes : "",
+    },
+  });
+  return data?.return;
 }

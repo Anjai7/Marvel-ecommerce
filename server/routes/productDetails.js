@@ -4,6 +4,7 @@ import { supabase } from "../db.js";
 const router = express.Router();
 
 const READ_ERROR = "Could not load product details.";
+const WRITE_ERROR = "Could not save review.";
 const STAR_KEYS = ["1", "2", "3", "4", "5"];
 
 /** NUMERIC comes back from PostgREST as a string; null stays null. */
@@ -280,6 +281,79 @@ router.get("/:id/details", async (req, res) => {
   } catch (err) {
     console.error("Product details GET route error:", err);
     res.status(500).json({ error: READ_ERROR });
+  }
+});
+
+/**
+ * POST /api/products/:id/reviews — public.
+ *
+ * There is no auth flow on the storefront, so the author is the name the
+ * customer typed. The row is stored unverified: a purchase can only be matched
+ * once someone is signed in, and the card must not claim otherwise.
+ */
+router.post("/:id/reviews", async (req, res) => {
+  const id = req.params.id;
+  const payload = req.body ?? {};
+
+  const authorName = typeof payload.author_name === "string" ? payload.author_name.trim() : "";
+  const body = typeof payload.body === "string" ? payload.body.trim() : "";
+  const title = typeof payload.title === "string" ? payload.title.trim() : "";
+  const rating = Number(payload.rating);
+
+  // Validate before touching the database: a rejected submission writes
+  // nothing, and the customer gets the first thing to fix.
+  if (!authorName) {
+    return res.status(400).json({ error: "Name is required." });
+  }
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: "Rating must be a whole number from 1 to 5." });
+  }
+  if (!body) {
+    return res.status(400).json({ error: "Review text is required." });
+  }
+
+  try {
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (productError) {
+      console.error("Supabase review product read error:", productError.message);
+      return res.status(500).json({ error: WRITE_ERROR });
+    }
+    if (!product) {
+      return res.status(404).json({ error: "Product not found." });
+    }
+
+    const { data, error } = await supabase
+      .from("product_reviews")
+      .insert({
+        product_id: id,
+        author_name: authorName,
+        rating,
+        // An empty title is stored as absent, so a card does not render an
+        // empty heading row.
+        title: title || null,
+        body,
+        is_verified: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Supabase review insert error:", error.message);
+      return res.status(500).json({ error: WRITE_ERROR });
+    }
+    if (!data) {
+      return res.status(500).json({ error: WRITE_ERROR });
+    }
+
+    return res.status(201).json(mapReview(data));
+  } catch (err) {
+    console.error("Product review POST route error:", err);
+    return res.status(500).json({ error: WRITE_ERROR });
   }
 });
 

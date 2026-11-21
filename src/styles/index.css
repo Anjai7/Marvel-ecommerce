@@ -56,6 +56,9 @@
 @import "./storefront/sections.css";
 @import "./storefront/auth.css";
 @import "./storefront/cart.css";
+@import "./storefront/checkout.css";
+@import "./storefront/recently-viewed.css";
+@import "./storefront/related-products.css";
 
 /* ── The two dashboards ─────────────────────────────────────── */
 @import "./portals/customer-portal.css";
@@ -73,3 +76,7 @@
 @import "./admin/panels.css";
 @import "./admin/banners-editor.css";
 @import "./admin/variants-editor.css";
+/* The console's own ops sheets: inventory watchlist + audit log. */
+@import "./admin/inventory-tools.css";
+@import "./admin/audit-log.css";
+@import "./admin/coupons.css";

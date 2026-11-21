@@ -16,6 +16,8 @@ import settingsRoutes from "./routes/settings.js";
 import wishlistRoutes from "./routes/wishlist.js";
 import orderRoutes from "./routes/orders.js";
 import uploadRoutes from "./routes/upload.js";
+import adminAuditRoutes from "./routes/adminAudit.js";
+import couponRoutes from "./routes/coupons.js";
 import { assertJwtSecret } from "./middleware/auth.js";
 
 dotenv.config();
@@ -95,6 +97,8 @@ app.use("/api/product-option-values", productOptionValuesRoutes);
 app.use("/api/account/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/admin/audit", adminAuditRoutes);
+app.use("/api/coupons", couponRoutes);
 
 // Fallback Route for unhandled /api requests
 app.use("/api/*", (req, res) => {

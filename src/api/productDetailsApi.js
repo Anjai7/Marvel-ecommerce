@@ -8,3 +8,17 @@ import { apiFetch } from "./client.js";
  */
 export const apiFetchProductDetails = (id) =>
   apiFetch(`/products/${encodeURIComponent(id)}/details`);
+
+/**
+ * `POST /api/products/:id/reviews` — the stored review in the same shape the
+ * details payload's `items` carry. A rejected payload throws with `.status`
+ * 400 and the server's message; 404 means the product is gone.
+ *
+ * Public on purpose: the storefront has no auth flow, so no token is sent.
+ */
+export const apiCreateReview = (productId, payload) =>
+  apiFetch(`/products/${encodeURIComponent(productId)}/reviews`, {
+    method: "POST",
+    body: payload,
+    auth: false,
+  });

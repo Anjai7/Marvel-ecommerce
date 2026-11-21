@@ -266,7 +266,67 @@ editor tells you that the tables are missing rather than losing what you typed.
 
 ---
 
-## 6. Check the site
+## 6. The admin audit log
+
+**File:** [`apply-06-admin-audit-log.sql`](./apply-06-admin-audit-log.sql)
+
+**Where:** the Supabase **SQL Editor**. Paste and run.
+
+**What it does:**
+
+- creates `public.admin_audit_log` — the append-only trail of the admin writes
+  that matter (product create/update/delete, stock adjustments), with `action`,
+  `entity`, `entity_id`, a JSONB `details` bag of before/after facts and the
+  `actor` when the write came from an authenticated admin route;
+- adds the `created_at` index (newest first) and the entity index the audit read
+  sorts and filters by.
+
+**It is additive and re-runnable**, and the write side degrades gracefully when
+the bundle has not been applied: `server/lib/audit.js` wraps the insert and
+answers a warning, so a product save is never lost to a missing table.
+
+**Apply it** before expecting `GET /api/admin/audit` to return rows; until then
+the endpoint answers successfully with an empty log.
+
+**Verify:**
+
+```sql
+select count(*) from public.admin_audit_log;
+select action, entity, entity_id, actor_email from public.admin_audit_log order by created_at desc limit 10;
+```
+
+---
+
+## 7. The admin coupon catalogue
+
+**File:** [`apply-07-coupons.sql`](./apply-07-coupons.sql)
+
+**Where:** the Supabase **SQL Editor**. Paste and run.
+
+**What it does:**
+
+- creates `public.coupons` — the discount codes the admin screen manages:
+  `code`, `kind` (`percent | flat | free_shipping`), `value`, `min_subtotal`,
+  `max_uses` (0 = unlimited), `used_count`, `is_active`, `expires_at`.
+
+**It is additive and re-runnable**, and the checkout endpoints
+(`POST /api/coupons/validate`, `POST /api/coupons/redeem`) read this table, so
+they need the bundle before they can validate or redeem a code. Until the bundle
+has been applied the admin list reads an empty table and the storefront has no
+codes to validate.
+
+**Apply it** before using the coupon screen; until then the admin list reads an
+empty table and the storefront has no codes to validate.
+
+**Verify:**
+
+```sql
+select code, kind, value, min_subtotal, max_uses, used_count, is_active from public.coupons;
+```
+
+---
+
+## 8. Check the site
 
 ```bash
 npm run dev:all
@@ -284,6 +344,32 @@ of skipping:
 ```bash
 npm run test:e2e
 ```
+
+---
+
+## 9. Customer return requests
+
+**File:** [`apply-05-returns.sql`](./apply-05-returns.sql)
+
+**Where:** the Supabase **SQL Editor**, or `npm run db:apply`.
+
+**What it does:** creates `public.returns` — one row per customer return request (order id,
+the caller's profile, reason slug, notes, created at). The customer UI posts through
+`POST /api/orders/:id/return` (server/routes/orders.js) and does not read this table back;
+the reasons are the four the UI offers: `damaged`, `wrong_item`, `changed_mind`, `other`.
+
+**Idempotent:** every table, index and policy is created or replaced; re-running the file
+is harmless.
+
+**Verify:**
+
+```sql
+select to_regclass('public.returns');
+select reason, count(*) from public.returns group by reason;
+```
+
+**Apply with:** `npm run db:apply` (needs a `SUPABASE_ACCESS_TOKEN` or
+`SUPABASE_DB_PASSWORD` — the CLI could not be used for the earlier bundles, see §0).
 
 ---
 

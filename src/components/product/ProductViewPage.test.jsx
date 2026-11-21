@@ -12,7 +12,9 @@ vi.mock("../../api/productDetailsApi", () => ({
 }));
 
 vi.mock("../../api/backendApi", () => ({
-  apiFetchProducts: vi.fn(),
+  apiFetchProducts: vi.fn().mockResolvedValue([]),
+  // The recently-viewed rail looks up the ids this browser recorded.
+  apiFetchProductById: vi.fn().mockResolvedValue(null),
 }));
 
 function renderPage(props) {

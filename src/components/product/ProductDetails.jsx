@@ -85,6 +85,9 @@ function offerText(offer) {
   return offer?.description || offer?.title || null;
 }
 
+/** At or below this many units, the page tells the customer the count. */
+const LOW_STOCK = 5;
+
 /** "color" → "Colour"; an unknown kind reads as its own capitalised word. */
 function optionKindLabel(kind) {
   if (typeof kind !== "string") return "";
@@ -203,6 +206,34 @@ function pairingLabels(groups, combinations, group, selection) {
 }
 
 /**
+ * The units left for one option value with the rest of the current choice.
+ *
+ * A combination carries the stock of "Blue / M", not of "M" alone. The
+ * customer still wants to know which size is nearly gone before picking
+ * it, so the pill asks for the stock of that value paired with what is
+ * already chosen. `null` means the shop did not publish a stock count.
+ */
+function stockForValue(groups, combinations, group, value, selection) {
+  if (!Array.isArray(combinations) || combinations.length === 0) return null;
+
+  const others = groups.filter((entry) => entry.kind !== group.kind);
+  const match = combinations.find((combination) => {
+    const options = Array.isArray(combination?.options) ? combination.options : [];
+    const carriesThis = options.some(
+      (option) => option?.kind === group.kind && option?.label === value.label
+    );
+    if (!carriesThis) return false;
+    return others.every((other) => {
+      const label = selection?.[other.kind];
+      if (!label) return true;
+      return options.some((option) => option?.kind === other.kind && option?.label === label);
+    });
+  });
+
+  return Number.isFinite(match?.stock) ? match.stock : null;
+}
+
+/**
  * The choice after the customer picks one value.
  *
  * Picking a value can rule out the value chosen on another kind — the shop
@@ -241,6 +272,8 @@ export default function ProductDetails({ product }) {
   const [emiOpen, setEmiOpen] = useState(false);
   const [cartState, setCartState] = useState("idle");
   const [wishlisted, setWishlisted] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [notified, setNotified] = useState(false);
   const { addToast } = useToast();
   const { addItem } = useCart();
 
@@ -284,6 +317,7 @@ export default function ProductDetails({ product }) {
   const combinationStock = combination?.stock ?? null;
   const resolvedStock = combinationStock !== null ? combinationStock : (product.stock ?? null);
   const resolvedInStock = combinationStock !== null ? resolvedStock > 0 : (product.inStock ?? null);
+  const chosenStock = combination?.stock != null ? combination.stock : null;
   const resolvedSku = combination?.sku ?? product.sku ?? null;
   const combinationId = combination?.id ?? null;
   const discountPercent =
@@ -328,6 +362,14 @@ export default function ProductDetails({ product }) {
         type: "info",
       });
       navigateToPath("/login");
+      return;
+    }
+    if (resolvedInStock === false) {
+      addToast({
+        title: "Out of stock",
+        message: "This option is not available right now. Pick another or ask to be notified.",
+        type: "warning",
+      });
       return;
     }
     if (cartState === "added") return;
@@ -518,6 +560,12 @@ export default function ProductDetails({ product }) {
               <div className="pd-option-label">
                 <span>
                   {group.label}: <strong>{group.chosen.label}</strong>
+                  {Number.isFinite(chosenStock) && chosenStock > 0 && chosenStock <= LOW_STOCK && (
+                    <span className="pd-low-stock">Only {chosenStock} left</span>
+                  )}
+                  {Number.isFinite(chosenStock) && chosenStock === 0 && (
+                    <span className="pd-out-of-stock">Out of stock</span>
+                  )}
                 </span>
               </div>
               {group.kind === "color" ? (
@@ -564,9 +612,25 @@ export default function ProductDetails({ product }) {
                         } ${dimmed ? "muted" : ""}`}
                         disabled={unavailable}
                         aria-pressed={selected}
+                        aria-label={value.label}
                         onClick={() => selectValue(group.kind, value.label)}
                       >
-                        {value.label}
+                        <span>{value.label}</span>
+                        {(() => {
+                          const units = stockForValue(
+                            optionGroups,
+                            combinations,
+                            group,
+                            value,
+                            effectiveSelection
+                          );
+                          if (!Number.isFinite(units)) return null;
+                          return (
+                            <small className={units <= LOW_STOCK ? "pd-low-stock" : ""}>
+                              {units === 0 ? "none" : `${units} left`}
+                            </small>
+                          );
+                        })()}
                       </button>
                     );
                   })}
@@ -627,8 +691,11 @@ export default function ProductDetails({ product }) {
             className={`pd-cta-cart ${cartState === "added" ? "added" : ""}`}
             onClick={handleCart}
             id="add-to-cart-btn"
+            disabled={resolvedInStock === false}
           >
-            {cartState === "added" ? (
+            {resolvedInStock === false ? (
+              "Out of stock"
+            ) : cartState === "added" ? (
               <>
                 <Check size={20} /> Added to Cart!
               </>
@@ -638,10 +705,55 @@ export default function ProductDetails({ product }) {
               </>
             )}
           </button>
-          <button className="pd-cta-buynow" onClick={handleBuyNow} id="buy-now-btn">
+          <button
+            className="pd-cta-buynow"
+            onClick={handleBuyNow}
+            id="buy-now-btn"
+            disabled={resolvedInStock === false}
+          >
             <Zap size={20} /> Buy Now
           </button>
         </div>
+
+        {resolvedInStock === false && (
+          <div className="pd-notify">
+            {notified ? (
+              <p className="pd-notify-done" role="status">
+                <Check size={15} aria-hidden="true" /> We&apos;ll let you know when it is back.
+              </p>
+            ) : (
+              <form
+                className="pd-notify-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(notifyEmail.trim())) return;
+                  setNotified(true);
+                  addToast({
+                    title: "We&apos;ll notify you",
+                    message: `We'll email ${notifyEmail.trim()} when this option is back.`,
+                    type: "success",
+                  });
+                }}
+              >
+                <label htmlFor="pd-notify-email">Get an email when it is back</label>
+                <div className="pd-notify-row">
+                  <input
+                    id="pd-notify-email"
+                    type="email"
+                    required
+                    value={notifyEmail}
+                    onChange={(event) => setNotifyEmail(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                  <button type="submit">Notify me</button>
+                </div>
+                <small>
+                  No stock alerts are sent yet — this records your interest in this session.
+                </small>
+              </form>
+            )}
+          </div>
+        )}
 
         <button
           className={`pd-wishlist-btn ${wishlisted ? "active" : ""}`}

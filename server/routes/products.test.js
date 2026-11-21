@@ -6,6 +6,7 @@ const { mockFrom } = vi.hoisted(() => ({ mockFrom: vi.fn() }));
 vi.mock("../db.js", () => ({ supabase: { from: mockFrom } }));
 
 import app from "../app.js";
+import { signUserToken } from "../middleware/auth.js";
 
 /**
  * Chainable Supabase double. Every query is recorded; a test asserts the exact
@@ -400,7 +401,10 @@ describe("products API category binding", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.product.category).toBe("Mobiles");
-    expect(calls.insert).toHaveLength(1);
+    // The audit log writes to its own table; only one products row is inserted.
+    expect(
+      calls.writes.filter((write) => write.op === "insert" && write.table === "products")
+    ).toHaveLength(1);
     expect(calls.insert[0][0]).toMatchObject({
       title: "Aurora Phone",
       category: "Mobiles",
@@ -830,5 +834,159 @@ describe("products API category binding", () => {
     expect(body.error).not.toContain("variants boom");
     // The product row is written first, then the variants are attempted.
     expect(insertsInto(calls, "product_variants")).toHaveLength(1);
+  });
+});
+
+describe("product stock adjustments and audit writes", () => {
+  let server;
+  let base;
+
+  beforeAll(
+    () =>
+      new Promise((resolve) => {
+        server = app.listen(0, () => {
+          base = `http://127.0.0.1:${server.address().port}`;
+          resolve();
+        });
+      })
+  );
+
+  afterAll(() => new Promise((resolve) => server.close(resolve)));
+
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  const send = (method, path, body, headers = { "Content-Type": "application/json" }) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+  const adminAuthHeaders = () => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${signUserToken({
+      id: "t-stock-admin",
+      email: "admin@test.local",
+      role: "admin",
+    })}`,
+  });
+
+  it("PATCH /api/products/:id/stock is admin-only and never touches the database unauthenticated", async () => {
+    const calls = makeDb();
+
+    const res = await send("PATCH", "/api/products/prod-1/stock", { stock: 12 });
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Access denied. No authorization header provided." });
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(calls.writes).toEqual([]);
+  });
+
+  it("PATCH /api/products/:id/stock sets the stock and audits the adjustment", async () => {
+    const calls = makeDb({
+      maybeSingle: () => ({ data: product({ stock: "5" }), error: null }),
+      single: () => ({ data: product({ stock: 12 }), error: null }),
+    });
+
+    const res = await send(
+      "PATCH",
+      "/api/products/prod-1/stock",
+      { stock: 12, reason: "Cycle count" },
+      adminAuthHeaders()
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.product.stock).toBe(12);
+    expect(calls.writes).toContainEqual({
+      op: "insert",
+      table: "admin_audit_log",
+      rows: expect.objectContaining({
+        action: "stock_adjustment",
+        entity: "product",
+        entity_id: "prod-1",
+      }),
+    });
+  });
+
+  it("PATCH /api/products/:id/stock rejects a negative stock and writes nothing", async () => {
+    const calls = makeDb({});
+
+    const res = await send(
+      "PATCH",
+      "/api/products/prod-1/stock",
+      { stock: -1 },
+      adminAuthHeaders()
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Stock must be an integer of 0 or more." });
+    expect(calls.writes).toEqual([]);
+  });
+
+  it("PATCH /api/products/:id/stock answers 404 when the product is missing", async () => {
+    makeDb({ maybeSingle: () => ({ data: null, error: null }) });
+
+    const res = await send("PATCH", "/api/products/ghost/stock", { stock: 3 }, adminAuthHeaders());
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Product not found." });
+  });
+
+  it("PATCH /api/products/stock applies a bulk adjustment and audits each write", async () => {
+    const stockById = { "prod-1": "5", "prod-2": "0" };
+    const calls = makeDb({
+      maybeSingle: (state) => {
+        const idFilter = state.filters.find(([column]) => column === "id");
+        const id = idFilter?.[1];
+        const stock = stockById[id] ?? "0";
+        return {
+          data: { id, stock, title: "Aurora Phone", sku: "AUR-1", category: "C", price: 10 },
+          error: null,
+        };
+      },
+      single: () => ({ data: { id: "prod-1", stock: 7 }, error: null }),
+    });
+
+    const res = await send(
+      "PATCH",
+      "/api/products/stock",
+      {
+        adjustments: [
+          { id: "prod-1", stock: 7 },
+          { id: "prod-2", stock: 3 },
+        ],
+      },
+      adminAuthHeaders()
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results).toEqual([
+      { id: "prod-1", old_stock: 5, new_stock: 7 },
+      { id: "prod-2", old_stock: 0, new_stock: 3 },
+    ]);
+    expect(
+      calls.writes.filter((write) => write.op === "insert" && write.table === "admin_audit_log")
+    ).toHaveLength(2);
+  });
+
+  it("PATCH /api/products/stock rejects an adjustment without a stock value", async () => {
+    const calls = makeDb({});
+
+    const res = await send(
+      "PATCH",
+      "/api/products/stock",
+      { adjustments: [{ id: "prod-1" }] },
+      adminAuthHeaders()
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Every adjustment needs a product id and a stock integer of 0 or more.",
+    });
+    expect(calls.writes).toEqual([]);
   });
 });

@@ -4,6 +4,8 @@ import ProductImageGallery from "./ProductImageGallery";
 import ProductDetails from "./ProductDetails";
 import ProductInfoTabs from "./ProductInfoTabs";
 import FrequentlyVisited from "./FrequentlyVisited";
+import RecentlyViewed, { recordProductView } from "../storefront/RecentlyViewed";
+import RelatedProducts from "./RelatedProducts";
 import CustomerReviews from "./CustomerReviews";
 import { buildDynamicProductDetails } from "./dynamicProductBuilder";
 import { apiFetchProductDetails } from "../../api/productDetailsApi";
@@ -57,6 +59,30 @@ export default function ProductViewPage({
   useEffect(() => {
     load();
   }, [load]);
+
+  // The rail shows what this browser actually opened, not a featured list.
+  useEffect(() => {
+    if (state.view?.id) recordProductView(state.view.id);
+  }, [state.view?.id]);
+
+  /**
+   * A submitted review is already on screen; only the stored summary needs to
+   * catch up. This refetches the details without dropping the page back to the
+   * loading state, and ignores the result if another product was opened first.
+   */
+  const refreshReviews = useCallback(async () => {
+    if (!resolvedId) return;
+    try {
+      const payload = await apiFetchProductDetails(resolvedId);
+      setState((current) =>
+        current.status === "ready" && current.view?.id === resolvedId
+          ? { ...current, reviews: payload?.reviews ?? null }
+          : current
+      );
+    } catch {
+      // The saved review is still shown; the next visit reloads the list.
+    }
+  }, [resolvedId]);
 
   if (state.status === "loading") {
     return (
@@ -155,11 +181,13 @@ export default function ProductViewPage({
 
       {/* ── More products ── */}
       <FrequentlyVisited onView={onSelectProduct} excludeId={view.id} />
+      <RelatedProducts category={view.category} currentId={view.id} />
+      <RecentlyViewed currentId={view.id} />
 
       {/* ── Customer Reviews ── */}
       <div className="pvp-reviews-section">
         <div className="container">
-          <CustomerReviews reviews={reviews} />
+          <CustomerReviews reviews={reviews} productId={view.id} onReviewAdded={refreshReviews} />
         </div>
       </div>
     </div>

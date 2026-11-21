@@ -286,6 +286,15 @@ export function isProductRoute(page) {
   return page === "product";
 }
 
+/** The mock checkout and the order it creates. Both are public routes. */
+export function isCheckoutRoute(page) {
+  return page === "checkout";
+}
+
+export function isOrderConfirmationRoute(page) {
+  return page === "order";
+}
+
 /**
  * The catalogue listing: `/products`.
  *

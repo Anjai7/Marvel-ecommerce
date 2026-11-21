@@ -10,6 +10,8 @@ import { QuickViewDialog } from "./components/product/QuickViewDialog";
 import ProductViewPage from "./components/product/ProductViewPage";
 import CategoryPage from "./components/category/CategoryPage";
 import AllProductsPage from "./components/category/AllProductsPage";
+import CheckoutPage from "./components/cart/CheckoutPage";
+import OrderConfirmationPage from "./components/cart/OrderConfirmationPage";
 import CmsPage from "./components/pages/CmsPage";
 import LoginPage from "./components/auth/LoginPage";
 import SignUpPage from "./components/auth/SignUpPage";
@@ -39,6 +41,8 @@ import {
   isPageRoute,
   isProductRoute,
   isProductsRoute,
+  isCheckoutRoute,
+  isOrderConfirmationRoute,
   isAccountRoute,
   isVendorRoute,
   isAdminRoute,
@@ -262,7 +266,7 @@ function AppMain() {
             onNavigateHome={() => navigateTo("")}
             onNavigateAccount={() => navigateTo("account")}
             onCheckout={() => {
-              if (!isLoggedIn) navigateTo("login");
+              navigateTo(isLoggedIn ? "checkout" : "login");
             }}
           />
         ) : (
@@ -273,6 +277,10 @@ function AppMain() {
             onNavigateHome={() => navigateTo("")}
           />
         ))}
+
+      {/* Mock checkout: no payment provider yet, but a real order. */}
+      {isCheckoutRoute(page) && <CheckoutPage />}
+      {isOrderConfirmationRoute(page) && <OrderConfirmationPage orderId={currentRoute.id} />}
 
       {/* Floating Return to Top Button */}
       <ScrollToTop />
