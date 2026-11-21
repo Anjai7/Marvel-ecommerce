@@ -68,51 +68,15 @@ for (const viewport of [
   { name: "desktop", width: 1280, height: 800 },
   { name: "mobile", width: 390, height: 844 },
 ]) {
-  test(`cart banner joins image with text as one unit (${viewport.name})`, async ({ page }) => {
+  test(`cart has a plain heading and no promo banner (${viewport.name})`, async ({ page }) => {
     await signIn(page);
     await seedCart(page, SEEDED_CART);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto("/#/cart");
 
-    const banner = page.locator(".cart-banner");
-    await expect(banner).toBeVisible();
-    await expect(banner.getByRole("heading", { name: "Your Cart" })).toBeVisible();
-    await expect(banner.getByText("3 items")).toBeVisible();
-
-    // Image and text live inside the same card and overlap along the
-    // stacking axis (joined, not fighting): vertically on desktop (row),
-    // horizontally on mobile (centered column).
-    const [bannerBox, imgBox, textBox] = await Promise.all([
-      banner.boundingBox(),
-      banner.locator(".cart-banner-img").boundingBox(),
-      banner.locator(".cart-banner-text").boundingBox(),
-    ]);
-    expect(bannerBox).not.toBeNull();
-    expect(imgBox).not.toBeNull();
-    expect(textBox).not.toBeNull();
-    for (const box of [imgBox, textBox]) {
-      expect(box.x).toBeGreaterThanOrEqual(bannerBox.x - 1);
-      expect(box.x + box.width).toBeLessThanOrEqual(bannerBox.x + bannerBox.width + 1);
-      expect(box.y).toBeGreaterThanOrEqual(bannerBox.y - 1);
-      expect(box.y + box.height).toBeLessThanOrEqual(bannerBox.y + bannerBox.height + 1);
-    }
-
-    const flexDirection = await banner.evaluate((el) => getComputedStyle(el).flexDirection);
-    if (flexDirection === "column") {
-      const horizontalOverlap =
-        Math.min(imgBox.x + imgBox.width, textBox.x + textBox.width) -
-        Math.max(imgBox.x, textBox.x);
-      expect(horizontalOverlap).toBeGreaterThan(0);
-    } else {
-      const verticalOverlap =
-        Math.min(imgBox.y + imgBox.height, textBox.y + textBox.height) -
-        Math.max(imgBox.y, textBox.y);
-      expect(verticalOverlap).toBeGreaterThan(0);
-    }
-
-    if (viewport.name === "mobile") {
-      expect(flexDirection).toBe("column");
-    }
+    await expect(page.locator(".cart-banner")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Your Cart" })).toBeVisible();
+    await expect(page.locator(".cart-page-head").getByText("3 items")).toBeVisible();
   });
 }
 
@@ -138,11 +102,11 @@ test("cart page shows items with working quantity steppers and totals", async ({
   ).toHaveText("3");
   await expect(subtotalRow).toContainText("₹94,947"); // 19999*3 + 34950
   await expect(totalRow).toContainText("₹94,947");
-  await expect(page.getByText("19,950")).toBeVisible(); // savings
+  await expect(page.locator(".cart-summary").getByText("19,950")).toBeVisible(); // savings
 
   await page.getByRole("button", { name: "Remove Smart OLED Watch Ultra from cart" }).click();
   await expect(page.getByRole("heading", { name: "Smart OLED Watch Ultra" })).toHaveCount(0);
-  await expect(page.locator(".cart-banner").getByText("3 items")).toBeVisible(); // p1 ×3 remains
+  await expect(page.locator(".cart-page-head").getByText("3 items")).toBeVisible(); // p1 ×3 remains
 });
 
 test("cart page empty state links back to shopping", async ({ page }) => {

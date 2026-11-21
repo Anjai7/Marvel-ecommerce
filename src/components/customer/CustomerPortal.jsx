@@ -23,7 +23,17 @@ import { formatOptionChoices } from "../../lib/productOptions";
 import { carrierTrackingUrl } from "../../lib/trackingUrls";
 
 export default function CustomerPortal({ currentUser, onNavigateHome, onSelectProduct }) {
-  const [activeTab, setActiveTab] = useState("orders"); // orders, wishlist, profile
+  // The header opens a specific tab by leaving the choice here before it
+  // navigates; the portal is not mounted yet when that click happens.
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const requested = sessionStorage.getItem("marvel_account_tab");
+      sessionStorage.removeItem("marvel_account_tab");
+      return ["orders", "wishlist", "profile"].includes(requested) ? requested : "orders";
+    } catch {
+      return "orders";
+    }
+  });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);

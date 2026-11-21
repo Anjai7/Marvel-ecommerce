@@ -199,3 +199,114 @@ describe("POST /api/orders/:id/return", () => {
     expect(calls.insert).toEqual([]);
   });
 });
+
+describe("POST /api/orders", () => {
+  let server;
+  let base;
+
+  beforeAll(
+    () =>
+      new Promise((resolve) => {
+        server = app.listen(0, () => {
+          base = `http://127.0.0.1:${server.address().port}`;
+          resolve();
+        });
+      })
+  );
+
+  afterAll(() => new Promise((resolve) => server.close(resolve)));
+
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  const post = (body) =>
+    fetch(`${base}/api/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  const breakdownOrder = {
+    items: [{ id: "p1", title: "Marvel T-Shirt", price: 999, quantity: 2 }],
+    totalAmount: 1998,
+    subtotal: 1998,
+    discountAmount: 0,
+    shippingFee: 0,
+    couponCode: null,
+  };
+
+  it("stores the coupon price breakdown with the order and returns it", async () => {
+    const calls = makeDb({
+      single: () => ({
+        data: {
+          id: "ord-1",
+          total_amount: 1998,
+          subtotal: 1998,
+          discount_amount: 0,
+          shipping_fee: 0,
+          coupon_code: null,
+        },
+        error: null,
+      }),
+    });
+
+    const res = await post(breakdownOrder);
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.order.subtotal).toBe(1998);
+    expect(body.order.discount_amount).toBe(0);
+    expect(body.order.shipping_fee).toBe(0);
+    expect(body.order.coupon_code).toBeNull();
+    expect(calls.insert).toHaveLength(1);
+    expect(calls.insert[0].rows[0]).toMatchObject({
+      subtotal: 1998,
+      discount_amount: 0,
+      shipping_fee: 0,
+      coupon_code: null,
+    });
+  });
+
+  it("retries the insert without the breakdown when the columns are missing", async () => {
+    const calls = makeDb({
+      single: () =>
+        calls.insert.length === 1
+          ? {
+              data: null,
+              error: {
+                message: "Could not find the 'subtotal' column of 'orders' in the schema cache",
+              },
+            }
+          : { data: { id: "ord-1", total_amount: 1998 }, error: null },
+    });
+
+    const res = await post(breakdownOrder);
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.order.total_amount).toBe(1998);
+    expect(calls.insert).toHaveLength(2);
+    expect(calls.insert[0].rows[0]).toHaveProperty("subtotal");
+    expect(calls.insert[1].rows[0]).not.toHaveProperty("subtotal");
+  });
+
+  it("rejects a negative breakdown amount without inserting", async () => {
+    const calls = makeDb();
+
+    const res = await post({ ...breakdownOrder, subtotal: -5 });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toEqual(expect.any(String));
+    expect(calls.insert).toEqual([]);
+  });
+
+  it("rejects an over-long coupon code without inserting", async () => {
+    const calls = makeDb();
+
+    const res = await post({ ...breakdownOrder, couponCode: "A".repeat(33) });
+
+    expect(res.status).toBe(400);
+    expect(calls.insert).toEqual([]);
+  });
+});

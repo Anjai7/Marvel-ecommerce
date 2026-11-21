@@ -56,6 +56,7 @@
 @import "./storefront/sections.css";
 @import "./storefront/auth.css";
 @import "./storefront/cart.css";
+@import "./storefront/cart-drawer.css";
 @import "./storefront/checkout.css";
 @import "./storefront/recently-viewed.css";
 @import "./storefront/related-products.css";

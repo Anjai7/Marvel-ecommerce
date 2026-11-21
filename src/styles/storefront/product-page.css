@@ -137,6 +137,18 @@
   top: 120px;
   z-index: 20;
 }
+/* The product's short description, rendered straight under the gallery. It
+   is the stored copy only — the builder maps a missing or empty description
+   to null, and nothing renders in that case. */
+.pvp-gallery-desc {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--gray-800);
+  word-break: break-word;
+}
 .pvp-details-col {
   padding: 0;
   background: transparent;

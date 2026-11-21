@@ -238,4 +238,34 @@ describe("ProductViewPage", () => {
     await user.click(screen.getByRole("button", { name: "Cotton" }));
     expect(screen.getByRole("button", { name: "Cotton" })).toHaveAttribute("aria-pressed", "true");
   });
+
+  it("renders the product description under the gallery when the API supplies one", async () => {
+    apiFetchProductDetails.mockResolvedValue(FULL_PAYLOAD);
+
+    const { container } = renderPage({ productId: "p2", onBack: vi.fn() });
+    expect(await screen.findByRole("heading", { name: "Road Runner 2" })).toBeInTheDocument();
+
+    const galleryCol = container.querySelector(".pvp-gallery-col");
+    const desc = galleryCol.querySelector(".pvp-gallery-desc");
+    expect(desc).toBeInTheDocument();
+    expect(desc).toHaveTextContent("Lightweight daily trainer.");
+    // The gallery renders above the description in the same column.
+    expect(desc.previousElementSibling?.contains(galleryCol.querySelector(".pvg-root"))).toBe(true);
+  });
+
+  it("renders no description block when the description is missing or empty", async () => {
+    apiFetchProductDetails.mockResolvedValue(MINIMAL_PAYLOAD);
+    const withMissing = renderPage({ productId: "p1", onBack: vi.fn() });
+    expect(await screen.findByRole("heading", { name: "Plain Canvas Shoe" })).toBeInTheDocument();
+    expect(withMissing.container.querySelector(".pvp-gallery-desc")).toBeNull();
+    withMissing.unmount();
+
+    apiFetchProductDetails.mockResolvedValue({
+      ...MINIMAL_PAYLOAD,
+      product: { ...MINIMAL_PAYLOAD.product, description: "" },
+    });
+    const withEmpty = renderPage({ productId: "p1", onBack: vi.fn() });
+    expect(await screen.findByRole("heading", { name: "Plain Canvas Shoe" })).toBeInTheDocument();
+    expect(withEmpty.container.querySelector(".pvp-gallery-desc")).toBeNull();
+  });
 });

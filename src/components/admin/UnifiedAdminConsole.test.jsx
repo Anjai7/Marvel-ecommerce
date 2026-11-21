@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, vi } from "vitest";
 import UnifiedAdminConsole from "./UnifiedAdminConsole";
+import ConsolePagination from "./ConsolePagination";
 import { ORDER_STATUSES } from "./adminConstants";
 import {
   apiAdminCreateUser,
@@ -735,5 +736,91 @@ describe("UnifiedAdminConsole", () => {
     // Should now be in Product Catalog filtered to Low Stock
     expect(await screen.findByText("USB Cable")).toBeInTheDocument();
     expect(screen.queryByText("Camera Lens")).toBeNull();
+  });
+
+  it("keeps the compact page strip to three neighbours plus the last page", () => {
+    const labelsFor = (currentPage, totalPages) => {
+      const { unmount } = render(
+        <ConsolePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={() => {}}
+        />
+      );
+      const labels = screen
+        .getAllByRole("button", { name: /^Page \d+$/ })
+        .map((button) => button.textContent);
+      unmount();
+      return labels;
+    };
+
+    expect(labelsFor(2, 50)).toEqual(["1", "2", "3", "50"]);
+    expect(labelsFor(25, 50)).toEqual(["24", "25", "26", "50"]);
+    expect(labelsFor(50, 50)).toEqual(["48", "49", "50"]);
+    // A short catalogue is shown whole — an ellipsis would skip nothing.
+    expect(labelsFor(3, 4)).toEqual(["1", "2", "3", "4"]);
+  });
+
+  it("paginates a 50-page catalogue without rendering every page number", async () => {
+    const user = userEvent.setup();
+    apiFetchProducts.mockResolvedValueOnce(
+      Array.from({ length: 500 }, (_, index) => ({
+        id: `p${index + 1}`,
+        title: `Product ${index + 1}`,
+        category: "Electronics",
+        price: 100 + index,
+        stock: 5,
+      }))
+    );
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Products Catalog/ }));
+    await screen.findByText("Product 1");
+
+    // Ten rows a page turns the 500-product catalogue into 50 pages.
+    await user.selectOptions(screen.getByLabelText("Show:"), "10");
+
+    const pageButtonLabels = () =>
+      screen.getAllByRole("button", { name: /^Page \d+$/ }).map((button) => button.textContent);
+    expect(pageButtonLabels()).toEqual(["1", "2", "3", "50"]);
+    expect(screen.queryByRole("button", { name: "Page 4" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Page 25" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
+    const strip = document.querySelector(".console-pagination-numbers");
+    expect(within(strip).getAllByText("…")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
+
+    // The last page is always one click away, and Next stops there.
+    await user.click(screen.getByRole("button", { name: "Page 50" }));
+    expect(pageButtonLabels()).toEqual(["48", "49", "50"]);
+    expect(screen.getByRole("button", { name: "Page 50" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
+  it("exposes coupons as a settings sub-item that opens the coupon manager", async () => {
+    const user = userEvent.setup();
+    render(<UnifiedAdminConsole />);
+
+    const nav = await screen.findByRole("navigation");
+    await user.click(within(nav).getByRole("button", { name: /Settings Store/ }));
+
+    const couponsEntry = within(nav).getByRole("button", { name: "Coupons" });
+    expect(couponsEntry).toHaveAttribute("id", "admin-tab-settings-coupons");
+
+    await user.click(couponsEntry);
+
+    const main = screen.getByRole("main");
+    const couponsHeading = await within(main).findByRole("heading", { name: "Coupons" });
+    expect(couponsHeading).toBeVisible();
+    expect(within(main).queryByRole("heading", { name: /Audit/i })).toBeNull();
+
+    // The overview entry still brings the audit trail and store settings back.
+    await user.click(within(nav).getByRole("button", { name: "Store Settings" }));
+    expect(within(main).queryByRole("heading", { name: "Coupons" })).not.toBeNull();
   });
 });

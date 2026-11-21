@@ -43,6 +43,7 @@ import {
   Boxes,
   LogOut,
   Settings as SettingsIcon,
+  Ticket,
   Download,
   FileSpreadsheet,
   Printer,
@@ -67,6 +68,7 @@ import {
 } from "../ui";
 import SearchInput from "../ui/SearchInput";
 import CategoryPicker from "./CategoryPicker";
+import ConsolePagination from "./ConsolePagination";
 import {
   apiFetchProducts,
   apiFetchOrders,
@@ -320,6 +322,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [customerSearch, setCustomerSearch] = useState("");
   const [customerPage, setCustomerPage] = useState(1);
   const customerPageSize = 25;
+  // Settings is a section with its own sub-view: "overview" shows the audit
+  // trail, the coupons and the store settings in order; "coupons" puts the
+  // coupon generator on its own screen, one click from the sidebar.
+  const [settingsView, setSettingsView] = useState("overview"); // "overview" | "coupons"
 
   // Products management states
   const [editingProduct, setEditingProduct] = useState(null);
@@ -1479,7 +1485,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     categories: "Site Content — Categories",
     banners: "Site Content — Banners",
     footer: "Site Content — Footer",
-    settings: "Settings",
+    settings: settingsView === "coupons" ? "Settings — Coupons" : "Settings",
   };
 
   // Nothing loaded and no cached copy exists, so the console has no business
@@ -1550,7 +1556,10 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   };
 
   /** The profile menu's Settings entry. */
-  const handleOpenSettings = () => setActiveTab("settings");
+  const handleOpenSettings = () => {
+    setSettingsView("overview");
+    setActiveTab("settings");
+  };
 
   return (
     <div className="admin-app-layout">
@@ -1949,8 +1958,13 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
           <div className="nav-section-label">CONFIGURATION</div>
           <button
             id="admin-tab-settings"
-            onClick={() => handleNavSelect(() => setActiveTab("settings"))}
+            onClick={() =>
+              handleNavSelect(() =>
+                handleSectionClick("settings", "settings", () => setSettingsView("overview"))
+              )
+            }
             className={`sidebar-tab-button ${activeTab === "settings" ? "active" : ""}`}
+            aria-expanded={!!expandedMenus.settings}
           >
             <div className="tab-icon-box">
               <SettingsIcon size={19} />
@@ -1959,8 +1973,43 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               <span className="tab-title">Settings</span>
               <span className="tab-description">Store &amp; Preferences</span>
             </div>
+            <span className={`sidebar-parent-chevron ${expandedMenus.settings ? "open" : ""}`}>
+              <ChevronDown size={15} />
+            </span>
             {activeTab === "settings" && <div className="active-glow-indicator"></div>}
           </button>
+          {expandedMenus.settings && (
+            <div className="sidebar-submenu">
+              <button
+                id="admin-tab-settings-overview"
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setSettingsView("overview");
+                    setActiveTab("settings");
+                  })
+                }
+                className={`sidebar-submenu-btn ${activeTab === "settings" && settingsView === "overview" ? "active" : ""}`}
+              >
+                <ClipboardList size={14} />
+                <span>Store Settings</span>
+              </button>
+              {/* The coupon generator is otherwise buried under the settings
+                  editor, and this is the entry the admin looks for. */}
+              <button
+                id="admin-tab-settings-coupons"
+                onClick={() =>
+                  handleNavSelect(() => {
+                    setSettingsView("coupons");
+                    setActiveTab("settings");
+                  })
+                }
+                className={`sidebar-submenu-btn ${activeTab === "settings" && settingsView === "coupons" ? "active" : ""}`}
+              >
+                <Ticket size={14} />
+                <span>Coupons</span>
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* PINNED BOTTOM ACTION: LOGOUT */}
@@ -3563,38 +3612,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     </strong>{" "}
                     of <strong>{filteredProducts.length}</strong> items
                   </div>
-                  <div className="console-pagination-controls">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validProductPage <= 1}
-                      onClick={() => setProductPage((p) => Math.max(1, p - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <div className="console-pagination-numbers">
-                      {Array.from({ length: totalProductPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          className={`menu-page-number-btn ${pageNum === validProductPage ? "active" : ""}`}
-                          onClick={() => setProductPage(pageNum)}
-                          aria-label={`Page ${pageNum}`}
-                          aria-current={pageNum === validProductPage ? "page" : undefined}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validProductPage >= totalProductPages}
-                      onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <ConsolePagination
+                    currentPage={validProductPage}
+                    totalPages={totalProductPages}
+                    onPageChange={setProductPage}
+                  />
                 </div>
               )}
             </div>
@@ -3774,38 +3796,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                   <div className="text-sm text-muted">
                     Page <strong>{validOrderPage}</strong> of <strong>{totalOrderPages}</strong>
                   </div>
-                  <div className="console-pagination-controls">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validOrderPage <= 1}
-                      onClick={() => setOrderPage((p) => Math.max(1, p - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <div className="console-pagination-numbers">
-                      {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map((pageNum) => (
-                        <button
-                          key={pageNum}
-                          type="button"
-                          className={`menu-page-number-btn ${pageNum === validOrderPage ? "active" : ""}`}
-                          onClick={() => setOrderPage(pageNum)}
-                          aria-label={`Page ${pageNum}`}
-                          aria-current={pageNum === validOrderPage ? "page" : undefined}
-                        >
-                          {pageNum}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validOrderPage >= totalOrderPages}
-                      onClick={() => setOrderPage((p) => Math.min(totalOrderPages, p + 1))}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <ConsolePagination
+                    currentPage={validOrderPage}
+                    totalPages={totalOrderPages}
+                    onPageChange={setOrderPage}
+                  />
                 </div>
               )}
             </div>
@@ -3965,40 +3960,11 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                     Page <strong>{validCustomerPage}</strong> of{" "}
                     <strong>{totalCustomerPages}</strong>
                   </div>
-                  <div className="console-pagination-controls">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validCustomerPage <= 1}
-                      onClick={() => setCustomerPage((p) => Math.max(1, p - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <div className="console-pagination-numbers">
-                      {Array.from({ length: totalCustomerPages }, (_, i) => i + 1).map(
-                        (pageNum) => (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            className={`menu-page-number-btn ${pageNum === validCustomerPage ? "active" : ""}`}
-                            onClick={() => setCustomerPage(pageNum)}
-                            aria-label={`Page ${pageNum}`}
-                            aria-current={pageNum === validCustomerPage ? "page" : undefined}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={validCustomerPage >= totalCustomerPages}
-                      onClick={() => setCustomerPage((p) => Math.min(totalCustomerPages, p + 1))}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <ConsolePagination
+                    currentPage={validCustomerPage}
+                    totalPages={totalCustomerPages}
+                    onPageChange={setCustomerPage}
+                  />
                 </div>
               )}
             </div>
@@ -4027,11 +3993,19 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         {/* TAB 12: SETTINGS — the store's own configuration + ops sections */}
         {activeTab === "settings" && (
           <>
-            {/* The admin writes that matter, newest first. */}
-            <AuditLog />
-            {/* The coupon catalogue the admin manages; checkout reads via validate/redeem. */}
-            <CouponsManager />
-            <SettingsEditor />
+            {/* The coupon sub-view: the generator on its own, reached from the
+                sidebar's Coupons entry so it is never buried. */}
+            {settingsView === "coupons" ? (
+              <CouponsManager />
+            ) : (
+              <>
+                {/* The admin writes that matter, newest first. */}
+                <AuditLog />
+                {/* The coupon catalogue the admin manages; checkout reads via validate/redeem. */}
+                <CouponsManager />
+                <SettingsEditor />
+              </>
+            )}
           </>
         )}
       </main>

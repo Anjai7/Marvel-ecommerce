@@ -9,6 +9,10 @@ function formatOrder(o) {
   return {
     ...o,
     total_amount: parseFloat(o.total_amount) || 0,
+    subtotal: o.subtotal == null ? null : parseFloat(o.subtotal),
+    discount_amount: o.discount_amount == null ? null : parseFloat(o.discount_amount),
+    shipping_fee: o.shipping_fee == null ? null : parseFloat(o.shipping_fee),
+    coupon_code: o.coupon_code ?? null,
     items: Array.isArray(o.items)
       ? o.items
       : typeof o.items === "string"
@@ -77,11 +81,49 @@ router.get("/:id", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { userId, customerName, customerEmail, vendorId, items, totalAmount, shippingAddress } =
-      req.body;
+    const {
+      userId,
+      customerName,
+      customerEmail,
+      vendorId,
+      items,
+      totalAmount,
+      shippingAddress,
+      subtotal,
+      discountAmount,
+      shippingFee,
+      couponCode,
+    } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ error: "Order items cannot be empty." });
+    }
+
+    // Price breakdown from the checkout: the cart subtotal, the coupon discount
+    // and the delivery split. All of them are optional — an order that sends
+    // only the final total (or nothing yet) stores NULLs and still saves.
+    const subtotalAmount = subtotal == null ? null : Number(subtotal);
+    const discountAmountValue = discountAmount == null ? null : Number(discountAmount);
+    const shippingFeeValue = shippingFee == null ? null : Number(shippingFee);
+    const coupon =
+      typeof couponCode === "string" && couponCode.trim() !== ""
+        ? couponCode.trim().toUpperCase()
+        : null;
+
+    const hasInvalidAmount =
+      (subtotal != null && (!Number.isFinite(subtotalAmount) || subtotalAmount < 0)) ||
+      (discountAmount != null &&
+        (!Number.isFinite(discountAmountValue) || discountAmountValue < 0)) ||
+      (shippingFee != null && (!Number.isFinite(shippingFeeValue) || shippingFeeValue < 0));
+
+    if (hasInvalidAmount) {
+      return res
+        .status(400)
+        .json({ error: "Order amounts must be numbers greater than or equal to zero." });
+    }
+
+    if (coupon && coupon.length > 32) {
+      return res.status(400).json({ error: "Coupon code must be at most 32 characters." });
     }
 
     const newOrderRecord = {
@@ -97,11 +139,29 @@ router.post("/", async (req, res) => {
       tracking_number: `TRK-${Math.floor(100000 + Math.random() * 900000)}`,
     };
 
-    const { data, error } = await supabase
+    let insertResult = await supabase
       .from("orders")
-      .insert([newOrderRecord])
+      .insert([
+        {
+          ...newOrderRecord,
+          subtotal: subtotalAmount,
+          discount_amount: discountAmountValue,
+          shipping_fee: shippingFeeValue,
+          coupon_code: coupon,
+        },
+      ])
       .select()
       .single();
+
+    let { data, error } = insertResult;
+
+    // The breakdown columns ship in their own bundle (docs/sql/apply-09-order-price-breakdown.sql).
+    // Until that column set is applied, Supabase rejects the insert with a
+    // missing-column error; retry once without the breakdown so the order is
+    // still placed on the final total alone.
+    if (error && /column .+ does not exist|schema cache/i.test(error?.message ?? "")) {
+      ({ data, error } = await supabase.from("orders").insert([newOrderRecord]).select().single());
+    }
 
     if (error) {
       console.error("Supabase insert order error:", error);

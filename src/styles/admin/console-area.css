@@ -129,6 +129,7 @@
 /* The page controls under a list. */
 .console-pagination-controls {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
 }
@@ -136,6 +137,18 @@
 .console-pagination-numbers {
   display: flex;
   gap: 4px;
+}
+
+/* The gap between two runs of page numbers. It is spacing, not a control, so
+   it aligns with the numbers without pretending to be clickable. */
+.console-pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  font-size: 13px;
+  color: var(--gray-500);
+  user-select: none;
 }
 
 /* The button inside an empty list that clears the search. */

@@ -14,9 +14,6 @@ import {
   useToast,
   Avatar,
   AvatarFallback,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
 } from "./ui";
 import {
   User,
@@ -31,6 +28,7 @@ import {
   Store,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import CartDrawer from "./cart/CartDrawer";
 import { useSettings } from "../context/SettingsContext";
 
 export default function Header({
@@ -49,15 +47,28 @@ export default function Header({
   onNavigateRoute,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [cartOpen, setCartOpen] = useState(false);
   const { addToast } = useToast();
   const { settings } = useSettings();
+  /** Open the account portal on a chosen tab (the portal reads this on mount). */
+  const openAccountTab = (tab) => {
+    try {
+      sessionStorage.setItem("marvel_account_tab", tab);
+    } catch {
+      // private browsing — the portal simply opens on its default tab
+    }
+    onNavigateCustomerPortal();
+  };
+
   let cartItems = [];
   let cartSubtotal = 0;
+  let cartSavings = 0;
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- unconditional call; try/catch only guards missing CartProvider in isolated tests
     const cart = useCart();
     if (cart && Array.isArray(cart.items)) cartItems = cart.items;
     cartSubtotal = Number(cart?.subtotal) || 0;
+    cartSavings = Number(cart?.savings) || 0;
   } catch {
     cartItems = [];
   }
@@ -227,21 +238,21 @@ export default function Header({
                   <>
                     <DropdownMenuItem
                       icon={<Package size={16} className="icon-blue" />}
-                      onClick={onNavigateCustomerPortal}
+                      onClick={() => openAccountTab("orders")}
                       className="menu-item-semibold"
                     >
                       My Orders & Deliveries
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       icon={<Heart size={16} className="icon-red" />}
-                      onClick={onNavigateCustomerPortal}
+                      onClick={() => openAccountTab("wishlist")}
                       className="menu-item-semibold"
                     >
                       Saved Wishlist
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       icon={<Settings size={16} />}
-                      onClick={onNavigateCustomerPortal}
+                      onClick={() => openAccountTab("profile")}
                     >
                       Account Settings
                     </DropdownMenuItem>
@@ -309,69 +320,43 @@ export default function Header({
 
           <div className="header-divider" />
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="header-action" id="cart-btn">
-                <div className="ha-icon">
-                  <ShoppingBag size={22} />
-                  <Badge variant="accent" size="sm" className="cart-badge">
-                    {cartCount}
-                  </Badge>
-                </div>
-                <div className="ha-label">Cart ▾</div>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="cart-popover-content">
-              <div className="cart-popover-head">
-                <span className="cart-popover-title">My Shopping Cart</span>
-                <Badge variant="secondary" size="sm">
-                  {cartCount} items
-                </Badge>
-              </div>
-              {qualifiesForFreeShipping && (
-                <div className="cart-popover-note">
-                  Items in your cart qualify for <strong>FREE Express Shipping</strong> across{" "}
-                  {storeCountry}!
-                </div>
-              )}
-              {cartItems.length === 0 ? (
-                <div className="cart-popover-note">Your cart is empty.</div>
-              ) : (
-                <div className="cart-popover-list">
-                  {cartItems.slice(0, 3).map((item) => (
-                    <div key={item.id} className="cart-popover-item">
-                      <img src={item.image} alt={item.title} className="cart-popover-item-img" />
-                      <div className="cart-popover-item-text">
-                        <div className="cart-popover-item-title">{item.title}</div>
-                        <div className="cart-popover-item-meta">
-                          Qty {item.quantity} · {formatCurrency(item.price)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {cartItems.length > 3 && (
-                    <div className="cart-popover-item-meta">+{cartItems.length - 3} more…</div>
-                  )}
-                </div>
-              )}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="cart-popover-btn"
-                onClick={onNavigateCart}
-              >
-                View Cart
-              </Button>
-              <Button
-                variant="accent"
-                size="sm"
-                className="cart-popover-checkout"
-                onClick={onNavigateCart}
-              >
-                Proceed to Checkout
-              </Button>
-            </PopoverContent>
-          </Popover>
+          <button
+            type="button"
+            className="header-action"
+            id="cart-btn"
+            aria-expanded={cartOpen}
+            aria-haspopup="dialog"
+            onClick={() => setCartOpen((open) => !open)}
+          >
+            <div className="ha-icon">
+              <ShoppingBag size={22} />
+              <Badge variant="accent" size="sm" className="cart-badge">
+                {cartCount}
+              </Badge>
+            </div>
+            <div className="ha-label">Cart ▾</div>
+          </button>
+
+          <CartDrawer
+            open={cartOpen}
+            onClose={() => setCartOpen(false)}
+            items={cartItems}
+            cartCount={cartCount}
+            subtotal={cartSubtotal}
+            savings={cartSavings}
+            isLoggedIn={isLoggedIn}
+            onViewCart={() => {
+              setCartOpen(false);
+              onNavigateCart();
+            }}
+            onCheckout={() => {
+              setCartOpen(false);
+              if (isLoggedIn) {
+                if (onNavigateRoute) onNavigateRoute("checkout");
+                else onNavigateCart();
+              } else onNavigateLogin();
+            }}
+          />
         </div>
       </div>
     </header>

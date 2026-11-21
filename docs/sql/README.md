@@ -410,6 +410,51 @@ select code from public.products where code like 'FAS154%';
 
 ---
 
+## 11. Order price breakdown
+
+**File:** [`apply-09-order-price-breakdown.sql`](./apply-09-order-price-breakdown.sql)
+
+**Where:** the Supabase **SQL Editor** (or `npm run db:apply`).
+
+**What it does:** adds the nullable columns `subtotal`, `discount_amount`, `shipping_fee` and
+`coupon_code` to `public.orders` — the coupon money the checkout already computed, plus the
+delivery split, now stored with the order instead of only in the browser's `sessionStorage`.
+
+**It is additive and re-runnable** (`IF NOT EXISTS`, no `NOT NULL`), so an existing table keeps
+its rows and the bundle can be pasted twice.
+
+**Not required yet:** the API writes the breakdown when the columns exist and retries the order
+insert without them when they do not, so order placement never breaks before this bundle is
+applied.
+
+**Apply it** before expecting `POST /api/orders` to persist the coupon breakdown.
+
+---
+
+## 12. Signed-in customers' carts
+
+**File:** [`apply-10-user-carts.sql`](./apply-10-user-carts.sql)
+
+**Where:** the Supabase **SQL Editor**.
+
+**What it does:** creates `public.user_carts` — one row per signed-in customer with the cart
+lines as `jsonb`. A guest cart lives only in `localStorage`; on login it is merged into the
+account's cart, and from then on the browser mirrors every change to this table through
+`GET/PUT/DELETE /api/cart` (`server/routes/cart.js`). Logout clears the visible cart but keeps
+the stored account cart, so signing back in restores it.
+
+**Not required yet:** when the table is absent the API returns an empty cart and treats writes
+as no-ops, so the browser copy still works. Apply the bundle to make carts survive a device
+change.
+
+**Verify:**
+
+```sql
+select user_id, jsonb_array_length(items) as lines, updated_at from public.user_carts limit 10;
+```
+
+---
+
 ## Rollback
 
 | Step        | How to undo it                                                                                                                                                                                                                                                                                                                                  |

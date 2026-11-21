@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
 import { AuthContext } from "./AuthContext";
-import { navigateToPath } from "../lib/routes";
+import { apiFetchCart, apiSaveCart, apiClearCart } from "../api/backendApi";
 
 const CartContext = createContext(null);
 
@@ -131,77 +131,107 @@ function loadInitialCart() {
   }
 }
 
+/**
+ * Merge a guest cart into an account cart.
+ *
+ * Quantity adds up when the same line is in both, so signing in never
+ * quietly drops what the customer picked while browsing logged out.
+ */
+function mergeCarts(accountItems, guestItems) {
+  const merged = parseStoredItems(JSON.stringify(accountItems));
+  for (const guest of guestItems) {
+    const existing = merged.find((item) => sameLine(item, guest));
+    if (existing) existing.quantity += Number(guest.quantity) || 1;
+    else merged.push({ ...guest, lineId: guest.lineId ?? lineIdFor(guest) });
+  }
+  return merged;
+}
+
 export function CartProvider({ children }) {
   const auth = useContext(AuthContext);
   const user = auth?.user ?? null;
   const isLoggedIn = auth?.isLoggedIn ?? false;
   const userKey = getUserStorageKey(user);
 
-  // When auth is wired up, an unauthenticated visitor sees an empty cart.
-  // Standalone unit tests without AuthProvider fall back to localStorage STORAGE_KEY.
+  // A visitor keeps a local cart. A signed-in customer uses a per-user key
+  // and mirrors the same lines to the backend.
   const [items, setItems] = useState(() => {
-    if (auth) {
-      if (isLoggedIn && userKey) {
-        try {
-          return parseStoredItems(localStorage.getItem(userKey));
-        } catch {
-          return [];
-        }
+    if (isLoggedIn && userKey) {
+      try {
+        return parseStoredItems(localStorage.getItem(userKey));
+      } catch {
+        return [];
       }
-      return [];
     }
     return loadInitialCart();
   });
 
   const activeUserKeyRef = useRef(userKey);
+  // The effect below also runs on mount. Without this, a guest's first render
+  // would be treated as a logout and their local cart would be wiped.
+  const wasLoggedInRef = useRef(isLoggedIn);
 
-  // Sync cart contents when user logs in or switches accounts
+  // On login, fold whatever was picked while logged out into the account's
+  // cart and drop the guest copy. Logout empties the visible cart but keeps
+  // the stored account cart, so signing back in restores it.
   useEffect(() => {
     if (!auth) return;
+    const authChanged = wasLoggedInRef.current !== isLoggedIn;
+    wasLoggedInRef.current = isLoggedIn;
 
     if (isLoggedIn && userKey) {
+      let next = parseStoredItems(localStorage.getItem(userKey));
       try {
-        const stored = parseStoredItems(localStorage.getItem(userKey));
-        setItems(stored);
-        activeUserKeyRef.current = userKey;
+        const guest = parseStoredItems(localStorage.getItem(STORAGE_KEY));
+        if (guest.length) {
+          next = mergeCarts(next, guest);
+          localStorage.removeItem(STORAGE_KEY);
+        }
       } catch {
-        setItems([]);
+        // storage unavailable — keep the account cart
       }
-    } else {
-      // Logged out: the active cart must appear empty
+      setItems(next);
+      activeUserKeyRef.current = userKey;
+
+      // The backend copy is additive: a slow read must not overwrite a line
+      // the customer just changed in this browser.
+      if (user?.id) {
+        apiFetchCart(user.id)
+          .then((stored) => {
+            if (stored.length) setItems((current) => mergeCarts(current, stored));
+          })
+          .catch(() => {});
+      }
+    } else if (authChanged) {
       setItems([]);
       activeUserKeyRef.current = null;
     }
-  }, [auth, isLoggedIn, userKey]);
+  }, [auth, isLoggedIn, userKey, user?.id]);
 
-  // Persist items to storage
+  // localStorage stays authoritative while a backend write is in flight.
   useEffect(() => {
     try {
-      if (auth) {
-        if (isLoggedIn && userKey) {
-          localStorage.setItem(userKey, JSON.stringify(items));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-        } else {
-          // Empty guest state
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      }
+      if (isLoggedIn && userKey) localStorage.setItem(userKey, JSON.stringify(items));
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {
       // storage unavailable — ignore
     }
   }, [items, auth, isLoggedIn, userKey]);
 
-  const addItem = (product, qty = 1) => {
-    // If not logged in, reject addition and redirect to login
-    if (auth && !isLoggedIn) {
-      if (typeof window !== "undefined") {
-        navigateToPath("/login");
-      }
-      return false;
-    }
+  // Mirror to the backend after the local write settles, so holding down a
+  // quantity button does not send one request per click. Best effort: a
+  // failed request never stops someone shopping.
+  const saveTimerRef = useRef(null);
+  useEffect(() => {
+    if (!isLoggedIn || !user?.id) return undefined;
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      apiSaveCart(user.id, items).catch(() => {});
+    }, 400);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [items, isLoggedIn, user?.id]);
 
+  const addItem = (product, qty = 1) => {
     const normalized = normalizeProduct(product);
     const amount = Number(qty) || 1;
     setItems((prev) => {

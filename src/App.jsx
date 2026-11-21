@@ -260,23 +260,13 @@ function AppMain() {
         </ProtectedRoute>
       )}
 
-      {page === "cart" &&
-        (isLoggedIn ? (
-          <CartPage
-            onNavigateHome={() => navigateTo("")}
-            onNavigateAccount={() => navigateTo("account")}
-            onCheckout={() => {
-              navigateTo(isLoggedIn ? "checkout" : "login");
-            }}
-          />
-        ) : (
-          <LoginPage
-            defaultRole="user"
-            onLoginSuccess={handleAuthSuccess}
-            onNavigateSignUp={() => navigateTo("signup")}
-            onNavigateHome={() => navigateTo("")}
-          />
-        ))}
+      {/* A guest may review a local cart; only checkout asks for an account. */}
+      {page === "cart" && (
+        <CartPage
+          onNavigateHome={() => navigateTo("")}
+          onCheckout={() => navigateTo(isLoggedIn ? "checkout" : "login")}
+        />
+      )}
 
       {/* Mock checkout: no payment provider yet, but a real order. */}
       {isCheckoutRoute(page) && <CheckoutPage />}

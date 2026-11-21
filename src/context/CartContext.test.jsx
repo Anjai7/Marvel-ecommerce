@@ -221,7 +221,7 @@ describe("CartContext", () => {
     expect(screen.getByTestId("count").textContent).toBe("3");
   });
 
-  it("blocks addItem and returns false when user is not logged in with active auth", () => {
+  it("lets a guest add to a local cart", () => {
     const authValue = { isLoggedIn: false, user: null };
     render(
       <AuthContext.Provider value={authValue}>
@@ -232,10 +232,48 @@ describe("CartContext", () => {
     );
 
     act(() => {
-      const added = latest.addItem(productA, 1);
-      expect(added).toBe(false);
+      expect(latest.addItem(productA, 1)).toBe(true);
     });
 
-    expect(screen.getByTestId("count").textContent).toBe("0");
+    expect(screen.getByTestId("count").textContent).toBe("1");
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY))).toHaveLength(1);
+  });
+
+  it("folds the guest cart into the account cart on login", () => {
+    const user = { id: 7, email: "buyer@example.com" };
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ ...productA, lineId: "a::", quantity: 2 }])
+    );
+    localStorage.setItem(
+      `marvel_cart_user_${user.id}`,
+      JSON.stringify([{ ...productB, lineId: "b::", quantity: 1 }])
+    );
+
+    let authValue = { isLoggedIn: false, user: null };
+    const Auth = ({ children }) => (
+      <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
+    );
+    const { rerender } = render(
+      <Auth>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </Auth>
+    );
+    expect(screen.getByTestId("count").textContent).toBe("2");
+
+    authValue = { isLoggedIn: true, user };
+    rerender(
+      <Auth>
+        <CartProvider>
+          <Harness onCart={capture} />
+        </CartProvider>
+      </Auth>
+    );
+
+    expect(screen.getByTestId("count").textContent).toBe("3");
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(`marvel_cart_user_${user.id}`))).toHaveLength(2);
   });
 });

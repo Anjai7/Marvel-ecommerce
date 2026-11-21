@@ -162,6 +162,8 @@ export default function ProductViewPage({
               <div className="pvp-gallery-sticky">
                 <ProductImageGallery media={view.media} />
               </div>
+              {/* The product's own short copy, straight under the gallery. */}
+              {view.description ? <p className="pvp-gallery-desc">{view.description}</p> : null}
             </div>
 
             {/* Right: Product Details */}

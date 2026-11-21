@@ -355,15 +355,7 @@ export default function ProductDetails({ product }) {
   }
 
   const handleCart = () => {
-    if (auth && !auth.isLoggedIn) {
-      addToast({
-        title: "Sign In Required",
-        message: "Please sign in or create an account to add items to your cart.",
-        type: "info",
-      });
-      navigateToPath("/login");
-      return;
-    }
+    // Guests may fill a cart; only checkout asks for an account.
     if (resolvedInStock === false) {
       addToast({
         title: "Out of stock",
@@ -393,17 +385,17 @@ export default function ProductDetails({ product }) {
   };
 
   const handleBuyNow = () => {
+    handleCart();
     if (auth && !auth.isLoggedIn) {
       addToast({
-        title: "Sign In Required",
-        message: "Please sign in or create an account to proceed.",
+        title: "Sign in to check out",
+        message: "Your cart is saved here — sign in to complete the order.",
         type: "info",
       });
       navigateToPath("/login");
-      return;
+    } else {
+      navigateToPath("/cart");
     }
-    handleCart();
-    navigateToPath("/cart");
   };
 
   const checkPincode = () => {

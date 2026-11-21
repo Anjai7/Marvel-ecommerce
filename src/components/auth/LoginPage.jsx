@@ -5,7 +5,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  ArrowLeft,
   Sparkles,
   AlertCircle,
   ShieldCheck,
@@ -20,7 +19,7 @@ import { useSettings } from "../../context/SettingsContext";
 import { apiRequestPasswordReset, apiResetPassword } from "../../api/backendApi";
 import { navigateToPath } from "../../lib/routes";
 
-export default function LoginPage({ onLoginSuccess, onNavigateSignUp, onNavigateHome }) {
+export default function LoginPage({ onLoginSuccess, onNavigateSignUp }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -128,22 +127,6 @@ export default function LoginPage({ onLoginSuccess, onNavigateSignUp, onNavigate
 
   return (
     <div className="auth-shell auth-shell--login">
-      {/* Dedicated Top Back Navigation */}
-      <div className="auth-top-bar">
-        <button
-          type="button"
-          className="auth-back-btn"
-          onClick={() => {
-            if (onNavigateHome) onNavigateHome();
-            else navigateToPath("/");
-          }}
-          aria-label="Back to store"
-        >
-          <ArrowLeft size={18} />
-          <span>Back to Store</span>
-        </button>
-      </div>
-
       <div className="auth-card">
         {/* Left Side: Clean Brand Panel */}
         <div className="auth-brand auth-brand--login">

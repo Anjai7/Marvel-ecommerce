@@ -237,6 +237,61 @@
   cursor: pointer;
 }
 
+/* The applied-coupon confirmation line slides/fades in when a code lands. */
+.checkout-coupon-applied {
+  animation: checkout-coupon-in 0.28s ease-out;
+}
+
+/* The coupon box briefly washes in its highlight while a code applies. */
+.checkout-coupon--applied {
+  animation: checkout-coupon-flash 0.7s ease-out;
+}
+
+/* The slide/fade lives on the whole coupon box as well so the highlight and
+ * the confirmation share one motion language; reduced motion is already
+ * handled globally in src/styles/base/motion.css. */
+
+@keyframes checkout-coupon-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes checkout-coupon-flash {
+  from {
+    background-color: var(--navy-bg);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* The opt-in switch under the applied-coupon line. Checked state is driven by
+ * the validated coupon; unchecking it drops the discount from the totals. */
+.checkout-coupon-apply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.checkout-coupon-apply input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--navy);
+  cursor: pointer;
+}
+
 .checkout-items {
   list-style: none;
   margin: 16px 0;

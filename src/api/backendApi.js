@@ -284,3 +284,24 @@ export async function apiRequestReturn(orderId, payload = {}) {
   });
   return data?.return;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Cart persistence                                                           */
+/* -------------------------------------------------------------------------- */
+/**
+ * A signed-in customer's cart lives in the backend too, so it survives a
+ * browser change. The localStorage copy stays authoritative while a write is
+ * in flight; a failure here must never stop someone shopping.
+ */
+export async function apiFetchCart(userId) {
+  const data = await apiFetch(`/cart?userId=${encodeURIComponent(userId)}`);
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
+export async function apiSaveCart(userId, items) {
+  return apiFetch("/cart", { method: "PUT", body: { userId, items } });
+}
+
+export async function apiClearCart(userId) {
+  return apiFetch("/cart", { method: "DELETE", body: { userId } });
+}

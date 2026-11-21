@@ -8,7 +8,6 @@ import {
   EyeOff,
   AlertCircle,
   ArrowRight,
-  ArrowLeft,
   Sparkles,
   ShieldCheck,
   Truck,
@@ -19,7 +18,7 @@ import { Button, Input, useToast } from "../ui";
 import { useAuth } from "../../context/AuthContext";
 import { navigateToPath } from "../../lib/routes";
 
-export default function SignUpPage({ onSignUpSuccess, onNavigateLogin, onNavigateHome }) {
+export default function SignUpPage({ onSignUpSuccess, onNavigateLogin }) {
   const [role, setRole] = useState("user"); // Strictly "user" or "vendor"
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -89,22 +88,6 @@ export default function SignUpPage({ onSignUpSuccess, onNavigateLogin, onNavigat
 
   return (
     <div className="auth-shell auth-shell--signup">
-      {/* Dedicated Top Back Navigation */}
-      <div className="auth-top-bar">
-        <button
-          type="button"
-          className="auth-back-btn"
-          onClick={() => {
-            if (onNavigateHome) onNavigateHome();
-            else navigateToPath("/");
-          }}
-          aria-label="Back to store"
-        >
-          <ArrowLeft size={18} />
-          <span>Back to Store</span>
-        </button>
-      </div>
-
       <div className="auth-card auth-card--signup">
         {/* Left Side: Brand Showcase */}
         <div className="auth-brand auth-brand--signup">

@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Truck,
   RotateCcw,
-  Sparkles,
 } from "lucide-react";
 import { useCart } from "../../context/CartContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -16,9 +15,6 @@ import { Button, Badge, useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
 import { formatOptionChoices } from "../../lib/productOptions";
 import { navigateToPath } from "../../lib/routes";
-
-const FALLBACK_BANNER_IMG =
-  "https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?w=400&h=300&fit=crop";
 
 export function CartPage({ onNavigateHome, onCheckout }) {
   const { items, cartCount, subtotal, savings, total, removeItem, updateQuantity, clearCart } =
@@ -34,9 +30,6 @@ export function CartPage({ onNavigateHome, onCheckout }) {
   }
   const user = auth?.user ?? null;
   const isLoggedIn = auth?.isLoggedIn ?? false;
-
-  const bannerImg =
-    items && items.length > 0 && items[0]?.image ? items[0].image : FALLBACK_BANNER_IMG;
 
   /**
    * The cart no longer places the order itself. It hands over to the
@@ -70,18 +63,10 @@ export function CartPage({ onNavigateHome, onCheckout }) {
 
   return (
     <div className="container cart-page">
-      {/* Unified banner: image + text as one unit */}
-      <div className="cart-banner">
-        <img src={bannerImg} alt="Shopping cart banner" className="cart-banner-img" />
-        <div className="cart-banner-text">
-          <h1>Your Cart</h1>
-          <div aria-live="polite">
-            <Badge variant="secondary">{cartCount} items</Badge>
-          </div>
-          <p className="cart-banner-subtitle">
-            <Sparkles size={14} className="cart-banner-sparkle-icon" /> Items in your cart qualify
-            for FREE Express Shipping!
-          </p>
+      <div className="cart-page-head">
+        <h1>Your Cart</h1>
+        <div aria-live="polite">
+          <Badge variant="secondary">{cartCount} items</Badge>
         </div>
       </div>
 

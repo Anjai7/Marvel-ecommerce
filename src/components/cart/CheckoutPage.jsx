@@ -33,12 +33,17 @@ export default function CheckoutPage() {
   const [shippingId, setShippingId] = useState("standard");
   const [code, setCode] = useState("");
   const [coupon, setCoupon] = useState(null);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [validatedCode, setValidatedCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [errors, setErrors] = useState({});
   const [placing, setPlacing] = useState(false);
 
   const shipping = SHIPPING.find((option) => option.id === shippingId) ?? SHIPPING[0];
-  const discount = coupon?.discount ?? 0;
+  // The discount only enters the running total while the apply checkbox is on;
+  // a validated but unticked coupon owes nothing yet, so the totals can be
+  // shown without it while the user decides.
+  const discount = couponApplied ? (coupon?.discount ?? 0) : 0;
   const total = Math.max(0, subtotal - discount + shipping.fee);
 
   const setField = (key) => (event) => {
@@ -47,18 +52,24 @@ export default function CheckoutPage() {
     setErrors((current) => ({ ...current, [key]: undefined }));
   };
 
-  const applyCoupon = async () => {
-    const value = code.trim();
-    if (!value) return;
+  const applyCoupon = async (value) => {
+    // React passes the click event as the first argument; only an explicit
+    // string (a saved code re-check) may override what is in the field.
+    const codeValue = (typeof value === "string" ? value : code).trim();
+    if (!codeValue) return;
     setCouponMessage("");
     try {
-      const result = await apiValidateCoupon({ code: value, subtotal });
+      const result = await apiValidateCoupon({ code: codeValue, subtotal });
       if (!result?.valid) {
         setCoupon(null);
+        setValidatedCode("");
+        setCouponApplied(false);
         setCouponMessage(result?.reason ?? "That code could not be applied.");
         return;
       }
       setCoupon(result);
+      setValidatedCode(result.code ?? codeValue);
+      setCouponApplied(true);
       setCouponMessage("");
       addToast({
         title: "Coupon applied",
@@ -67,8 +78,29 @@ export default function CheckoutPage() {
       });
     } catch {
       setCoupon(null);
+      setValidatedCode("");
+      setCouponApplied(false);
       setCouponMessage("Coupons are not available right now.");
     }
+  };
+
+  // The checkbox is the opt-in switch for the validated coupon: unchecking it
+  // drops the discount from the totals, checking it re-runs the last good code.
+  const toggleCoupon = async () => {
+    if (couponApplied) {
+      setCouponApplied(false);
+      return;
+    }
+    if (validatedCode) {
+      await applyCoupon(validatedCode);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCoupon(null);
+    setValidatedCode("");
+    setCouponApplied(false);
+    setCode("");
   };
 
   const validate = () => {
@@ -94,19 +126,28 @@ export default function CheckoutPage() {
         customerEmail: user?.email ?? "guest@marvel.com",
         items,
         totalAmount: total,
+        subtotal,
+        discountAmount: discount,
+        shippingFee: shipping.fee,
+        couponCode: couponApplied && coupon ? coupon.code : null,
         shippingAddress: `${address.line.trim()}, ${address.city.trim()}, ${address.state.trim()} ${address.pincode.trim()}`,
       });
 
       if (coupon?.code) {
         // Best effort: an order must not fail because the coupon counter did
         // not update. The discount is already in the total that was saved.
-        apiRedeemCoupon({ code: coupon.code }).catch(() => {});
+        Promise.resolve(apiRedeemCoupon({ code: coupon.code })).catch(() => {});
       }
 
       clearCart();
       sessionStorage.setItem(
         `marvel_last_order_${order.id}`,
-        JSON.stringify({ discount, shippingFee: shipping.fee, coupon: coupon?.code ?? null })
+        JSON.stringify({
+          subtotal,
+          discount,
+          shippingFee: shipping.fee,
+          coupon: couponApplied && coupon ? coupon.code : null,
+        })
       );
       addToast({ title: "Order placed", message: "Your order is confirmed.", type: "success" });
       navigateToPath(`/order/${order.id}`);
@@ -258,7 +299,7 @@ export default function CheckoutPage() {
           <aside className="checkout-summary" aria-labelledby="checkout-summary-title">
             <h2 id="checkout-summary-title">Order summary</h2>
 
-            <div className="checkout-coupon">
+            <div className={`checkout-coupon${couponApplied ? " checkout-coupon--applied" : ""}`}>
               <label htmlFor="checkout-coupon-code">Have a coupon?</label>
               <div className="checkout-coupon-row">
                 <Tag size={16} aria-hidden="true" />
@@ -269,7 +310,7 @@ export default function CheckoutPage() {
                   onKeyDown={(event) => event.key === "Enter" && applyCoupon()}
                   placeholder="Enter code"
                 />
-                <button type="button" onClick={applyCoupon} disabled={!code.trim()}>
+                <button type="button" onClick={() => applyCoupon()} disabled={!code.trim()}>
                   Apply
                 </button>
               </div>
@@ -278,19 +319,24 @@ export default function CheckoutPage() {
                   {couponMessage}
                 </p>
               )}
-              {coupon?.valid && (
+              {couponApplied && coupon && (
                 <p className="checkout-coupon-applied">
                   <Check size={14} aria-hidden="true" /> {coupon.code} applied
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCoupon(null);
-                      setCode("");
-                    }}
-                  >
+                  <button type="button" onClick={removeCoupon}>
                     Remove
                   </button>
                 </p>
+              )}
+              {coupon && (
+                <label htmlFor="checkout-coupon-apply" className="checkout-coupon-apply">
+                  <input
+                    id="checkout-coupon-apply"
+                    type="checkbox"
+                    checked={couponApplied}
+                    onChange={toggleCoupon}
+                  />
+                  <span>Apply this coupon to my order</span>
+                </label>
               )}
             </div>
 
