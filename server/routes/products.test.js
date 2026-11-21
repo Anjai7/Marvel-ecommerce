@@ -835,6 +835,83 @@ describe("products API category binding", () => {
     // The product row is written first, then the variants are attempted.
     expect(insertsInto(calls, "product_variants")).toHaveLength(1);
   });
+
+  it("GET /api/products/:id serves the stored code when one exists", async () => {
+    makeDb({
+      maybeSingle: () => ({
+        data: product({ id: "p-code", title: "Aurora Phone", code: "FAS379" }),
+        error: null,
+      }),
+    });
+
+    const body = await (await get("/api/products/p-code")).json();
+
+    expect(body.code).toBe("FAS379");
+  });
+
+  it("GET /api/products/:id still derives a code before the column exists", async () => {
+    makeDb({
+      maybeSingle: () => ({ data: product({ id: "p-code", title: "Aurora Phone" }), error: null }),
+    });
+
+    const body = await (await get("/api/products/p-code")).json();
+
+    expect(body.code).toMatch(/^[A-Z]{3}\d{3}$/);
+  });
+
+  it("POST /api/products stores the item code sent by the form", async () => {
+    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
+
+    await send("POST", "/api/products", newProduct({ code: "BTY639" }));
+
+    expect(calls.insert[0][0].code).toBe("BTY639");
+  });
+
+  it("POST /api/products derives a code when the form leaves it blank", async () => {
+    const calls = makeDb({ single: () => ({ data: product(), error: null }) });
+
+    await send("POST", "/api/products", newProduct({ code: "" }));
+
+    expect(calls.insert[0][0].code).toMatch(/^[A-Z]{3}\d{3}$/);
+  });
+
+  it("POST /api/products still saves when products.code is not applied", async () => {
+    let attempt = 0;
+    makeDb({
+      single: (state) => {
+        if (state.op === "insert") {
+          attempt += 1;
+          if (attempt === 1)
+            return { data: null, error: { message: "column code does not exist" } };
+          return { data: product(), error: null };
+        }
+        return { data: null, error: null };
+      },
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const res = await send("POST", "/api/products", newProduct({ code: "BTY639" }));
+
+    expect(res.status).toBe(201);
+    expect(attempt).toBe(2);
+  });
+
+  it("PUT /api/products/:id saves an edited code and rejects a blank one", async () => {
+    const calls = makeDb({
+      single: (state) =>
+        state.op === "update"
+          ? { data: product({ code: "TEN138" }), error: null }
+          : { data: null, error: null },
+    });
+
+    const ok = await send("PUT", "/api/products/prod-1", { code: "TEN138" });
+    expect(ok.status).toBe(200);
+    expect(calls.update[calls.update.length - 1].code).toBe("TEN138");
+
+    const bad = await send("PUT", "/api/products/prod-1", { code: "   " });
+    expect(bad.status).toBe(400);
+    expect(await bad.json()).toEqual({ error: "Product code cannot be empty." });
+  });
 });
 
 describe("product stock adjustments and audit writes", () => {

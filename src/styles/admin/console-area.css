@@ -45,6 +45,14 @@
 }
 
 /* ── The product form ───────────────────────────────────── */
+/* The item code is stored data, not just a computed badge. */
+.console-product-form .console-form-hint {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--gray-500);
+}
+
 .console-product-form .console-form-label {
   font-weight: 600;
 }

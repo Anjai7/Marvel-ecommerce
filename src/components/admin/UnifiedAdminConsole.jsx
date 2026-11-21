@@ -338,6 +338,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
   const [productForm, setProductForm] = useState({
     title: "",
     sku: "",
+    code: "",
     price: "",
     original_price: "",
     category: "",
@@ -630,6 +631,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     setProductForm({
       title: prod.title || "",
       sku: prod.sku || generateProductCode(prod.title, prod.category, prod.id),
+      code: prod.code || generateProductCode(prod.title, prod.category, prod.id),
       price: prod.price !== undefined && prod.price !== null ? String(prod.price) : "",
       original_price:
         prod.original_price !== undefined && prod.original_price !== null
@@ -692,6 +694,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
         title: productForm.title.trim(),
         sku:
           (productForm.sku && productForm.sku.trim()) ||
+          generateProductCode(productForm.title, productForm.category),
+        code:
+          (productForm.code && productForm.code.trim()) ||
           generateProductCode(productForm.title, productForm.category),
         price: parseFloat(productForm.price),
         original_price: productForm.original_price
@@ -3134,6 +3139,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             ...prev,
                             title: val,
                             sku: prev.sku ? prev.sku : generateProductCode(val, prev.category),
+                            code: prev.code ? prev.code : generateProductCode(val, prev.category),
                           }));
                           clearProductError("title");
                         }}
@@ -3146,13 +3152,30 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                       )}
                     </div>
                     <div className="form-group">
+                      <label className="form-label" htmlFor="product-form-code">
+                        Item code
+                      </label>
+                      <Input
+                        id="product-form-code"
+                        type="text"
+                        placeholder="e.g. FAS379"
+                        value={productForm.code}
+                        onChange={(e) => {
+                          setProductForm((prev) => ({ ...prev, code: e.target.value }));
+                        }}
+                      />
+                      <span className="console-form-hint">
+                        Badge shown on the storefront. Stored in the catalogue.
+                      </span>
+                    </div>
+                    <div className="form-group">
                       <label className="form-label" htmlFor="product-form-sku">
-                        Product Code / SKU
+                        SKU
                       </label>
                       <Input
                         id="product-form-sku"
                         type="text"
-                        placeholder="e.g. LAP001"
+                        placeholder="e.g. MRV-HEADP-ABC123"
                         value={productForm.sku}
                         onChange={(e) => {
                           setProductForm((prev) => ({ ...prev, sku: e.target.value }));
@@ -3174,6 +3197,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
                             category: name ?? prev.category,
                             sku: prev.sku
                               ? prev.sku
+                              : generateProductCode(prev.title, name ?? prev.category),
+                            code: prev.code
+                              ? prev.code
                               : generateProductCode(prev.title, name ?? prev.category),
                           }))
                         }

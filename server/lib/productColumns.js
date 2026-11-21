@@ -27,6 +27,7 @@ export const PRODUCT_LIST_COLUMNS = [
   "is_featured",
   "offer_text",
   "sku",
+  "code",
   "vendor_name",
   "created_at",
   "description",
@@ -34,3 +35,26 @@ export const PRODUCT_LIST_COLUMNS = [
 
 /** The same list, as the string the query takes. */
 export const PRODUCT_LIST_SELECT = PRODUCT_LIST_COLUMNS.join(",");
+
+/**
+ * apply-08 adds `code` to the table. Until it is applied, a select that asks
+ * for the column fails the whole list. The flag flips on the first such
+ * failure, and every later read leaves the column out — the storefront keeps
+ * working and the code stays derived from title/category/id.
+ */
+let codeColumnAvailable = true;
+
+export function productListSelect() {
+  if (codeColumnAvailable) return PRODUCT_LIST_SELECT;
+  return PRODUCT_LIST_COLUMNS.filter((column) => column !== "code").join(",");
+}
+
+export function noteMissingCodeColumn() {
+  codeColumnAvailable = false;
+}
+
+/** True when PostgREST rejected a query because `products.code` is absent. */
+export function isMissingCodeColumn(error) {
+  const message = String(error?.message ?? "");
+  return /code/i.test(message) && /does not exist|schema cache/i.test(message);
+}

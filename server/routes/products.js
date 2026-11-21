@@ -2,7 +2,11 @@ import express from "express";
 import { supabase } from "../db.js";
 import { getSignedCloudinaryUrl } from "../services/cloudinary.js";
 import { OPTION_KINDS, isOptionKind } from "../lib/productOptions.js";
-import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
+import {
+  isMissingCodeColumn,
+  noteMissingCodeColumn,
+  productListSelect,
+} from "../lib/productColumns.js";
 import { CATALOGUE_TTL_MS, cached, clearCache } from "../lib/shortCache.js";
 import { generateProductCode } from "../lib/productCode.js";
 import { recordAudit } from "../lib/audit.js";
@@ -33,6 +37,7 @@ export function formatProduct(p) {
   }
 
   const generatedCode = generateProductCode(p.title, p.category, p.id);
+  const storedCode = typeof p.code === "string" ? p.code.trim() : "";
   const resolvedSku =
     p.sku && typeof p.sku === "string" && !p.sku.startsWith("MRV-") ? p.sku : generatedCode;
 
@@ -46,7 +51,10 @@ export function formatProduct(p) {
     image_url: displayImage || p.image_url,
     image: displayImage || p.image_url,
     sku: resolvedSku,
-    code: generatedCode,
+    // The stored code is the source of truth once apply-08 has been run.
+    // Before that the column does not exist, and the same code is derived
+    // from the title/category/id so the badge keeps working.
+    code: storedCode || generatedCode,
     model_name: p.model_name || resolvedSku,
     // `country_of_origin`, `manufacturer_name`, `importer_packer`,
     // `manufacturing_date`, `hsn_code`, `gst_rate`, `certifications` and
@@ -610,65 +618,74 @@ router.get("/", async (req, res) => {
 
         // Only the columns a list shows: the whole row is nearly three
         // kilobytes of JSON blobs that a card never reads.
-        let query = supabase
-          .from("products")
-          .select(PRODUCT_LIST_SELECT)
-          .order("created_at", { ascending: false });
+        // The first attempt asks for `code` too. If apply-08 has not been
+        // applied, the flag flips and the query is rebuilt without it.
+        const buildQuery = (columns) => {
+          let query = supabase
+            .from("products")
+            .select(columns)
+            .order("created_at", { ascending: false });
 
-        if (vendorId) {
-          query = query.eq("vendor_id", vendorId);
-        }
+          if (vendorId) query = query.eq("vendor_id", vendorId);
 
-        if (taxonomy.ids) {
-          query = query.in("category_id", taxonomy.ids);
-        } else if (category && category !== "All") {
-          // Free-text display label: the legacy filter, not the taxonomy filter.
-          query = query.ilike("category", category);
-        }
-
-        if (moderation_status) {
-          query = query.eq("moderation_status", moderation_status);
-        }
-
-        if (is_featured !== undefined) {
-          query = query.eq("is_featured", is_featured === "true");
-        }
-
-        if (search) {
-          // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term
-          // must never be able to add another clause.
-          const safeSearch = String(search).replace(/[,.()]/g, " ");
-          query = query.or(
-            `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%,sku.ilike.%${safeSearch}%`
-          );
-        }
-
-        let allData = [];
-        if (typeof query.range === "function") {
-          const PAGE_SIZE = 1000;
-          let from = 0;
-          while (true) {
-            const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
-            if (error) {
-              console.error("Supabase products query error:", error.message);
-              return { error: true };
-            }
-            if (data && data.length > 0) {
-              allData.push(...data);
-            }
-            if (!data || data.length < PAGE_SIZE) {
-              break;
-            }
-            from += PAGE_SIZE;
+          if (taxonomy.ids) {
+            query = query.in("category_id", taxonomy.ids);
+          } else if (category && category !== "All") {
+            // Free-text display label: the legacy filter, not the taxonomy filter.
+            query = query.ilike("category", category);
           }
-        } else {
-          const { data, error } = await query;
+
+          if (moderation_status) query = query.eq("moderation_status", moderation_status);
+          if (is_featured !== undefined) {
+            query = query.eq("is_featured", is_featured === "true");
+          }
+
+          if (search) {
+            // PostgREST reads `,` `.` `(` `)` as filter grammar; a search term
+            // must never be able to add another clause.
+            const safeSearch = String(search).replace(/[,.()]/g, " ");
+            query = query.or(
+              `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%,sku.ilike.%${safeSearch}%`
+            );
+          }
+          return query;
+        };
+
+        const fetchAll = async (query) => {
+          const rows = [];
+          if (typeof query.range === "function") {
+            const PAGE_SIZE = 1000;
+            let from = 0;
+            while (true) {
+              const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+              if (error) return { error };
+              if (data && data.length > 0) rows.push(...data);
+              if (!data || data.length < PAGE_SIZE) break;
+              from += PAGE_SIZE;
+            }
+          } else {
+            const { data, error } = await query;
+            if (error) return { error };
+            rows.push(...(data || []));
+          }
+          return { rows };
+        };
+
+        let allData;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const { rows, error } = await fetchAll(buildQuery(productListSelect()));
+          if (error && isMissingCodeColumn(error)) {
+            noteMissingCodeColumn();
+            continue;
+          }
           if (error) {
             console.error("Supabase products query error:", error.message);
             return { error: true };
           }
-          allData = data || [];
+          allData = rows;
+          break;
         }
+        if (!allData) return { error: true };
 
         return { rows: allData.map(formatProduct) };
       }
@@ -720,6 +737,7 @@ router.post("/", async (req, res) => {
       original_price,
       category,
       sku,
+      code,
       stock = 10,
       description,
       image_url,
@@ -775,10 +793,14 @@ router.post("/", async (req, res) => {
 
     const assignedSku =
       (sku && typeof sku === "string" && sku.trim()) || generateProductCode(title, categoryLabel);
+    const assignedCode =
+      (code && typeof code === "string" && code.trim()) ||
+      generateProductCode(title, categoryLabel);
 
     const newProductRecord = {
       title: title.trim(),
       sku: assignedSku,
+      code: assignedCode,
       price: parseFloat(price),
       original_price: original_price ? parseFloat(original_price) : parseFloat(price) * 1.25,
       category: categoryLabel,
@@ -797,11 +819,17 @@ router.post("/", async (req, res) => {
       status: "active",
     };
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("products")
       .insert([newProductRecord])
       .select()
       .single();
+
+    if (error && isMissingCodeColumn(error)) {
+      console.warn("products.code is not applied yet; saving without the stored code.");
+      const { code: _pendingCode, ...withoutCode } = newProductRecord;
+      ({ data, error } = await supabase.from("products").insert([withoutCode]).select().single());
+    }
 
     if (error) {
       console.error("Supabase insert product error:", error.message);
@@ -847,6 +875,12 @@ router.put("/:id", async (req, res) => {
         return res.status(400).json({ error: "Product title cannot be empty." });
       }
       updates.title = updates.title.trim();
+    }
+    if (updates.code !== undefined) {
+      if (typeof updates.code !== "string" || !updates.code.trim()) {
+        return res.status(400).json({ error: "Product code cannot be empty." });
+      }
+      updates.code = updates.code.trim();
     }
     if (updates.price !== undefined) {
       if (
@@ -896,12 +930,23 @@ router.put("/:id", async (req, res) => {
       updates.original_price = parseFloat(updates.original_price);
     if (updates.stock !== undefined) updates.stock = parseInt(updates.stock, 10);
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("products")
       .update(updates)
       .eq("id", id)
       .select()
       .single();
+
+    if (error && isMissingCodeColumn(error)) {
+      console.warn("products.code is not applied yet; saving the update without it.");
+      const { code: _pendingCode, ...withoutCode } = updates;
+      ({ data, error } = await supabase
+        .from("products")
+        .update(withoutCode)
+        .eq("id", id)
+        .select()
+        .single());
+    }
 
     if (error) {
       console.error("Supabase update product error:", error.message);

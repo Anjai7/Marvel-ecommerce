@@ -18,7 +18,11 @@ import {
   loadActiveCategories,
   resolveCategoryPath,
 } from "./products.js";
-import { PRODUCT_LIST_SELECT } from "../lib/productColumns.js";
+import {
+  isMissingCodeColumn,
+  noteMissingCodeColumn,
+  productListSelect,
+} from "../lib/productColumns.js";
 import { CATALOGUE_TTL_MS, cached } from "../lib/shortCache.js";
 
 const adminOnly = adminGuards;
@@ -412,24 +416,36 @@ router.get("/products", async (req, res) => {
       CATALOGUE_TTL_MS,
       async () => {
         // Only the columns a listing shows: the whole row is nearly three
-        // kilobytes of JSON blobs that a card never reads.
-        let pageQuery = applyListingFilters(
-          supabase.from("products").select(PRODUCT_LIST_SELECT),
-          filters
-        );
-        pageQuery = applyListingSort(pageQuery, req.query.sort);
-        if (filters.pageSize > 0) {
-          pageQuery = pageQuery.range(
-            (filters.page - 1) * filters.pageSize,
-            filters.page * filters.pageSize - 1
+        // kilobytes of JSON blobs that a card never reads. Before apply-08
+        // the stored code is not a column yet, so a failed read is retried
+        // without it rather than taking the listing down.
+        let data;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          let pageQuery = applyListingFilters(
+            supabase.from("products").select(productListSelect()),
+            filters
           );
-        }
+          pageQuery = applyListingSort(pageQuery, req.query.sort);
+          if (filters.pageSize > 0) {
+            pageQuery = pageQuery.range(
+              (filters.page - 1) * filters.pageSize,
+              filters.page * filters.pageSize - 1
+            );
+          }
 
-        const { data, error } = await pageQuery;
-        if (error) {
-          console.error("Supabase category listing query error:", error.message);
-          return { error: true };
+          const result = await pageQuery;
+          if (result.error && isMissingCodeColumn(result.error)) {
+            noteMissingCodeColumn();
+            continue;
+          }
+          if (result.error) {
+            console.error("Supabase category listing query error:", result.error.message);
+            return { error: true };
+          }
+          data = result.data;
+          break;
         }
+        if (data === undefined) return { error: true };
 
         const items = (data ?? []).map(formatProduct);
 

@@ -373,6 +373,39 @@ select reason, count(*) from public.returns group by reason;
 
 ---
 
+## 10. Stored product codes
+
+**File:** [`apply-08-product-code.sql`](./apply-08-product-code.sql)
+
+**Where:** the Supabase **SQL Editor**.
+
+**What it does:** adds `public.products.code` (a short text column), backfills all 1,503
+existing products with the exact code their badges already show (`FAS379`, `ELE969`,
+`BTY639`, …), and indexes the column so admin search stays fast. The codes in the bundle
+were generated with the same `generateProductCode()` the UI uses, so nothing on screen
+changes when it is applied.
+
+The code is **not unique**: 55 codes are currently shared by more than one product,
+because the generator derives its number from the last three digits of the product id.
+An admin can edit the code in the product form to disambiguate any of them.
+
+**Idempotent:** the column and index use `IF NOT EXISTS` and the backfill only fills
+blank codes, so an edited code is never overwritten by a re-run.
+
+**Before it is applied:** the API keeps deriving the code on read and keeps saving
+products — a write that carries `code` is retried without it when PostgREST reports the
+column missing. After it is applied, the stored value is the source of truth and the
+**Item code** field in the product form edits it.
+
+**Verify:**
+
+```sql
+select code, count(*) from public.products group by code having count(*) > 1 limit 10;
+select id, title, code from public.products where code = 'FAS379';
+```
+
+---
+
 ## Rollback
 
 | Step        | How to undo it                                                                                                                                                                                                                                                                                                                                  |
