@@ -23,10 +23,45 @@ const SEEDED_CART = [
   },
 ];
 
+/**
+ * The cart is per signed-in user now, so the cart page asks a guest to sign
+ * in. Every test here signs the seeded customer in first — the cart it then
+ * sees is that customer's, seeded below.
+ */
+async function signIn(page) {
+  await page.goto("/#/login");
+  await page.getByPlaceholder("you@example.com").first().fill("user@marvel.com");
+  await page.getByPlaceholder("••••••••").first().fill("user123");
+  await page.getByPlaceholder("••••••••").first().press("Enter");
+  await page.waitForTimeout(1200);
+}
+
+/**
+ * The cart belongs to the signed-in user, so the guest key is ignored. Seed
+ * the key that user's cart is kept under.
+ */
 async function seedCart(page, items) {
-  await page.addInitScript((value) => {
-    window.localStorage.setItem("marvel_cart", JSON.stringify(value));
-  }, items);
+  // The signed-in user's id is in the token the app keeps.
+  const id = await page.evaluate(() => {
+    const token = window.localStorage.getItem("marvel_jwt_token");
+    if (!token) return null;
+    try {
+      return JSON.parse(window.atob(token.split(".")[1])).id ?? null;
+    } catch {
+      return null;
+    }
+  });
+  await page.addInitScript(
+    ([key, value]) => {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    },
+    [`marvel_cart_user_${id}`, items]
+  );
+
+  // A hash change does not reload the document, so the app would keep the
+  // cart it already has. Reloading puts the seeded cart in front of it.
+  await page.reload();
+  await page.waitForTimeout(800);
 }
 
 for (const viewport of [
@@ -34,6 +69,7 @@ for (const viewport of [
   { name: "mobile", width: 390, height: 844 },
 ]) {
   test(`cart banner joins image with text as one unit (${viewport.name})`, async ({ page }) => {
+    await signIn(page);
     await seedCart(page, SEEDED_CART);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await page.goto("/#/cart");
@@ -81,6 +117,7 @@ for (const viewport of [
 }
 
 test("cart page shows items with working quantity steppers and totals", async ({ page }) => {
+  await signIn(page);
   await seedCart(page, SEEDED_CART);
   await page.goto("/#/cart");
 
@@ -109,6 +146,7 @@ test("cart page shows items with working quantity steppers and totals", async ({
 });
 
 test("cart page empty state links back to shopping", async ({ page }) => {
+  await signIn(page);
   await seedCart(page, []);
   await page.goto("/#/cart");
 
@@ -118,6 +156,7 @@ test("cart page empty state links back to shopping", async ({ page }) => {
 });
 
 test("header cart badge reflects the real cart and links to the cart page", async ({ page }) => {
+  await signIn(page);
   await seedCart(page, SEEDED_CART);
   await page.goto("/");
 

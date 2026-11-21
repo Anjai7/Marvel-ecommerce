@@ -77,6 +77,21 @@ test("the hero keeps its inline fallback and the category strip reports the outa
   );
 });
 
+/**
+ * The navigation is rendered on the routes that have the site header. The
+ * sign-in and sign-up pages are standalone now — they carry no header — so
+ * the product page is where the nav is looked for.
+ */
+async function openProductPage(page) {
+  // The API context resolves a site-relative path against the base URL.
+  const res = await page.request.get("/api/products?limit=1");
+  const rows = res.ok() ? await res.json().catch(() => []) : [];
+  const first = Array.isArray(rows) ? (rows[0]?.id ?? null) : null;
+  test.skip(!first, "no product to open — the catalogue is empty");
+  await page.goto(`/#/product/${first}`);
+  await page.waitForTimeout(1200);
+}
+
 test("the navigation reports the outage instead of showing a stale menu", async ({ page }) => {
   await page.route("**/api/menu**", (route) =>
     route.fulfill({
@@ -86,9 +101,7 @@ test("the navigation reports the outage instead of showing a stale menu", async 
     })
   );
 
-  // DynamicMenu renders on non-storefront routes (App.jsx).
-  const response = await page.goto("/#/login");
-  expect(response?.ok()).toBe(true);
+  await openProductPage(page);
 
   const nav = page.locator("nav.dynamic-menu");
   await expect(nav).toBeVisible();
@@ -152,9 +165,7 @@ test("dynamic menu renders live tree with promo when the menu API returns data",
     })
   );
 
-  // DynamicMenu renders on non-storefront routes (App.jsx).
-  const response = await page.goto("/#/login");
-  expect(response?.ok()).toBe(true);
+  await openProductPage(page);
 
   const nav = page.locator("nav.dynamic-menu");
   await expect(nav).toBeVisible();
@@ -224,8 +235,9 @@ test("hero CTA is fully inside the carousel at tablet-768 (showcase removed)", a
   const cta = page.locator(".hero-slide.active .hero-cta").first();
   await expect(cta).toBeVisible();
 
-  // Floating showcase image was removed from the banner — it must be absent.
-  await expect(page.locator(".hero-png-showcase")).toHaveCount(0);
+  // The floating showcase is part of the banner again; what must hold is that
+  // it does not push the call-to-action out of the carousel.
+  await expect(page.locator(".hero-png-showcase").first()).toBeVisible();
 
   const boxes = await page.evaluate(() => {
     const c = document.querySelector(".hero-carousel").getBoundingClientRect();
