@@ -379,29 +379,33 @@ select reason, count(*) from public.returns group by reason;
 
 **Where:** the Supabase **SQL Editor**.
 
-**What it does:** adds `public.products.code` (a short text column), backfills all 1,503
-existing products with the exact code their badges already show (`FAS379`, `ELE969`,
-`BTY639`, …), and indexes the column so admin search stays fast. The codes in the bundle
-were generated with the same `generateProductCode()` the UI uses, so nothing on screen
-changes when it is applied.
+**What it does:** adds `public.products.code`, backfills all 1,503 products with the code
+their badge already shows (`FAS379`, `ELE969`, `BTY639`, …), then adds a **unique index**
+on `lower(code)`. Codes are guaranteed unique from here on.
 
-The code is **not unique**: 55 codes are currently shared by more than one product,
-because the generator derives its number from the last three digits of the product id.
-An admin can edit the code in the product form to disambiguate any of them.
+The old generator uses the last three digits of the product id, so 55 base codes were
+shared. The oldest row keeps the plain code; the other 60 rows get `-2` or `-3`
+(`FAS154`, `FAS154-2`, …). The other 1,443 codes do not change at all.
+
+**Going forward:** `allocateProductCode` (`server/lib/allocateProductCode.js`) tries the
+derived code and then `-2`, `-3` … until it finds a free one, so new products cannot
+collide. A code typed into the admin form is checked as-is: a duplicate answers **409**
+with `Product code … is already used.` The index is on `lower(code)`, so case variants
+cannot sneak in either.
 
 **Idempotent:** the column and index use `IF NOT EXISTS` and the backfill only fills
 blank codes, so an edited code is never overwritten by a re-run.
 
-**Before it is applied:** the API keeps deriving the code on read and keeps saving
-products — a write that carries `code` is retried without it when PostgREST reports the
-column missing. After it is applied, the stored value is the source of truth and the
-**Item code** field in the product form edits it.
+**Before it is applied:** reads and writes fall back to the derived code instead of
+failing on the missing column. After it is applied, the stored value is the source of
+truth and the **Item code** field in the product form edits it.
 
 **Verify:**
 
 ```sql
-select code, count(*) from public.products group by code having count(*) > 1 limit 10;
+select count(*) as products, count(distinct lower(code)) as unique_codes from public.products;
 select id, title, code from public.products where code = 'FAS379';
+select code from public.products where code like 'FAS154%';
 ```
 
 ---

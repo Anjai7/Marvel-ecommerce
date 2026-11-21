@@ -862,41 +862,55 @@ describe("products API category binding", () => {
   it("POST /api/products stores the item code sent by the form", async () => {
     const calls = makeDb({ single: () => ({ data: product(), error: null }) });
 
-    await send("POST", "/api/products", newProduct({ code: "BTY639" }));
+    const res = await send("POST", "/api/products", newProduct({ code: "BTY639" }));
 
-    expect(calls.insert[0][0].code).toBe("BTY639");
+    expect(res.status).toBe(201);
+    expect(calls.update[calls.update.length - 1]).toEqual({ code: "BTY639" });
+    expect((await res.json()).product.code).toBe("BTY639");
   });
 
   it("POST /api/products derives a code when the form leaves it blank", async () => {
     const calls = makeDb({ single: () => ({ data: product(), error: null }) });
 
-    await send("POST", "/api/products", newProduct({ code: "" }));
+    const res = await send("POST", "/api/products", newProduct({ code: "" }));
 
-    expect(calls.insert[0][0].code).toMatch(/^[A-Z]{3}\d{3}$/);
+    expect(res.status).toBe(201);
+    expect(calls.update[calls.update.length - 1].code).toMatch(/^[A-Z]{3}\d{3}$/);
+  });
+
+  it("POST /api/products adds a suffix when the derived code is taken", async () => {
+    const calls = makeDb({
+      select: (state, table, calls) => {
+        if (table === "products" && state.columns === "id") {
+          const code = calls.ilike.at(-1)?.[1] ?? "";
+          // Only the plain code is taken; the first suffix is free.
+          return { data: code.includes("-") ? [] : [{ id: "someone-else" }], error: null };
+        }
+        return { data: [], error: null };
+      },
+      single: () => ({ data: product(), error: null }),
+    });
+
+    const res = await send("POST", "/api/products", newProduct({ code: "" }));
+
+    expect(res.status).toBe(201);
+    expect(calls.update[calls.update.length - 1].code).toMatch(/-2$/);
   });
 
   it("POST /api/products still saves when products.code is not applied", async () => {
-    let attempt = 0;
     makeDb({
-      single: (state) => {
-        if (state.op === "insert") {
-          attempt += 1;
-          if (attempt === 1)
-            return { data: null, error: { message: "column code does not exist" } };
-          return { data: product(), error: null };
-        }
-        return { data: null, error: null };
-      },
+      single: (state) =>
+        state.op === "insert" ? { data: product(), error: null } : { data: null, error: null },
+      update: () => ({ error: { message: "column code does not exist" } }),
     });
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const res = await send("POST", "/api/products", newProduct({ code: "BTY639" }));
 
     expect(res.status).toBe(201);
-    expect(attempt).toBe(2);
   });
 
-  it("PUT /api/products/:id saves an edited code and rejects a blank one", async () => {
+  it("PUT /api/products/:id saves an edited code and re-derives a blank one", async () => {
     const calls = makeDb({
       single: (state) =>
         state.op === "update"
@@ -904,13 +918,42 @@ describe("products API category binding", () => {
           : { data: null, error: null },
     });
 
-    const ok = await send("PUT", "/api/products/prod-1", { code: "TEN138" });
+    const ok = await send("PUT", "/api/products/prod-1", { code: "TEN138", title: "Aurora Phone" });
     expect(ok.status).toBe(200);
     expect(calls.update[calls.update.length - 1].code).toBe("TEN138");
 
-    const bad = await send("PUT", "/api/products/prod-1", { code: "   " });
-    expect(bad.status).toBe(400);
-    expect(await bad.json()).toEqual({ error: "Product code cannot be empty." });
+    const blank = await send("PUT", "/api/products/prod-1", { code: "", title: "Aurora Phone" });
+    expect(blank.status).toBe(200);
+    expect(calls.update[calls.update.length - 1].code).toMatch(/^[A-Z]{3}\d{3}$/);
+  });
+
+  it("PUT /api/products/:id answers 409 for a code another product owns", async () => {
+    makeDb({
+      select: (state) =>
+        state.table === "products" && state.columns === "id"
+          ? { data: [{ id: "another-product" }], error: null }
+          : { data: [], error: null },
+    });
+
+    const res = await send("PUT", "/api/products/prod-1", {
+      code: "FAS379",
+      title: "Aurora Phone",
+    });
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Product code FAS379 is already used." });
+  });
+
+  it("PUT /api/products/:id rejects a code with characters that are not letters, digits or hyphens", async () => {
+    const res = await send("PUT", "/api/products/prod-1", {
+      code: "FAS_379",
+      title: "Aurora Phone",
+    });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Product code may only contain letters, numbers and hyphens.",
+    });
   });
 });
 

@@ -7,6 +7,7 @@ import {
   noteMissingCodeColumn,
   productListSelect,
 } from "../lib/productColumns.js";
+import { allocateProductCode } from "../lib/allocateProductCode.js";
 import { CATALOGUE_TTL_MS, cached, clearCache } from "../lib/shortCache.js";
 import { generateProductCode } from "../lib/productCode.js";
 import { recordAudit } from "../lib/audit.js";
@@ -793,14 +794,10 @@ router.post("/", async (req, res) => {
 
     const assignedSku =
       (sku && typeof sku === "string" && sku.trim()) || generateProductCode(title, categoryLabel);
-    const assignedCode =
-      (code && typeof code === "string" && code.trim()) ||
-      generateProductCode(title, categoryLabel);
 
     const newProductRecord = {
       title: title.trim(),
       sku: assignedSku,
-      code: assignedCode,
       price: parseFloat(price),
       original_price: original_price ? parseFloat(original_price) : parseFloat(price) * 1.25,
       category: categoryLabel,
@@ -819,20 +816,49 @@ router.post("/", async (req, res) => {
       status: "active",
     };
 
-    let { data, error } = await supabase
+    // The code is allocated after the insert, when the id exists: the number
+    // in a code comes from the id, so it cannot be derived any earlier.
+    const { data, error } = await supabase
       .from("products")
       .insert([newProductRecord])
       .select()
       .single();
 
-    if (error && isMissingCodeColumn(error)) {
-      console.warn("products.code is not applied yet; saving without the stored code.");
-      const { code: _pendingCode, ...withoutCode } = newProductRecord;
-      ({ data, error } = await supabase.from("products").insert([withoutCode]).select().single());
-    }
-
     if (error) {
       console.error("Supabase insert product error:", error.message);
+      return res.status(500).json({ error: "Failed to save product." });
+    }
+
+    let assignedCode;
+    try {
+      const allocation = await allocateProductCode(supabase, {
+        title: title.trim(),
+        category: categoryLabel,
+        id: data.id,
+        preferred: code,
+      });
+      if (allocation.invalid) {
+        return res
+          .status(400)
+          .json({ error: "Product code may only contain letters, numbers and hyphens." });
+      }
+      if (allocation.taken) {
+        return res.status(409).json({ error: `Product code ${allocation.code} is already used.` });
+      }
+      assignedCode = allocation.code;
+    } catch (allocError) {
+      console.error("Product code allocation error:", allocError.message);
+      return res.status(500).json({ error: "Failed to allocate a product code." });
+    }
+
+    const { error: codeError } = await supabase
+      .from("products")
+      .update({ code: assignedCode })
+      .eq("id", data.id);
+    if (codeError && isMissingCodeColumn(codeError)) {
+      console.warn("products.code is not applied yet; the code stays derived.");
+    } else if (codeError) {
+      console.error("Supabase product code write error:", codeError.message);
       return res.status(500).json({ error: "Failed to save product." });
     }
 
@@ -851,7 +877,10 @@ router.post("/", async (req, res) => {
     // audit table so a save is never lost to an undelivered log line.
     await recordAudit("product.create", "product", data.id, { title: newProductRecord.title });
 
-    res.status(201).json({ message: "Product created in Supabase", product: formatProduct(data) });
+    res.status(201).json({
+      message: "Product created in Supabase",
+      product: formatProduct({ ...data, code: assignedCode }),
+    });
   } catch (err) {
     console.error("Products POST route error:", err);
     res.status(500).json({ error: "Failed to save product." });
@@ -876,11 +905,44 @@ router.put("/:id", async (req, res) => {
       }
       updates.title = updates.title.trim();
     }
-    if (updates.code !== undefined) {
-      if (typeof updates.code !== "string" || !updates.code.trim()) {
-        return res.status(400).json({ error: "Product code cannot be empty." });
+    if (Object.hasOwn(updates, "code")) {
+      const preferred = updates.code;
+      delete updates.code;
+      // A blank field asks for the derived code again. The title and category
+      // may not be in this update, so read them from the stored row when needed.
+      let titleForCode = updates.title;
+      let categoryForCode = updates.category;
+      if ((typeof preferred !== "string" || !preferred.trim() || !titleForCode) && id) {
+        const { data: existing } = await supabase
+          .from("products")
+          .select("title,category")
+          .eq("id", id)
+          .maybeSingle();
+        titleForCode = titleForCode ?? existing?.title ?? "";
+        categoryForCode = categoryForCode ?? existing?.category ?? "";
       }
-      updates.code = updates.code.trim();
+      try {
+        const allocation = await allocateProductCode(supabase, {
+          title: titleForCode,
+          category: categoryForCode,
+          id,
+          preferred,
+        });
+        if (allocation.invalid) {
+          return res
+            .status(400)
+            .json({ error: "Product code may only contain letters, numbers and hyphens." });
+        }
+        if (allocation.taken) {
+          return res
+            .status(409)
+            .json({ error: `Product code ${allocation.code} is already used.` });
+        }
+        updates.code = allocation.code;
+      } catch (allocError) {
+        console.error("Product code allocation error:", allocError.message);
+        return res.status(500).json({ error: "Failed to allocate a product code." });
+      }
     }
     if (updates.price !== undefined) {
       if (
