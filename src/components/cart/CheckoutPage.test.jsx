@@ -72,6 +72,7 @@ describe("CheckoutPage", () => {
   });
 
   const applySavedCoupon = async (user) => {
+    await user.click(screen.getByRole("button", { name: /Have a coupon/i }));
     await user.type(screen.getByPlaceholderText("Enter code"), "SAVE10");
     await user.click(screen.getByRole("button", { name: "Apply" }));
     const checkbox = await screen.findByLabelText(/Apply this coupon to my order/i);
@@ -132,6 +133,7 @@ describe("CheckoutPage", () => {
     setupCart();
     render(<CheckoutPage />);
 
+    await user.click(screen.getByRole("button", { name: /Have a coupon/i }));
     await user.type(screen.getByPlaceholderText("Enter code"), "NOPE123");
     await user.click(screen.getByRole("button", { name: "Apply" }));
 

@@ -32,7 +32,7 @@ describe("CouponsManager", () => {
 
     expect(await screen.findByText("MARVEL20")).toBeInTheDocument();
     expect(screen.getByText("20% off")).toBeInTheDocument();
-    expect(screen.getByText(/Uses 3 \/ ∞/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ ∞/)).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 

@@ -863,21 +863,25 @@ export default function ProductDetails({ product }) {
           {hasDelivery && (
             <>
               <div className="pd-pincode-row">
-                <MapPin size={15} className="pd-pincode-icon" />
-                <input
-                  className="pd-pincode-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Enter 6-digit Pincode"
-                  value={pincode}
-                  onChange={(e) => {
-                    setPincode(e.target.value.replace(/\D/g, ""));
-                    setPincodeMsg(null);
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && checkPincode()}
-                />
-                <button className="pd-pincode-btn" onClick={checkPincode}>
+                <label className="pd-pincode-field" htmlFor="pd-pincode-input">
+                  <MapPin size={15} className="pd-pincode-icon" aria-hidden="true" />
+                  <input
+                    id="pd-pincode-input"
+                    className="pd-pincode-input"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="Enter 6-digit Pincode"
+                    aria-label="Enter 6-digit pincode"
+                    value={pincode}
+                    onChange={(e) => {
+                      setPincode(e.target.value.replace(/\D/g, ""));
+                      setPincodeMsg(null);
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && checkPincode()}
+                  />
+                </label>
+                <button type="button" className="pd-pincode-btn" onClick={checkPincode}>
                   Check Availability
                 </button>
               </div>
@@ -890,16 +894,21 @@ export default function ProductDetails({ product }) {
             </>
           )}
 
-          <div className="pd-delivery-chips">
+          <div className="pd-delivery-perks">
             {deliveryLines.map((line, index) => (
-              <span className="pd-delivery-chip good" key={index}>
-                {index === 0 ? <Truck size={13} /> : <RefreshCw size={13} />}
-                {line}
+              <span className="pd-perk-item" key={index}>
+                {index === 0 ? (
+                  <Truck size={14} aria-hidden="true" />
+                ) : (
+                  <RefreshCw size={14} aria-hidden="true" />
+                )}
+                <span>{line}</span>
               </span>
             ))}
             {hasWarranty && (
-              <span className="pd-delivery-chip">
-                <Shield size={13} /> {product.warranty}
+              <span className="pd-perk-item">
+                <Shield size={14} aria-hidden="true" />
+                <span>{product.warranty}</span>
               </span>
             )}
           </div>

@@ -6,7 +6,10 @@ import {
   apiFetchCoupons,
   apiUpdateCoupon,
 } from "../../api/backendApi";
+import { formatCurrency } from "../../lib/currency";
 import { Button, Input, Switch, useToast } from "../ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/Table";
+import SearchInput from "../ui/SearchInput";
 import AdminInlinePanel from "./AdminInlinePanel";
 import AdminConfirmStrip from "./AdminConfirmStrip";
 
@@ -39,6 +42,7 @@ export default function CouponsManager() {
   const [saving, setSaving] = useState(false);
   const [deletingCoupon, setDeletingCoupon] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -190,14 +194,22 @@ export default function CouponsManager() {
     return "Free shipping";
   };
 
+  const visibleCoupons = coupons.filter((coupon) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return [coupon.code, coupon.kind, formatKindValue(coupon.kind, coupon.value)]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
+
   return (
-    <section className="admin-coupons" aria-label="Coupons">
-      <div className="admin-coupons-header">
+    <section className="admin-coupons dashboard-tab-view" aria-label="Coupons">
+      <div className="chart-card-header">
         <div>
-          <h2 className="admin-coupons-title">Coupons</h2>
-          <p className="admin-coupons-subtitle">
-            Discount codes the storefront can apply. Create, edit, toggle or delete them here;
-            checkout reads them through the validate and redeem endpoints.
+          <h3 className="chart-title">Coupons</h3>
+          <p className="chart-subtitle">
+            Discount codes the storefront can apply. Create, edit, toggle or delete them here.
           </p>
         </div>
         <Button type="button" variant="accent" size="sm" onClick={openCreate}>
@@ -209,61 +221,110 @@ export default function CouponsManager() {
         <p role="alert" className="admin-coupons-error">
           {error}
         </p>
-      ) : loading ? (
-        <p className="admin-coupons-loading">Loading coupons...</p>
       ) : (
-        <ul className="admin-coupons-list">
-          {coupons.length === 0 ? (
-            <li className="report-empty">No coupons yet. Create the first one.</li>
-          ) : (
-            coupons.map((coupon) => (
-              <li key={coupon.id} className="admin-coupon-row">
-                <div className="admin-coupon-main">
-                  <span className="admin-coupon-code">{coupon.code}</span>
-                  <span className="admin-coupon-kind">
-                    {formatKindValue(coupon.kind, coupon.value)}
-                  </span>
-                  <span className="admin-coupon-meta">
-                    Min. subtotal ₹{Number(coupon.min_subtotal ?? 0)} · Uses{" "}
-                    {coupon.used_count ?? 0}
-                    {Number(coupon.max_uses ?? 0) > 0 ? ` / ${coupon.max_uses}` : " / ∞"}
-                  </span>
-                </div>
-                <div className="admin-coupon-side">
-                  <Switch
-                    checked={Boolean(coupon.is_active)}
-                    onChange={() => handleToggle(coupon)}
-                    slotProps={{ input: { "aria-label": `Toggle coupon ${coupon.code}` } }}
-                  />
-                  <span className="admin-coupon-status">
-                    {coupon.is_active ? "Active" : "Inactive"}
-                  </span>
-                  <span className="admin-coupon-expiry">
-                    {coupon.expires_at
-                      ? `Expires ${String(coupon.expires_at).slice(0, 10)}`
-                      : "No expiry"}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openEdit(coupon)}
-                  >
-                    <Edit2 size={14} /> Edit
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDeletingCoupon(coupon)}
-                  >
-                    <Trash2 size={14} /> Delete
-                  </Button>
-                </div>
-              </li>
-            ))
-          )}
-        </ul>
+        <div className="console-table-card">
+          <div className="console-list-toolbar">
+            <SearchInput
+              value={search}
+              onValueChange={setSearch}
+              ariaLabel="Search coupons"
+              placeholder="Search coupons by code or kind"
+            />
+            <span className="text-muted text-sm">
+              <strong>{visibleCoupons.length}</strong> of <strong>{coupons.length}</strong> coupons
+            </span>
+          </div>
+
+          <div className="table-responsive-wrapper">
+            <Table className="ui-table--cards">
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Sl. No.</TableHead>
+                  <TableHead scope="col">CODE</TableHead>
+                  <TableHead scope="col">DISCOUNT</TableHead>
+                  <TableHead scope="col">MIN. SUBTOTAL</TableHead>
+                  <TableHead scope="col">USES</TableHead>
+                  <TableHead scope="col">STATUS</TableHead>
+                  <TableHead scope="col">EXPIRES</TableHead>
+                  <TableHead scope="col" className="text-right">
+                    ACTIONS
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} data-empty className="empty-table-cell">
+                      Loading coupons…
+                    </TableCell>
+                  </TableRow>
+                ) : visibleCoupons.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} data-empty className="empty-table-cell">
+                      <p>
+                        {search
+                          ? `No coupons match "${search}".`
+                          : "No coupons yet. Create the first one."}
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  visibleCoupons.map((coupon, index) => (
+                    <TableRow key={coupon.id}>
+                      <TableCell data-label="Sl. No.">{index + 1}</TableCell>
+                      <TableCell data-label="Code">
+                        <span className="admin-coupon-code">{coupon.code}</span>
+                      </TableCell>
+                      <TableCell data-label="Discount">
+                        {formatKindValue(coupon.kind, coupon.value)}
+                      </TableCell>
+                      <TableCell data-label="Min. subtotal">
+                        {formatCurrency(Number(coupon.min_subtotal ?? 0))}
+                      </TableCell>
+                      <TableCell data-label="Uses">
+                        {coupon.used_count ?? 0}
+                        {Number(coupon.max_uses ?? 0) > 0 ? ` / ${coupon.max_uses}` : " / ∞"}
+                      </TableCell>
+                      <TableCell data-label="Status">
+                        <div className="admin-coupon-status-cell">
+                          <Switch
+                            checked={Boolean(coupon.is_active)}
+                            onChange={() => handleToggle(coupon)}
+                            slotProps={{ input: { "aria-label": `Toggle coupon ${coupon.code}` } }}
+                          />
+                          <span>{coupon.is_active ? "Active" : "Inactive"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell data-label="Expires">
+                        {coupon.expires_at ? String(coupon.expires_at).slice(0, 10) : "No expiry"}
+                      </TableCell>
+                      <TableCell data-label="Actions" className="text-right">
+                        <div className="admin-coupon-actions">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(coupon)}
+                          >
+                            <Edit2 size={14} /> Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeletingCoupon(coupon)}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       )}
 
       <AdminInlinePanel

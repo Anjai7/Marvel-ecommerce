@@ -52,8 +52,15 @@ export default function Header({
   // A product card or the product page asks for the drawer after an add.
   useEffect(() => {
     const open = () => setCartOpen(true);
+    const close = () => setCartOpen(false);
     window.addEventListener("marvel:cart:open", open);
-    return () => window.removeEventListener("marvel:cart:open", open);
+    // A route change closes the panel: it belongs to the page the customer
+    // was on, not to the page they just navigated to.
+    window.addEventListener("popstate", close);
+    return () => {
+      window.removeEventListener("marvel:cart:open", open);
+      window.removeEventListener("popstate", close);
+    };
   }, []);
   const { addToast } = useToast();
   const { settings } = useSettings();

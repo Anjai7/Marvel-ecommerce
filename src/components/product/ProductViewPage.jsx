@@ -162,9 +162,10 @@ export default function ProductViewPage({
             <div className="pvp-gallery-col">
               <div className="pvp-gallery-sticky">
                 <ProductImageGallery media={view.media} />
+                {/* Inside the sticky wrapper so the copy stays with the image
+                    while the longer details column scrolls past it. */}
+                {view.description ? <p className="pvp-gallery-desc">{view.description}</p> : null}
               </div>
-              {/* The product's own short copy, straight under the gallery. */}
-              {view.description ? <p className="pvp-gallery-desc">{view.description}</p> : null}
             </div>
 
             {/* Right: Product Details */}

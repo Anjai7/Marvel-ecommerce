@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ChevronLeft, Lock, Tag, Check, ShoppingBag } from "lucide-react";
+import { useRef, useState } from "react";
+import { ChevronDown, ChevronLeft, Lock, Tag, Check, ShoppingBag } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { Button, Input, useToast } from "../ui";
@@ -34,10 +34,12 @@ export default function CheckoutPage() {
   const [code, setCode] = useState("");
   const [coupon, setCoupon] = useState(null);
   const [couponApplied, setCouponApplied] = useState(false);
+  const [couponOpen, setCouponOpen] = useState(false);
   const [validatedCode, setValidatedCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [errors, setErrors] = useState({});
   const [placing, setPlacing] = useState(false);
+  const couponInputRef = useRef(null);
 
   const shipping = SHIPPING.find((option) => option.id === shippingId) ?? SHIPPING[0];
   // The discount only enters the running total while the apply checkbox is on;
@@ -299,47 +301,6 @@ export default function CheckoutPage() {
           <aside className="checkout-summary" aria-labelledby="checkout-summary-title">
             <h2 id="checkout-summary-title">Order summary</h2>
 
-            <div className={`checkout-coupon${couponApplied ? " checkout-coupon--applied" : ""}`}>
-              <label htmlFor="checkout-coupon-code">Have a coupon?</label>
-              <div className="checkout-coupon-row">
-                <Tag size={16} aria-hidden="true" />
-                <input
-                  id="checkout-coupon-code"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value)}
-                  onKeyDown={(event) => event.key === "Enter" && applyCoupon()}
-                  placeholder="Enter code"
-                />
-                <button type="button" onClick={() => applyCoupon()} disabled={!code.trim()}>
-                  Apply
-                </button>
-              </div>
-              {couponMessage && (
-                <p className="checkout-coupon-message" role="status">
-                  {couponMessage}
-                </p>
-              )}
-              {couponApplied && coupon && (
-                <p className="checkout-coupon-applied">
-                  <Check size={14} aria-hidden="true" /> {coupon.code} applied
-                  <button type="button" onClick={removeCoupon}>
-                    Remove
-                  </button>
-                </p>
-              )}
-              {coupon && (
-                <label htmlFor="checkout-coupon-apply" className="checkout-coupon-apply">
-                  <input
-                    id="checkout-coupon-apply"
-                    type="checkbox"
-                    checked={couponApplied}
-                    onChange={toggleCoupon}
-                  />
-                  <span>Apply this coupon to my order</span>
-                </label>
-              )}
-            </div>
-
             <ul className="checkout-items">
               {items.map((item) => (
                 <li key={item.lineId ?? item.id}>
@@ -378,6 +339,76 @@ export default function CheckoutPage() {
                 <dd>{formatCurrency(total)}</dd>
               </div>
             </dl>
+
+            {/* Progressive disclosure: shoppers without a code never see a
+                field that invites a coupon hunt. Placed after the total so the
+                discount change is visible in the breakdown above it. */}
+            <div className={`checkout-coupon${couponApplied ? " checkout-coupon--applied" : ""}`}>
+              <button
+                type="button"
+                className="checkout-coupon-toggle"
+                aria-expanded={couponOpen}
+                aria-controls="checkout-coupon-panel"
+                onClick={() => {
+                  setCouponOpen((open) => !open);
+                  if (!couponOpen) requestAnimationFrame(() => couponInputRef.current?.focus());
+                }}
+              >
+                <Tag size={15} aria-hidden="true" />
+                <span>Have a coupon?</span>
+                <ChevronDown
+                  size={15}
+                  aria-hidden="true"
+                  className={
+                    couponOpen ? "checkout-coupon-chevron is-open" : "checkout-coupon-chevron"
+                  }
+                />
+              </button>
+
+              {couponOpen && (
+                <div className="checkout-coupon-panel" id="checkout-coupon-panel">
+                  <div className="checkout-coupon-row">
+                    <input
+                      ref={couponInputRef}
+                      id="checkout-coupon-code"
+                      value={code}
+                      onChange={(event) => setCode(event.target.value)}
+                      onKeyDown={(event) => event.key === "Enter" && applyCoupon()}
+                      placeholder="Enter code"
+                      autoComplete="off"
+                      autoCapitalize="characters"
+                    />
+                    <button type="button" onClick={() => applyCoupon()} disabled={!code.trim()}>
+                      Apply
+                    </button>
+                  </div>
+                  {couponMessage && (
+                    <p className="checkout-coupon-message" role="status">
+                      {couponMessage}
+                    </p>
+                  )}
+                  {couponApplied && coupon && (
+                    <p className="checkout-coupon-applied">
+                      <Check size={14} aria-hidden="true" /> {coupon.code} applied
+                      <button type="button" onClick={removeCoupon}>
+                        Remove
+                      </button>
+                    </p>
+                  )}
+                  {coupon && (
+                    <label htmlFor="checkout-coupon-apply" className="checkout-coupon-apply">
+                      <input
+                        id="checkout-coupon-apply"
+                        type="checkbox"
+                        checked={couponApplied}
+                        onChange={toggleCoupon}
+                      />
+                      <span>Apply this coupon to my order</span>
+                    </label>
+                  )}
+                </div>
+              )}
+            </div>
 
             <Button onClick={placeOrder} disabled={placing} className="checkout-place-order">
               <Lock size={15} aria-hidden="true" />
