@@ -59,3 +59,101 @@
     justify-content: flex-start;
   }
 }
+
+/* Usage & performance — KPIs, a per-code bar chart and a recent-redemptions
+   table. All grids collapse to one column on small screens. */
+.coupon-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.coupon-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background: var(--gray-50);
+}
+
+.coupon-kpi-value {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--gray-900);
+  word-break: break-word;
+}
+
+.coupon-kpi-label {
+  font-size: 11.5px;
+  color: var(--gray-500);
+}
+
+.coupon-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.coupon-bar-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 12px;
+}
+
+.coupon-bar-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gray-800);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coupon-bar-track {
+  height: 9px;
+  border-radius: 999px;
+  background: var(--gray-100);
+  overflow: hidden;
+}
+
+.coupon-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy);
+}
+
+.coupon-bar-value {
+  font-size: 11.5px;
+  color: var(--gray-600);
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .coupon-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .coupon-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coupon-bar-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+
+  .coupon-bar-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .coupon-bar-value {
+    font-size: 11px;
+  }
+}

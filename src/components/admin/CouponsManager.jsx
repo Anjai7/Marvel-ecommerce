@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Edit2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Edit2, Plus, RefreshCw, Ticket, Trash2 } from "lucide-react";
 import {
   apiCreateCoupon,
   apiDeleteCoupon,
   apiFetchCoupons,
+  apiFetchCouponUsage,
   apiUpdateCoupon,
 } from "../../api/backendApi";
 import { formatCurrency } from "../../lib/currency";
@@ -43,11 +44,13 @@ export default function CouponsManager() {
   const [deletingCoupon, setDeletingCoupon] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [usage, setUsage] = useState(null);
 
   const load = useCallback(async () => {
     try {
-      const list = await apiFetchCoupons();
+      const [list, report] = await Promise.all([apiFetchCoupons(), apiFetchCouponUsage()]);
       setCoupons(Array.isArray(list) ? list : []);
+      setUsage(report ?? null);
     } catch (err) {
       setError(err?.message || "Could not load the coupons.");
     } finally {
@@ -325,6 +328,114 @@ export default function CouponsManager() {
             </Table>
           </div>
         </div>
+      )}
+
+      {usage && (
+        <>
+          <div className="report-card coupon-performance">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-title">Coupon Performance</h3>
+                <p className="chart-subtitle">
+                  Redemptions and savings from orders that actually used a code
+                </p>
+              </div>
+              <Ticket size={18} className="text-muted" aria-hidden="true" />
+            </div>
+            {usage.available === false ? (
+              <p className="report-empty">Coupon reporting is not available yet.</p>
+            ) : (
+              <>
+                <div className="coupon-kpi-grid">
+                  <div className="coupon-kpi">
+                    <span className="coupon-kpi-value">{usage.summary.activeCoupons}</span>
+                    <span className="coupon-kpi-label">Active codes</span>
+                  </div>
+                  <div className="coupon-kpi">
+                    <span className="coupon-kpi-value">{usage.summary.redemptions}</span>
+                    <span className="coupon-kpi-label">Redemptions</span>
+                  </div>
+                  <div className="coupon-kpi">
+                    <span className="coupon-kpi-value">
+                      {formatCurrency(usage.summary.totalDiscount)}
+                    </span>
+                    <span className="coupon-kpi-label">Discount given</span>
+                  </div>
+                  <div className="coupon-kpi">
+                    <span className="coupon-kpi-value">
+                      {formatCurrency(usage.summary.averageDiscount)}
+                    </span>
+                    <span className="coupon-kpi-label">Average saving</span>
+                  </div>
+                </div>
+
+                {usage.byCoupon.length === 0 ? (
+                  <p className="report-empty">No coupon has been redeemed yet.</p>
+                ) : (
+                  <div className="coupon-bars">
+                    {usage.byCoupon.map((row) => {
+                      const maxUses = Math.max(1, ...usage.byCoupon.map((entry) => entry.uses));
+                      const percent = Math.round((row.uses / maxUses) * 100);
+                      return (
+                        <div className="coupon-bar-row" key={row.code}>
+                          <span className="coupon-bar-label">{row.code}</span>
+                          <span className="coupon-bar-track">
+                            <span
+                              className="coupon-bar-fill"
+                              style={{ width: `${percent}%` }} /* inline-style: allowed */
+                            />
+                          </span>
+                          <span className="coupon-bar-value">
+                            {row.uses} used · {formatCurrency(row.discount)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="report-card">
+            <div className="chart-card-header">
+              <div>
+                <h3 className="chart-title">Recent Redemptions</h3>
+                <p className="chart-subtitle">The last ten orders that applied a code</p>
+              </div>
+            </div>
+            {usage.recent.length === 0 ? (
+              <p className="report-empty">No redemptions recorded yet.</p>
+            ) : (
+              <div className="table-responsive-wrapper">
+                <Table className="ui-table--cards">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">CODE</TableHead>
+                      <TableHead scope="col">CUSTOMER</TableHead>
+                      <TableHead scope="col">DISCOUNT</TableHead>
+                      <TableHead scope="col">ORDER TOTAL</TableHead>
+                      <TableHead scope="col">DATE</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usage.recent.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell data-label="Code">{row.code}</TableCell>
+                        <TableCell data-label="Customer">{row.customer || "—"}</TableCell>
+                        <TableCell data-label="Discount">{formatCurrency(row.discount)}</TableCell>
+                        <TableCell data-label="Order total">{formatCurrency(row.total)}</TableCell>
+                        <TableCell data-label="Date">
+                          {row.createdAt ? String(row.createdAt).slice(0, 10) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       <AdminInlinePanel

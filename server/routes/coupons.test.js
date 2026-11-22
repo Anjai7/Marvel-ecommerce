@@ -300,3 +300,129 @@ describe("coupons API", () => {
     expect(body.used_count).toBe(1);
   });
 });
+
+describe("coupon discovery and reporting", () => {
+  let server;
+  let base;
+
+  beforeAll(
+    () =>
+      new Promise((resolve) => {
+        server = app.listen(0, () => {
+          base = `http://127.0.0.1:${server.address().port}`;
+          resolve();
+        });
+      })
+  );
+
+  afterAll(() => new Promise((resolve) => server.close(resolve)));
+  beforeEach(() => mockFrom.mockReset());
+
+  const chain = (result) => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      not: () => query,
+      order: () => query,
+      limit: () => query,
+      then: (onFulfilled, onRejected) => Promise.resolve(result).then(onFulfilled, onRejected),
+    };
+    return query;
+  };
+
+  it("GET /api/coupons/active advertises only usable codes", async () => {
+    mockFrom.mockImplementation(() =>
+      chain({
+        data: [
+          {
+            code: "GOOD5",
+            kind: "percent",
+            value: 5,
+            min_subtotal: 0,
+            expires_at: null,
+            max_uses: 0,
+            used_count: 2,
+          },
+          {
+            code: "OLD5",
+            kind: "percent",
+            value: 5,
+            min_subtotal: 0,
+            expires_at: "2020-01-01",
+            max_uses: 0,
+            used_count: 0,
+          },
+          {
+            code: "DONE5",
+            kind: "percent",
+            value: 5,
+            min_subtotal: 0,
+            expires_at: null,
+            max_uses: 2,
+            used_count: 2,
+          },
+        ],
+        error: null,
+      })
+    );
+
+    const res = await fetch(`${base}/api/coupons/active`);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.coupons.map((coupon) => coupon.code)).toEqual(["GOOD5"]);
+    expect(body.coupons[0]).toEqual({
+      code: "GOOD5",
+      kind: "percent",
+      value: 5,
+      min_subtotal: 0,
+    });
+  });
+
+  it("GET /api/coupons/usage aggregates redemptions and discounts", async () => {
+    mockFrom.mockImplementation((table) =>
+      chain(
+        table === "coupons"
+          ? { data: [{ ...ACTIVE_COUPON, code: "MARVEL20", used_count: 3 }], error: null }
+          : {
+              data: [
+                {
+                  id: "order-1",
+                  coupon_code: "MARVEL20",
+                  discount_amount: 100,
+                  total_amount: 900,
+                  customer_name: "Test Buyer",
+                  created_at: "2026-11-01T00:00:00.000Z",
+                },
+                {
+                  id: "order-2",
+                  coupon_code: "MARVEL20",
+                  discount_amount: 50,
+                  total_amount: 450,
+                  customer_name: "Other Buyer",
+                  created_at: "2026-11-02T00:00:00.000Z",
+                },
+              ],
+              error: null,
+            }
+      )
+    );
+    const token = signUserToken({ id: "admin-1", role: "admin", email: "admin@marvel.com" });
+
+    const res = await fetch(`${base}/api/coupons/usage`, {
+      headers: { ...JSON_HEADERS, Authorization: `Bearer ${token}` },
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.available).toBe(true);
+    expect(body.summary.redemptions).toBe(2);
+    expect(body.summary.totalDiscount).toBe(150);
+    expect(body.byCoupon[0]).toMatchObject({ code: "MARVEL20", uses: 2, discount: 150 });
+    expect(body.recent).toHaveLength(2);
+  });
+
+  it("GET /api/coupons/usage requires an admin token", async () => {
+    const res = await fetch(`${base}/api/coupons/usage`);
+    expect(res.status).toBe(401);
+  });
+});

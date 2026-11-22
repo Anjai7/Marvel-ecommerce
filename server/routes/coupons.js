@@ -265,6 +265,174 @@ router.delete("/:id", ...adminGuards, async (req, res) => {
 });
 
 /**
+ * GET /api/coupons/active — the codes the storefront may advertise.
+ *
+ * Public but deliberately minimal: a code, its shape and the minimum spend.
+ * The product page used to show copy from `product_offers`, which could name
+ * codes that do not exist; this list is what the admin actually manages.
+ */
+router.get("/active", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("coupons")
+      .select("code, kind, value, min_subtotal, max_uses, used_count, expires_at")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      if (/does not exist|schema cache/i.test(String(error.message))) {
+        return res.json({ coupons: [] });
+      }
+      console.error("Supabase active coupons error:", error.message);
+      return res.status(500).json({ error: "Could not load coupons." });
+    }
+
+    const now = Date.now();
+    const coupons = (data ?? [])
+      .filter((row) => {
+        if (row.expires_at && new Date(row.expires_at).getTime() < now) return false;
+        const max = Number(row.max_uses ?? DEFAULT_MAX_USES);
+        return !(max > 0 && Number(row.used_count ?? 0) >= max);
+      })
+      .filter((row) => normalizeCouponCode(row.code))
+      .map((row) => ({
+        code: row.code,
+        kind: row.kind,
+        value: Number(row.value ?? 0),
+        min_subtotal: Number(row.min_subtotal ?? 0),
+      }));
+
+    res.json({ coupons });
+  } catch (err) {
+    console.error("Active coupons route error:", err);
+    res.status(500).json({ error: "Could not load coupons." });
+  }
+});
+
+/** An all-zero report for a store whose coupon tables are not applied yet. */
+function emptyUsageSummary() {
+  return {
+    activeCoupons: 0,
+    totalCoupons: 0,
+    redemptions: 0,
+    totalDiscount: 0,
+    totalRevenue: 0,
+    averageDiscount: 0,
+  };
+}
+
+/**
+ * GET /api/coupons/usage — redemptions and savings, admin only.
+ *
+ * Derived from the coupon rows and the orders that actually carry a
+ * coupon_code. Before apply-07/09 exist the answer is an honest empty report
+ * rather than invented figures.
+ */
+router.get("/usage", ...adminGuards, async (req, res) => {
+  try {
+    const [couponsResult, ordersResult] = await Promise.all([
+      supabase.from("coupons").select(COUPON_COLUMNS),
+      supabase
+        .from("orders")
+        .select("id, coupon_code, discount_amount, total_amount, created_at, customer_name")
+        .not("coupon_code", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(100),
+    ]);
+
+    if (
+      [couponsResult.error, ordersResult.error].some((error) =>
+        /does not exist|schema cache/i.test(String(error?.message ?? ""))
+      )
+    ) {
+      return res.json({ summary: emptyUsageSummary(), byCoupon: [], recent: [], available: false });
+    }
+    if (couponsResult.error || ordersResult.error) {
+      console.error(
+        "Supabase coupon usage error:",
+        couponsResult.error?.message ?? ordersResult.error?.message
+      );
+      return res.status(500).json({ error: "Could not load coupon usage." });
+    }
+
+    const coupons = (couponsResult.data ?? []).map(formatCoupon).filter(Boolean);
+    const orders = (ordersResult.data ?? []).filter((row) => normalizeCouponCode(row.coupon_code));
+
+    const byCode = new Map();
+    for (const coupon of coupons) {
+      byCode.set(coupon.code, {
+        code: coupon.code,
+        kind: coupon.kind,
+        value: coupon.value,
+        uses: 0,
+        discount: 0,
+        revenue: 0,
+        lastUsed: null,
+        isActive: coupon.is_active,
+      });
+    }
+    let totalDiscount = 0;
+    let totalRevenue = 0;
+    const recent = [];
+
+    for (const order of orders) {
+      const code = normalizeCouponCode(order.coupon_code);
+      const discount = Number(order.discount_amount) || 0;
+      const total = Number(order.total_amount) || 0;
+      if (!byCode.has(code)) {
+        byCode.set(code, {
+          code,
+          kind: null,
+          value: 0,
+          uses: 0,
+          discount: 0,
+          revenue: 0,
+          lastUsed: null,
+          isActive: false,
+        });
+      }
+      const row = byCode.get(code);
+      row.uses += 1;
+      row.discount += discount;
+      row.revenue += total;
+      if (!row.lastUsed || String(order.created_at) > row.lastUsed) row.lastUsed = order.created_at;
+      totalDiscount += discount;
+      totalRevenue += total;
+      recent.push({
+        id: order.id,
+        code,
+        customer: order.customer_name ?? "",
+        discount,
+        total,
+        createdAt: order.created_at,
+      });
+    }
+
+    const byCoupon = [...byCode.values()]
+      .filter((row) => row.uses > 0 || row.isActive)
+      .sort((a, b) => b.uses - a.uses || a.code.localeCompare(b.code));
+
+    res.json({
+      summary: {
+        activeCoupons: coupons.filter((coupon) => coupon.is_active).length,
+        totalCoupons: coupons.length,
+        redemptions: orders.length,
+        totalDiscount,
+        totalRevenue,
+        averageDiscount: orders.length ? totalDiscount / orders.length : 0,
+      },
+      byCoupon,
+      recent: recent.slice(0, 10),
+      available: true,
+    });
+  } catch (err) {
+    console.error("Coupons usage route error:", err);
+    res.status(500).json({ error: "Could not load coupon usage." });
+  }
+});
+
+/**
  * POST /api/coupons/validate — the storefront's pre-check. Public: the
  * checkout calls it before applying a code, and an unknown code is an answer,
  * not an error.

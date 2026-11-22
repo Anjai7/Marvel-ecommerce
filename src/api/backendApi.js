@@ -235,6 +235,17 @@ export async function apiFetchCoupons() {
   return data?.coupons ?? [];
 }
 
+/** Public, minimal list the product page may advertise. */
+export async function apiFetchActiveCoupons() {
+  const data = await apiFetch("/coupons/active", { auth: false });
+  return data?.coupons ?? [];
+}
+
+/** Admin-only redemptions, savings and per-code breakdown. */
+export async function apiFetchCouponUsage() {
+  return apiFetch("/coupons/usage");
+}
+
 export async function apiCreateCoupon(coupon) {
   const data = await apiFetch("/coupons", { method: "POST", body: coupon });
   return data.coupon;

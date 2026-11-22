@@ -23,6 +23,7 @@ import {
 
 import { useToast } from "../ui";
 import { formatCurrency } from "../../lib/currency";
+import { apiFetchActiveCoupons } from "../../api/backendApi";
 // Shared product-surface stylesheet (responsive rules, tap targets).
 
 /** Tab definitions. A tab is only offered when the product has its data. */
@@ -73,6 +74,19 @@ function RatingBar({ percent, stars }) {
   );
 }
 
+/** A short, honest description built from the stored coupon fields. */
+function describeCoupon(coupon) {
+  let text;
+  if (coupon.kind === "percent") text = `${coupon.value}% off at checkout`;
+  else if (coupon.kind === "flat") text = `${formatCurrency(coupon.value)} off at checkout`;
+  else if (coupon.kind === "free_shipping") text = "Free delivery at checkout";
+  else text = "Discount at checkout";
+  if (Number(coupon.min_subtotal) > 0) {
+    text += ` on orders over ${formatCurrency(coupon.min_subtotal)}`;
+  }
+  return text;
+}
+
 /** Rows whose value the API actually provided. */
 function presentRows(rows) {
   return rows.filter(([, value]) => Boolean(value));
@@ -82,7 +96,21 @@ export default function ProductInfoTabs({ product }) {
   const [activeTab, setActiveTab] = useState("offers");
   const [openCollapse, setOpenCollapse] = useState("offers");
   const [copiedCode, setCopiedCode] = useState(null);
+  const [storeCoupons, setStoreCoupons] = useState([]);
   const { addToast } = useToast();
+
+  // The codes on the product page come from the same coupon catalogue the
+  // checkout validates. Old product_offers copy could advertise codes that
+  // cannot actually be used.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetchActiveCoupons()
+      .then((rows) => !cancelled && setStoreCoupons(Array.isArray(rows) ? rows : []))
+      .catch(() => !cancelled && setStoreCoupons([]));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Carousel navigation state
   const tabsTrackRef = useRef(null);
@@ -128,7 +156,7 @@ export default function ProductInfoTabs({ product }) {
     reviewSummary = { overall: null, total: 0, breakdown: [] },
   } = product;
 
-  const offerCount = offers.emi.length + offers.bank.length + offers.coupon.length;
+  const offerCount = offers.emi.length + offers.bank.length + storeCoupons.length;
 
   const infoRows = presentRows([
     ["Brand", product.brand],
@@ -257,39 +285,32 @@ export default function ProductInfoTabs({ product }) {
           </>
         )}
 
-        {offers.coupon.length > 0 && (
+        {storeCoupons.length > 0 && (
           <>
             <div className="pit-section-title pit-section-title--spaced">Promo Codes</div>
             <div className="pit-coupon-grid">
-              {offers.coupon.map((o, i) => (
-                <div className="pit-coupon-card" key={i}>
+              {storeCoupons.map((coupon) => (
+                <div className="pit-coupon-card" key={coupon.code}>
                   <div className="pit-coupon-top">
-                    <span className="pit-coupon-code">{o.code ?? o.title}</span>
-                    {o.code && (
-                      <button
-                        className="pit-coupon-copy-btn"
-                        onClick={() => copyCoupon(o.code)}
-                        aria-label={copiedCode === o.code ? "Coupon copied" : "Copy coupon code"}
-                      >
-                        {copiedCode === o.code ? (
-                          <Check size={14} color="#16a34a" />
-                        ) : (
-                          <Copy size={14} />
-                        )}
-                      </button>
-                    )}
+                    <span className="pit-coupon-code">{coupon.code}</span>
+                    <button
+                      className="pit-coupon-copy-btn"
+                      onClick={() => copyCoupon(coupon.code)}
+                      aria-label={copiedCode === coupon.code ? "Coupon copied" : "Copy coupon code"}
+                    >
+                      {copiedCode === coupon.code ? (
+                        <Check size={14} color="#16a34a" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                    </button>
                   </div>
-                  <div className="pit-coupon-desc">{o.description ?? o.title ?? ""}</div>
+                  <div className="pit-coupon-desc">{describeCoupon(coupon)}</div>
                 </div>
               ))}
             </div>
           </>
         )}
-      </div>
-    ),
-
-    info: (
-      <div className="pit-info-content">
         {product.description && (
           <p className="pit-body-text pit-body-text--mb">{product.description}</p>
         )}

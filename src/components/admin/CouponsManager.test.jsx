@@ -5,6 +5,19 @@ import { apiFetchCoupons } from "../../api/backendApi";
 
 vi.mock("../../api/backendApi", () => ({
   apiFetchCoupons: vi.fn(),
+  apiFetchCouponUsage: vi.fn().mockResolvedValue({
+    summary: {
+      activeCoupons: 0,
+      totalCoupons: 0,
+      redemptions: 0,
+      totalDiscount: 0,
+      totalRevenue: 0,
+      averageDiscount: 0,
+    },
+    byCoupon: [],
+    recent: [],
+    available: true,
+  }),
   apiCreateCoupon: vi.fn(),
   apiUpdateCoupon: vi.fn(),
   apiDeleteCoupon: vi.fn(),

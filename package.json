@@ -38,7 +38,8 @@
     "seed:products": "node server/seed_dynamic_products.js",
     "seed:fill": "node server/seed_catalog_fill.js",
     "seed:content-details": "node server/seed_backend_content.js",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "seed:coupons": "node scripts/seed-coupons.mjs"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

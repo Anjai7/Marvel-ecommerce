@@ -318,6 +318,11 @@ codes to validate.
 **Apply it** before using the coupon screen; until then the admin list reads an
 empty table and the storefront has no codes to validate.
 
+**Starter codes:** `npm run seed:coupons` inserts six real, usable examples
+(`ACCESS5`, `BLUSHB5`, `SMARTP10`, `LAPTOP10`, `FLAT500`, `FREESHIP`). It is
+idempotent — codes an admin has already edited are left untouched. The product
+page advertises only codes from this table, via `GET /api/coupons/active`.
+
 **Verify:**
 
 ```sql

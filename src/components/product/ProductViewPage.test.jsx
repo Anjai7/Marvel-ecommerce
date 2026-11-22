@@ -15,6 +15,8 @@ vi.mock("../../api/backendApi", () => ({
   apiFetchProducts: vi.fn().mockResolvedValue([]),
   // The recently-viewed rail looks up the ids this browser recorded.
   apiFetchProductById: vi.fn().mockResolvedValue(null),
+  // The offers tab reads real coupons from the public endpoint.
+  apiFetchActiveCoupons: vi.fn().mockResolvedValue([]),
 }));
 
 function renderPage(props) {
