@@ -23,6 +23,7 @@ import { Badge, useToast } from "../ui";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { navigateToPath } from "../../lib/routes";
+import { openCartDrawer } from "../../lib/cartEvents";
 import { formatCurrency } from "../../lib/currency";
 import { OPTION_KIND_LABELS } from "../../lib/productOptions";
 
@@ -376,6 +377,7 @@ export default function ProductDetails({ product }) {
       },
       qty
     );
+    openCartDrawer();
     addToast({
       title: "Added to Cart",
       message: `${product.name} added to cart.`,

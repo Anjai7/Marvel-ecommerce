@@ -6,6 +6,7 @@ import ProductInfoTabs from "./ProductInfoTabs";
 import FrequentlyVisited from "./FrequentlyVisited";
 import RecentlyViewed, { recordProductView } from "../storefront/RecentlyViewed";
 import RelatedProducts from "./RelatedProducts";
+import MostPopular from "./MostPopular";
 import CustomerReviews from "./CustomerReviews";
 import { buildDynamicProductDetails } from "./dynamicProductBuilder";
 import { apiFetchProductDetails } from "../../api/productDetailsApi";
@@ -184,6 +185,7 @@ export default function ProductViewPage({
       {/* ── More products ── */}
       <FrequentlyVisited onView={onSelectProduct} excludeId={view.id} />
       <RelatedProducts category={view.category} currentId={view.id} />
+      <MostPopular currentId={view.id} />
       <RecentlyViewed currentId={view.id} />
 
       {/* ── Customer Reviews ── */}

@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { Card, Badge, Button, Rating, ProductPrice, SimpleTooltip, useToast } from "./ui";
 import { Heart, ShoppingCart, Check, Eye } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
-import { navigateToPath } from "../lib/routes";
+import { openCartDrawer } from "../lib/cartEvents";
 import { generateProductCode } from "../lib/productCode";
 
 function numberOrNull(value) {
@@ -47,30 +46,14 @@ export function ProductCard({ product, onQuickView, onNavigate }) {
     });
   };
 
-  let auth = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    auth = useAuth();
-  } catch {
-    auth = null;
-  }
-
   const handleCart = (e) => {
     e.stopPropagation();
-    if (auth && !auth.isLoggedIn) {
-      addToast({
-        title: "Sign In Required",
-        message: "Please sign in or create an account to add items to your cart.",
-        type: "info",
-      });
-      navigateToPath("/login");
-      return;
-    }
     if (cartState !== "idle") return;
     setCartState("loading");
     setTimeout(() => {
       setCartState("added");
       addItem(product, 1);
+      openCartDrawer();
       addToast({
         title: "Added to Cart",
         message: `${title} was added to your shopping cart.`,

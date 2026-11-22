@@ -1,18 +1,15 @@
 import { Fragment } from "react";
-import { Button } from "../ui";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 
 /**
- * The page numbers a compact pager shows: the current page and up to two of its
- * neighbours, plus the last page. Every skipped page becomes one ellipsis, so a
- * 50-page catalogue costs five buttons instead of fifty.
+ * The page strip: at most three numbers around the current page and the last
+ * page, with one ellipsis for the gap. Skipped pages are never rendered as
+ * buttons, so a 50-page catalogue stays a five-item control.
  */
-function compactPageNumbers(currentPage, totalPages) {
-  // A list this short is already shorter than the compact strip — an ellipsis
-  // standing in for a single page would just puzzle the admin.
+export function compactPageNumbers(currentPage, totalPages) {
   if (totalPages <= 5) {
     return Array.from({ length: Math.max(0, totalPages) }, (_, index) => index + 1);
   }
-
   const windowSize = 3;
   let start = Math.max(1, currentPage - 1);
   const end = Math.min(totalPages, start + windowSize - 1);
@@ -20,57 +17,77 @@ function compactPageNumbers(currentPage, totalPages) {
 
   const numbers = [];
   for (let page = start; page <= end; page += 1) numbers.push(page);
-  // The last page is always one click away, whichever page the admin is on.
   if (numbers[numbers.length - 1] !== totalPages) numbers.push(totalPages);
   return numbers;
 }
 
-/** The pager shared by every list in the console (products, orders, customers). */
+/**
+ * The console pager, built after shadcn's Pagination: a labelled nav, a list
+ * of items, chevron Previous/Next controls, an outlined active page and an
+ * icon-only ellipsis that is hidden from assistive tech.
+ */
 export default function ConsolePagination({ currentPage, totalPages, onPageChange }) {
   const numbers = compactPageNumbers(currentPage, totalPages);
 
   return (
-    <div className="console-pagination-controls">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={currentPage <= 1}
-        onClick={() => onPageChange(currentPage - 1)}
-      >
-        Previous
-      </Button>
-      <div className="console-pagination-numbers">
+    <nav className="console-pager" aria-label="pagination">
+      <ul className="console-pager-list">
+        <li className="console-pager-item">
+          <button
+            type="button"
+            className="console-pager-link console-pager-nav"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Go to previous page"
+          >
+            <ChevronLeft size={16} aria-hidden="true" />
+            <span className="console-pager-nav-text">Previous</span>
+          </button>
+        </li>
+
         {numbers.map((pageNum, index) => {
           const previous = numbers[index - 1];
           const skipped = previous !== undefined && pageNum - previous > 1;
           return (
             <Fragment key={pageNum}>
               {skipped && (
-                <span className="console-pagination-ellipsis" aria-hidden="true">
-                  …
-                </span>
+                <li className="console-pager-item">
+                  <span className="console-pager-ellipsis" aria-hidden="true">
+                    <MoreHorizontal size={16} />
+                  </span>
+                  <span className="console-pager-sr-only">More pages</span>
+                </li>
               )}
-              <button
-                type="button"
-                className={`menu-page-number-btn ${pageNum === currentPage ? "active" : ""}`}
-                onClick={() => onPageChange(pageNum)}
-                aria-label={`Page ${pageNum}`}
-                aria-current={pageNum === currentPage ? "page" : undefined}
-              >
-                {pageNum}
-              </button>
+              <li className="console-pager-item">
+                <button
+                  type="button"
+                  className={`console-pager-link ${
+                    pageNum === currentPage ? "console-pager-link--active" : ""
+                  }`}
+                  onClick={() => onPageChange(pageNum)}
+                  aria-label={`Page ${pageNum}`}
+                  aria-current={pageNum === currentPage ? "page" : undefined}
+                >
+                  {pageNum}
+                </button>
+              </li>
             </Fragment>
           );
         })}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={currentPage >= totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-      >
-        Next
-      </Button>
-    </div>
+
+        <li className="console-pager-item">
+          <button
+            type="button"
+            className="console-pager-link console-pager-nav"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            aria-label="Go to next page"
+          >
+            <span className="console-pager-nav-text">Next</span>
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+        </li>
+      </ul>
+    </nav>
   );
 }

@@ -180,7 +180,8 @@ export function CartProvider({ children }) {
     wasLoggedInRef.current = isLoggedIn;
 
     if (isLoggedIn && userKey) {
-      let next = parseStoredItems(localStorage.getItem(userKey));
+      const localRaw = localStorage.getItem(userKey);
+      let next = parseStoredItems(localRaw);
       try {
         const guest = parseStoredItems(localStorage.getItem(STORAGE_KEY));
         if (guest.length) {
@@ -193,12 +194,19 @@ export function CartProvider({ children }) {
       setItems(next);
       activeUserKeyRef.current = userKey;
 
-      // The backend copy is additive: a slow read must not overwrite a line
-      // the customer just changed in this browser.
-      if (user?.id) {
+      // The backend copy is only a fallback for a fresh device. A local copy
+      // — even an empty one — wins: adding quantities from the backend on
+      // every login would double the cart each time the customer signs in.
+      if (user?.id && localRaw === null) {
         apiFetchCart(user.id)
           .then((stored) => {
-            if (stored.length) setItems((current) => mergeCarts(current, stored));
+            if (stored.length) {
+              setItems((current) => {
+                if (current.length) return current;
+                localStorage.setItem(userKey, JSON.stringify(stored));
+                return stored;
+              });
+            }
           })
           .catch(() => {});
       }

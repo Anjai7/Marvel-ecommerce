@@ -1486,6 +1486,7 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
     banners: "Site Content — Banners",
     footer: "Site Content — Footer",
     settings: settingsView === "coupons" ? "Settings — Coupons" : "Settings",
+    coupons: "Coupons",
   };
 
   // Nothing loaded and no cached copy exists, so the console has no business
@@ -1778,6 +1779,22 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
               </button>
             </div>
           )}
+
+          {/* Promotions deserve their own screen, not a buried settings tab. */}
+          <button
+            id="admin-tab-coupons"
+            onClick={() => handleNavSelect(() => setActiveTab("coupons"))}
+            className={`sidebar-tab-button ${activeTab === "coupons" ? "active" : ""}`}
+          >
+            <div className="tab-icon-box">
+              <Ticket size={19} />
+            </div>
+            <div className="tab-text-box">
+              <span className="tab-title">Coupons</span>
+              <span className="tab-description">Generate &amp; Manage</span>
+            </div>
+            {activeTab === "coupons" && <div className="active-glow-indicator"></div>}
+          </button>
 
           {/* MENU 4: CUSTOMERS (with submenu) */}
           <button
@@ -3989,6 +4006,9 @@ export default function UnifiedAdminConsole({ onNavigateHome, customRole = "admi
 
         {/* TAB 10: SITE CONTENT > FOOTER (Task 16) */}
         {activeTab === "footer" && canManageSiteContent && <FooterEditor />}
+
+        {/* Promotions: a first-class admin page. */}
+        {activeTab === "coupons" && <CouponsManager />}
 
         {/* TAB 12: SETTINGS — the store's own configuration + ops sections */}
         {activeTab === "settings" && (

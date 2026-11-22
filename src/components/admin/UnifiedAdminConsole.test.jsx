@@ -787,19 +787,20 @@ describe("UnifiedAdminConsole", () => {
     expect(screen.queryByRole("button", { name: "Page 4" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Page 25" })).toBeNull();
     expect(screen.getByRole("button", { name: "Page 1" })).toHaveAttribute("aria-current", "page");
-    const strip = document.querySelector(".console-pagination-numbers");
-    expect(within(strip).getAllByText("…")).toHaveLength(1);
-    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    const strip = document.querySelector(".console-pager-list");
+    expect(within(strip).getAllByLabelText("Go to next page")).toHaveLength(1);
+    expect(within(strip).queryByText("…")).toBeNull();
+    expect(screen.getByRole("button", { name: "Go to previous page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Go to next page" })).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: "Go to next page" }));
     expect(screen.getByRole("button", { name: "Page 2" })).toHaveAttribute("aria-current", "page");
 
     // The last page is always one click away, and Next stops there.
     await user.click(screen.getByRole("button", { name: "Page 50" }));
     expect(pageButtonLabels()).toEqual(["48", "49", "50"]);
     expect(screen.getByRole("button", { name: "Page 50" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Go to next page" })).toBeDisabled();
   });
 
   it("exposes coupons as a settings sub-item that opens the coupon manager", async () => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatCurrency } from "../lib/currency";
 import {
   Button,
@@ -48,18 +48,15 @@ export default function Header({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
+
+  // A product card or the product page asks for the drawer after an add.
+  useEffect(() => {
+    const open = () => setCartOpen(true);
+    window.addEventListener("marvel:cart:open", open);
+    return () => window.removeEventListener("marvel:cart:open", open);
+  }, []);
   const { addToast } = useToast();
   const { settings } = useSettings();
-  /** Open the account portal on a chosen tab (the portal reads this on mount). */
-  const openAccountTab = (tab) => {
-    try {
-      sessionStorage.setItem("marvel_account_tab", tab);
-    } catch {
-      // private browsing — the portal simply opens on its default tab
-    }
-    onNavigateCustomerPortal();
-  };
-
   let cartItems = [];
   let cartSubtotal = 0;
   let cartSavings = 0;
@@ -238,21 +235,21 @@ export default function Header({
                   <>
                     <DropdownMenuItem
                       icon={<Package size={16} className="icon-blue" />}
-                      onClick={() => openAccountTab("orders")}
+                      onClick={onNavigateCustomerPortal}
                       className="menu-item-semibold"
                     >
                       My Orders & Deliveries
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       icon={<Heart size={16} className="icon-red" />}
-                      onClick={() => openAccountTab("wishlist")}
+                      onClick={onNavigateCustomerPortal}
                       className="menu-item-semibold"
                     >
                       Saved Wishlist
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       icon={<Settings size={16} />}
-                      onClick={() => openAccountTab("profile")}
+                      onClick={onNavigateCustomerPortal}
                     >
                       Account Settings
                     </DropdownMenuItem>

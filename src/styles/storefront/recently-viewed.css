@@ -50,3 +50,30 @@
     flex-basis: 180px;
   }
 }
+
+/* The customer owns this history: clear it, or drop one item. */
+.recently-viewed-item {
+  position: relative;
+}
+
+.recently-viewed-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.recently-viewed-remove:hover {
+  color: var(--gray-900);
+  background: #ffffff;
+}
